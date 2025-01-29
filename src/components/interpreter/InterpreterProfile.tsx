@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
+import { CountrySelect } from "../CountrySelect";
 
 interface Address {
   street: string;
@@ -35,6 +36,8 @@ interface InterpreterProfile {
   created_at?: string;
   updated_at?: string;
   specializations: string[];
+  birth_country: string | null;
+  nationality: string | null;
 }
 
 export const InterpreterProfile = () => {
@@ -237,12 +240,32 @@ export const InterpreterProfile = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">Adresse</Label>
+              <Label>Adresse</Label>
               <Textarea
                 id="address"
                 value={profile.address ? `${profile.address.street}, ${profile.address.postal_code}, ${profile.address.city}` : ""}
                 onChange={(e) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value.split(',')[0], postal_code: e.target.value.split(',')[1], city: e.target.value.split(',')[2] } })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <CountrySelect
+                value={profile.birth_country || ""}
+                onValueChange={(value) => setProfile({ ...profile, birth_country: value })}
+                label="Pays de naissance"
+                placeholder="Sélectionner votre pays de naissance"
+                disabled={!isEditing}
+              />
+
+              <div className="space-y-2">
+                <Label htmlFor="nationality">Nationalité</Label>
+                <Input
+                  id="nationality"
+                  value={profile.nationality || ""}
+                  onChange={(e) => setProfile({ ...profile, nationality: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

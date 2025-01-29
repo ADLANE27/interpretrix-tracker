@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { CountrySelect } from "../CountrySelect";
 
 // Liste exhaustive des langues pour l'interprétariat social
 const LANGUAGES = [
@@ -73,7 +74,7 @@ export const AdminDashboard = () => {
   const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
   const [phoneFilter, setPhoneFilter] = useState("");
-  const [birthCountryFilter, setBirthCountryFilter] = useState("");
+  const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
@@ -183,9 +184,8 @@ export const AdminDashboard = () => {
       (interpreter.phone_number && 
        interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
 
-    const matchesBirthCountry = birthCountryFilter === "" ||
-      (interpreter.birth_country &&
-       interpreter.birth_country.toLowerCase().includes(birthCountryFilter.toLowerCase()));
+    const matchesBirthCountry = birthCountryFilter === "all" ||
+      (interpreter.birth_country === birthCountryFilter);
 
     const matchesEmploymentStatus = employmentStatusFilter === "all" || 
       interpreter.employment_status === employmentStatusFilter;
@@ -262,15 +262,12 @@ export const AdminDashboard = () => {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="birth-country-search">Pays de naissance</Label>
-          <Input
-            id="birth-country-search"
-            placeholder="Rechercher par pays de naissance..."
-            value={birthCountryFilter}
-            onChange={(e) => setBirthCountryFilter(e.target.value)}
-          />
-        </div>
+        <CountrySelect
+          value={birthCountryFilter}
+          onValueChange={setBirthCountryFilter}
+          label="Pays de naissance"
+          placeholder="Sélectionner un pays"
+        />
 
         <div className="space-y-2">
           <Label htmlFor="employment-status">Statut professionnel</Label>
