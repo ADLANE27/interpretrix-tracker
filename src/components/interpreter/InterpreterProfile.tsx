@@ -53,6 +53,18 @@ export const InterpreterProfile = () => {
     unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   };
 
+  const handleLanguagesChange = (newLanguagePairs: LanguagePair[]) => {
+    if (!profile) return;
+    
+    // Convert LanguagePair objects to strings in the format "source → target"
+    const languageStrings = newLanguagePairs.map(pair => `${pair.source} → ${pair.target}`);
+    
+    setProfile({
+      ...profile,
+      languages: languageStrings
+    });
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -137,18 +149,6 @@ export const InterpreterProfile = () => {
     }
   };
 
-  const handleLanguagesChange = (newLanguagePairs: LanguagePair[]) => {
-    if (!profile) return;
-    
-    // Convert LanguagePair objects to strings in the format "source → target"
-    const languageStrings = newLanguagePairs.map(pair => `${pair.source} → ${pair.target}`);
-    
-    setProfile({
-      ...profile,
-      languages: languageStrings
-    });
-  };
-
   if (loading) {
     return <div>Chargement...</div>;
   }
@@ -226,6 +226,25 @@ export const InterpreterProfile = () => {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="employment_status">Statut professionnel</Label>
+            <Select
+              value={profile.employment_status}
+              onValueChange={(value: EmploymentStatus) => 
+                isEditing && setProfile({ ...profile, employment_status: value })
+              }
+              disabled={!isEditing}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionnez votre statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="salaried">Salarié</SelectItem>
+                <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2 col-span-2">
             <Label>Langues de travail</Label>
             <LanguageSelector
@@ -235,7 +254,7 @@ export const InterpreterProfile = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 col-span-2">
             <Label>Adresse</Label>
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
@@ -305,25 +324,6 @@ export const InterpreterProfile = () => {
               onChange={(e) => setProfile({ ...profile, nationality: e.target.value })}
               disabled={!isEditing}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="employment_status">Statut professionnel</Label>
-            <Select
-              value={profile.employment_status}
-              onValueChange={(value: EmploymentStatus) => 
-                setProfile({ ...profile, employment_status: value })
-              }
-              disabled={!isEditing}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionnez votre statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="salaried">Salarié</SelectItem>
-                <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {isEditing && (
