@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
-import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
+import InterpreterLogin from "./pages/InterpreterLogin";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -62,11 +63,47 @@ const App = () => {
               path="/" 
               element={
                 !userRole ? (
-                  <Navigate to="/login" replace />
+                  <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4 space-y-8">
+                    <h1 className="text-3xl font-bold text-gray-800">Bienvenue</h1>
+                    <div className="flex gap-4">
+                      <a 
+                        href="/admin/login" 
+                        className="px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors"
+                      >
+                        Espace Administration
+                      </a>
+                      <a 
+                        href="/interpreter/login" 
+                        className="px-6 py-3 bg-green-800 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        Espace Interprète
+                      </a>
+                    </div>
+                  </div>
                 ) : userRole === 'admin' ? (
                   <Navigate to="/admin" replace />
                 ) : (
                   <Navigate to="/interpreter" replace />
+                )
+              } 
+            />
+            <Route 
+              path="/admin/login" 
+              element={
+                userRole === 'admin' ? (
+                  <Navigate to="/admin" replace />
+                ) : (
+                  <AdminLogin />
+                )
+              } 
+            />
+            <Route 
+              path="/interpreter/login" 
+              element={
+                userRole === 'interpreter' ? (
+                  <Navigate to="/interpreter" replace />
+                ) : (
+                  <InterpreterLogin />
                 )
               } 
             />
@@ -74,11 +111,11 @@ const App = () => {
               path="/admin" 
               element={
                 !userRole ? (
-                  <Navigate to="/login" replace />
+                  <Navigate to="/admin/login" replace />
                 ) : userRole === 'admin' ? (
                   <Index />
                 ) : (
-                  <Navigate to="/interpreter" replace />
+                  <Navigate to="/interpreter/login" replace />
                 )
               } 
             />
@@ -86,24 +123,21 @@ const App = () => {
               path="/interpreter" 
               element={
                 !userRole ? (
-                  <Navigate to="/login" replace />
+                  <Navigate to="/interpreter/login" replace />
                 ) : userRole === 'interpreter' ? (
                   <Index />
                 ) : (
-                  <Navigate to="/admin" replace />
+                  <Navigate to="/admin/login" replace />
                 )
               } 
             />
-            <Route path="/login" element={
-              userRole ? <Navigate to="/" replace /> : <Login />
-            } />
             <Route 
               path="/profile" 
               element={
                 userRole ? (
                   <Profile />
                 ) : (
-                  <Navigate to="/login" replace />
+                  <Navigate to="/" replace />
                 )
               } 
             />
