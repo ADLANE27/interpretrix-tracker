@@ -62,6 +62,8 @@ export const MissionManagement = () => {
   };
 
   const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
+    if (!sourceLang || !targetLang) return;
+    
     try {
       const languagePair = `${sourceLang} → ${targetLang}`;
       const { data, error } = await supabase
@@ -162,18 +164,17 @@ export const MissionManagement = () => {
     }
   };
 
-  const handleLanguageSelection = async () => {
-    if (sourceLanguage && targetLanguage) {
-      await findAvailableInterpreters(sourceLanguage, targetLanguage);
-    }
-  };
-
+  // Only run findAvailableInterpreters when both languages are selected
   useEffect(() => {
-    handleLanguageSelection();
+    if (sourceLanguage && targetLanguage) {
+      findAvailableInterpreters(sourceLanguage, targetLanguage);
+    }
   }, [sourceLanguage, targetLanguage]);
 
   // Set up real-time subscription for mission status updates
   useEffect(() => {
+    fetchMissions();
+
     const channel = supabase
       .channel('mission-updates')
       .on(
