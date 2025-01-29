@@ -31,7 +31,10 @@ export const MissionsTab = () => {
   const fetchMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('No user found');
+        return;
+      }
 
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
@@ -39,7 +42,10 @@ export const MissionsTab = () => {
         .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
-      if (missionsError) throw missionsError;
+      if (missionsError) {
+        console.error('Error fetching missions:', missionsError);
+        throw missionsError;
+      }
       
       console.log('Fetched missions:', missionsData);
       setMissions(missionsData || []);
@@ -54,6 +60,7 @@ export const MissionsTab = () => {
   };
 
   const setupRealtimeSubscription = () => {
+    console.log('Setting up realtime subscription');
     const channel = supabase
       .channel('mission-updates')
       .on(
@@ -83,12 +90,14 @@ export const MissionsTab = () => {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   };
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
     if (isProcessing) {
+      console.log('Already processing a request');
       toast({
         title: "Action en cours",
         description: "Veuillez patienter pendant le traitement de votre demande",
@@ -98,56 +107,38 @@ export const MissionsTab = () => {
 
     try {
       setIsProcessing(true);
+      console.log(`Processing mission response: ${accept ? 'accept' : 'decline'} for mission ${missionId}`);
+      
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      // 1. Vérifier que l'interprète est toujours disponible
-      const { data: interpreterProfile } = await supabase
-        .from('interpreter_profiles')
-        .select('status')
-        .eq('id', user.id)
-        .single();
-
-      if (!interpreterProfile || interpreterProfile.status !== 'available') {
-        toast({
-          title: "Non disponible",
-          description: "Vous n'êtes plus disponible pour accepter des missions",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 2. Vérifier que la mission est toujours en attente
-      const { data: currentMission } = await supabase
-        .from('interpretation_missions')
-        .select('status, notified_interpreters')
-        .eq('id', missionId)
-        .single();
-
-      if (!currentMission || currentMission.status !== 'awaiting_acceptance') {
-        toast({
-          title: "Mission non disponible",
-          description: "Cette mission n'est plus disponible",
-          variant: "destructive",
-        });
-        return;
+      if (!user) {
+        console.error('No user found');
+        throw new Error("Non authentifié");
       }
 
       if (accept) {
-        // 3. Commencer une transaction pour garantir l'atomicité des opérations
+        console.log('Calling handle_mission_acceptance RPC');
         const { error: updateError } = await supabase.rpc('handle_mission_acceptance', {
           p_mission_id: missionId,
           p_interpreter_id: user.id
         });
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Error in handle_mission_acceptance:', updateError);
+          if (updateError.message.includes('Interpreter is not available')) {
+            throw new Error("Vous n'êtes plus disponible pour accepter des missions");
+          } else if (updateError.message.includes('Mission is no longer available')) {
+            throw new Error("Cette mission n'est plus disponible");
+          }
+          throw updateError;
+        }
 
+        console.log('Mission accepted successfully');
         toast({
           title: "Mission acceptée",
           description: "Vous avez accepté la mission avec succès",
         });
       } else {
-        // 4. Décliner la mission
+        console.log('Declining mission');
         const { error: declineError } = await supabase
           .from('mission_notifications')
           .update({ 
@@ -157,8 +148,12 @@ export const MissionsTab = () => {
           .eq('mission_id', missionId)
           .eq('interpreter_id', user.id);
 
-        if (declineError) throw declineError;
+        if (declineError) {
+          console.error('Error declining mission:', declineError);
+          throw declineError;
+        }
 
+        console.log('Mission declined successfully');
         toast({
           title: "Mission déclinée",
           description: "Vous avez décliné la mission",
@@ -170,7 +165,7 @@ export const MissionsTab = () => {
       console.error('Error updating mission:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors du traitement de votre demande",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de votre demande",
         variant: "destructive",
       });
     } finally {
