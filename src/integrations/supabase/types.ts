@@ -199,6 +199,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      handle_mission_acceptance: {
+        Args: {
+          p_mission_id: string
+          p_interpreter_id: string
+        }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           user_id: string
