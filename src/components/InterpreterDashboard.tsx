@@ -12,7 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { LanguageSelector } from "./interpreter/LanguageSelector";
 import { MissionsTab } from "./interpreter/MissionsTab";
-import { SpecializationSelector } from "./interpreter/SpecializationSelector";
 
 interface LanguagePair {
   source: string;
@@ -39,7 +38,6 @@ interface Profile {
   phone_interpretation_rate: number | null;
   siret_number: string | null;
   vat_number: string | null;
-  specializations: string[];
 }
 
 const statusConfig = {
@@ -93,7 +91,6 @@ export const InterpreterDashboard = () => {
         phone_interpretation_rate: data.phone_interpretation_rate,
         siret_number: data.siret_number,
         vat_number: data.vat_number,
-        specializations: data.specializations || [],
       };
       
       setProfile(profileData);
@@ -164,7 +161,6 @@ export const InterpreterDashboard = () => {
           phone_interpretation_rate: profile.phone_interpretation_rate,
           siret_number: profile.siret_number,
           vat_number: profile.vat_number,
-          specializations: profile.specializations,
         })
         .eq("id", user.id);
 
@@ -410,17 +406,6 @@ export const InterpreterDashboard = () => {
                       </div>
                     </>
                   )}
-
-                  <div className="space-y-2 mt-6">
-                    <h3 className="text-lg font-semibold">Spécialisations</h3>
-                    <SpecializationSelector
-                      value={profile.specializations}
-                      onChange={(newSpecializations) => 
-                        isEditing && setProfile({ ...profile, specializations: newSpecializations })
-                      }
-                      isEditing={isEditing}
-                    />
-                  </div>
                 </div>
               </Card>
             </TabsContent>
