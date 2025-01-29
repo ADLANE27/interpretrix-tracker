@@ -6,21 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, XSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-interface Mission {
-  id: string;
-  source_language: string;
-  target_language: string;
-  estimated_duration: number;
-  status: string;
-  created_at: string;
-  assigned_interpreter_id?: string;
-  assigned_interpreter?: {
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-  };
-}
+import { Mission } from "@/integrations/supabase/types";
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -30,19 +16,6 @@ export const MissionsTab = () => {
     fetchMissions();
     setupRealtimeSubscription();
   }, []);
-
-  const transformMission = (rawMission: any): Mission => {
-    return {
-      id: rawMission.id,
-      source_language: rawMission.source_language,
-      target_language: rawMission.target_language,
-      estimated_duration: rawMission.estimated_duration,
-      status: rawMission.status,
-      created_at: rawMission.created_at,
-      assigned_interpreter_id: rawMission.assigned_interpreter_id,
-      assigned_interpreter: rawMission.assigned_interpreter,
-    };
-  };
 
   const fetchMissions = async () => {
     try {
@@ -63,9 +36,8 @@ export const MissionsTab = () => {
 
       if (missionsError) throw missionsError;
       
-      const transformedMissions = (missionsData || []).map(transformMission);
-      console.log('Fetched missions:', transformedMissions);
-      setMissions(transformedMissions);
+      console.log('Fetched missions:', missionsData);
+      setMissions(missionsData || []);
     } catch (error) {
       console.error('Error fetching missions:', error);
       toast({
@@ -103,70 +75,38 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      if (accept) {
-        // Update the mission status and assign the interpreter
-        const { error: missionError } = await supabase
-          .from('interpretation_missions')
-          .update({
-            status: 'accepted',
-            assigned_interpreter_id: user.id,
-            assignment_time: new Date().toISOString()
-          })
-          .eq('id', missionId);
+      const newStatus = accept ? 'accepted' : 'declined';
+      
+      // Update the mission status and assign the interpreter
+      const { error: missionError } = await supabase
+        .from('interpretation_missions')
+        .update({
+          status: newStatus,
+          assigned_interpreter_id: accept ? user.id : null,
+          assignment_time: accept ? new Date().toISOString() : null,
+          notified_interpreters: accept ? [] : supabase.sql`array_remove(notified_interpreters, ${user.id})`
+        })
+        .eq('id', missionId);
 
-        if (missionError) throw missionError;
+      if (missionError) throw missionError;
 
-        // Update local state immediately
-        setMissions(prevMissions => 
-          prevMissions.map(mission => 
-            mission.id === missionId 
-              ? { 
-                  ...mission, 
-                  status: 'accepted',
-                  assigned_interpreter_id: user.id
-                }
-              : mission
-          )
-        );
-      } else {
-        // If declining, just update the notified_interpreters array to remove this interpreter
-        const mission = missions.find(m => m.id === missionId);
-        if (mission) {
-          const updatedNotifiedInterpreters = (mission.notified_interpreters || [])
-            .filter(id => id !== user.id);
-
-          const { error: missionError } = await supabase
-            .from('interpretation_missions')
-            .update({
-              notified_interpreters: updatedNotifiedInterpreters,
-              status: 'declined'
-            })
-            .eq('id', missionId);
-
-          if (missionError) throw missionError;
-
-          // Update local state
-          setMissions(prevMissions => 
-            prevMissions.map(mission => 
-              mission.id === missionId 
-                ? { 
-                    ...mission, 
-                    status: 'declined',
-                    notified_interpreters: updatedNotifiedInterpreters
-                  }
-                : mission
-            )
-          );
-        }
-      }
+      // Update local state immediately
+      setMissions(prevMissions => 
+        prevMissions.map(mission => 
+          mission.id === missionId 
+            ? { 
+                ...mission, 
+                status: newStatus,
+                assigned_interpreter_id: accept ? user.id : null
+              }
+            : mission
+        )
+      );
 
       toast({
         title: accept ? "Mission acceptée" : "Mission déclinée",
         description: `La mission a été ${accept ? 'acceptée' : 'déclinée'} avec succès.`,
       });
-
-      // Refresh missions to get updated data
-      fetchMissions();
 
     } catch (error) {
       console.error('Error updating mission:', error);

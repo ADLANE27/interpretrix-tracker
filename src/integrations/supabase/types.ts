@@ -325,3 +325,30 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+export interface LanguagePair {
+  source: string;
+  target: string;
+}
+
+export interface Mission {
+  id: string;
+  source_language: string;
+  target_language: string;
+  estimated_duration: number;
+  status: string;
+  created_at: string;
+  assigned_interpreter_id?: string;
+  assigned_interpreter?: {
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  };
+  notified_interpreters?: string[];
+}
