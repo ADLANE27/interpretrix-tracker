@@ -13,6 +13,7 @@ type Status = "available" | "busy" | "pause" | "unavailable";
 type EmploymentStatus = "salaried" | "self_employed";
 
 interface InterpreterProfile {
+  id: string; // Added missing id field
   first_name: string;
   last_name: string;
   address: string | null;
@@ -24,6 +25,8 @@ interface InterpreterProfile {
   siret_number: string | null;
   vat_number: string | null;
   status: Status;
+  created_at?: string; // Added optional created_at field
+  updated_at?: string; // Added optional updated_at field
 }
 
 export const InterpreterProfile = () => {
@@ -55,7 +58,14 @@ export const InterpreterProfile = () => {
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      
+      // Ensure status is of type Status
+      const profileData: InterpreterProfile = {
+        ...data,
+        status: (data.status || 'available') as Status
+      };
+      
+      setProfile(profileData);
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast({
