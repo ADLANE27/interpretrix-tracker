@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { CountrySelect } from "../CountrySelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
+import { UserManagement } from "./UserManagement";
 
 const LANGUAGES = [
   // Langues européennes
@@ -206,6 +207,7 @@ export const AdminDashboard = () => {
         <TabsList>
           <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
           <TabsTrigger value="missions">Missions</TabsTrigger>
+          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="interpreters">
@@ -319,6 +321,10 @@ export const AdminDashboard = () => {
 
         <TabsContent value="missions">
           <MissionManagement />
+        </TabsContent>
+
+        <TabsContent value="users">
+          <UserManagement />
         </TabsContent>
       </Tabs>
     </div>
