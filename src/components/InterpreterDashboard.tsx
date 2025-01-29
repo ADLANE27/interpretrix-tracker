@@ -3,13 +3,11 @@ import { UserCog } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSelector } from "./interpreter/LanguageSelector";
+import { MissionsTab } from "./interpreter/MissionsTab";
 
 interface LanguagePair {
   source: string;
@@ -59,7 +57,6 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
       
-      // Convert the languages array to array of LanguagePair objects
       const languagePairs = data.languages.map((lang: string) => {
         const [source, target] = lang.split(" → ");
         return { source, target };
@@ -122,7 +119,6 @@ export const InterpreterDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !profile) return;
 
-      // Convert LanguagePair objects to strings for storage
       const languageStrings = profile.languages.map(pair => `${pair.source} → ${pair.target}`);
 
       const { error } = await supabase
@@ -156,158 +152,172 @@ export const InterpreterDashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="max-w-3xl mx-auto">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <UserCog className="w-8 h-8 text-gray-600" />
-              <div>
-                <h2 className="text-2xl font-bold">Mon Profil</h2>
-                <Badge className={statusConfig[profile.status].color}>
-                  {statusConfig[profile.status].label}
-                </Badge>
-              </div>
-            </div>
-            <Button onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}>
-              {isEditing ? "Enregistrer" : "Modifier"}
-            </Button>
-          </div>
-
-          <div className="space-y-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <UserCog className="w-8 h-8 text-gray-600" />
             <div>
-              <h3 className="text-lg font-semibold mb-4">Gérer ma disponibilité</h3>
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                {Object.entries(statusConfig).map(([key, value]) => (
-                  <Button
-                    key={key}
-                    onClick={() => handleStatusChange(key as Profile['status'])}
-                    variant={profile.status === key ? "default" : "outline"}
-                    className={profile.status === key ? value.color : ""}
-                  >
-                    {value.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="first_name">Prénom</Label>
-                <Input
-                  id="first_name"
-                  value={profile.first_name}
-                  onChange={(e) => isEditing && setProfile({ ...profile, first_name: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="last_name">Nom</Label>
-                <Input
-                  id="last_name"
-                  value={profile.last_name}
-                  onChange={(e) => isEditing && setProfile({ ...profile, last_name: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => isEditing && setProfile({ ...profile, email: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Numéro de téléphone</Label>
-                <Input
-                  id="phone_number"
-                  value={profile.phone_number || ""}
-                  onChange={(e) => isEditing && setProfile({ ...profile, phone_number: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Adresse</Label>
-                <Textarea
-                  id="address"
-                  value={profile.address || ""}
-                  onChange={(e) => isEditing && setProfile({ ...profile, address: e.target.value })}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="employment_status">Statut professionnel</Label>
-                <Select
-                  value={profile.employment_status}
-                  onValueChange={(value: Profile['employment_status']) => 
-                    isEditing && setProfile({ ...profile, employment_status: value })
-                  }
-                  disabled={!isEditing}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez votre statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="salaried">Salarié</SelectItem>
-                    <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {profile.employment_status === "self_employed" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
-                    <Input
-                      id="phone_interpretation_rate"
-                      type="number"
-                      step="0.01"
-                      value={profile.phone_interpretation_rate || ""}
-                      onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="siret_number">Numéro SIRET</Label>
-                    <Input
-                      id="siret_number"
-                      value={profile.siret_number || ""}
-                      onChange={(e) => isEditing && setProfile({ ...profile, siret_number: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="vat_number">Numéro de TVA</Label>
-                    <Input
-                      id="vat_number"
-                      value={profile.vat_number || ""}
-                      onChange={(e) => isEditing && setProfile({ ...profile, vat_number: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Langues maîtrisées</Label>
-              <LanguageSelector
-                languages={profile.languages}
-                onChange={(newLanguages) => setProfile({ ...profile, languages: newLanguages })}
-                isEditing={isEditing}
-              />
+              <h2 className="text-2xl font-bold">Mon Espace</h2>
+              <Badge className={statusConfig[profile.status].color}>
+                {statusConfig[profile.status].label}
+              </Badge>
             </div>
           </div>
-        </Card>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Gérer ma disponibilité</h3>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {Object.entries(statusConfig).map(([key, value]) => (
+                <Button
+                  key={key}
+                  onClick={() => handleStatusChange(key as Profile['status'])}
+                  variant={profile.status === key ? "default" : "outline"}
+                  className={profile.status === key ? value.color : ""}
+                >
+                  {value.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <Tabs defaultValue="missions" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="missions">Missions</TabsTrigger>
+              <TabsTrigger value="profile">Profil</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="missions">
+              <MissionsTab />
+            </TabsContent>
+            
+            <TabsContent value="profile">
+              <Card className="p-6">
+                <div className="flex justify-end mb-6">
+                  <Button onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}>
+                    {isEditing ? "Enregistrer" : "Modifier"}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="first_name">Prénom</Label>
+                  <Input
+                    id="first_name"
+                    value={profile.first_name}
+                    onChange={(e) => isEditing && setProfile({ ...profile, first_name: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="last_name">Nom</Label>
+                  <Input
+                    id="last_name"
+                    value={profile.last_name}
+                    onChange={(e) => isEditing && setProfile({ ...profile, last_name: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => isEditing && setProfile({ ...profile, email: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone_number">Numéro de téléphone</Label>
+                  <Input
+                    id="phone_number"
+                    value={profile.phone_number || ""}
+                    onChange={(e) => isEditing && setProfile({ ...profile, phone_number: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">Adresse</Label>
+                  <Textarea
+                    id="address"
+                    value={profile.address || ""}
+                    onChange={(e) => isEditing && setProfile({ ...profile, address: e.target.value })}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="employment_status">Statut professionnel</Label>
+                  <Select
+                    value={profile.employment_status}
+                    onValueChange={(value: Profile['employment_status']) => 
+                      isEditing && setProfile({ ...profile, employment_status: value })
+                    }
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez votre statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="salaried">Salarié</SelectItem>
+                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {profile.employment_status === "self_employed" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
+                      <Input
+                        id="phone_interpretation_rate"
+                        type="number"
+                        step="0.01"
+                        value={profile.phone_interpretation_rate || ""}
+                        onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="siret_number">Numéro SIRET</Label>
+                      <Input
+                        id="siret_number"
+                        value={profile.siret_number || ""}
+                        onChange={(e) => isEditing && setProfile({ ...profile, siret_number: e.target.value })}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vat_number">Numéro de TVA</Label>
+                      <Input
+                        id="vat_number"
+                        value={profile.vat_number || ""}
+                        onChange={(e) => isEditing && setProfile({ ...profile, vat_number: e.target.value })}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2 mt-6">
+                  <h3 className="text-lg font-semibold">Combinaisons linguistiques</h3>
+                  <LanguageSelector
+                    languages={profile.languages}
+                    onChange={(newLanguages) => setProfile({ ...profile, languages: newLanguages })}
+                    isEditing={isEditing}
+                  />
+                </div>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
