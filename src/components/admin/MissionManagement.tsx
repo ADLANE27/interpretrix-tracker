@@ -19,6 +19,11 @@ interface Mission {
   status: string;
   created_at: string;
   assigned_interpreter_id?: string;
+  assigned_interpreter?: {
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  };
 }
 
 interface Interpreter {
@@ -44,7 +49,14 @@ export const MissionManagement = () => {
     try {
       const { data, error } = await supabase
         .from("interpretation_missions")
-        .select("*")
+        .select(`
+          *,
+          assigned_interpreter:interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+            first_name,
+            last_name,
+            profile_picture_url
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -298,15 +310,29 @@ export const MissionManagement = () => {
                     Durée estimée: {mission.estimated_duration} minutes
                   </p>
                   <Badge 
-                    variant={mission.status === "confirmed" ? "default" : "secondary"}
+                    variant={mission.status === "accepted" ? "default" : "secondary"}
                     className="mt-2"
                   >
                     {mission.status === "awaiting_acceptance" 
                       ? "En attente d'acceptation" 
-                      : mission.status === "confirmed" 
-                        ? "Confirmée" 
+                      : mission.status === "accepted" 
+                        ? "Acceptée" 
                         : mission.status}
                   </Badge>
+                  {mission.assigned_interpreter && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
+                        <AvatarFallback>
+                          {mission.assigned_interpreter.first_name[0]}
+                          {mission.assigned_interpreter.last_name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-gray-600">
+                        Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">

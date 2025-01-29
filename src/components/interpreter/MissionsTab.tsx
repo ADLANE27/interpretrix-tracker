@@ -81,7 +81,7 @@ export const MissionsTab = () => {
         },
         (payload) => {
           console.log('Realtime update received:', payload);
-          fetchMissions(); // Refresh the missions list when notifications change
+          fetchMissions();
         }
       )
       .subscribe();
