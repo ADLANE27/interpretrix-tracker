@@ -64,6 +64,7 @@ export const MissionsTab = () => {
       if (missionsError) throw missionsError;
       
       const transformedMissions = (missionsData || []).map(transformMission);
+      console.log('Fetched missions:', transformedMissions);
       setMissions(transformedMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
@@ -108,25 +109,56 @@ export const MissionsTab = () => {
           .from('interpretation_missions')
           .update({
             status: 'accepted',
-            assigned_interpreter_id: user.id
+            assigned_interpreter_id: user.id,
+            assignment_time: new Date().toISOString()
           })
           .eq('id', missionId);
 
         if (missionError) throw missionError;
-      }
 
-      // Update local state immediately
-      setMissions(prevMissions => 
-        prevMissions.map(mission => 
-          mission.id === missionId 
-            ? { 
-                ...mission, 
-                status: accept ? 'accepted' : 'declined',
-                assigned_interpreter_id: accept ? user.id : mission.assigned_interpreter_id 
-              }
-            : mission
-        )
-      );
+        // Update local state immediately
+        setMissions(prevMissions => 
+          prevMissions.map(mission => 
+            mission.id === missionId 
+              ? { 
+                  ...mission, 
+                  status: 'accepted',
+                  assigned_interpreter_id: user.id
+                }
+              : mission
+          )
+        );
+      } else {
+        // If declining, just update the notified_interpreters array to remove this interpreter
+        const mission = missions.find(m => m.id === missionId);
+        if (mission) {
+          const updatedNotifiedInterpreters = (mission.notified_interpreters || [])
+            .filter(id => id !== user.id);
+
+          const { error: missionError } = await supabase
+            .from('interpretation_missions')
+            .update({
+              notified_interpreters: updatedNotifiedInterpreters,
+              status: 'declined'
+            })
+            .eq('id', missionId);
+
+          if (missionError) throw missionError;
+
+          // Update local state
+          setMissions(prevMissions => 
+            prevMissions.map(mission => 
+              mission.id === missionId 
+                ? { 
+                    ...mission, 
+                    status: 'declined',
+                    notified_interpreters: updatedNotifiedInterpreters
+                  }
+                : mission
+            )
+          );
+        }
+      }
 
       toast({
         title: accept ? "Mission acceptée" : "Mission déclinée",
@@ -146,66 +178,79 @@ export const MissionsTab = () => {
     }
   };
 
+  const getMissionStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return { label: 'Acceptée', variant: 'default' as const };
+      case 'declined':
+        return { label: 'Déclinée', variant: 'secondary' as const };
+      case 'awaiting_acceptance':
+        return { label: 'En attente d\'acceptation', variant: 'secondary' as const };
+      default:
+        return { label: status, variant: 'secondary' as const };
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">Propositions de missions</h2>
-      {missions.map((mission) => (
-        <Card key={mission.id} className="p-4">
-          <div className="flex justify-between items-start">
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600">
-                <p>Date: {new Date(mission.created_at).toLocaleDateString()}</p>
-                <p>Durée: {mission.estimated_duration} minutes</p>
-                <p>Langues: {mission.source_language} → {mission.target_language}</p>
+      {missions.map((mission) => {
+        const statusDisplay = getMissionStatusDisplay(mission.status);
+        
+        return (
+          <Card key={mission.id} className="p-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600">
+                  <p>Date: {new Date(mission.created_at).toLocaleDateString()}</p>
+                  <p>Durée: {mission.estimated_duration} minutes</p>
+                  <p>Langues: {mission.source_language} → {mission.target_language}</p>
+                </div>
+                <Badge 
+                  variant={statusDisplay.variant}
+                  className="mt-2"
+                >
+                  {statusDisplay.label}
+                </Badge>
+                {mission.assigned_interpreter && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
+                      <AvatarFallback>
+                        {mission.assigned_interpreter.first_name[0]}
+                        {mission.assigned_interpreter.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-gray-600">
+                      Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
+                    </span>
+                  </div>
+                )}
               </div>
-              <Badge 
-                variant={mission.status === 'accepted' ? 'default' : 'secondary'}
-                className="mt-2"
-              >
-                {mission.status === 'accepted' 
-                  ? 'Acceptée' 
-                  : mission.status === 'declined'
-                    ? 'Déclinée'
-                    : 'En attente d\'acceptation'}
-              </Badge>
-              {mission.assigned_interpreter && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
-                    <AvatarFallback>
-                      {mission.assigned_interpreter.first_name[0]}
-                      {mission.assigned_interpreter.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-gray-600">
-                    Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
-                  </span>
+              {mission.status === 'awaiting_acceptance' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => handleMissionResponse(mission.id, true)}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                    Accepter
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => handleMissionResponse(mission.id, false)}
+                  >
+                    <XSquare className="h-4 w-4" />
+                    Décliner
+                  </Button>
                 </div>
               )}
             </div>
-            {mission.status === 'awaiting_acceptance' && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={() => handleMissionResponse(mission.id, true)}
-                >
-                  <CheckSquare className="h-4 w-4" />
-                  Accepter
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={() => handleMissionResponse(mission.id, false)}
-                >
-                  <XSquare className="h-4 w-4" />
-                  Décliner
-                </Button>
-              </div>
-            )}
-          </div>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 };
