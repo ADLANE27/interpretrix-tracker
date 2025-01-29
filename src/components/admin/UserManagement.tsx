@@ -190,19 +190,12 @@ export const UserManagement = () => {
 
       console.log('Sending delete request for user:', userId);
 
-      // Use the supabase client's functions.invoke method instead of fetch
       const { data, error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
       });
 
-      console.log('Delete user response:', data);
-
       if (error) {
-        throw new Error(error.message || 'Failed to delete user');
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to delete user');
+        throw error;
       }
 
       toast({
