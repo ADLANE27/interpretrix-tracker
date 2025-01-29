@@ -11,22 +11,8 @@ interface Mission {
   source_language: string;
   target_language: string;
   estimated_duration: number;
-  status: 'pending' | 'accepted' | 'declined';
-  created_at: string;
-}
-
-interface RawMission {
-  id: string;
-  source_language: string;
-  target_language: string;
-  estimated_duration: number;
   status: string;
   created_at: string;
-  assigned_interpreter_id: string | null;
-  assignment_time: string | null;
-  notification_expiry: string;
-  notified_interpreters: string[] | null;
-  updated_at: string;
 }
 
 export const MissionsTab = () => {
@@ -38,13 +24,13 @@ export const MissionsTab = () => {
     setupRealtimeSubscription();
   }, []);
 
-  const transformMission = (rawMission: RawMission): Mission => {
+  const transformMission = (rawMission: any): Mission => {
     return {
       id: rawMission.id,
       source_language: rawMission.source_language,
       target_language: rawMission.target_language,
       estimated_duration: rawMission.estimated_duration,
-      status: rawMission.status as 'pending' | 'accepted' | 'declined',
+      status: rawMission.status || 'pending',
       created_at: rawMission.created_at,
     };
   };
@@ -54,15 +40,26 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // First get all missions where the interpreter is notified
+      const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
-        .select('*')
-        .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`);
+        .select(`
+          *,
+          mission_notifications!inner (
+            status,
+            interpreter_id
+          )
+        `)
+        .eq('mission_notifications.interpreter_id', user.id);
 
-      if (error) throw error;
+      if (missionsError) throw missionsError;
       
-      // Transform the raw data to match our Mission interface
-      const transformedMissions = (data || []).map(transformMission);
+      // Transform the missions data to include the notification status
+      const transformedMissions = (missionsData || []).map(mission => ({
+        ...transformMission(mission),
+        status: mission.mission_notifications[0]?.status || 'pending'
+      }));
+
       setMissions(transformedMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
@@ -85,7 +82,7 @@ export const MissionsTab = () => {
           table: 'interpretation_missions'
         },
         (payload) => {
-          const newMission = transformMission(payload.new as RawMission);
+          const newMission = transformMission(payload.new as any);
           toast({
             title: "Nouvelle mission disponible",
             description: `${newMission.source_language} → ${newMission.target_language}`,
@@ -105,16 +102,30 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const { error } = await supabase
-        .from('interpretation_missions')
+      // Update the notification status
+      const { error: notificationError } = await supabase
+        .from('mission_notifications')
         .update({
-          status: accept ? 'accepted' : 'declined',
-          assigned_interpreter_id: accept ? user.id : null,
-          assignment_time: accept ? new Date().toISOString() : null
+          status: accept ? 'accepted' : 'declined'
         })
-        .eq('id', missionId);
+        .eq('mission_id', missionId)
+        .eq('interpreter_id', user.id);
 
-      if (error) throw error;
+      if (notificationError) throw notificationError;
+
+      // If accepting, also update the mission status and assign the interpreter
+      if (accept) {
+        const { error: missionError } = await supabase
+          .from('interpretation_missions')
+          .update({
+            status: 'accepted',
+            assigned_interpreter_id: user.id,
+            assignment_time: new Date().toISOString()
+          })
+          .eq('id', missionId);
+
+        if (missionError) throw missionError;
+      }
 
       toast({
         title: accept ? "Mission acceptée" : "Mission déclinée",
@@ -146,7 +157,7 @@ export const MissionsTab = () => {
                 <p>Langues: {mission.source_language} → {mission.target_language}</p>
               </div>
             </div>
-            {mission.status === 'pending' && (
+            {mission.status === 'pending' ? (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -165,8 +176,7 @@ export const MissionsTab = () => {
                   Décliner
                 </Button>
               </div>
-            )}
-            {mission.status !== 'pending' && (
+            ) : (
               <Badge variant={mission.status === 'accepted' ? 'default' : 'secondary'}>
                 {mission.status === 'accepted' ? 'Acceptée' : 'Déclinée'}
               </Badge>
