@@ -164,6 +164,8 @@ export const AdminDashboard = () => {
   };
 
   const filteredInterpreters = interpreters.filter(interpreter => {
+    // Filter out "Adlane Admin"
+    const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(interpreter.status);
     const matchesName = nameFilter === "" || 
       `${interpreter.first_name} ${interpreter.last_name}`
@@ -192,7 +194,8 @@ export const AdminDashboard = () => {
     const matchesEmploymentStatus = employmentStatusFilter === "all" || 
       interpreter.employment_status === employmentStatusFilter;
 
-    return matchesStatus && 
+    return isNotAdmin &&
+           matchesStatus && 
            matchesName && 
            matchesSourceLanguage && 
            matchesTargetLanguage && 
