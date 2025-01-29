@@ -97,6 +97,7 @@ export const AdminDashboard = () => {
       languages: item.languages,
       phone_interpretation_rate: item.phone_interpretation_rate,
       phone_number: item.phone_number,
+      birth_country: item.birth_country,
     }));
   };
 
