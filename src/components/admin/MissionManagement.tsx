@@ -108,6 +108,20 @@ export const MissionManagement = () => {
           fetchMissions();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        (payload) => {
+          console.log('Interpreter profile update received:', payload);
+          if (sourceLanguage && targetLanguage) {
+            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -243,6 +257,66 @@ export const MissionManagement = () => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la mission",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMissionStatusUpdate = async (missionId: string, interpreterId: string, accept: boolean) => {
+    try {
+      const updates = {
+        status: accept ? "accepted" : "declined",
+        assigned_interpreter_id: accept ? interpreterId : null,
+        assignment_time: accept ? new Date().toISOString() : null,
+        notified_interpreters: [] // Clear notified interpreters when mission is accepted/declined
+      };
+
+      const { error: missionError } = await supabase
+        .from("interpretation_missions")
+        .update(updates)
+        .eq("id", missionId);
+
+      if (missionError) throw missionError;
+
+      // Update mission_notifications status
+      const { error: notificationError } = await supabase
+        .from("mission_notifications")
+        .update({ status: accept ? "accepted" : "declined" })
+        .eq("mission_id", missionId)
+        .eq("interpreter_id", interpreterId);
+
+      if (notificationError) throw notificationError;
+
+      // If accepted, update interpreter status to busy
+      if (accept) {
+        const { error: interpreterError } = await supabase
+          .from("interpreter_profiles")
+          .update({ status: "busy" })
+          .eq("id", interpreterId);
+
+        if (interpreterError) throw interpreterError;
+      }
+
+      // Clean up other notifications
+      const { error: cleanupError } = await supabase
+        .from("mission_notifications")
+        .delete()
+        .eq("mission_id", missionId)
+        .neq("interpreter_id", interpreterId);
+
+      if (cleanupError) throw cleanupError;
+
+      toast({
+        title: accept ? "Mission acceptée" : "Mission refusée",
+        description: `La mission a été ${accept ? 'acceptée' : 'refusée'} avec succès`,
+      });
+
+      fetchMissions();
+    } catch (error) {
+      console.error("Error updating mission status:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut de la mission",
         variant: "destructive",
       });
     }
