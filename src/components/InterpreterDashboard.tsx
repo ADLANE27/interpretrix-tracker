@@ -49,10 +49,6 @@ const statusConfig = {
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
 };
 
-const formatName = (name: string): string => {
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
-};
-
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -258,7 +254,7 @@ export const InterpreterDashboard = () => {
               />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">Bonjour {formatName(profile.first_name)} {profile.last_name.toUpperCase()}</h2>
+              <h2 className="text-2xl font-bold">Bonjour {profile.first_name} {profile.last_name}</h2>
               <Badge className={statusConfig[profile.status].color}>
                 {statusConfig[profile.status].label}
               </Badge>
@@ -481,5 +477,3 @@ export const InterpreterDashboard = () => {
     </div>
   );
 };
-
-export default App;
