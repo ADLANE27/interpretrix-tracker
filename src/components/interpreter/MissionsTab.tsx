@@ -91,60 +91,57 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const { data: interpreterData, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select('first_name, last_name, profile_picture_url')
-        .eq('id', user.id)
-        .single();
-
-      if (interpreterError) throw interpreterError;
-
-      const newStatus = accept ? 'accepted' : 'declined';
-      
+      // Start a transaction using multiple updates
       const updates = {
-        status: newStatus,
+        status: accept ? 'accepted' : 'declined',
         assigned_interpreter_id: accept ? user.id : null,
         assignment_time: accept ? new Date().toISOString() : null,
-        notified_interpreters: accept ? [] : await supabase
-          .from('interpretation_missions')
-          .select('notified_interpreters')
-          .eq('id', missionId)
-          .single()
-          .then(({ data }) => {
-            const currentInterpreters = data?.notified_interpreters || [];
-            return currentInterpreters.filter(id => id !== user.id);
-          })
+        notified_interpreters: [] // Clear the list when accepted
       };
 
+      // Update the mission
       const { error: missionError } = await supabase
         .from('interpretation_missions')
         .update(updates)
         .eq('id', missionId);
 
-      if (missionError) throw missionError;
+      if (missionError) {
+        console.error('Mission update error:', missionError);
+        throw missionError;
+      }
 
-      // Update local state immediately
-      setMissions(prevMissions => 
-        prevMissions.map(mission => 
-          mission.id === missionId 
-            ? { 
-                ...mission, 
-                status: newStatus,
-                assigned_interpreter_id: accept ? user.id : null,
-                assigned_interpreter: accept ? {
-                  first_name: interpreterData.first_name,
-                  last_name: interpreterData.last_name,
-                  profile_picture_url: interpreterData.profile_picture_url
-                } : null
-              }
-            : mission
-        )
-      );
+      // Update the notification status
+      const { error: notificationError } = await supabase
+        .from('mission_notifications')
+        .update({ status: accept ? 'accepted' : 'declined' })
+        .eq('mission_id', missionId)
+        .eq('interpreter_id', user.id);
+
+      if (notificationError) {
+        console.error('Notification update error:', notificationError);
+        throw notificationError;
+      }
+
+      // If accepting, update interpreter status to busy
+      if (accept) {
+        const { error: interpreterError } = await supabase
+          .from('interpreter_profiles')
+          .update({ status: 'busy' })
+          .eq('id', user.id);
+
+        if (interpreterError) {
+          console.error('Interpreter status update error:', interpreterError);
+          throw interpreterError;
+        }
+      }
 
       toast({
         title: accept ? "Mission acceptée" : "Mission déclinée",
         description: `La mission a été ${accept ? 'acceptée' : 'déclinée'} avec succès.`,
       });
+
+      // Refresh missions after all updates
+      fetchMissions();
 
     } catch (error) {
       console.error('Error updating mission:', error);
