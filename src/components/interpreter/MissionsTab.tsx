@@ -33,10 +33,6 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch only missions where:
-      // 1. The interpreter is notified
-      // 2. The mission is still awaiting acceptance
-      // 3. The interpreter is not busy with another mission
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
@@ -59,7 +55,7 @@ export const MissionsTab = () => {
 
   const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel('mission-updates')
       .on(
         'postgres_changes',
         {
@@ -68,7 +64,19 @@ export const MissionsTab = () => {
           table: 'interpretation_missions'
         },
         (payload) => {
-          console.log('Realtime update received:', payload);
+          console.log('Mission update received:', payload);
+          fetchMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mission_notifications'
+        },
+        (payload) => {
+          console.log('Notification update received:', payload);
           fetchMissions();
         }
       )
@@ -112,7 +120,7 @@ export const MissionsTab = () => {
       // 2. Vérifier que la mission est toujours en attente
       const { data: currentMission } = await supabase
         .from('interpretation_missions')
-        .select('status')
+        .select('status, notified_interpreters')
         .eq('id', missionId)
         .single();
 
@@ -126,48 +134,21 @@ export const MissionsTab = () => {
       }
 
       if (accept) {
-        // 3. Accepter la mission et mettre à jour le statut de l'interprète
-        const updates = {
-          status: 'accepted',
-          assigned_interpreter_id: user.id,
-          assignment_time: new Date().toISOString(),
-          notified_interpreters: [] // Effacer la liste des interprètes notifiés
-        };
+        // 3. Commencer une transaction pour garantir l'atomicité des opérations
+        const { error: updateError } = await supabase.rpc('handle_mission_acceptance', {
+          p_mission_id: missionId,
+          p_interpreter_id: user.id
+        });
 
-        const { error: missionError } = await supabase
-          .from('interpretation_missions')
-          .update(updates)
-          .eq('id', missionId);
-
-        if (missionError) throw missionError;
-
-        // 4. Mettre à jour le statut de l'interprète à "busy"
-        const { error: interpreterError } = await supabase
-          .from('interpreter_profiles')
-          .update({ status: 'busy' })
-          .eq('id', user.id);
-
-        if (interpreterError) throw interpreterError;
-
-        // 5. Annuler toutes les autres notifications pour cet interprète
-        const { error: notificationError } = await supabase
-          .from('mission_notifications')
-          .update({ 
-            status: 'cancelled',
-            updated_at: new Date().toISOString()
-          })
-          .neq('mission_id', missionId)
-          .eq('interpreter_id', user.id);
-
-        if (notificationError) throw notificationError;
+        if (updateError) throw updateError;
 
         toast({
           title: "Mission acceptée",
           description: "Vous avez accepté la mission avec succès",
         });
       } else {
-        // Décliner la mission
-        const { error: notificationError } = await supabase
+        // 4. Décliner la mission
+        const { error: declineError } = await supabase
           .from('mission_notifications')
           .update({ 
             status: 'declined',
@@ -176,7 +157,7 @@ export const MissionsTab = () => {
           .eq('mission_id', missionId)
           .eq('interpreter_id', user.id);
 
-        if (notificationError) throw notificationError;
+        if (declineError) throw declineError;
 
         toast({
           title: "Mission déclinée",
