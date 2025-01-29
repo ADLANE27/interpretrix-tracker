@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { InterpreterCard } from "./InterpreterCard";
 import { StatusFilter } from "./StatusFilter";
-import { Input } from "@/components/ui/input";
-import { Search, UserCog } from "lucide-react";
+import { UserCog } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -26,8 +25,6 @@ const statusConfig = {
 };
 
 export const InterpreterDashboard = () => {
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const { toast } = useToast();
 
@@ -48,7 +45,6 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
       
-      // Cast the status to the correct type
       const profileData: Profile = {
         first_name: data.first_name,
         last_name: data.last_name,
@@ -56,7 +52,7 @@ export const InterpreterDashboard = () => {
         phone_number: data.phone_number,
         languages: data.languages,
         employment_status: data.employment_status,
-        status: (data.status || 'available') as Profile['status'], // Cast to union type with default
+        status: (data.status || 'available') as Profile['status'],
       };
       
       setProfile(profileData);
@@ -70,16 +66,32 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleStatusChange = (status: string) => {
-    setSelectedStatuses(prev =>
-      prev.includes(status)
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    );
-  };
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
 
-  // For now, we'll remove the interpreters list since mockInterpreters doesn't exist
-  // This should be replaced with actual data from Supabase in a future update
+      const { error } = await supabase
+        .from("interpreter_profiles")
+        .update({ status: newStatus })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, status: newStatus } : null);
+      toast({
+        title: "Statut mis à jour",
+        description: "Votre statut a été mis à jour avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du statut:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!profile) {
     return <div>Chargement...</div>;
@@ -87,9 +99,8 @@ export const InterpreterDashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Profile Section */}
-        <Card className="p-6 lg:col-span-1">
+      <div className="max-w-3xl mx-auto">
+        <Card className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <UserCog className="w-8 h-8 text-gray-600" />
             <div>
@@ -100,64 +111,55 @@ export const InterpreterDashboard = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <p className="text-sm text-gray-500">Nom complet</p>
-              <p className="font-medium">{profile.first_name} {profile.last_name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium">{profile.email}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Téléphone</p>
-              <p className="font-medium">{profile.phone_number || "Non renseigné"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Statut professionnel</p>
-              <p className="font-medium">
-                {profile.employment_status === "salaried" ? "Salarié" : "Auto-entrepreneur"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Langues</p>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {profile.languages.map((language) => (
-                  <Badge key={language} variant="secondary">
-                    {language}
-                  </Badge>
+              <h3 className="text-lg font-semibold mb-4">Gérer ma disponibilité</h3>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {Object.entries(statusConfig).map(([key, value]) => (
+                  <Button
+                    key={key}
+                    onClick={() => handleStatusChange(key as Profile['status'])}
+                    variant={profile.status === key ? "default" : "outline"}
+                    className={profile.status === key ? value.color : ""}
+                  >
+                    {value.label}
+                  </Button>
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-500">Nom complet</p>
+                <p className="font-medium">{profile.first_name} {profile.last_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{profile.email}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Téléphone</p>
+                <p className="font-medium">{profile.phone_number || "Non renseigné"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Statut professionnel</p>
+                <p className="font-medium">
+                  {profile.employment_status === "salaried" ? "Salarié" : "Auto-entrepreneur"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Langues</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {profile.languages.map((language) => (
+                    <Badge key={language} variant="secondary">
+                      {language}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </Card>
-
-        {/* Interpreters List Section */}
-        <div className="lg:col-span-2">
-          <h1 className="text-3xl font-bold mb-6">Tableau de bord des interprètes</h1>
-          
-          <div className="mb-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Rechercher par nom ou langue..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <StatusFilter
-            selectedStatuses={selectedStatuses}
-            onStatusChange={handleStatusChange}
-          />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {/* We'll implement the interpreters list in a future update */}
-            <p className="text-gray-500">Aucun interprète disponible pour le moment.</p>
-          </div>
-        </div>
       </div>
     </div>
   );
