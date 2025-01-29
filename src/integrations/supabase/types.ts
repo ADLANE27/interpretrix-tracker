@@ -13,7 +13,7 @@ export type Database = {
         Row: {
           assigned_interpreter_id: string | null
           assignment_time: string | null
-          client_name: string
+          client_name: string | null
           created_at: string
           estimated_duration: number
           id: string
@@ -27,7 +27,7 @@ export type Database = {
         Insert: {
           assigned_interpreter_id?: string | null
           assignment_time?: string | null
-          client_name: string
+          client_name?: string | null
           created_at?: string
           estimated_duration: number
           id?: string
@@ -41,7 +41,7 @@ export type Database = {
         Update: {
           assigned_interpreter_id?: string | null
           assignment_time?: string | null
-          client_name?: string
+          client_name?: string | null
           created_at?: string
           estimated_duration?: number
           id?: string
