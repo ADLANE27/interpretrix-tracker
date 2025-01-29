@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { UserCog } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { LanguageSelector } from "./interpreter/LanguageSelector";
 import { MissionsTab } from "./interpreter/MissionsTab";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface LanguagePair {
   source: string;
@@ -38,6 +39,7 @@ interface Profile {
   phone_interpretation_rate: number | null;
   siret_number: string | null;
   vat_number: string | null;
+  profile_picture_url: string | null;
 }
 
 const statusConfig = {
@@ -50,6 +52,7 @@ const statusConfig = {
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -74,7 +77,6 @@ export const InterpreterDashboard = () => {
         return { source, target };
       });
 
-      // Safely cast the address from Json to Address type
       const address = data.address as { street: string; postal_code: string; city: string } | null;
       
       const profileData: Profile = {
@@ -91,6 +93,7 @@ export const InterpreterDashboard = () => {
         phone_interpretation_rate: data.phone_interpretation_rate,
         siret_number: data.siret_number,
         vat_number: data.vat_number,
+        profile_picture_url: data.profile_picture_url,
       };
       
       setProfile(profileData);
@@ -99,6 +102,50 @@ export const InterpreterDashboard = () => {
       toast({
         title: "Erreur",
         description: "Impossible de charger votre profil",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('profile_pictures')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile_pictures')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile(prev => prev ? { ...prev, profile_picture_url: publicUrl } : null);
+      
+      toast({
+        title: "Photo de profil mise à jour",
+        description: "Votre photo de profil a été mise à jour avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'upload de la photo:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre photo de profil",
         variant: "destructive",
       });
     }
@@ -138,7 +185,6 @@ export const InterpreterDashboard = () => {
 
       const languageStrings = profile.languages.map(pair => `${pair.source} → ${pair.target}`);
 
-      // Convert Address to Json compatible format
       const addressJson = profile.address ? {
         street: profile.address.street,
         postal_code: profile.address.postal_code,
@@ -185,14 +231,30 @@ export const InterpreterDashboard = () => {
     return <div>Chargement...</div>;
   }
 
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
   return (
     <div className="container mx-auto py-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <UserCog className="w-8 h-8 text-gray-600" />
+            <div className="relative">
+              <Avatar className="h-12 w-12 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <AvatarImage src={profile.profile_picture_url || undefined} alt={`${profile.first_name} ${profile.last_name}`} />
+                <AvatarFallback>{getInitials(profile.first_name, profile.last_name)}</AvatarFallback>
+              </Avatar>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleProfilePictureUpload}
+              />
+            </div>
             <div>
-              <h2 className="text-2xl font-bold">Mon Espace</h2>
+              <h2 className="text-2xl font-bold">Bonjour {profile.first_name} {profile.last_name}</h2>
               <Badge className={statusConfig[profile.status].color}>
                 {statusConfig[profile.status].label}
               </Badge>

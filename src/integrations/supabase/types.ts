@@ -76,6 +76,7 @@ export type Database = {
           nationality: string | null
           phone_interpretation_rate: number | null
           phone_number: string | null
+          profile_picture_url: string | null
           siret_number: string | null
           specializations: string[] | null
           status: string | null
@@ -95,6 +96,7 @@ export type Database = {
           nationality?: string | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
+          profile_picture_url?: string | null
           siret_number?: string | null
           specializations?: string[] | null
           status?: string | null
@@ -114,6 +116,7 @@ export type Database = {
           nationality?: string | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
+          profile_picture_url?: string | null
           siret_number?: string | null
           specializations?: string[] | null
           status?: string | null
