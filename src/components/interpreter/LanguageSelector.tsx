@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LANGUAGES } from "@/lib/constants";
 
 export interface LanguagePair {
   source: string;
@@ -13,23 +15,6 @@ interface LanguageSelectorProps {
   onChange: (languages: LanguagePair[]) => void;
   isEditing: boolean;
 }
-
-const LANGUAGES = [
-  "Français", "Anglais", "Espagnol", "Allemand", "Italien", "Portugais",
-  "Arabe (Standard)", "Arabe (Maghrébin)", "Arabe (Levant)", "Arabe (Égyptien)",
-  "Mandarin", "Cantonais", "Japonais", "Coréen",
-  "Russe", "Ukrainien", "Polonais", "Tchèque",
-  "Hindi", "Bengali", "Urdu", "Punjabi",
-  "Turc", "Persan", "Kurde", "Arménien",
-  "Vietnamien", "Thaï", "Indonésien", "Malais",
-  "Swahili", "Amharique", "Somali", "Yoruba",
-  "Langue des signes française (LSF)", "American Sign Language (ASL)",
-  "Roumain", "Bulgare", "Grec", "Albanais",
-  "Néerlandais", "Suédois", "Norvégien", "Danois",
-  "Finnois", "Hongrois", "Slovaque", "Slovène",
-  "Créole haïtien", "Créole réunionnais", "Créole mauricien",
-  "Wolof", "Bambara", "Lingala", "Peul"
-];
 
 export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSelectorProps) => {
   const [newSource, setNewSource] = useState<string>("");
@@ -53,9 +38,9 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
       {languages.map((lang, index) => (
         <div key={index} className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2">
-            <span>{lang.source}</span>
+            <Badge variant="secondary">{lang.source}</Badge>
             <span>→</span>
-            <span>{lang.target}</span>
+            <Badge variant="secondary">{lang.target}</Badge>
           </div>
           {isEditing && (
             <Button

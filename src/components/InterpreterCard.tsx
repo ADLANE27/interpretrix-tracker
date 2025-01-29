@@ -40,11 +40,20 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-gray-500" />
           <div className="flex flex-wrap gap-1">
-            {interpreter.languages.map((lang, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
-                {lang}
-              </Badge>
-            ))}
+            {interpreter.languages.map((lang, index) => {
+              const [source, target] = lang.split(" → ");
+              return (
+                <div key={index} className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs">
+                    {source}
+                  </Badge>
+                  <span className="text-xs">→</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {target}
+                  </Badge>
+                </div>
+              );
+            })}
           </div>
         </div>
 
