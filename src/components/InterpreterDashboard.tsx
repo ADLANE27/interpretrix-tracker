@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSelector } from "./interpreter/LanguageSelector";
 import { MissionsTab } from "./interpreter/MissionsTab";
+import { SpecializationSelector } from "./interpreter/SpecializationSelector";
 
 interface LanguagePair {
   source: string;
@@ -38,6 +39,7 @@ interface Profile {
   phone_interpretation_rate: number | null;
   siret_number: string | null;
   vat_number: string | null;
+  specializations: string[];
 }
 
 const statusConfig = {
@@ -92,6 +94,7 @@ export const InterpreterDashboard = () => {
         phone_interpretation_rate: data.phone_interpretation_rate,
         siret_number: data.siret_number,
         vat_number: data.vat_number,
+        specializations: data.specializations || [],
       };
       
       setProfile(profileData);
@@ -147,6 +150,7 @@ export const InterpreterDashboard = () => {
           address: profile.address,
           birth_country: profile.birth_country,
           nationality: profile.nationality,
+          specializations: profile.specializations,
         })
         .eq("id", user.id);
 
@@ -394,10 +398,12 @@ export const InterpreterDashboard = () => {
                   )}
 
                   <div className="space-y-2 mt-6">
-                    <h3 className="text-lg font-semibold">Combinaisons linguistiques</h3>
-                    <LanguageSelector
-                      languages={profile.languages}
-                      onChange={(newLanguages) => isEditing && setProfile({ ...profile, languages: newLanguages })}
+                    <h3 className="text-lg font-semibold">Spécialisations</h3>
+                    <SpecializationSelector
+                      value={profile.specializations}
+                      onChange={(newSpecializations) => 
+                        isEditing && setProfile({ ...profile, specializations: newSpecializations })
+                      }
                       isEditing={isEditing}
                     />
                   </div>

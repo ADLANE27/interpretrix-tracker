@@ -24,6 +24,7 @@ export type Database = {
           phone_interpretation_rate: number | null
           phone_number: string | null
           siret_number: string | null
+          specializations: string[] | null
           status: string | null
           updated_at: string
           vat_number: string | null
@@ -42,6 +43,7 @@ export type Database = {
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           siret_number?: string | null
+          specializations?: string[] | null
           status?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           siret_number?: string | null
+          specializations?: string[] | null
           status?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -102,6 +105,18 @@ export type Database = {
     }
     Enums: {
       employment_status: "salaried" | "self_employed"
+      interpreter_specialization:
+        | "medical"
+        | "legal"
+        | "technical"
+        | "conference"
+        | "business"
+        | "education"
+        | "social_services"
+        | "immigration"
+        | "mental_health"
+        | "financial"
+        | "diplomatic"
       user_role: "admin" | "interpreter"
     }
     CompositeTypes: {
