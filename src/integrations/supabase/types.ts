@@ -9,7 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      interpreter_profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string
+          employment_status: Database["public"]["Enums"]["employment_status"]
+          first_name: string
+          id: string
+          languages: string[]
+          last_name: string
+          phone_interpretation_rate: number | null
+          phone_number: string | null
+          siret_number: string | null
+          status: string | null
+          updated_at: string
+          vat_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email: string
+          employment_status: Database["public"]["Enums"]["employment_status"]
+          first_name: string
+          id: string
+          languages?: string[]
+          last_name: string
+          phone_interpretation_rate?: number | null
+          phone_number?: string | null
+          siret_number?: string | null
+          status?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string
+          employment_status?: Database["public"]["Enums"]["employment_status"]
+          first_name?: string
+          id?: string
+          languages?: string[]
+          last_name?: string
+          phone_interpretation_rate?: number | null
+          phone_number?: string | null
+          siret_number?: string | null
+          status?: string | null
+          updated_at?: string
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +68,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      employment_status: "salaried" | "self_employed"
     }
     CompositeTypes: {
       [_ in never]: never
