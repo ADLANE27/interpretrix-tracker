@@ -18,6 +18,12 @@ interface LanguagePair {
   target: string;
 }
 
+interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
 interface Profile {
   first_name: string;
   last_name: string;
@@ -26,7 +32,9 @@ interface Profile {
   languages: LanguagePair[];
   employment_status: "salaried" | "self_employed";
   status: "available" | "busy" | "pause" | "unavailable";
-  address: string | null;
+  address: Address | null;
+  birth_country: string | null;
+  nationality: string | null;
   phone_interpretation_rate: number | null;
   siret_number: string | null;
   vat_number: string | null;
@@ -74,7 +82,13 @@ export const InterpreterDashboard = () => {
         languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
-        address: data.address,
+        address: data.address ? {
+          street: data.address.street || "",
+          postal_code: data.address.postal_code || "",
+          city: data.address.city || ""
+        } : null,
+        birth_country: data.birth_country,
+        nationality: data.nationality,
         phone_interpretation_rate: data.phone_interpretation_rate,
         siret_number: data.siret_number,
         vat_number: data.vat_number,
@@ -130,6 +144,9 @@ export const InterpreterDashboard = () => {
         .update({
           ...profile,
           languages: languageStrings,
+          address: profile.address,
+          birth_country: profile.birth_country,
+          nationality: profile.nationality,
         })
         .eq("id", user.id);
 
@@ -204,119 +221,186 @@ export const InterpreterDashboard = () => {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">Prénom</Label>
-                  <Input
-                    id="first_name"
-                    value={profile.first_name}
-                    onChange={(e) => isEditing && setProfile({ ...profile, first_name: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Nom</Label>
-                  <Input
-                    id="last_name"
-                    value={profile.last_name}
-                    onChange={(e) => isEditing && setProfile({ ...profile, last_name: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) => isEditing && setProfile({ ...profile, email: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Numéro de téléphone</Label>
-                  <Input
-                    id="phone_number"
-                    value={profile.phone_number || ""}
-                    onChange={(e) => isEditing && setProfile({ ...profile, phone_number: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Adresse</Label>
-                  <Textarea
-                    id="address"
-                    value={profile.address || ""}
-                    onChange={(e) => isEditing && setProfile({ ...profile, address: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="employment_status">Statut professionnel</Label>
-                  <Select
-                    value={profile.employment_status}
-                    onValueChange={(value: Profile['employment_status']) => 
-                      isEditing && setProfile({ ...profile, employment_status: value })
-                    }
-                    disabled={!isEditing}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez votre statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="salaried">Salarié</SelectItem>
-                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {profile.employment_status === "self_employed" && (
-                  <>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
+                      <Label htmlFor="first_name">Prénom</Label>
                       <Input
-                        id="phone_interpretation_rate"
-                        type="number"
-                        step="0.01"
-                        value={profile.phone_interpretation_rate || ""}
-                        onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                        id="first_name"
+                        value={profile.first_name}
+                        onChange={(e) => isEditing && setProfile({ ...profile, first_name: e.target.value })}
                         disabled={!isEditing}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="siret_number">Numéro SIRET</Label>
+                      <Label htmlFor="last_name">Nom</Label>
                       <Input
-                        id="siret_number"
-                        value={profile.siret_number || ""}
-                        onChange={(e) => isEditing && setProfile({ ...profile, siret_number: e.target.value })}
+                        id="last_name"
+                        value={profile.last_name}
+                        onChange={(e) => isEditing && setProfile({ ...profile, last_name: e.target.value })}
+                        disabled={!isEditing}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) => isEditing && setProfile({ ...profile, email: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone_number">Numéro de téléphone</Label>
+                    <Input
+                      id="phone_number"
+                      value={profile.phone_number || ""}
+                      onChange={(e) => isEditing && setProfile({ ...profile, phone_number: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Adresse</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="street">Rue</Label>
+                        <Input
+                          id="street"
+                          value={profile.address?.street || ""}
+                          onChange={(e) => isEditing && setProfile({
+                            ...profile,
+                            address: {
+                              ...(profile.address || { street: "", postal_code: "", city: "" }),
+                              street: e.target.value
+                            }
+                          })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="postal_code">Code postal</Label>
+                        <Input
+                          id="postal_code"
+                          value={profile.address?.postal_code || ""}
+                          onChange={(e) => isEditing && setProfile({
+                            ...profile,
+                            address: {
+                              ...(profile.address || { street: "", postal_code: "", city: "" }),
+                              postal_code: e.target.value
+                            }
+                          })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city">Ville</Label>
+                        <Input
+                          id="city"
+                          value={profile.address?.city || ""}
+                          onChange={(e) => isEditing && setProfile({
+                            ...profile,
+                            address: {
+                              ...(profile.address || { street: "", postal_code: "", city: "" }),
+                              city: e.target.value
+                            }
+                          })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="birth_country">Pays de naissance</Label>
+                      <Input
+                        id="birth_country"
+                        value={profile.birth_country || ""}
+                        onChange={(e) => isEditing && setProfile({ ...profile, birth_country: e.target.value })}
                         disabled={!isEditing}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="vat_number">Numéro de TVA</Label>
+                      <Label htmlFor="nationality">Nationalité</Label>
                       <Input
-                        id="vat_number"
-                        value={profile.vat_number || ""}
-                        onChange={(e) => isEditing && setProfile({ ...profile, vat_number: e.target.value })}
+                        id="nationality"
+                        value={profile.nationality || ""}
+                        onChange={(e) => isEditing && setProfile({ ...profile, nationality: e.target.value })}
                         disabled={!isEditing}
                       />
                     </div>
-                  </>
-                )}
+                  </div>
 
-                <div className="space-y-2 mt-6">
-                  <h3 className="text-lg font-semibold">Combinaisons linguistiques</h3>
-                  <LanguageSelector
-                    languages={profile.languages}
-                    onChange={(newLanguages) => setProfile({ ...profile, languages: newLanguages })}
-                    isEditing={isEditing}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="employment_status">Statut professionnel</Label>
+                    <Select
+                      value={profile.employment_status}
+                      onValueChange={(value: Profile['employment_status']) => 
+                        isEditing && setProfile({ ...profile, employment_status: value })
+                      }
+                      disabled={!isEditing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez votre statut" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="salaried">Salarié</SelectItem>
+                        <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {profile.employment_status === "self_employed" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
+                        <Input
+                          id="phone_interpretation_rate"
+                          type="number"
+                          step="0.01"
+                          value={profile.phone_interpretation_rate || ""}
+                          onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="siret_number">Numéro SIRET</Label>
+                        <Input
+                          id="siret_number"
+                          value={profile.siret_number || ""}
+                          onChange={(e) => isEditing && setProfile({ ...profile, siret_number: e.target.value })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="vat_number">Numéro de TVA</Label>
+                        <Input
+                          id="vat_number"
+                          value={profile.vat_number || ""}
+                          onChange={(e) => isEditing && setProfile({ ...profile, vat_number: e.target.value })}
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2 mt-6">
+                    <h3 className="text-lg font-semibold">Combinaisons linguistiques</h3>
+                    <LanguageSelector
+                      languages={profile.languages}
+                      onChange={(newLanguages) => isEditing && setProfile({ ...profile, languages: newLanguages })}
+                      isEditing={isEditing}
+                    />
+                  </div>
                 </div>
               </Card>
             </TabsContent>
