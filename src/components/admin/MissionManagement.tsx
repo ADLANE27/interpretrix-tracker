@@ -10,6 +10,8 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Mission {
   id: string;
@@ -204,6 +206,33 @@ export const MissionManagement = () => {
     };
   }, []);
 
+  const handleDeleteMission = async (missionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("interpretation_missions")
+        .delete()
+        .eq("id", missionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Mission supprimée",
+        description: "La mission a été supprimée avec succès",
+      });
+
+      fetchMissions();
+    } catch (error) {
+      console.error("Error deleting mission:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la mission",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ... keep existing code (until the missions list rendering)
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -337,10 +366,34 @@ export const MissionManagement = () => {
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="flex items-center gap-4">
                   <p className="text-sm text-gray-600">
                     {new Date(mission.created_at).toLocaleDateString()}
                   </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer la mission</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Êtes-vous sûr de vouloir supprimer cette mission ? Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDeleteMission(mission.id)}
+                          className="bg-red-500 hover:bg-red-600"
+                        >
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </Card>
