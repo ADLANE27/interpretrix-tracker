@@ -186,6 +186,7 @@ export const MissionManagement = () => {
   useEffect(() => {
     fetchMissions();
 
+    // Subscribe to ALL changes on the interpretation_missions table
     const channel = supabase
       .channel('mission-updates')
       .on(
@@ -197,6 +198,7 @@ export const MissionManagement = () => {
         },
         (payload) => {
           console.log('Realtime update received:', payload);
+          // Fetch fresh data when any change occurs
           fetchMissions();
         }
       )
