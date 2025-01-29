@@ -182,10 +182,29 @@ export const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      // Delete from auth.users (this will cascade to other tables due to foreign key constraints)
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (deleteError) throw deleteError;
+      if (sessionError || !session) {
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
 
       toast({
         title: "Utilisateur supprimé",
