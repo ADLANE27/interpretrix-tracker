@@ -15,6 +15,20 @@ interface Mission {
   created_at: string;
 }
 
+interface RawMission {
+  id: string;
+  source_language: string;
+  target_language: string;
+  estimated_duration: number;
+  status: string;
+  created_at: string;
+  assigned_interpreter_id: string | null;
+  assignment_time: string | null;
+  notification_expiry: string;
+  notified_interpreters: string[] | null;
+  updated_at: string;
+}
+
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const { toast } = useToast();
@@ -23,6 +37,17 @@ export const MissionsTab = () => {
     fetchMissions();
     setupRealtimeSubscription();
   }, []);
+
+  const transformMission = (rawMission: RawMission): Mission => {
+    return {
+      id: rawMission.id,
+      source_language: rawMission.source_language,
+      target_language: rawMission.target_language,
+      estimated_duration: rawMission.estimated_duration,
+      status: rawMission.status as 'pending' | 'accepted' | 'declined',
+      created_at: rawMission.created_at,
+    };
+  };
 
   const fetchMissions = async () => {
     try {
@@ -35,7 +60,10 @@ export const MissionsTab = () => {
         .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`);
 
       if (error) throw error;
-      setMissions(data || []);
+      
+      // Transform the raw data to match our Mission interface
+      const transformedMissions = (data || []).map(transformMission);
+      setMissions(transformedMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
       toast({
@@ -57,7 +85,7 @@ export const MissionsTab = () => {
           table: 'interpretation_missions'
         },
         (payload) => {
-          const newMission = payload.new as Mission;
+          const newMission = transformMission(payload.new as RawMission);
           toast({
             title: "Nouvelle mission disponible",
             description: `${newMission.source_language} → ${newMission.target_language}`,
