@@ -113,28 +113,41 @@ export const UserManagement = () => {
         .from("user_roles")
         .insert([{ user_id: user.id, role }]);
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        // If role creation fails, we should delete the user
+        await supabase.auth.admin.deleteUser(user.id);
+        throw roleError;
+      }
 
-      // Send welcome email with password reset link
-      const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-        body: {
-          email,
-          firstName,
-          lastName,
-        },
-      });
+      // Send welcome email with better error handling
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+          body: {
+            email,
+            firstName,
+            lastName,
+          },
+        });
 
-      if (emailError) {
-        console.error("Error sending welcome email:", emailError);
+        if (emailError) {
+          console.error("Error sending welcome email:", emailError);
+          toast({
+            title: "Attention",
+            description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Utilisateur créé",
+            description: "Un email a été envoyé à l'utilisateur avec les instructions de connexion.",
+          });
+        }
+      } catch (emailError) {
+        console.error("Error invoking welcome email function:", emailError);
         toast({
           title: "Attention",
           description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
           variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Utilisateur créé",
-          description: "Un email a été envoyé à l'utilisateur avec les instructions de connexion.",
         });
       }
 

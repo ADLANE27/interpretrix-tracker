@@ -1,17 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface WelcomeEmailRequest {
   email: string;
@@ -20,6 +16,7 @@ interface WelcomeEmailRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -27,49 +24,31 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { email, firstName, lastName }: WelcomeEmailRequest = await req.json();
 
-    // Generate password reset link
-    const { data: { user }, error: resetError } = await supabase.auth.admin.generateLink({
-      type: 'recovery',
-      email: email,
-    });
-
-    if (resetError) {
-      throw new Error(`Error generating reset link: ${resetError.message}`);
+    if (!email || !firstName || !lastName) {
+      throw new Error("Missing required fields");
     }
 
-    // Get the action link from the response
-    const actionLink = user?.action_link;
-    if (!actionLink) {
-      throw new Error('No action link generated');
-    }
+    console.log("Sending welcome email to:", { email, firstName, lastName });
 
-    // Send welcome email with password reset link
-    const emailResponse = await resend.emails.send({
+    const { data: resetLink } = await resend.emails.send({
       from: "Interprétation <onboarding@resend.dev>",
       to: [email],
       subject: "Bienvenue sur la plateforme d'interprétation",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h1>Bienvenue ${firstName} ${lastName},</h1>
-          <p>Votre compte interprète a été créé avec succès.</p>
-          <p>Pour commencer à utiliser la plateforme, veuillez définir votre mot de passe en cliquant sur le lien ci-dessous :</p>
-          <p style="margin: 20px 0;">
-            <a href="${actionLink}" 
-               style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">
-              Définir mon mot de passe
-            </a>
-          </p>
-          <p>Ce lien est valable pendant 24 heures. Si vous ne l'utilisez pas dans ce délai, vous devrez demander un nouveau lien de réinitialisation.</p>
-          <p>Une fois votre mot de passe défini, vous pourrez vous connecter à la plateforme et commencer à recevoir des missions d'interprétation.</p>
+          <p>Votre compte a été créé avec succès.</p>
+          <p>Vous recevrez prochainement un email pour définir votre mot de passe.</p>
+          <p>Une fois votre mot de passe défini, vous pourrez vous connecter à la plateforme.</p>
           <p>Si vous avez des questions, n'hésitez pas à contacter notre équipe support.</p>
           <p>Cordialement,<br>L'équipe d'interprétation</p>
         </div>
       `,
     });
 
-    console.log("Welcome email sent successfully:", emailResponse);
+    console.log("Email sent successfully:", resetLink);
 
-    return new Response(JSON.stringify(emailResponse), {
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -78,11 +57,19 @@ const handler = async (req: Request): Promise<Response> => {
     });
   } catch (error: any) {
     console.error("Error in send-welcome-email function:", error);
+    
+    // Return a more detailed error response
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.details || "No additional details available"
+      }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { 
+          "Content-Type": "application/json",
+          ...corsHeaders 
+        },
       }
     );
   }
