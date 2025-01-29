@@ -10,6 +10,7 @@ interface InterpreterCardProps {
     type: "internal" | "external";
     languages: string[];
     hourlyRate?: number;
+    phone_number?: string | null;
   };
 }
 
@@ -38,10 +39,21 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-gray-500" />
-          <span className="text-sm">
-            {interpreter.languages.join(", ")}
-          </span>
+          <div className="flex flex-wrap gap-1">
+            {interpreter.languages.map((lang, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {lang}
+              </Badge>
+            ))}
+          </div>
         </div>
+
+        {interpreter.phone_number && (
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">{interpreter.phone_number}</span>
+          </div>
+        )}
         
         {interpreter.type === "external" && interpreter.hourlyRate && (
           <div className="flex items-center gap-2">

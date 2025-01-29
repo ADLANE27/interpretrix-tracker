@@ -315,6 +315,7 @@ export const AdminDashboard = () => {
                     type: interpreter.employment_status === "salaried" ? "internal" : "external",
                     languages: interpreter.languages,
                     hourlyRate: interpreter.phone_interpretation_rate,
+                    phone_number: interpreter.phone_number,
                   }}
                 />
               ))}
