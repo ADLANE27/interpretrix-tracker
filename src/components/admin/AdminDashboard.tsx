@@ -63,6 +63,7 @@ interface Interpreter {
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
+  birth_country: string | null;
 }
 
 export const AdminDashboard = () => {
@@ -72,6 +73,7 @@ export const AdminDashboard = () => {
   const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
   const [phoneFilter, setPhoneFilter] = useState("");
+  const [birthCountryFilter, setBirthCountryFilter] = useState("");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
@@ -180,6 +182,10 @@ export const AdminDashboard = () => {
       (interpreter.phone_number && 
        interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
 
+    const matchesBirthCountry = birthCountryFilter === "" ||
+      (interpreter.birth_country &&
+       interpreter.birth_country.toLowerCase().includes(birthCountryFilter.toLowerCase()));
+
     const matchesEmploymentStatus = employmentStatusFilter === "all" || 
       interpreter.employment_status === employmentStatusFilter;
 
@@ -188,6 +194,7 @@ export const AdminDashboard = () => {
            matchesSourceLanguage && 
            matchesTargetLanguage && 
            matchesPhone && 
+           matchesBirthCountry &&
            matchesEmploymentStatus;
   });
 
@@ -251,6 +258,16 @@ export const AdminDashboard = () => {
             placeholder="Rechercher par téléphone..."
             value={phoneFilter}
             onChange={(e) => setPhoneFilter(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="birth-country-search">Pays de naissance</Label>
+          <Input
+            id="birth-country-search"
+            placeholder="Rechercher par pays de naissance..."
+            value={birthCountryFilter}
+            onChange={(e) => setBirthCountryFilter(e.target.value)}
           />
         </div>
 
