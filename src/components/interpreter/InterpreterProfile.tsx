@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { CountrySelect } from "../CountrySelect";
 import { LanguageSelector, LanguagePair } from "./LanguageSelector";
+import { Json } from "@/integrations/supabase/types";
 
 interface Address {
   street: string;
@@ -69,10 +70,12 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
+      const address = data.address as Address | null;
+      
       const profileData: InterpreterProfile = {
         ...data,
         status: (data.status || 'available') as Status,
-        address: data.address as Address | null,
+        address,
         languages: data.languages || [],
       };
       
@@ -94,11 +97,18 @@ export const InterpreterProfile = () => {
     if (!profile) return;
 
     try {
+      // Convert Address to Json type for Supabase
+      const addressJson: Json | null = profile.address ? {
+        street: profile.address.street,
+        postal_code: profile.address.postal_code,
+        city: profile.address.city
+      } : null;
+
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
           ...profile,
-          address: profile.address || null,
+          address: addressJson,
         })
         .eq("id", profile.id);
 
