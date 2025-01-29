@@ -75,6 +75,9 @@ export const InterpreterDashboard = () => {
         const [source, target] = lang.split(" → ");
         return { source, target };
       });
+
+      // Safely cast the address from Json to Address type
+      const address = data.address as { street: string; postal_code: string; city: string } | null;
       
       const profileData: Profile = {
         first_name: data.first_name,
@@ -84,7 +87,7 @@ export const InterpreterDashboard = () => {
         languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
-        address: data.address as Address,
+        address: address,
         birth_country: data.birth_country,
         nationality: data.nationality,
         phone_interpretation_rate: data.phone_interpretation_rate,
@@ -138,6 +141,13 @@ export const InterpreterDashboard = () => {
 
       const languageStrings = profile.languages.map(pair => `${pair.source} → ${pair.target}`);
 
+      // Convert Address to Json compatible format
+      const addressJson = profile.address ? {
+        street: profile.address.street,
+        postal_code: profile.address.postal_code,
+        city: profile.address.city
+      } as Json : null;
+
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
@@ -148,7 +158,7 @@ export const InterpreterDashboard = () => {
           languages: languageStrings,
           employment_status: profile.employment_status,
           status: profile.status,
-          address: profile.address as unknown as Json,
+          address: addressJson,
           birth_country: profile.birth_country,
           nationality: profile.nationality,
           phone_interpretation_rate: profile.phone_interpretation_rate,

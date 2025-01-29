@@ -67,11 +67,12 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
-      // Ensure status is of type Status
+      const address = data.address as { street: string; postal_code: string; city: string } | null;
+      
       const profileData: InterpreterProfile = {
         ...data,
         status: (data.status || 'available') as Status,
-        address: data.address as Address | null,
+        address: address,
       };
       
       setProfile(profileData);
@@ -87,38 +88,23 @@ export const InterpreterProfile = () => {
     }
   };
 
-  const handleStatusChange = async (newStatus: Status) => {
-    try {
-      const { error } = await supabase
-        .from("interpreter_profiles")
-        .update({ status: newStatus })
-        .eq("id", profile?.id);
-
-      if (error) throw error;
-
-      setProfile(prev => prev ? { ...prev, status: newStatus } : null);
-      toast({
-        title: "Statut mis à jour",
-        description: "Votre statut a été mis à jour avec succès",
-      });
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
 
     try {
+      const addressJson = profile.address ? {
+        street: profile.address.street,
+        postal_code: profile.address.postal_code,
+        city: profile.address.city
+      } as Json : null;
+
       const { error } = await supabase
         .from("interpreter_profiles")
-        .update(profile)
+        .update({
+          ...profile,
+          address: addressJson,
+        })
         .eq("id", profile.id);
 
       if (error) throw error;
@@ -135,19 +121,6 @@ export const InterpreterProfile = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const handleLanguageAdd = () => {
-    if (!languageInput.trim() || !profile) return;
-    const newLanguages = [...profile.languages, languageInput.trim()];
-    setProfile({ ...profile, languages: newLanguages });
-    setLanguageInput("");
-  };
-
-  const handleLanguageRemove = (language: string) => {
-    if (!profile) return;
-    const newLanguages = profile.languages.filter(l => l !== language);
-    setProfile({ ...profile, languages: newLanguages });
   };
 
   if (loading) {
