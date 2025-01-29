@@ -69,8 +69,8 @@ export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [nameFilter, setNameFilter] = useState("");
-  const [sourceLanguageFilter, setSourceLanguageFilter] = useState("");
-  const [targetLanguageFilter, setTargetLanguageFilter] = useState("");
+  const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
+  const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
   const [phoneFilter, setPhoneFilter] = useState("");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const { toast } = useToast();
@@ -164,13 +164,13 @@ export const AdminDashboard = () => {
         .toLowerCase()
         .includes(nameFilter.toLowerCase());
     
-    const matchesSourceLanguage = sourceLanguageFilter === "" || 
+    const matchesSourceLanguage = sourceLanguageFilter === "all" || 
       interpreter.languages.some(lang => {
         const [source] = lang.split(" → ");
         return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
       });
 
-    const matchesTargetLanguage = targetLanguageFilter === "" || 
+    const matchesTargetLanguage = targetLanguageFilter === "all" || 
       interpreter.languages.some(lang => {
         const [, target] = lang.split(" → ");
         return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
@@ -217,7 +217,7 @@ export const AdminDashboard = () => {
               <SelectValue placeholder="Sélectionner une langue source" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Toutes les langues</SelectItem>
+              <SelectItem value="all">Toutes les langues</SelectItem>
               {LANGUAGES.map((lang) => (
                 <SelectItem key={lang} value={lang}>
                   {lang}
@@ -234,7 +234,7 @@ export const AdminDashboard = () => {
               <SelectValue placeholder="Sélectionner une langue cible" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Toutes les langues</SelectItem>
+              <SelectItem value="all">Toutes les langues</SelectItem>
               {LANGUAGES.map((lang) => (
                 <SelectItem key={lang} value={lang}>
                   {lang}
