@@ -108,6 +108,13 @@ export const InterpreterProfile = () => {
         `${pair.source} → ${pair.target}`
       );
 
+      // Transform Address to Json format for Supabase
+      const addressJson = profile.address ? {
+        street: profile.address.street,
+        postal_code: profile.address.postal_code,
+        city: profile.address.city
+      } as const : null;
+
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
@@ -115,7 +122,7 @@ export const InterpreterProfile = () => {
           last_name: profile.last_name,
           email: profile.email,
           phone_number: profile.phone_number,
-          address: profile.address,
+          address: addressJson,
           birth_country: profile.birth_country,
           nationality: profile.nationality,
           employment_status: profile.employment_status,
