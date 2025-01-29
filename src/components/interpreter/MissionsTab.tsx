@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, XSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Mission {
   id: string;
@@ -13,6 +14,12 @@ interface Mission {
   estimated_duration: number;
   status: string;
   created_at: string;
+  assigned_interpreter_id?: string;
+  assigned_interpreter?: {
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  };
 }
 
 export const MissionsTab = () => {
@@ -30,8 +37,10 @@ export const MissionsTab = () => {
       source_language: rawMission.source_language,
       target_language: rawMission.target_language,
       estimated_duration: rawMission.estimated_duration,
-      status: rawMission.mission_notifications?.[0]?.status || 'pending',
+      status: rawMission.status,
       created_at: rawMission.created_at,
+      assigned_interpreter_id: rawMission.assigned_interpreter_id,
+      assigned_interpreter: rawMission.assigned_interpreter,
     };
   };
 
@@ -44,20 +53,17 @@ export const MissionsTab = () => {
         .from('interpretation_missions')
         .select(`
           *,
-          mission_notifications!inner (
-            status,
-            interpreter_id
+          assigned_interpreter:interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+            first_name,
+            last_name,
+            profile_picture_url
           )
         `)
-        .eq('mission_notifications.interpreter_id', user.id);
+        .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`);
 
       if (missionsError) throw missionsError;
       
-      const transformedMissions = (missionsData || []).map(mission => ({
-        ...transformMission(mission),
-        status: mission.mission_notifications[0]?.status || 'pending'
-      }));
-
+      const transformedMissions = (missionsData || []).map(transformMission);
       setMissions(transformedMissions);
     } catch (error) {
       console.error('Error fetching missions:', error);
@@ -77,7 +83,7 @@ export const MissionsTab = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'mission_notifications'
+          table: 'interpretation_missions'
         },
         (payload) => {
           console.log('Realtime update received:', payload);
@@ -96,25 +102,13 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Update the notification status
-      const { error: notificationError } = await supabase
-        .from('mission_notifications')
-        .update({
-          status: accept ? 'accepted' : 'declined'
-        })
-        .eq('mission_id', missionId)
-        .eq('interpreter_id', user.id);
-
-      if (notificationError) throw notificationError;
-
-      // If accepting, also update the mission status and assign the interpreter
       if (accept) {
+        // Update the mission status and assign the interpreter
         const { error: missionError } = await supabase
           .from('interpretation_missions')
           .update({
             status: 'accepted',
-            assigned_interpreter_id: user.id,
-            assignment_time: new Date().toISOString()
+            assigned_interpreter_id: user.id
           })
           .eq('id', missionId);
 
@@ -125,7 +119,11 @@ export const MissionsTab = () => {
       setMissions(prevMissions => 
         prevMissions.map(mission => 
           mission.id === missionId 
-            ? { ...mission, status: accept ? 'accepted' : 'declined' }
+            ? { 
+                ...mission, 
+                status: accept ? 'accepted' : 'declined',
+                assigned_interpreter_id: accept ? user.id : mission.assigned_interpreter_id 
+              }
             : mission
         )
       );
@@ -134,6 +132,9 @@ export const MissionsTab = () => {
         title: accept ? "Mission acceptée" : "Mission déclinée",
         description: `La mission a été ${accept ? 'acceptée' : 'déclinée'} avec succès.`,
       });
+
+      // Refresh missions to get updated data
+      fetchMissions();
 
     } catch (error) {
       console.error('Error updating mission:', error);
@@ -157,8 +158,32 @@ export const MissionsTab = () => {
                 <p>Durée: {mission.estimated_duration} minutes</p>
                 <p>Langues: {mission.source_language} → {mission.target_language}</p>
               </div>
+              <Badge 
+                variant={mission.status === 'accepted' ? 'default' : 'secondary'}
+                className="mt-2"
+              >
+                {mission.status === 'accepted' 
+                  ? 'Acceptée' 
+                  : mission.status === 'declined'
+                    ? 'Déclinée'
+                    : 'En attente d\'acceptation'}
+              </Badge>
+              {mission.assigned_interpreter && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
+                    <AvatarFallback>
+                      {mission.assigned_interpreter.first_name[0]}
+                      {mission.assigned_interpreter.last_name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-gray-600">
+                    Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
+                  </span>
+                </div>
+              )}
             </div>
-            {mission.status === 'pending' ? (
+            {mission.status === 'awaiting_acceptance' && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -177,10 +202,6 @@ export const MissionsTab = () => {
                   Décliner
                 </Button>
               </div>
-            ) : (
-              <Badge variant={mission.status === 'accepted' ? 'default' : 'secondary'}>
-                {mission.status === 'accepted' ? 'Acceptée' : 'Déclinée'}
-              </Badge>
             )}
           </div>
         </Card>
