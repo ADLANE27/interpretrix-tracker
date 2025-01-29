@@ -4,13 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
-import { LanguageSelector } from "./interpreter/LanguageSelector";
 import { MissionsTab } from "./interpreter/MissionsTab";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -51,7 +47,6 @@ const statusConfig = {
 
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -178,55 +173,6 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleProfileUpdate = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !profile) return;
-
-      const languageStrings = profile.languages.map(pair => `${pair.source} → ${pair.target}`);
-
-      const addressJson = profile.address ? {
-        street: profile.address.street,
-        postal_code: profile.address.postal_code,
-        city: profile.address.city
-      } as Json : null;
-
-      const { error } = await supabase
-        .from("interpreter_profiles")
-        .update({
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          email: profile.email,
-          phone_number: profile.phone_number,
-          languages: languageStrings,
-          employment_status: profile.employment_status,
-          status: profile.status,
-          address: addressJson,
-          birth_country: profile.birth_country,
-          nationality: profile.nationality,
-          phone_interpretation_rate: profile.phone_interpretation_rate,
-          siret_number: profile.siret_number,
-          vat_number: profile.vat_number,
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      setIsEditing(false);
-      toast({
-        title: "Profil mis à jour",
-        description: "Vos informations ont été mises à jour avec succès",
-      });
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du profil:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre profil",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (!profile) {
     return <div>Chargement...</div>;
   }
@@ -279,199 +225,9 @@ export const InterpreterDashboard = () => {
             </div>
           </div>
 
-          <Tabs defaultValue="missions" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="missions">Missions</TabsTrigger>
-              <TabsTrigger value="profile">Profil</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="missions">
-              <MissionsTab />
-            </TabsContent>
-            
-            <TabsContent value="profile">
-              <Card className="p-6">
-                <div className="flex justify-end mb-6">
-                  <Button onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}>
-                    {isEditing ? "Enregistrer" : "Modifier"}
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">Prénom</Label>
-                      <Input
-                        id="first_name"
-                        value={profile.first_name}
-                        onChange={(e) => isEditing && setProfile({ ...profile, first_name: e.target.value })}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Nom</Label>
-                      <Input
-                        id="last_name"
-                        value={profile.last_name}
-                        onChange={(e) => isEditing && setProfile({ ...profile, last_name: e.target.value })}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => isEditing && setProfile({ ...profile, email: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone_number">Numéro de téléphone</Label>
-                    <Input
-                      id="phone_number"
-                      value={profile.phone_number || ""}
-                      onChange={(e) => isEditing && setProfile({ ...profile, phone_number: e.target.value })}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Adresse</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="street">Rue</Label>
-                        <Input
-                          id="street"
-                          value={profile.address?.street || ""}
-                          onChange={(e) => isEditing && setProfile({
-                            ...profile,
-                            address: {
-                              ...(profile.address || { street: "", postal_code: "", city: "" }),
-                              street: e.target.value
-                            }
-                          })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="postal_code">Code postal</Label>
-                        <Input
-                          id="postal_code"
-                          value={profile.address?.postal_code || ""}
-                          onChange={(e) => isEditing && setProfile({
-                            ...profile,
-                            address: {
-                              ...(profile.address || { street: "", postal_code: "", city: "" }),
-                              postal_code: e.target.value
-                            }
-                          })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="city">Ville</Label>
-                        <Input
-                          id="city"
-                          value={profile.address?.city || ""}
-                          onChange={(e) => isEditing && setProfile({
-                            ...profile,
-                            address: {
-                              ...(profile.address || { street: "", postal_code: "", city: "" }),
-                              city: e.target.value
-                            }
-                          })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="birth_country">Pays de naissance</Label>
-                      <Input
-                        id="birth_country"
-                        value={profile.birth_country || ""}
-                        onChange={(e) => isEditing && setProfile({ ...profile, birth_country: e.target.value })}
-                        disabled={!isEditing}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="nationality">Nationalité</Label>
-                      <Input
-                        id="nationality"
-                        value={profile.nationality || ""}
-                        onChange={(e) => isEditing && setProfile({ ...profile, nationality: e.target.value })}
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="employment_status">Statut professionnel</Label>
-                    <Select
-                      value={profile.employment_status}
-                      onValueChange={(value: Profile['employment_status']) => 
-                        isEditing && setProfile({ ...profile, employment_status: value })
-                      }
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez votre statut" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="salaried">Salarié</SelectItem>
-                        <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {profile.employment_status === "self_employed" && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
-                        <Input
-                          id="phone_interpretation_rate"
-                          type="number"
-                          step="0.01"
-                          value={profile.phone_interpretation_rate || ""}
-                          onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="siret_number">Numéro SIRET</Label>
-                        <Input
-                          id="siret_number"
-                          value={profile.siret_number || ""}
-                          onChange={(e) => isEditing && setProfile({ ...profile, siret_number: e.target.value })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="vat_number">Numéro de TVA</Label>
-                        <Input
-                          id="vat_number"
-                          value={profile.vat_number || ""}
-                          onChange={(e) => isEditing && setProfile({ ...profile, vat_number: e.target.value })}
-                          disabled={!isEditing}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <Card className="p-6">
+            <MissionsTab />
+          </Card>
         </div>
       </div>
     </div>
