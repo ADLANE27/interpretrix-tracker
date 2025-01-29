@@ -9,13 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { LanguageSelector } from "./interpreter/LanguageSelector";
+
+interface LanguagePair {
+  source: string;
+  target: string;
+}
 
 interface Profile {
   first_name: string;
   last_name: string;
   email: string;
   phone_number: string | null;
-  languages: string[];
+  languages: LanguagePair[];
   employment_status: "salaried" | "self_employed";
   status: "available" | "busy" | "pause" | "unavailable";
   address: string | null;
@@ -34,7 +40,6 @@ const statusConfig = {
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [languageInput, setLanguageInput] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,12 +59,18 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
       
+      // Convert the languages array to array of LanguagePair objects
+      const languagePairs = data.languages.map((lang: string) => {
+        const [source, target] = lang.split(" → ");
+        return { source, target };
+      });
+      
       const profileData: Profile = {
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         phone_number: data.phone_number,
-        languages: data.languages,
+        languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
         address: data.address,
@@ -111,9 +122,15 @@ export const InterpreterDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !profile) return;
 
+      // Convert LanguagePair objects to strings for storage
+      const languageStrings = profile.languages.map(pair => `${pair.source} → ${pair.target}`);
+
       const { error } = await supabase
         .from("interpreter_profiles")
-        .update(profile)
+        .update({
+          ...profile,
+          languages: languageStrings,
+        })
         .eq("id", user.id);
 
       if (error) throw error;
@@ -131,19 +148,6 @@ export const InterpreterDashboard = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const handleLanguageAdd = () => {
-    if (!languageInput.trim() || !profile) return;
-    const newLanguages = [...profile.languages, languageInput.trim()];
-    setProfile({ ...profile, languages: newLanguages });
-    setLanguageInput("");
-  };
-
-  const handleLanguageRemove = (language: string) => {
-    if (!profile) return;
-    const newLanguages = profile.languages.filter(l => l !== language);
-    setProfile({ ...profile, languages: newLanguages });
   };
 
   if (!profile) {
@@ -257,20 +261,20 @@ export const InterpreterDashboard = () => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique</Label>
-                <Input
-                  id="phone_interpretation_rate"
-                  type="number"
-                  step="0.01"
-                  value={profile.phone_interpretation_rate || ""}
-                  onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
-                  disabled={!isEditing}
-                />
-              </div>
-
               {profile.employment_status === "self_employed" && (
                 <>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique</Label>
+                    <Input
+                      id="phone_interpretation_rate"
+                      type="number"
+                      step="0.01"
+                      value={profile.phone_interpretation_rate || ""}
+                      onChange={(e) => isEditing && setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="siret_number">Numéro SIRET</Label>
                     <Input
@@ -296,30 +300,11 @@ export const InterpreterDashboard = () => {
 
             <div className="space-y-2">
               <Label>Langues maîtrisées</Label>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {profile.languages.map((language) => (
-                  <Badge
-                    key={language}
-                    variant="secondary"
-                    className={`cursor-pointer ${isEditing ? 'hover:bg-red-100' : ''}`}
-                    onClick={() => isEditing && handleLanguageRemove(language)}
-                  >
-                    {language} {isEditing && '×'}
-                  </Badge>
-                ))}
-              </div>
-              {isEditing && (
-                <div className="flex gap-2">
-                  <Input
-                    value={languageInput}
-                    onChange={(e) => setLanguageInput(e.target.value)}
-                    placeholder="Ajouter une langue"
-                  />
-                  <Button type="button" onClick={handleLanguageAdd}>
-                    Ajouter
-                  </Button>
-                </div>
-              )}
+              <LanguageSelector
+                languages={profile.languages}
+                onChange={(newLanguages) => setProfile({ ...profile, languages: newLanguages })}
+                isEditing={isEditing}
+              />
             </div>
           </div>
         </Card>
