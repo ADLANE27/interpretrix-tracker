@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 import { MissionsTab } from "./interpreter/MissionsTab";
+import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface LanguagePair {
@@ -226,7 +227,18 @@ export const InterpreterDashboard = () => {
           </div>
 
           <Card className="p-6">
-            <MissionsTab />
+            <Tabs defaultValue="missions" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="missions">Missions</TabsTrigger>
+                <TabsTrigger value="profile">Mon Profil</TabsTrigger>
+              </TabsList>
+              <TabsContent value="missions">
+                <MissionsTab />
+              </TabsContent>
+              <TabsContent value="profile">
+                <InterpreterProfile />
+              </TabsContent>
+            </Tabs>
           </Card>
         </div>
       </div>
