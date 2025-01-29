@@ -105,9 +105,17 @@ export const AdminDashboard = () => {
 
   const filteredInterpreters = interpreters.filter(interpreter => {
     const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(interpreter.status);
+    const searchTermLower = searchTerm.toLowerCase();
+    
     const matchesSearch = 
-      `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      interpreter.languages.some(lang => lang.toLowerCase().includes(searchTerm.toLowerCase()));
+      `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(searchTermLower) ||
+      interpreter.languages.some(lang => {
+        // Split the language pair and check both source and target languages
+        const [source, target] = lang.split(" → ");
+        return source.toLowerCase().includes(searchTermLower) || 
+               (target && target.toLowerCase().includes(searchTermLower));
+      });
+    
     return matchesStatus && matchesSearch;
   });
 
