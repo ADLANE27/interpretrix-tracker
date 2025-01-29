@@ -6,6 +6,17 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+export interface LanguagePair {
+  source: string;
+  target: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -325,3 +336,4 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
