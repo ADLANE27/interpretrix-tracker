@@ -85,12 +85,12 @@ export const MissionManagement = () => {
     }
   };
 
-  const handleInterpreterSelection = (interpreterId: string) => {
+  const handleInterpreterSelection = (interpreterId: string, checked: boolean) => {
     setSelectedInterpreters(prev => {
-      if (prev.includes(interpreterId)) {
-        return prev.filter(id => id !== interpreterId);
-      } else {
+      if (checked) {
         return [...prev, interpreterId];
+      } else {
+        return prev.filter(id => id !== interpreterId);
       }
     });
   };
@@ -108,7 +108,6 @@ export const MissionManagement = () => {
     }
 
     try {
-      // Set notification expiry to 24 hours from now
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
@@ -127,7 +126,6 @@ export const MissionManagement = () => {
 
       if (missionError) throw missionError;
 
-      // Create notifications for each selected interpreter
       const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: missionData.id,
         interpreter_id: interpreter,
@@ -145,14 +143,12 @@ export const MissionManagement = () => {
         description: "La mission a été créée et les interprètes ont été notifiés",
       });
 
-      // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
       setSelectedInterpreters([]);
       setAvailableInterpreters([]);
       
-      // Refresh missions list
       fetchMissions();
     } catch (error) {
       console.error("Error creating mission:", error);
@@ -164,14 +160,12 @@ export const MissionManagement = () => {
     }
   };
 
-  // Only run findAvailableInterpreters when both languages are selected
   useEffect(() => {
     if (sourceLanguage && targetLanguage) {
       findAvailableInterpreters(sourceLanguage, targetLanguage);
     }
   }, [sourceLanguage, targetLanguage]);
 
-  // Set up real-time subscription for mission status updates
   useEffect(() => {
     fetchMissions();
 
@@ -184,10 +178,8 @@ export const MissionManagement = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            fetchMissions(); // Refresh missions list when updates occur
-          }
+        () => {
+          fetchMissions();
         }
       )
       .subscribe();
@@ -255,14 +247,14 @@ export const MissionManagement = () => {
                 {availableInterpreters.map((interpreter) => (
                   <Card 
                     key={interpreter.id} 
-                    className={`p-4 flex items-center space-x-4 cursor-pointer hover:bg-gray-50 ${
+                    className={`p-4 flex items-center space-x-4 hover:bg-gray-50 ${
                       selectedInterpreters.includes(interpreter.id) ? 'ring-2 ring-primary' : ''
                     }`}
-                    onClick={() => handleInterpreterSelection(interpreter.id)}
                   >
                     <Checkbox
                       checked={selectedInterpreters.includes(interpreter.id)}
-                      onCheckedChange={() => handleInterpreterSelection(interpreter.id)}
+                      onCheckedChange={(checked) => handleInterpreterSelection(interpreter.id, checked as boolean)}
+                      className="pointer-events-auto"
                     />
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={interpreter.profile_picture_url || undefined} />
