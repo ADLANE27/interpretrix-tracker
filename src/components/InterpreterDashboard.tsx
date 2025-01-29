@@ -264,7 +264,7 @@ export const InterpreterDashboard = () => {
               {profile.employment_status === "self_employed" && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique</Label>
+                    <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
                     <Input
                       id="phone_interpretation_rate"
                       type="number"
