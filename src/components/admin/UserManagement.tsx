@@ -87,7 +87,7 @@ export const UserManagement = () => {
       // Create user in Supabase Auth
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
-        password: crypto.randomUUID(), // Generate a random password that won't be used
+        password: crypto.randomUUID(),
         options: {
           data: {
             first_name: firstName,
@@ -121,7 +121,7 @@ export const UserManagement = () => {
         toast({
           title: "Attention",
           description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
-          variant: "warning",
+          variant: "destructive", // Changed from "warning" to "destructive"
         });
       } else {
         toast({

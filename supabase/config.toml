@@ -1,8 +1,4 @@
 project_id = "bblpiatmtnlhnbavhkau"
 
-[api]
-enabled = true
-url = "https://bblpiatmtnlhnbavhkau.supabase.co"
-
 [functions.send-welcome-email]
 verify_jwt = true
