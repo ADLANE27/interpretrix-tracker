@@ -77,14 +77,15 @@ export const SpecializationSelector = ({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
-          <Command>
+        <PopoverContent className="w-full p-0" align="start">
+          <Command className="w-full">
             <CommandInput placeholder="Rechercher une spécialisation..." />
             <CommandEmpty>Aucune spécialisation trouvée.</CommandEmpty>
             <CommandGroup>
               {specializations.map((spec) => (
                 <CommandItem
                   key={spec.value}
+                  value={spec.value}
                   onSelect={() => toggleSpecialization(spec.value)}
                 >
                   <Check
