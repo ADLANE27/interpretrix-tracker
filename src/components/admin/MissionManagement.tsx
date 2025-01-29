@@ -195,7 +195,8 @@ export const MissionManagement = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        () => {
+        (payload) => {
+          console.log('Realtime update received:', payload);
           fetchMissions();
         }
       )
@@ -230,8 +231,6 @@ export const MissionManagement = () => {
       });
     }
   };
-
-  // ... keep existing code (until the missions list rendering)
 
   return (
     <div className="space-y-6">
