@@ -47,7 +47,19 @@ export const InterpreterDashboard = () => {
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      
+      // Cast the status to the correct type
+      const profileData: Profile = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone_number: data.phone_number,
+        languages: data.languages,
+        employment_status: data.employment_status,
+        status: (data.status || 'available') as Profile['status'], // Cast to union type with default
+      };
+      
+      setProfile(profileData);
     } catch (error) {
       console.error("Erreur lors du chargement du profil:", error);
       toast({
@@ -66,12 +78,8 @@ export const InterpreterDashboard = () => {
     );
   };
 
-  const filteredInterpreters = mockInterpreters.filter(interpreter => {
-    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(interpreter.status);
-    const matchesSearch = interpreter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      interpreter.languages.some(lang => lang.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
+  // For now, we'll remove the interpreters list since mockInterpreters doesn't exist
+  // This should be replaced with actual data from Supabase in a future update
 
   if (!profile) {
     return <div>Chargement...</div>;
@@ -146,12 +154,8 @@ export const InterpreterDashboard = () => {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {filteredInterpreters.map((interpreter) => (
-              <InterpreterCard
-                key={interpreter.id}
-                interpreter={interpreter}
-              />
-            ))}
+            {/* We'll implement the interpreters list in a future update */}
+            <p className="text-gray-500">Aucun interprète disponible pour le moment.</p>
           </div>
         </div>
       </div>
