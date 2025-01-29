@@ -26,14 +26,11 @@ interface Profile {
   last_name: string;
   email: string;
   phone_number: string | null;
+  landline_phone: string | null;
   address: Address | null;
-  birth_country: string | null;
   nationality: string | null;
   employment_status: EmploymentStatus;
   languages: LanguagePair[];
-  phone_interpretation_rate: number | null;
-  siret_number: string | null;
-  vat_number: string | null;
 }
 
 export const InterpreterProfile = () => {
@@ -58,14 +55,6 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
 
-      // Transform the address data from Json to Address type
-      const addressData = data.address as { [key: string]: string } | null;
-      const transformedAddress: Address | null = addressData ? {
-        street: addressData.street || "",
-        postal_code: addressData.postal_code || "",
-        city: addressData.city || ""
-      } : null;
-
       // Transform language strings to LanguagePair objects
       const languagePairs: LanguagePair[] = data.languages.map((lang: string) => {
         const [source, target] = lang.split(" → ");
@@ -78,14 +67,11 @@ export const InterpreterProfile = () => {
         last_name: data.last_name,
         email: data.email,
         phone_number: data.phone_number,
-        address: transformedAddress,
-        birth_country: data.birth_country,
+        landline_phone: data.landline_phone,
+        address: data.address,
         nationality: data.nationality,
         employment_status: data.employment_status,
         languages: languagePairs,
-        phone_interpretation_rate: data.phone_interpretation_rate,
-        siret_number: data.siret_number,
-        vat_number: data.vat_number,
       };
 
       setProfile(transformedProfile);
@@ -108,13 +94,6 @@ export const InterpreterProfile = () => {
         `${pair.source} → ${pair.target}`
       );
 
-      // Transform Address to Json format for Supabase
-      const addressJson = profile.address ? {
-        street: profile.address.street,
-        postal_code: profile.address.postal_code,
-        city: profile.address.city
-      } as const : null;
-
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
@@ -122,14 +101,11 @@ export const InterpreterProfile = () => {
           last_name: profile.last_name,
           email: profile.email,
           phone_number: profile.phone_number,
-          address: addressJson,
-          birth_country: profile.birth_country,
+          landline_phone: profile.landline_phone,
+          address: profile.address,
           nationality: profile.nationality,
           employment_status: profile.employment_status,
           languages: languageStrings,
-          phone_interpretation_rate: profile.phone_interpretation_rate,
-          siret_number: profile.siret_number,
-          vat_number: profile.vat_number,
         })
         .eq("id", profile.id);
 
@@ -170,8 +146,8 @@ export const InterpreterProfile = () => {
           firstName={profile.first_name}
           lastName={profile.last_name}
           email={profile.email}
-          phoneNumber={profile.phone_number}
-          birthCountry={profile.birth_country}
+          mobilePhone={profile.phone_number}
+          landlinePhone={profile.landline_phone}
           nationality={profile.nationality}
           isEditing={isEditing}
           onChange={(field, value) => {
@@ -196,9 +172,6 @@ export const InterpreterProfile = () => {
         <ProfessionalInfoSection
           employmentStatus={profile.employment_status}
           languages={profile.languages}
-          phoneInterpretationRate={profile.phone_interpretation_rate}
-          siretNumber={profile.siret_number}
-          vatNumber={profile.vat_number}
           isEditing={isEditing}
           onEmploymentStatusChange={(status) => {
             setProfile({
@@ -210,24 +183,6 @@ export const InterpreterProfile = () => {
             setProfile({
               ...profile,
               languages,
-            });
-          }}
-          onRateChange={(rate) => {
-            setProfile({
-              ...profile,
-              phone_interpretation_rate: rate,
-            });
-          }}
-          onSiretChange={(siret) => {
-            setProfile({
-              ...profile,
-              siret_number: siret,
-            });
-          }}
-          onVatChange={(vat) => {
-            setProfile({
-              ...profile,
-              vat_number: vat,
             });
           }}
         />

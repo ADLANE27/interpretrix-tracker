@@ -7,19 +7,19 @@ interface PersonalInfoProps {
   firstName: string;
   lastName: string;
   email: string;
-  phoneNumber: string | null;
-  birthCountry: string | null;
+  mobilePhone: string | null;
+  landlinePhone: string | null;
   nationality: string | null;
   isEditing: boolean;
-  onChange: (field: string, value: string) => void;
+  onChange: (field: string, value: string | null) => void;
 }
 
 export const PersonalInfoSection = ({
   firstName,
   lastName,
   email,
-  phoneNumber,
-  birthCountry,
+  mobilePhone,
+  landlinePhone,
   nationality,
   isEditing,
   onChange,
@@ -60,32 +60,30 @@ export const PersonalInfoSection = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone_number">Numéro de téléphone</Label>
+          <Label htmlFor="mobile_phone">Téléphone mobile</Label>
           <Input
-            id="phone_number"
-            value={phoneNumber || ""}
-            onChange={(e) => onChange("phoneNumber", e.target.value)}
+            id="mobile_phone"
+            value={mobilePhone || ""}
+            onChange={(e) => onChange("mobilePhone", e.target.value)}
             disabled={!isEditing}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="birth_country">Pays de naissance</Label>
-          <CountrySelect
-            value={birthCountry || ""}
-            onValueChange={(value) => onChange("birthCountry", value)}
-            label="Pays de naissance"
-            placeholder="Sélectionner votre pays de naissance"
+          <Label htmlFor="landline_phone">Téléphone fixe</Label>
+          <Input
+            id="landline_phone"
+            value={landlinePhone || ""}
+            onChange={(e) => onChange("landlinePhone", e.target.value)}
             disabled={!isEditing}
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="nationality">Nationalité</Label>
-          <Input
-            id="nationality"
+          <CountrySelect
             value={nationality || ""}
-            onChange={(e) => onChange("nationality", e.target.value)}
+            onValueChange={(value) => onChange("nationality", value)}
             disabled={!isEditing}
           />
         </div>
