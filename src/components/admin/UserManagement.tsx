@@ -85,7 +85,7 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Create user in Supabase Auth
+      // Create user in Supabase Auth with metadata
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
         password: crypto.randomUUID(),
