@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Mission {
   id: string;
@@ -32,6 +33,7 @@ interface Interpreter {
 export const MissionManagement = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
+  const [selectedInterpreters, setSelectedInterpreters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [sourceLanguage, setSourceLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
@@ -70,6 +72,7 @@ export const MissionManagement = () => {
 
       if (error) throw error;
       setAvailableInterpreters(data || []);
+      setSelectedInterpreters([]); // Reset selections when interpreters list changes
     } catch (error) {
       console.error("Error finding interpreters:", error);
       toast({
@@ -80,9 +83,28 @@ export const MissionManagement = () => {
     }
   };
 
+  const handleInterpreterSelection = (interpreterId: string) => {
+    setSelectedInterpreters(prev => {
+      if (prev.includes(interpreterId)) {
+        return prev.filter(id => id !== interpreterId);
+      } else {
+        return [...prev, interpreterId];
+      }
+    });
+  };
+
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (selectedInterpreters.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner au moins un interprète",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Set notification expiry to 24 hours from now
       const notificationExpiry = new Date();
@@ -94,18 +116,20 @@ export const MissionManagement = () => {
           source_language: sourceLanguage,
           target_language: targetLanguage,
           estimated_duration: parseInt(estimatedDuration),
+          status: "awaiting_acceptance",
           notification_expiry: notificationExpiry.toISOString(),
-          notified_interpreters: availableInterpreters.map(interpreter => interpreter.id)
+          notified_interpreters: selectedInterpreters
         })
         .select()
         .single();
 
       if (missionError) throw missionError;
 
-      // Create notifications for each available interpreter
-      const notifications = availableInterpreters.map(interpreter => ({
+      // Create notifications for each selected interpreter
+      const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: missionData.id,
-        interpreter_id: interpreter.id,
+        interpreter_id: interpreter,
+        status: "pending"
       }));
 
       const { error: notificationError } = await supabase
@@ -123,6 +147,7 @@ export const MissionManagement = () => {
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
+      setSelectedInterpreters([]);
       setAvailableInterpreters([]);
       
       // Refresh missions list
@@ -146,6 +171,30 @@ export const MissionManagement = () => {
   useEffect(() => {
     handleLanguageSelection();
   }, [sourceLanguage, targetLanguage]);
+
+  // Set up real-time subscription for mission status updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('mission-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            fetchMissions(); // Refresh missions list when updates occur
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -203,7 +252,17 @@ export const MissionManagement = () => {
               <Label>Interprètes disponibles ({availableInterpreters.length})</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableInterpreters.map((interpreter) => (
-                  <Card key={interpreter.id} className="p-4 flex items-center space-x-4">
+                  <Card 
+                    key={interpreter.id} 
+                    className={`p-4 flex items-center space-x-4 cursor-pointer hover:bg-gray-50 ${
+                      selectedInterpreters.includes(interpreter.id) ? 'ring-2 ring-primary' : ''
+                    }`}
+                    onClick={() => handleInterpreterSelection(interpreter.id)}
+                  >
+                    <Checkbox
+                      checked={selectedInterpreters.includes(interpreter.id)}
+                      onCheckedChange={() => handleInterpreterSelection(interpreter.id)}
+                    />
                     <Avatar className="h-10 w-10">
                       <AvatarImage src={interpreter.profile_picture_url || undefined} />
                       <AvatarFallback>
@@ -225,7 +284,7 @@ export const MissionManagement = () => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={availableInterpreters.length === 0}
+            disabled={selectedInterpreters.length === 0}
           >
             Créer la mission et notifier les interprètes
           </Button>
@@ -245,9 +304,16 @@ export const MissionManagement = () => {
                   <p className="text-sm text-gray-600">
                     Durée estimée: {mission.estimated_duration} minutes
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Statut: {mission.status}
-                  </p>
+                  <Badge 
+                    variant={mission.status === "confirmed" ? "default" : "secondary"}
+                    className="mt-2"
+                  >
+                    {mission.status === "awaiting_acceptance" 
+                      ? "En attente d'acceptation" 
+                      : mission.status === "confirmed" 
+                        ? "Confirmée" 
+                        : mission.status}
+                  </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">
