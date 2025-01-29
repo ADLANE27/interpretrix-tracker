@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, XSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Mission {
   id: string;
@@ -17,11 +16,6 @@ interface Mission {
   created_at: string;
   assigned_interpreter_id: string | null;
   assignment_time: string | null;
-  assigned_interpreter?: {
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-  };
 }
 
 export const MissionsTab = () => {
@@ -40,14 +34,7 @@ export const MissionsTab = () => {
 
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
-        .select(`
-          *,
-          assigned_interpreter:interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
-            first_name,
-            last_name,
-            profile_picture_url
-          )
-        `)
+        .select('*')
         .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`);
 
       if (missionsError) throw missionsError;
@@ -187,20 +174,6 @@ export const MissionsTab = () => {
                 >
                   {statusDisplay.label}
                 </Badge>
-                {mission.assigned_interpreter && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
-                      <AvatarFallback>
-                        {mission.assigned_interpreter.first_name[0]}
-                        {mission.assigned_interpreter.last_name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-gray-600">
-                      Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
-                    </span>
-                  </div>
-                )}
               </div>
               {mission.status === 'awaiting_acceptance' && (
                 <div className="flex gap-2">
