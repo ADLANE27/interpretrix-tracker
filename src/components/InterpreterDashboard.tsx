@@ -4,31 +4,30 @@ import { StatusFilter } from "./StatusFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
-// Données de test (à remplacer par des données réelles plus tard)
 const mockInterpreters = [
   {
     id: "1",
     name: "Marie Dubois",
-    status: "available",
-    type: "internal",
+    status: "available" as const,
+    type: "internal" as const,
     languages: ["Français", "Anglais", "Espagnol"],
   },
   {
     id: "2",
     name: "John Smith",
-    status: "busy",
-    type: "external",
+    status: "busy" as const,
+    type: "external" as const,
     languages: ["Anglais", "Allemand"],
     hourlyRate: 45,
   },
   {
     id: "3",
     name: "Ana García",
-    status: "pause",
-    type: "internal",
+    status: "pause" as const,
+    type: "internal" as const,
     languages: ["Espagnol", "Français", "Portugais"],
   },
-] as const;
+];
 
 export const InterpreterDashboard = () => {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
