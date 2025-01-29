@@ -53,18 +53,6 @@ export const InterpreterProfile = () => {
     unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   };
 
-  const handleLanguagesChange = (newLanguagePairs: LanguagePair[]) => {
-    if (!profile) return;
-    
-    // Convert LanguagePair objects to strings in the format "source → target"
-    const languageStrings = newLanguagePairs.map(pair => `${pair.source} → ${pair.target}`);
-    
-    setProfile({
-      ...profile,
-      languages: languageStrings
-    });
-  };
-
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -82,24 +70,7 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
-      // Safely cast the address data
-      const addressData = data.address as { [key: string]: string } | null;
-      const address: Address | null = addressData ? {
-        street: addressData.street || '',
-        postal_code: addressData.postal_code || '',
-        city: addressData.city || ''
-      } : null;
-      
-      // Convert language strings to LanguagePair objects for the selector
-      const profileData: InterpreterProfile = {
-        ...data,
-        status: (data.status || 'available') as Status,
-        address,
-        languages: data.languages || [],
-        specializations: data.specializations || []
-      };
-      
-      setProfile(profileData);
+      setProfile(data);
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast({
@@ -147,6 +118,18 @@ export const InterpreterProfile = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleLanguagesChange = (newLanguagePairs: LanguagePair[]) => {
+    if (!profile) return;
+    
+    // Convert LanguagePair objects to strings in the format "source → target"
+    const languageStrings = newLanguagePairs.map(pair => `${pair.source} → ${pair.target}`);
+    
+    setProfile({
+      ...profile,
+      languages: languageStrings
+    });
   };
 
   if (loading) {
@@ -326,8 +309,44 @@ export const InterpreterProfile = () => {
             />
           </div>
 
+          {profile.employment_status === "self_employed" && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="phone_interpretation_rate">Tarif interprétariat téléphonique (€/min)</Label>
+                <Input
+                  id="phone_interpretation_rate"
+                  type="number"
+                  step="0.01"
+                  value={profile.phone_interpretation_rate || ""}
+                  onChange={(e) => setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="siret_number">Numéro SIRET</Label>
+                <Input
+                  id="siret_number"
+                  value={profile.siret_number || ""}
+                  onChange={(e) => setProfile({ ...profile, siret_number: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vat_number">Numéro de TVA</Label>
+                <Input
+                  id="vat_number"
+                  value={profile.vat_number || ""}
+                  onChange={(e) => setProfile({ ...profile, vat_number: e.target.value })}
+                  disabled={!isEditing}
+                />
+              </div>
+            </>
+          )}
+
           {isEditing && (
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full col-span-2">
               Enregistrer les modifications
             </Button>
           )}
