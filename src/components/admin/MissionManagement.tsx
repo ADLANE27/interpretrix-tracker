@@ -264,6 +264,15 @@ export const MissionManagement = () => {
 
   const handleMissionStatusUpdate = async (missionId: string, interpreterId: string, accept: boolean) => {
     try {
+      // Get the current mission details to notify other interpreters
+      const { data: currentMission } = await supabase
+        .from("interpretation_missions")
+        .select("notified_interpreters")
+        .eq("id", missionId)
+        .single();
+
+      if (!currentMission) throw new Error("Mission not found");
+
       const updates = {
         status: accept ? "accepted" : "declined",
         assigned_interpreter_id: accept ? interpreterId : null,
@@ -278,7 +287,7 @@ export const MissionManagement = () => {
 
       if (missionError) throw missionError;
 
-      // Update mission_notifications status
+      // Update mission_notifications status for the current interpreter
       const { error: notificationError } = await supabase
         .from("mission_notifications")
         .update({ status: accept ? "accepted" : "declined" })
@@ -295,6 +304,31 @@ export const MissionManagement = () => {
           .eq("id", interpreterId);
 
         if (interpreterError) throw interpreterError;
+
+        // Get interpreter details for notification message
+        const { data: acceptingInterpreter } = await supabase
+          .from("interpreter_profiles")
+          .select("first_name, last_name")
+          .eq("id", interpreterId)
+          .single();
+
+        // Update notifications for other interpreters to inform them the mission was taken
+        if (currentMission.notified_interpreters && currentMission.notified_interpreters.length > 0) {
+          const otherInterpreters = currentMission.notified_interpreters.filter(id => id !== interpreterId);
+          
+          if (otherInterpreters.length > 0) {
+            const { error: updateOthersError } = await supabase
+              .from("mission_notifications")
+              .update({
+                status: "cancelled",
+                updated_at: new Date().toISOString()
+              })
+              .eq("mission_id", missionId)
+              .in("interpreter_id", otherInterpreters);
+
+            if (updateOthersError) throw updateOthersError;
+          }
+        }
       }
 
       // Clean up other notifications
