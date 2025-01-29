@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 import { LanguageSelector } from "./interpreter/LanguageSelector";
 import { MissionsTab } from "./interpreter/MissionsTab";
 import { SpecializationSelector } from "./interpreter/SpecializationSelector";
@@ -83,7 +84,7 @@ export const InterpreterDashboard = () => {
         languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
-        address: data.address as Address | null,
+        address: data.address as Address,
         birth_country: data.birth_country,
         nationality: data.nationality,
         phone_interpretation_rate: data.phone_interpretation_rate,

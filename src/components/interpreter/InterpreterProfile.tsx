@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 
 interface Address {
   street: string;
@@ -19,7 +20,7 @@ type Status = "available" | "busy" | "pause" | "unavailable";
 type EmploymentStatus = "salaried" | "self_employed";
 
 interface InterpreterProfile {
-  id: string; // Added missing id field
+  id: string;
   first_name: string;
   last_name: string;
   address: Address | null;
@@ -31,8 +32,8 @@ interface InterpreterProfile {
   siret_number: string | null;
   vat_number: string | null;
   status: Status;
-  created_at?: string; // Added optional created_at field
-  updated_at?: string; // Added optional updated_at field
+  created_at?: string;
+  updated_at?: string;
   specializations: string[];
 }
 
