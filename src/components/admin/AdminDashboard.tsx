@@ -4,10 +4,12 @@ import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { CountrySelect } from "../CountrySelect";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MissionManagement } from "./MissionManagement";
 
 // Liste exhaustive des langues pour l'interprétariat social
 const LANGUAGES = [
@@ -201,9 +203,15 @@ export const AdminDashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord administrateur</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <Tabs defaultValue="interpreters" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+          <TabsTrigger value="missions">Missions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="interpreters">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="name-search">Nom</Label>
           <div className="relative">
@@ -286,27 +294,35 @@ export const AdminDashboard = () => {
           </Select>
         </div>
       </div>
+            </div>
 
-      <StatusFilter
-        selectedStatuses={selectedStatuses}
-        onStatusChange={handleStatusChange}
-      />
+            <StatusFilter
+              selectedStatuses={selectedStatuses}
+              onStatusChange={handleStatusChange}
+            />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-        {filteredInterpreters.map((interpreter) => (
-          <InterpreterCard
-            key={interpreter.id}
-            interpreter={{
-              id: interpreter.id,
-              name: `${interpreter.first_name} ${interpreter.last_name}`,
-              status: interpreter.status,
-              type: interpreter.employment_status === "salaried" ? "internal" : "external",
-              languages: interpreter.languages,
-              hourlyRate: interpreter.phone_interpretation_rate,
-            }}
-          />
-        ))}
-      </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredInterpreters.map((interpreter) => (
+                <InterpreterCard
+                  key={interpreter.id}
+                  interpreter={{
+                    id: interpreter.id,
+                    name: `${interpreter.first_name} ${interpreter.last_name}`,
+                    status: interpreter.status,
+                    type: interpreter.employment_status === "salaried" ? "internal" : "external",
+                    languages: interpreter.languages,
+                    hourlyRate: interpreter.phone_interpretation_rate,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="missions">
+          <MissionManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

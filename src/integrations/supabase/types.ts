@@ -9,6 +9,59 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      interpretation_missions: {
+        Row: {
+          assigned_interpreter_id: string | null
+          assignment_time: string | null
+          client_name: string
+          created_at: string
+          estimated_duration: number
+          id: string
+          notification_expiry: string
+          notified_interpreters: string[] | null
+          source_language: string
+          status: string
+          target_language: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_interpreter_id?: string | null
+          assignment_time?: string | null
+          client_name: string
+          created_at?: string
+          estimated_duration: number
+          id?: string
+          notification_expiry: string
+          notified_interpreters?: string[] | null
+          source_language: string
+          status?: string
+          target_language: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_interpreter_id?: string | null
+          assignment_time?: string | null
+          client_name?: string
+          created_at?: string
+          estimated_duration?: number
+          id?: string
+          notification_expiry?: string
+          notified_interpreters?: string[] | null
+          source_language?: string
+          status?: string
+          target_language?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interpreter_profiles: {
         Row: {
           address: Json | null
