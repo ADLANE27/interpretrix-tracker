@@ -75,24 +75,34 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      const { data: interpreterData, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
+        .select('first_name, last_name, profile_picture_url')
+        .eq('id', user.id)
+        .single();
+
+      if (interpreterError) throw interpreterError;
+
       const newStatus = accept ? 'accepted' : 'declined';
       
+      const updates = {
+        status: newStatus,
+        assigned_interpreter_id: accept ? user.id : null,
+        assignment_time: accept ? new Date().toISOString() : null,
+        notified_interpreters: accept ? [] : await supabase
+          .from('interpretation_missions')
+          .select('notified_interpreters')
+          .eq('id', missionId)
+          .single()
+          .then(({ data }) => {
+            const currentInterpreters = data?.notified_interpreters || [];
+            return currentInterpreters.filter(id => id !== user.id);
+          })
+      };
+
       const { error: missionError } = await supabase
         .from('interpretation_missions')
-        .update({
-          status: newStatus,
-          assigned_interpreter_id: accept ? user.id : null,
-          assignment_time: accept ? new Date().toISOString() : null,
-          notified_interpreters: accept ? [] : await supabase
-            .from('interpretation_missions')
-            .select('notified_interpreters')
-            .eq('id', missionId)
-            .single()
-            .then(({ data }) => {
-              const currentInterpreters = data?.notified_interpreters || [];
-              return currentInterpreters.filter(id => id !== user.id);
-            })
-        })
+        .update(updates)
         .eq('id', missionId);
 
       if (missionError) throw missionError;
@@ -104,7 +114,12 @@ export const MissionsTab = () => {
             ? { 
                 ...mission, 
                 status: newStatus,
-                assigned_interpreter_id: accept ? user.id : null
+                assigned_interpreter_id: accept ? user.id : null,
+                assigned_interpreter: accept ? {
+                  first_name: interpreterData.first_name,
+                  last_name: interpreterData.last_name,
+                  profile_picture_url: interpreterData.profile_picture_url
+                } : null
               }
             : mission
         )

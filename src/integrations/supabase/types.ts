@@ -231,37 +231,6 @@ export type Database = {
 
 type PublicSchema = Database[Extract<keyof Database, "public">]
 
-export interface Address {
-  street: string;
-  postal_code: string;
-  city: string;
-}
-
-export interface LanguagePair {
-  source: string;
-  target: string;
-}
-
-export interface Mission {
-  id: string;
-  client_name: string | null;
-  source_language: string;
-  target_language: string;
-  estimated_duration: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  assigned_interpreter_id: string | null;
-  assignment_time: string | null;
-  notification_expiry: string;
-  notified_interpreters: string[] | null;
-  assigned_interpreter?: {
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-  } | null;
-}
-
 export type Tables<
   PublicTableNameOrOptions extends
     | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
@@ -356,4 +325,3 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
-
