@@ -20,6 +20,7 @@ interface Mission {
   created_at: string;
   assigned_interpreter_id?: string;
   assigned_interpreter?: {
+    id: string;
     first_name: string;
     last_name: string;
     profile_picture_url: string | null;
@@ -52,6 +53,7 @@ export const MissionManagement = () => {
         .select(`
           *,
           assigned_interpreter:interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+            id,
             first_name,
             last_name,
             profile_picture_url
@@ -60,6 +62,7 @@ export const MissionManagement = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log("Fetched missions:", data);
       setMissions(data || []);
     } catch (error) {
       console.error("Error fetching missions:", error);
@@ -329,7 +332,7 @@ export const MissionManagement = () => {
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm text-gray-600">
-                        Acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
+                        Mission acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
                       </span>
                     </div>
                   )}
