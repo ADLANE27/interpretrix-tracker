@@ -77,14 +77,21 @@ export const MissionsTab = () => {
 
       const newStatus = accept ? 'accepted' : 'declined';
       
-      // Update the mission status and assign the interpreter
       const { error: missionError } = await supabase
         .from('interpretation_missions')
         .update({
           status: newStatus,
           assigned_interpreter_id: accept ? user.id : null,
           assignment_time: accept ? new Date().toISOString() : null,
-          notified_interpreters: accept ? [] : supabase.sql`array_remove(notified_interpreters, ${user.id})`
+          notified_interpreters: accept ? [] : await supabase
+            .from('interpretation_missions')
+            .select('notified_interpreters')
+            .eq('id', missionId)
+            .single()
+            .then(({ data }) => {
+              const currentInterpreters = data?.notified_interpreters || [];
+              return currentInterpreters.filter(id => id !== user.id);
+            })
         })
         .eq('id', missionId);
 
