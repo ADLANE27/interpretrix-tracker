@@ -202,12 +202,11 @@ export const UserManagement = () => {
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
-        throw new Error(errorData.error || 'Failed to delete user');
-      }
+      const result = await response.json().catch(() => ({
+        success: false,
+        error: 'Failed to parse server response'
+      }));
 
-      const result = await response.json();
       console.log('Delete user response:', result);
 
       if (!result.success) {

@@ -8,7 +8,7 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
@@ -18,12 +18,17 @@ Deno.serve(async (req) => {
     )
 
     // Verify the request is from an admin
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('Missing authorization header')
+    }
+
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
     
     if (authError || !user) {
+      console.error('Auth error:', authError)
       throw new Error('Unauthorized')
     }
 
@@ -34,6 +39,7 @@ Deno.serve(async (req) => {
       .single()
 
     if (rolesError || userRoles?.role !== 'admin') {
+      console.error('Roles error:', rolesError)
       throw new Error('Unauthorized - Admin access required')
     }
 
@@ -44,33 +50,56 @@ Deno.serve(async (req) => {
       throw new Error('User ID is required')
     }
 
-    console.log('Attempting to delete user:', userId);
+    console.log('Attempting to delete user:', userId)
 
-    // Delete the user using the service role client
-    const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(
-      userId
-    )
+    // First delete from user_roles
+    const { error: roleDeleteError } = await supabaseClient
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+
+    if (roleDeleteError) {
+      console.error('Error deleting user roles:', roleDeleteError)
+      throw new Error('Failed to delete user roles')
+    }
+
+    // Then delete from interpreter_profiles if exists
+    const { error: profileDeleteError } = await supabaseClient
+      .from('interpreter_profiles')
+      .delete()
+      .eq('id', userId)
+
+    if (profileDeleteError) {
+      console.error('Error deleting interpreter profile:', profileDeleteError)
+      // Don't throw here as the profile might not exist
+    }
+
+    // Finally delete the user from auth
+    const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(userId)
 
     if (deleteError) {
-      console.error('Error deleting user:', deleteError);
+      console.error('Error deleting user:', deleteError)
       throw deleteError
     }
 
-    console.log('User deleted successfully');
+    console.log('User deleted successfully')
 
     return new Response(
-      JSON.stringify({ success: true, message: 'User deleted successfully' }),
+      JSON.stringify({ 
+        success: true, 
+        message: 'User deleted successfully' 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
   } catch (error) {
-    console.error('Error in delete-user function:', error);
+    console.error('Error in delete-user function:', error)
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'An unknown error occurred'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
