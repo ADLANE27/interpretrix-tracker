@@ -11,7 +11,8 @@ export type Database = {
     Tables: {
       interpreter_profiles: {
         Row: {
-          address: string | null
+          address: Json | null
+          birth_country: string | null
           created_at: string
           email: string
           employment_status: Database["public"]["Enums"]["employment_status"]
@@ -19,6 +20,7 @@ export type Database = {
           id: string
           languages: string[]
           last_name: string
+          nationality: string | null
           phone_interpretation_rate: number | null
           phone_number: string | null
           siret_number: string | null
@@ -27,7 +29,8 @@ export type Database = {
           vat_number: string | null
         }
         Insert: {
-          address?: string | null
+          address?: Json | null
+          birth_country?: string | null
           created_at?: string
           email: string
           employment_status: Database["public"]["Enums"]["employment_status"]
@@ -35,6 +38,7 @@ export type Database = {
           id: string
           languages?: string[]
           last_name: string
+          nationality?: string | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           siret_number?: string | null
@@ -43,7 +47,8 @@ export type Database = {
           vat_number?: string | null
         }
         Update: {
-          address?: string | null
+          address?: Json | null
+          birth_country?: string | null
           created_at?: string
           email?: string
           employment_status?: Database["public"]["Enums"]["employment_status"]
@@ -51,6 +56,7 @@ export type Database = {
           id?: string
           languages?: string[]
           last_name?: string
+          nationality?: string | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           siret_number?: string | null
