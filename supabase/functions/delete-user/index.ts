@@ -6,6 +6,7 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -43,25 +44,34 @@ Deno.serve(async (req) => {
       throw new Error('User ID is required')
     }
 
+    console.log('Attempting to delete user:', userId);
+
     // Delete the user using the service role client
     const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(
       userId
     )
 
     if (deleteError) {
+      console.error('Error deleting user:', deleteError);
       throw deleteError
     }
 
+    console.log('User deleted successfully');
+
     return new Response(
-      JSON.stringify({ message: 'User deleted successfully' }),
+      JSON.stringify({ success: true, message: 'User deleted successfully' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     )
   } catch (error) {
+    console.error('Error in delete-user function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An unknown error occurred' 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,

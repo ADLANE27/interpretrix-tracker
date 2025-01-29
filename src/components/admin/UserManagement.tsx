@@ -188,6 +188,8 @@ export const UserManagement = () => {
         throw new Error('Authentication required');
       }
 
+      console.log('Sending delete request for user:', userId);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
         {
@@ -200,9 +202,15 @@ export const UserManagement = () => {
         }
       );
 
-      const result = await response.json();
-
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
+
+      const result = await response.json();
+      console.log('Delete user response:', result);
+
+      if (!result.success) {
         throw new Error(result.error || 'Failed to delete user');
       }
 
