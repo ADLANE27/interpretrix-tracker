@@ -9,26 +9,42 @@ import { useNavigate } from "react-router-dom";
 export const InterpreterLoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // First, attempt to sign in
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
-      if (error) throw error;
+      if (authError) {
+        throw new Error(authError.message);
+      }
 
-      const { data: roles } = await supabase
+      if (!authData.user) {
+        throw new Error("No user data returned");
+      }
+
+      // Then check if the user has the interpreter role
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', authData.user.id)
         .single();
 
+      if (rolesError) {
+        throw new Error("Error fetching user role");
+      }
+
       if (roles?.role !== 'interpreter') {
+        // If not an interpreter, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
       }
@@ -40,11 +56,21 @@ export const InterpreterLoginForm = () => {
       
       navigate("/interpreter");
     } catch (error: any) {
+      let errorMessage = "Une erreur est survenue lors de la connexion";
+      
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Email ou mot de passe incorrect";
+      } else if (error.message.includes("accès non autorisé")) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: "Erreur de connexion",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,6 +89,7 @@ export const InterpreterLoginForm = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             className="border-green-200 focus:border-green-500"
+            disabled={isLoading}
           />
         </div>
         <div className="space-y-2">
@@ -76,10 +103,15 @@ export const InterpreterLoginForm = () => {
             onChange={(e) => setPassword(e.target.value)}
             required
             className="border-green-200 focus:border-green-500"
+            disabled={isLoading}
           />
         </div>
-        <Button type="submit" className="w-full bg-green-800 hover:bg-green-700">
-          Se connecter
+        <Button 
+          type="submit" 
+          className="w-full bg-green-800 hover:bg-green-700"
+          disabled={isLoading}
+        >
+          {isLoading ? "Connexion en cours..." : "Se connecter"}
         </Button>
       </form>
     </Card>
