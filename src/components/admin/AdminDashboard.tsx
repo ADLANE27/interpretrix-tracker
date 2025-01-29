@@ -11,7 +11,6 @@ import { CountrySelect } from "../CountrySelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
 
-// Liste exhaustive des langues pour l'interprétariat social
 const LANGUAGES = [
   // Langues européennes
   "Français", "Anglais (UK)", "Anglais (US)", "Espagnol", "Allemand", "Italien", "Portugais",
@@ -212,88 +211,87 @@ export const AdminDashboard = () => {
         <TabsContent value="interpreters">
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name-search">Nom</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              id="name-search"
-              placeholder="Rechercher par nom..."
-              className="pl-10"
-              value={nameFilter}
-              onChange={(e) => setNameFilter(e.target.value)}
-            />
-          </div>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="name-search">Nom</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="name-search"
+                    placeholder="Rechercher par nom..."
+                    className="pl-10"
+                    value={nameFilter}
+                    onChange={(e) => setNameFilter(e.target.value)}
+                  />
+                </div>
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="source-language">Langue source</Label>
-          <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
-            <SelectTrigger id="source-language">
-              <SelectValue placeholder="Sélectionner une langue source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les langues</SelectItem>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="source-language">Langue source</Label>
+                <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
+                  <SelectTrigger id="source-language">
+                    <SelectValue placeholder="Sélectionner une langue source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les langues</SelectItem>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang} value={lang}>
+                        {lang}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="target-language">Langue cible</Label>
-          <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
-            <SelectTrigger id="target-language">
-              <SelectValue placeholder="Sélectionner une langue cible" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les langues</SelectItem>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="target-language">Langue cible</Label>
+                <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
+                  <SelectTrigger id="target-language">
+                    <SelectValue placeholder="Sélectionner une langue cible" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les langues</SelectItem>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang} value={lang}>
+                        {lang}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="phone-search">Numéro de téléphone</Label>
-          <Input
-            id="phone-search"
-            placeholder="Rechercher par téléphone..."
-            value={phoneFilter}
-            onChange={(e) => setPhoneFilter(e.target.value)}
-          />
-        </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone-search">Numéro de téléphone</Label>
+                <Input
+                  id="phone-search"
+                  placeholder="Rechercher par téléphone..."
+                  value={phoneFilter}
+                  onChange={(e) => setPhoneFilter(e.target.value)}
+                />
+              </div>
 
-        <CountrySelect
-          value={birthCountryFilter}
-          onValueChange={setBirthCountryFilter}
-          label="Pays de naissance"
-          placeholder="Sélectionner un pays"
-        />
+              <CountrySelect
+                value={birthCountryFilter}
+                onValueChange={setBirthCountryFilter}
+                label="Pays de naissance"
+                placeholder="Sélectionner un pays"
+              />
 
-        <div className="space-y-2">
-          <Label htmlFor="employment-status">Statut professionnel</Label>
-          <Select
-            value={employmentStatusFilter}
-            onValueChange={setEmploymentStatusFilter}
-          >
-            <SelectTrigger id="employment-status">
-              <SelectValue placeholder="Tous les statuts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="salaried">Salarié</SelectItem>
-              <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="employment-status">Statut professionnel</Label>
+                <Select
+                  value={employmentStatusFilter}
+                  onValueChange={setEmploymentStatusFilter}
+                >
+                  <SelectTrigger id="employment-status">
+                    <SelectValue placeholder="Tous les statuts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="salaried">Salarié</SelectItem>
+                    <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <StatusFilter
