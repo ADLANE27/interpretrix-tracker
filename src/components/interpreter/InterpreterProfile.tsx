@@ -49,6 +49,14 @@ export const InterpreterProfile = () => {
         return { source, target };
       });
 
+      // Safely transform the address from JSON
+      const addressData = data.address as { street: string; postal_code: string; city: string } | null;
+      const transformedAddress: Address | null = addressData ? {
+        street: addressData.street || "",
+        postal_code: addressData.postal_code || "",
+        city: addressData.city || "",
+      } : null;
+
       const transformedProfile: Profile = {
         id: data.id,
         first_name: data.first_name,
@@ -56,7 +64,7 @@ export const InterpreterProfile = () => {
         email: data.email,
         phone_number: data.phone_number,
         landline_phone: data.landline_phone,
-        address: data.address as Address,
+        address: transformedAddress,
         nationality: data.nationality,
         employment_status: data.employment_status,
         languages: languagePairs,
@@ -82,6 +90,13 @@ export const InterpreterProfile = () => {
         `${pair.source} → ${pair.target}`
       );
 
+      // Transform Address to a plain object for JSON storage
+      const addressForStorage = profile.address ? {
+        street: profile.address.street,
+        postal_code: profile.address.postal_code,
+        city: profile.address.city,
+      } : null;
+
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
@@ -90,7 +105,7 @@ export const InterpreterProfile = () => {
           email: profile.email,
           phone_number: profile.phone_number,
           landline_phone: profile.landline_phone,
-          address: profile.address,
+          address: addressForStorage,
           nationality: profile.nationality,
           employment_status: profile.employment_status,
           languages: languageStrings,
