@@ -49,29 +49,37 @@ export const UserManagement = () => {
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const { data: userRoles, error: userRolesError } = await supabase
+      // First, get all interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
+        .from("interpreter_profiles")
+        .select("id, first_name, last_name, email");
+
+      if (interpreterError) throw interpreterError;
+
+      // Then, get all user roles
+      const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select(`
-          user_id,
-          role,
-          active,
-          interpreter_profiles!inner (
-            first_name,
-            last_name,
-            email
-          )
-        `);
+        .select("user_id, role, active");
 
-      if (userRolesError) throw userRolesError;
+      if (rolesError) throw rolesError;
 
-      return userRoles.map((ur: any) => ({
-        id: ur.user_id,
-        email: ur.interpreter_profiles.email,
-        role: ur.role,
-        first_name: ur.interpreter_profiles.first_name,
-        last_name: ur.interpreter_profiles.last_name,
-        active: ur.active,
-      }));
+      // Create a map of interpreter profiles for easy lookup
+      const profilesMap = new Map(
+        interpreterProfiles.map(profile => [profile.id, profile])
+      );
+
+      // Combine the data
+      return userRoles.map(role => {
+        const profile = profilesMap.get(role.user_id);
+        return {
+          id: role.user_id,
+          email: profile?.email || "",
+          role: role.role,
+          first_name: profile?.first_name || "",
+          last_name: profile?.last_name || "",
+          active: role.active,
+        };
+      });
     },
   });
 
