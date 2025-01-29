@@ -44,6 +44,7 @@ export const InterpreterProfile = () => {
   const [profile, setProfile] = useState<InterpreterProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [languageInput, setLanguageInput] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
   const statusConfig = {
@@ -136,6 +137,7 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
 
+      setIsEditing(false);
       toast({
         title: "Profil mis à jour",
         description: "Vos informations ont été mises à jour avec succès",
@@ -175,9 +177,17 @@ export const InterpreterProfile = () => {
     <Card className="w-full max-w-4xl p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Mon Profil</h2>
-        <Badge className={statusConfig[profile.status].color}>
-          {statusConfig[profile.status].label}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={statusConfig[profile.status].color}>
+            {statusConfig[profile.status].label}
+          </Badge>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? "Annuler" : "Modifier"}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -205,6 +215,7 @@ export const InterpreterProfile = () => {
                 id="first_name"
                 value={profile.first_name}
                 onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                disabled={!isEditing}
                 required
               />
             </div>
@@ -215,6 +226,7 @@ export const InterpreterProfile = () => {
                 id="last_name"
                 value={profile.last_name}
                 onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                disabled={!isEditing}
                 required
               />
             </div>
@@ -226,6 +238,7 @@ export const InterpreterProfile = () => {
                 type="email"
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                disabled={!isEditing}
                 required
               />
             </div>
@@ -236,6 +249,7 @@ export const InterpreterProfile = () => {
                 id="phone_number"
                 value={profile.phone_number || ""}
                 onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
+                disabled={!isEditing}
               />
             </div>
 
@@ -245,6 +259,7 @@ export const InterpreterProfile = () => {
                 id="address"
                 value={profile.address ? `${profile.address.street}, ${profile.address.postal_code}, ${profile.address.city}` : ""}
                 onChange={(e) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value.split(',')[0], postal_code: e.target.value.split(',')[1], city: e.target.value.split(',')[2] } })}
+                disabled={!isEditing}
               />
             </div>
 
@@ -275,6 +290,7 @@ export const InterpreterProfile = () => {
                 onValueChange={(value: EmploymentStatus) => 
                   setProfile({ ...profile, employment_status: value })
                 }
+                disabled={!isEditing}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionnez votre statut" />
@@ -294,6 +310,7 @@ export const InterpreterProfile = () => {
                 step="0.01"
                 value={profile.phone_interpretation_rate || ""}
                 onChange={(e) => setProfile({ ...profile, phone_interpretation_rate: parseFloat(e.target.value) || null })}
+                disabled={!isEditing}
               />
             </div>
 
@@ -305,6 +322,7 @@ export const InterpreterProfile = () => {
                     id="siret_number"
                     value={profile.siret_number || ""}
                     onChange={(e) => setProfile({ ...profile, siret_number: e.target.value })}
+                    disabled={!isEditing}
                   />
                 </div>
 
@@ -314,6 +332,7 @@ export const InterpreterProfile = () => {
                     id="vat_number"
                     value={profile.vat_number || ""}
                     onChange={(e) => setProfile({ ...profile, vat_number: e.target.value })}
+                    disabled={!isEditing}
                   />
                 </div>
               </>
@@ -328,27 +347,31 @@ export const InterpreterProfile = () => {
                   key={language}
                   variant="secondary"
                   className="cursor-pointer"
-                  onClick={() => handleLanguageRemove(language)}
+                  onClick={() => isEditing && handleLanguageRemove(language)}
                 >
-                  {language} ×
+                  {language} {isEditing && "×"}
                 </Badge>
               ))}
             </div>
-            <div className="flex gap-2">
-              <Input
-                value={languageInput}
-                onChange={(e) => setLanguageInput(e.target.value)}
-                placeholder="Ajouter une langue"
-              />
-              <Button type="button" onClick={handleLanguageAdd}>
-                Ajouter
-              </Button>
-            </div>
+            {isEditing && (
+              <div className="flex gap-2">
+                <Input
+                  value={languageInput}
+                  onChange={(e) => setLanguageInput(e.target.value)}
+                  placeholder="Ajouter une langue"
+                />
+                <Button type="button" onClick={handleLanguageAdd}>
+                  Ajouter
+                </Button>
+              </div>
+            )}
           </div>
 
-          <Button type="submit" className="w-full">
-            Enregistrer les modifications
-          </Button>
+          {isEditing && (
+            <Button type="submit" className="w-full">
+              Enregistrer les modifications
+            </Button>
+          )}
         </form>
       </div>
     </Card>
