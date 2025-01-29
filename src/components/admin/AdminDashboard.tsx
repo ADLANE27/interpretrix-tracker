@@ -26,7 +26,7 @@ export const AdminDashboard = () => {
   const [sourceLanguageFilter, setSourceLanguageFilter] = useState("");
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("");
   const [phoneFilter, setPhoneFilter] = useState("");
-  const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("");
+  const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export const AdminDashboard = () => {
       (interpreter.phone_number && 
        interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
 
-    const matchesEmploymentStatus = employmentStatusFilter === "" || 
+    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
       interpreter.employment_status === employmentStatusFilter;
 
     return matchesStatus && 
@@ -204,7 +204,7 @@ export const AdminDashboard = () => {
               <SelectValue placeholder="Tous les statuts" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tous les statuts</SelectItem>
+              <SelectItem value="all">Tous les statuts</SelectItem>
               <SelectItem value="salaried">Salarié</SelectItem>
               <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
             </SelectContent>
