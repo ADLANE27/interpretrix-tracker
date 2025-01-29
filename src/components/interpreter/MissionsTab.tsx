@@ -21,6 +21,7 @@ interface Mission {
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     fetchMissions();
@@ -32,10 +33,15 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Fetch only missions where:
+      // 1. The interpreter is notified
+      // 2. The mission is still awaiting acceptance
+      // 3. The interpreter is not busy with another mission
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
-        .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`);
+        .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
 
       if (missionsError) throw missionsError;
       
@@ -74,69 +80,120 @@ export const MissionsTab = () => {
   };
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
+    if (isProcessing) {
+      toast({
+        title: "Action en cours",
+        description: "Veuillez patienter pendant le traitement de votre demande",
+      });
+      return;
+    }
+
     try {
+      setIsProcessing(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Start a transaction using multiple updates
-      const updates = {
-        status: accept ? 'accepted' : 'declined',
-        assigned_interpreter_id: accept ? user.id : null,
-        assignment_time: accept ? new Date().toISOString() : null,
-        notified_interpreters: [] // Clear the list when accepted
-      };
+      // 1. Vérifier que l'interprète est toujours disponible
+      const { data: interpreterProfile } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', user.id)
+        .single();
 
-      // Update the mission
-      const { error: missionError } = await supabase
+      if (!interpreterProfile || interpreterProfile.status !== 'available') {
+        toast({
+          title: "Non disponible",
+          description: "Vous n'êtes plus disponible pour accepter des missions",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 2. Vérifier que la mission est toujours en attente
+      const { data: currentMission } = await supabase
         .from('interpretation_missions')
-        .update(updates)
-        .eq('id', missionId);
+        .select('status')
+        .eq('id', missionId)
+        .single();
 
-      if (missionError) {
-        console.error('Mission update error:', missionError);
-        throw missionError;
+      if (!currentMission || currentMission.status !== 'awaiting_acceptance') {
+        toast({
+          title: "Mission non disponible",
+          description: "Cette mission n'est plus disponible",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Update the notification status
-      const { error: notificationError } = await supabase
-        .from('mission_notifications')
-        .update({ status: accept ? 'accepted' : 'declined' })
-        .eq('mission_id', missionId)
-        .eq('interpreter_id', user.id);
-
-      if (notificationError) {
-        console.error('Notification update error:', notificationError);
-        throw notificationError;
-      }
-
-      // If accepting, update interpreter status to busy
       if (accept) {
+        // 3. Accepter la mission et mettre à jour le statut de l'interprète
+        const updates = {
+          status: 'accepted',
+          assigned_interpreter_id: user.id,
+          assignment_time: new Date().toISOString(),
+          notified_interpreters: [] // Effacer la liste des interprètes notifiés
+        };
+
+        const { error: missionError } = await supabase
+          .from('interpretation_missions')
+          .update(updates)
+          .eq('id', missionId);
+
+        if (missionError) throw missionError;
+
+        // 4. Mettre à jour le statut de l'interprète à "busy"
         const { error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .update({ status: 'busy' })
           .eq('id', user.id);
 
-        if (interpreterError) {
-          console.error('Interpreter status update error:', interpreterError);
-          throw interpreterError;
-        }
+        if (interpreterError) throw interpreterError;
+
+        // 5. Annuler toutes les autres notifications pour cet interprète
+        const { error: notificationError } = await supabase
+          .from('mission_notifications')
+          .update({ 
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          })
+          .neq('mission_id', missionId)
+          .eq('interpreter_id', user.id);
+
+        if (notificationError) throw notificationError;
+
+        toast({
+          title: "Mission acceptée",
+          description: "Vous avez accepté la mission avec succès",
+        });
+      } else {
+        // Décliner la mission
+        const { error: notificationError } = await supabase
+          .from('mission_notifications')
+          .update({ 
+            status: 'declined',
+            updated_at: new Date().toISOString()
+          })
+          .eq('mission_id', missionId)
+          .eq('interpreter_id', user.id);
+
+        if (notificationError) throw notificationError;
+
+        toast({
+          title: "Mission déclinée",
+          description: "Vous avez décliné la mission",
+        });
       }
 
-      toast({
-        title: accept ? "Mission acceptée" : "Mission déclinée",
-        description: `La mission a été ${accept ? 'acceptée' : 'déclinée'} avec succès.`,
-      });
-
-      // Refresh missions after all updates
       fetchMissions();
-
     } catch (error) {
       console.error('Error updating mission:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors du traitement de votre demande.",
+        description: "Une erreur est survenue lors du traitement de votre demande",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -175,7 +232,7 @@ export const MissionsTab = () => {
                   {statusDisplay.label}
                 </Badge>
               </div>
-              {mission.status === 'awaiting_acceptance' && (
+              {mission.status === 'awaiting_acceptance' && !isProcessing && (
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
