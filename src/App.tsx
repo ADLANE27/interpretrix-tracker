@@ -61,7 +61,9 @@ const App = () => {
             <Route 
               path="/" 
               element={
-                userRole === 'admin' ? (
+                !userRole ? (
+                  <Navigate to="/login" replace />
+                ) : userRole === 'admin' ? (
                   <Navigate to="/admin" replace />
                 ) : (
                   <Navigate to="/interpreter" replace />
@@ -71,24 +73,30 @@ const App = () => {
             <Route 
               path="/admin" 
               element={
-                userRole === 'admin' ? (
+                !userRole ? (
+                  <Navigate to="/login" replace />
+                ) : userRole === 'admin' ? (
                   <Index />
                 ) : (
-                  <Navigate to="/login" replace />
+                  <Navigate to="/interpreter" replace />
                 )
               } 
             />
             <Route 
               path="/interpreter" 
               element={
-                userRole === 'interpreter' ? (
+                !userRole ? (
+                  <Navigate to="/login" replace />
+                ) : userRole === 'interpreter' ? (
                   <Index />
                 ) : (
-                  <Navigate to="/login" replace />
+                  <Navigate to="/admin" replace />
                 )
               } 
             />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={
+              userRole ? <Navigate to="/" replace /> : <Login />
+            } />
             <Route 
               path="/profile" 
               element={
