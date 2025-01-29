@@ -28,6 +28,16 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface User {
   id: string;
@@ -40,12 +50,16 @@ interface User {
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
   const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
   const { data: users, refetch } = useQuery({
@@ -90,7 +104,6 @@ export const UserManagement = () => {
         employment_status: employmentStatus,
       });
 
-      // Create user in Supabase Auth with metadata
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
         password: crypto.randomUUID(),
@@ -108,18 +121,15 @@ export const UserManagement = () => {
 
       console.log("User created successfully:", user);
 
-      // Create user role
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert([{ user_id: user.id, role }]);
 
       if (roleError) {
-        // If role creation fails, we should delete the user
         await supabase.auth.admin.deleteUser(user.id);
         throw roleError;
       }
 
-      // Send welcome email with better error handling
       try {
         const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
           body: {
@@ -170,6 +180,32 @@ export const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      // Delete from auth.users (this will cascade to other tables due to foreign key constraints)
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (deleteError) throw deleteError;
+
+      toast({
+        title: "Utilisateur supprimé",
+        description: "L'utilisateur a été supprimé avec succès",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUserToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
   const toggleUserStatus = async (userId: string, currentActive: boolean) => {
     try {
       const { error } = await supabase
@@ -185,40 +221,23 @@ export const UserManagement = () => {
       });
 
       refetch();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling user status:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
+        description: "Impossible de mettre à jour le statut: " + error.message,
         variant: "destructive",
       });
     }
   };
 
-  const deleteUser = async (userId: string) => {
-    try {
-      const { error: profileError } = await supabase
-        .from("interpreter_profiles")
-        .delete()
-        .eq("id", userId);
-
-      if (profileError) throw profileError;
-
-      toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
-      });
-
-      refetch();
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur",
-        variant: "destructive",
-      });
-    }
-  };
+  const filteredUsers = users?.filter(user => {
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const matchesStatus = statusFilter === "all" || 
+      (statusFilter === "active" && user.active) || 
+      (statusFilter === "inactive" && !user.active);
+    return matchesRole && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -302,6 +321,35 @@ export const UserManagement = () => {
         </Dialog>
       </div>
 
+      <div className="flex gap-4 mb-4">
+        <div className="w-48">
+          <Label htmlFor="roleFilter">Filtrer par rôle</Label>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les rôles</SelectItem>
+              <SelectItem value="admin">Administrateur</SelectItem>
+              <SelectItem value="interpreter">Interprète</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-48">
+          <Label htmlFor="statusFilter">Filtrer par statut</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="active">Actif</SelectItem>
+              <SelectItem value="inactive">Inactif</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -313,7 +361,7 @@ export const UserManagement = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users?.map((user) => (
+          {filteredUsers?.map((user) => (
             <TableRow key={user.id}>
               <TableCell>
                 {user.first_name} {user.last_name}
@@ -343,7 +391,10 @@ export const UserManagement = () => {
                   </Button>
                   <Button
                     variant="destructive"
-                    onClick={() => deleteUser(user.id)}
+                    onClick={() => {
+                      setUserToDelete(user.id);
+                      setIsDeleteDialogOpen(true);
+                    }}
                   >
                     Supprimer
                   </Button>
@@ -353,6 +404,31 @@ export const UserManagement = () => {
           ))}
         </TableBody>
       </Table>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet utilisateur ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. L'utilisateur sera définitivement supprimé du système.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setUserToDelete(null);
+              setIsDeleteDialogOpen(false);
+            }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => userToDelete && handleDeleteUser(userToDelete)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
