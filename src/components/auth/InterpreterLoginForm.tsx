@@ -20,16 +20,19 @@ export const InterpreterLoginForm = () => {
     try {
       // First, attempt to sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim(),
+        password: password.trim(),
       });
 
       if (authError) {
+        if (authError.message.includes("Invalid login credentials")) {
+          throw new Error("Email ou mot de passe incorrect");
+        }
         throw new Error(authError.message);
       }
 
       if (!authData.user) {
-        throw new Error("No user data returned");
+        throw new Error("Aucune donnée utilisateur retournée");
       }
 
       // Then check if the user has the interpreter role
@@ -40,7 +43,7 @@ export const InterpreterLoginForm = () => {
         .single();
 
       if (rolesError) {
-        throw new Error("Error fetching user role");
+        throw new Error("Erreur lors de la vérification du rôle");
       }
 
       if (roles?.role !== 'interpreter') {
@@ -56,17 +59,9 @@ export const InterpreterLoginForm = () => {
       
       navigate("/interpreter");
     } catch (error: any) {
-      let errorMessage = "Une erreur est survenue lors de la connexion";
-      
-      if (error.message.includes("Invalid login credentials")) {
-        errorMessage = "Email ou mot de passe incorrect";
-      } else if (error.message.includes("accès non autorisé")) {
-        errorMessage = error.message;
-      }
-
       toast({
         title: "Erreur de connexion",
-        description: errorMessage,
+        description: error.message || "Une erreur est survenue lors de la connexion",
         variant: "destructive",
       });
     } finally {
@@ -90,6 +85,7 @@ export const InterpreterLoginForm = () => {
             required
             className="border-green-200 focus:border-green-500"
             disabled={isLoading}
+            placeholder="votre@email.com"
           />
         </div>
         <div className="space-y-2">
@@ -104,6 +100,7 @@ export const InterpreterLoginForm = () => {
             required
             className="border-green-200 focus:border-green-500"
             disabled={isLoading}
+            placeholder="••••••••"
           />
         </div>
         <Button 
