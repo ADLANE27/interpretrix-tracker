@@ -2,12 +2,7 @@ import React from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LanguageSelector } from "../LanguageSelector";
-
-interface LanguagePair {
-  source: string;
-  target: string;
-}
+import { LanguageSelector, LanguagePair } from "../LanguageSelector";
 
 type EmploymentStatus = "salaried" | "self_employed";
 
