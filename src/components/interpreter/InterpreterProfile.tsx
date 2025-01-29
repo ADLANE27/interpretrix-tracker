@@ -9,6 +9,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
 type Status = "available" | "busy" | "pause" | "unavailable";
 type EmploymentStatus = "salaried" | "self_employed";
 
@@ -16,7 +22,7 @@ interface InterpreterProfile {
   id: string; // Added missing id field
   first_name: string;
   last_name: string;
-  address: string | null;
+  address: Address | null;
   employment_status: EmploymentStatus;
   phone_number: string | null;
   email: string;
@@ -27,6 +33,7 @@ interface InterpreterProfile {
   status: Status;
   created_at?: string; // Added optional created_at field
   updated_at?: string; // Added optional updated_at field
+  specializations: string[];
 }
 
 export const InterpreterProfile = () => {
@@ -62,7 +69,8 @@ export const InterpreterProfile = () => {
       // Ensure status is of type Status
       const profileData: InterpreterProfile = {
         ...data,
-        status: (data.status || 'available') as Status
+        status: (data.status || 'available') as Status,
+        address: data.address as Address | null,
       };
       
       setProfile(profileData);
@@ -221,8 +229,8 @@ export const InterpreterProfile = () => {
               <Label htmlFor="address">Adresse</Label>
               <Textarea
                 id="address"
-                value={profile.address || ""}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                value={profile.address ? `${profile.address.street}, ${profile.address.postal_code}, ${profile.address.city}` : ""}
+                onChange={(e) => setProfile({ ...profile, address: { ...profile.address, street: e.target.value.split(',')[0], postal_code: e.target.value.split(',')[1], city: e.target.value.split(',')[2] } })}
               />
             </div>
 

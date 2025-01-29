@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,11 +83,7 @@ export const InterpreterDashboard = () => {
         languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
-        address: data.address ? {
-          street: data.address.street || "",
-          postal_code: data.address.postal_code || "",
-          city: data.address.city || ""
-        } : null,
+        address: data.address as Address | null,
         birth_country: data.birth_country,
         nationality: data.nationality,
         phone_interpretation_rate: data.phone_interpretation_rate,
@@ -145,11 +140,19 @@ export const InterpreterDashboard = () => {
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
-          ...profile,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          email: profile.email,
+          phone_number: profile.phone_number,
           languages: languageStrings,
-          address: profile.address,
+          employment_status: profile.employment_status,
+          status: profile.status,
+          address: profile.address as unknown as Json,
           birth_country: profile.birth_country,
           nationality: profile.nationality,
+          phone_interpretation_rate: profile.phone_interpretation_rate,
+          siret_number: profile.siret_number,
+          vat_number: profile.vat_number,
           specializations: profile.specializations,
         })
         .eq("id", user.id);
