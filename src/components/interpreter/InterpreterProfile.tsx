@@ -70,13 +70,20 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
-      const address = data.address as Address | null;
+      // Safely cast the address data to our Address type
+      const addressData = data.address as { [key: string]: string } | null;
+      const address: Address | null = addressData ? {
+        street: addressData.street || '',
+        postal_code: addressData.postal_code || '',
+        city: addressData.city || ''
+      } : null;
       
       const profileData: InterpreterProfile = {
         ...data,
         status: (data.status || 'available') as Status,
         address,
         languages: data.languages || [],
+        specializations: data.specializations || []
       };
       
       setProfile(profileData);
