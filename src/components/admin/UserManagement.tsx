@@ -190,27 +190,19 @@ export const UserManagement = () => {
 
       console.log('Sending delete request for user:', userId);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ userId }),
-        }
-      );
+      // Use the supabase client's functions.invoke method instead of fetch
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
 
-      const result = await response.json().catch(() => ({
-        success: false,
-        error: 'Failed to parse server response'
-      }));
+      console.log('Delete user response:', data);
 
-      console.log('Delete user response:', result);
+      if (error) {
+        throw new Error(error.message || 'Failed to delete user');
+      }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete user');
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user');
       }
 
       toast({
