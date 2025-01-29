@@ -6,19 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { AddressSection } from "./profile/AddressSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
-
-interface Address {
-  street: string;
-  postal_code: string;
-  city: string;
-}
-
-interface LanguagePair {
-  source: string;
-  target: string;
-}
-
-type EmploymentStatus = "salaried" | "self_employed";
+import { Address, LanguagePair } from "@/integrations/supabase/types";
 
 interface Profile {
   id: string;
@@ -29,7 +17,7 @@ interface Profile {
   landline_phone: string | null;
   address: Address | null;
   nationality: string | null;
-  employment_status: EmploymentStatus;
+  employment_status: "salaried" | "self_employed";
   languages: LanguagePair[];
 }
 
@@ -68,7 +56,7 @@ export const InterpreterProfile = () => {
         email: data.email,
         phone_number: data.phone_number,
         landline_phone: data.landline_phone,
-        address: data.address,
+        address: data.address as Address,
         nationality: data.nationality,
         employment_status: data.employment_status,
         languages: languagePairs,
