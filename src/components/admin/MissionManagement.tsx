@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Mission {
   id: string;
@@ -18,8 +20,18 @@ interface Mission {
   assigned_interpreter_id?: string;
 }
 
+interface Interpreter {
+  id: string;
+  first_name: string;
+  last_name: string;
+  languages: string[];
+  status: string;
+  profile_picture_url: string | null;
+}
+
 export const MissionManagement = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [loading, setLoading] = useState(true);
   const [sourceLanguage, setSourceLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
@@ -47,6 +59,27 @@ export const MissionManagement = () => {
     }
   };
 
+  const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
+    try {
+      const languagePair = `${sourceLang} → ${targetLang}`;
+      const { data, error } = await supabase
+        .from("interpreter_profiles")
+        .select("id, first_name, last_name, languages, status, profile_picture_url")
+        .eq("status", "available")
+        .contains("languages", [languagePair]);
+
+      if (error) throw error;
+      setAvailableInterpreters(data || []);
+    } catch (error) {
+      console.error("Error finding interpreters:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de trouver les interprètes disponibles",
+        variant: "destructive",
+      });
+    }
+  };
+
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -55,26 +88,42 @@ export const MissionManagement = () => {
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
-      const { error } = await supabase
+      const { data: missionData, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert({
           source_language: sourceLanguage,
           target_language: targetLanguage,
           estimated_duration: parseInt(estimatedDuration),
           notification_expiry: notificationExpiry.toISOString(),
-        });
+          notified_interpreters: availableInterpreters.map(interpreter => interpreter.id)
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (missionError) throw missionError;
+
+      // Create notifications for each available interpreter
+      const notifications = availableInterpreters.map(interpreter => ({
+        mission_id: missionData.id,
+        interpreter_id: interpreter.id,
+      }));
+
+      const { error: notificationError } = await supabase
+        .from("mission_notifications")
+        .insert(notifications);
+
+      if (notificationError) throw notificationError;
 
       toast({
         title: "Succès",
-        description: "La mission a été créée avec succès",
+        description: "La mission a été créée et les interprètes ont été notifiés",
       });
 
       // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
+      setAvailableInterpreters([]);
       
       // Refresh missions list
       fetchMissions();
@@ -87,6 +136,16 @@ export const MissionManagement = () => {
       });
     }
   };
+
+  const handleLanguageSelection = async () => {
+    if (sourceLanguage && targetLanguage) {
+      await findAvailableInterpreters(sourceLanguage, targetLanguage);
+    }
+  };
+
+  useEffect(() => {
+    handleLanguageSelection();
+  }, [sourceLanguage, targetLanguage]);
 
   return (
     <div className="space-y-6">
@@ -139,8 +198,36 @@ export const MissionManagement = () => {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Créer la mission
+          {availableInterpreters.length > 0 && (
+            <div className="space-y-2">
+              <Label>Interprètes disponibles ({availableInterpreters.length})</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableInterpreters.map((interpreter) => (
+                  <Card key={interpreter.id} className="p-4 flex items-center space-x-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={interpreter.profile_picture_url || undefined} />
+                      <AvatarFallback>
+                        {interpreter.first_name[0]}{interpreter.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">
+                        {interpreter.first_name} {interpreter.last_name}
+                      </p>
+                      <Badge variant="secondary">Disponible</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={availableInterpreters.length === 0}
+          >
+            Créer la mission et notifier les interprètes
           </Button>
         </form>
       </Card>

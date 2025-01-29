@@ -6,6 +6,17 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+export interface LanguagePair {
+  source: string;
+  target: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -127,6 +138,48 @@ export type Database = {
           vat_number?: string | null
         }
         Relationships: []
+      }
+      mission_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          interpreter_id: string
+          mission_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interpreter_id: string
+          mission_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interpreter_id?: string
+          mission_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "interpretation_missions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -283,3 +336,4 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof PublicSchema["CompositeTypes"]
     ? PublicSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
