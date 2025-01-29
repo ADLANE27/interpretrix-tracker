@@ -30,7 +30,7 @@ export const MissionsTab = () => {
       source_language: rawMission.source_language,
       target_language: rawMission.target_language,
       estimated_duration: rawMission.estimated_duration,
-      status: rawMission.status || 'pending',
+      status: rawMission.mission_notifications?.[0]?.status || 'pending',
       created_at: rawMission.created_at,
     };
   };
@@ -40,7 +40,6 @@ export const MissionsTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // First get all missions where the interpreter is notified
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select(`
@@ -54,7 +53,6 @@ export const MissionsTab = () => {
 
       if (missionsError) throw missionsError;
       
-      // Transform the missions data to include the notification status
       const transformedMissions = (missionsData || []).map(mission => ({
         ...transformMission(mission),
         status: mission.mission_notifications[0]?.status || 'pending'
@@ -77,17 +75,13 @@ export const MissionsTab = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
-          table: 'interpretation_missions'
+          table: 'mission_notifications'
         },
         (payload) => {
-          const newMission = transformMission(payload.new as any);
-          toast({
-            title: "Nouvelle mission disponible",
-            description: `${newMission.source_language} → ${newMission.target_language}`,
-          });
-          fetchMissions(); // Refresh the missions list
+          console.log('Realtime update received:', payload);
+          fetchMissions(); // Refresh the missions list when notifications change
         }
       )
       .subscribe();
@@ -127,13 +121,20 @@ export const MissionsTab = () => {
         if (missionError) throw missionError;
       }
 
+      // Update local state immediately
+      setMissions(prevMissions => 
+        prevMissions.map(mission => 
+          mission.id === missionId 
+            ? { ...mission, status: accept ? 'accepted' : 'declined' }
+            : mission
+        )
+      );
+
       toast({
         title: accept ? "Mission acceptée" : "Mission déclinée",
         description: `La mission a été ${accept ? 'acceptée' : 'déclinée'} avec succès.`,
       });
 
-      // Refresh missions list
-      fetchMissions();
     } catch (error) {
       console.error('Error updating mission:', error);
       toast({
