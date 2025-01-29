@@ -6,7 +6,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { AddressSection } from "./profile/AddressSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
-import { Address, LanguagePair } from "@/integrations/supabase/types";
+
+interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+interface LanguagePair {
+  source: string;
+  target: string;
+}
 
 interface Profile {
   id: string;

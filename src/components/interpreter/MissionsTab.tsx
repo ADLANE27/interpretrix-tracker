@@ -6,7 +6,23 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, XSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mission } from "@/integrations/supabase/types";
+
+interface Mission {
+  id: string;
+  client_name: string | null;
+  source_language: string;
+  target_language: string;
+  estimated_duration: number;
+  status: string;
+  created_at: string;
+  assigned_interpreter_id: string | null;
+  assignment_time: string | null;
+  assigned_interpreter?: {
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  };
+}
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
