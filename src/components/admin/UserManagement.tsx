@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -121,7 +122,7 @@ export const UserManagement = () => {
         toast({
           title: "Attention",
           description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
-          variant: "destructive", // Changed from "warning" to "destructive"
+          variant: "destructive",
         });
       } else {
         toast({
@@ -210,6 +211,9 @@ export const UserManagement = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
+              <DialogDescription>
+                Un email sera envoyé à l'utilisateur avec les instructions de connexion.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
