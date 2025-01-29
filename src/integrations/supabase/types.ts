@@ -6,6 +6,37 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+export interface LanguagePair {
+  source: string;
+  target: string;
+}
+
+export interface Mission {
+  id: string;
+  client_name: string | null;
+  source_language: string;
+  target_language: string;
+  estimated_duration: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  assigned_interpreter_id: string | null;
+  assignment_time: string | null;
+  notification_expiry: string;
+  notified_interpreters: string[] | null;
+  assigned_interpreter?: {
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  } | null;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -59,7 +90,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       interpreter_profiles: {
@@ -209,18 +240,6 @@ export type Database = {
     }
     Enums: {
       employment_status: "salaried" | "self_employed"
-      interpreter_specialization:
-        | "medical"
-        | "legal"
-        | "technical"
-        | "conference"
-        | "business"
-        | "education"
-        | "social_services"
-        | "immigration"
-        | "mental_health"
-        | "financial"
-        | "diplomatic"
       user_role: "admin" | "interpreter"
     }
     CompositeTypes: {
