@@ -70,7 +70,25 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
-      setProfile(data);
+      // Transform the address data from Json to Address type
+      const addressData = data.address as { [key: string]: string } | null;
+      const transformedAddress: Address | null = addressData ? {
+        street: addressData.street || '',
+        postal_code: addressData.postal_code || '',
+        city: addressData.city || ''
+      } : null;
+
+      // Create a properly typed profile object
+      const transformedProfile: InterpreterProfile = {
+        ...data,
+        address: transformedAddress,
+        status: (data.status || 'available') as Status,
+        languages: data.languages || [],
+        specializations: data.specializations || [],
+        employment_status: data.employment_status as EmploymentStatus,
+      };
+      
+      setProfile(transformedProfile);
     } catch (error) {
       console.error("Error fetching profile:", error);
       toast({
