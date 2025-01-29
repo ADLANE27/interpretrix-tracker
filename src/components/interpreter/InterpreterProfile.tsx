@@ -4,11 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
 import { CountrySelect } from "../CountrySelect";
 import { LanguageSelector, LanguagePair } from "./LanguageSelector";
 
@@ -96,17 +94,11 @@ export const InterpreterProfile = () => {
     if (!profile) return;
 
     try {
-      const addressJson = profile.address ? {
-        street: profile.address.street,
-        postal_code: profile.address.postal_code,
-        city: profile.address.city
-      } as Json : null;
-
       const { error } = await supabase
         .from("interpreter_profiles")
         .update({
           ...profile,
-          address: addressJson,
+          address: profile.address || null,
         })
         .eq("id", profile.id);
 
@@ -227,13 +219,13 @@ export const InterpreterProfile = () => {
 
           <div className="space-y-2">
             <Label>Adresse</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="street">Rue</Label>
                 <Input
                   id="street"
                   value={profile.address?.street || ""}
-                  onChange={(e) => isEditing && setProfile({
+                  onChange={(e) => setProfile({
                     ...profile,
                     address: {
                       ...(profile.address || { street: "", postal_code: "", city: "" }),
@@ -248,7 +240,7 @@ export const InterpreterProfile = () => {
                 <Input
                   id="postal_code"
                   value={profile.address?.postal_code || ""}
-                  onChange={(e) => isEditing && setProfile({
+                  onChange={(e) => setProfile({
                     ...profile,
                     address: {
                       ...(profile.address || { street: "", postal_code: "", city: "" }),
@@ -263,7 +255,7 @@ export const InterpreterProfile = () => {
                 <Input
                   id="city"
                   value={profile.address?.city || ""}
-                  onChange={(e) => isEditing && setProfile({
+                  onChange={(e) => setProfile({
                     ...profile,
                     address: {
                       ...(profile.address || { street: "", postal_code: "", city: "" }),
