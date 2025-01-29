@@ -84,6 +84,11 @@ export const UserManagement = () => {
   const handleAddUser = async () => {
     try {
       setIsSubmitting(true);
+      console.log("Creating user with metadata:", {
+        first_name: firstName,
+        last_name: lastName,
+        employment_status: employmentStatus,
+      });
 
       // Create user in Supabase Auth with metadata
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
@@ -100,6 +105,8 @@ export const UserManagement = () => {
 
       if (signUpError) throw signUpError;
       if (!user) throw new Error("No user returned from signup");
+
+      console.log("User created successfully:", user);
 
       // Create user role
       const { error: roleError } = await supabase
