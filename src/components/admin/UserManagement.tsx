@@ -44,31 +44,28 @@ export const UserManagement = () => {
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
   const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // First, get all interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
         .select("id, first_name, last_name, email");
 
       if (interpreterError) throw interpreterError;
 
-      // Then, get all user roles
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role, active");
 
       if (rolesError) throw rolesError;
 
-      // Create a map of interpreter profiles for easy lookup
       const profilesMap = new Map(
         interpreterProfiles.map(profile => [profile.id, profile])
       );
 
-      // Combine the data
       return userRoles.map(role => {
         const profile = profilesMap.get(role.user_id);
         return {
@@ -85,9 +82,12 @@ export const UserManagement = () => {
 
   const handleAddUser = async () => {
     try {
+      setIsSubmitting(true);
+
+      // Create user in Supabase Auth
       const { data: { user }, error: signUpError } = await supabase.auth.signUp({
         email,
-        password: "tempPassword123!", // Temporary password
+        password: crypto.randomUUID(), // Generate a random password that won't be used
         options: {
           data: {
             first_name: firstName,
@@ -98,34 +98,54 @@ export const UserManagement = () => {
       });
 
       if (signUpError) throw signUpError;
+      if (!user) throw new Error("No user returned from signup");
 
-      if (user) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert([{ user_id: user.id, role }]);
+      // Create user role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert([{ user_id: user.id, role }]);
 
-        if (roleError) throw roleError;
+      if (roleError) throw roleError;
 
+      // Send welcome email with password reset link
+      const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+        body: {
+          email,
+          firstName,
+          lastName,
+        },
+      });
+
+      if (emailError) {
+        console.error("Error sending welcome email:", emailError);
+        toast({
+          title: "Attention",
+          description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
+          variant: "warning",
+        });
+      } else {
         toast({
           title: "Utilisateur créé",
-          description: `Un email a été envoyé à ${email} pour définir le mot de passe`,
+          description: "Un email a été envoyé à l'utilisateur avec les instructions de connexion.",
         });
-
-        setIsAddUserOpen(false);
-        setEmail("");
-        setFirstName("");
-        setLastName("");
-        setRole("interpreter");
-        setEmploymentStatus("salaried");
-        refetch();
       }
-    } catch (error) {
+
+      setIsAddUserOpen(false);
+      setEmail("");
+      setFirstName("");
+      setLastName("");
+      setRole("interpreter");
+      setEmploymentStatus("salaried");
+      refetch();
+    } catch (error: any) {
       console.error("Error adding user:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer l'utilisateur",
+        description: "Impossible de créer l'utilisateur: " + error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -246,8 +266,12 @@ export const UserManagement = () => {
                   </Select>
                 </div>
               )}
-              <Button onClick={handleAddUser} className="w-full">
-                Ajouter
+              <Button 
+                onClick={handleAddUser} 
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Création en cours..." : "Ajouter"}
               </Button>
             </div>
           </DialogContent>
