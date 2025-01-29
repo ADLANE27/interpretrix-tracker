@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +70,7 @@ export const InterpreterProfile = () => {
 
       if (error) throw error;
       
-      // Safely cast the address data to our Address type
+      // Safely cast the address data
       const addressData = data.address as { [key: string]: string } | null;
       const address: Address | null = addressData ? {
         street: addressData.street || '',
@@ -78,6 +78,7 @@ export const InterpreterProfile = () => {
         city: addressData.city || ''
       } : null;
       
+      // Convert language strings to LanguagePair objects for the selector
       const profileData: InterpreterProfile = {
         ...data,
         status: (data.status || 'available') as Status,
@@ -156,7 +157,7 @@ export const InterpreterProfile = () => {
     return <div>Profil non trouvé</div>;
   }
 
-  // Convert language strings back to LanguagePair objects
+  // Convert language strings back to LanguagePair objects for the selector
   const languagePairs: LanguagePair[] = profile.languages.map(lang => {
     const [source, target] = lang.split(" → ");
     return { source, target };
