@@ -26,7 +26,9 @@ interface Mission {
     first_name: string;
     last_name: string;
     profile_picture_url: string | null;
+    status: string;
   };
+  notified_interpreters: string[];
 }
 
 interface Interpreter {
@@ -58,7 +60,8 @@ export const MissionManagement = () => {
             id,
             first_name,
             last_name,
-            profile_picture_url
+            profile_picture_url,
+            status
           )
         `)
         .order("created_at", { ascending: false });
@@ -76,6 +79,40 @@ export const MissionManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const setupRealtimeSubscription = () => {
+    const channel = supabase
+      .channel('mission-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        (payload) => {
+          console.log('Realtime update received:', payload);
+          fetchMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mission_notifications'
+        },
+        (payload) => {
+          console.log('Notification update received:', payload);
+          fetchMissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   };
 
   const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
@@ -177,40 +214,17 @@ export const MissionManagement = () => {
     }
   };
 
-  useEffect(() => {
-    if (sourceLanguage && targetLanguage) {
-      findAvailableInterpreters(sourceLanguage, targetLanguage);
-    }
-  }, [sourceLanguage, targetLanguage]);
-
-  useEffect(() => {
-    fetchMissions();
-
-    // Subscribe to ALL changes on the interpretation_missions table
-    const channel = supabase
-      .channel('mission-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        (payload) => {
-          console.log('Realtime update received:', payload);
-          // Fetch fresh data when any change occurs
-          fetchMissions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   const handleDeleteMission = async (missionId: string) => {
     try {
+      // First, delete related notifications
+      const { error: notificationError } = await supabase
+        .from("mission_notifications")
+        .delete()
+        .eq("mission_id", missionId);
+
+      if (notificationError) throw notificationError;
+
+      // Then delete the mission
       const { error } = await supabase
         .from("interpretation_missions")
         .delete()
@@ -233,6 +247,22 @@ export const MissionManagement = () => {
       });
     }
   };
+
+  useEffect(() => {
+    fetchMissions();
+    const cleanup = setupRealtimeSubscription();
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (sourceLanguage && targetLanguage) {
+      findAvailableInterpreters(sourceLanguage, targetLanguage);
+    }
+  }, [sourceLanguage, targetLanguage]);
+
+  // ... keep existing code (JSX rendering part remains the same)
 
   return (
     <div className="space-y-6">
