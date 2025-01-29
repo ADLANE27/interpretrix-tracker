@@ -10,7 +10,6 @@ import { LANGUAGES } from "@/lib/constants";
 
 interface Mission {
   id: string;
-  client_name: string;
   source_language: string;
   target_language: string;
   estimated_duration: number;
@@ -22,7 +21,6 @@ interface Mission {
 export const MissionManagement = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [clientName, setClientName] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
@@ -60,7 +58,6 @@ export const MissionManagement = () => {
       const { error } = await supabase
         .from("interpretation_missions")
         .insert({
-          client_name: clientName,
           source_language: sourceLanguage,
           target_language: targetLanguage,
           estimated_duration: parseInt(estimatedDuration),
@@ -75,7 +72,6 @@ export const MissionManagement = () => {
       });
 
       // Reset form
-      setClientName("");
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
@@ -98,16 +94,6 @@ export const MissionManagement = () => {
         <h3 className="text-lg font-semibold mb-4">Créer une nouvelle mission</h3>
         <form onSubmit={createMission} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="client_name">Nom du client</Label>
-              <Input
-                id="client_name"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-              />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="source_language">Langue source</Label>
               <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
@@ -166,7 +152,6 @@ export const MissionManagement = () => {
             <Card key={mission.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h4 className="font-semibold">{mission.client_name}</h4>
                   <p className="text-sm text-gray-600">
                     {mission.source_language} → {mission.target_language}
                   </p>
