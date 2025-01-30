@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import Index from "./pages/Index";
 import AdminLogin from "./pages/AdminLogin";
 import InterpreterLogin from "./pages/InterpreterLogin";
@@ -16,11 +17,17 @@ const queryClient = new QueryClient();
 const App = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     checkUser();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        setUserRole(null);
+        queryClient.clear();
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        await checkUser();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -28,20 +35,35 @@ const App = () => {
 
   const checkUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw userError;
+      }
+
       if (user) {
-        const { data: roles } = await supabase
+        const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id)
           .single();
         
+        if (rolesError) {
+          throw rolesError;
+        }
+        
         setUserRole(roles?.role || null);
       } else {
         setUserRole(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking user:', error);
+      toast({
+        title: "Erreur d'authentification",
+        description: "Veuillez vous reconnecter",
+        variant: "destructive",
+      });
+      await supabase.auth.signOut();
       setUserRole(null);
     } finally {
       setLoading(false);
