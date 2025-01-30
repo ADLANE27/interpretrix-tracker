@@ -2,16 +2,16 @@ import { useEffect } from 'react';
 import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 
 const Admin = () => {
-  useEffect(() => {
-    const setupVapidKeys = async () => {
-      try {
-        const keys = await generateAndStoreVapidKeys();
-        console.log('VAPID keys generated successfully:', keys);
-      } catch (error) {
-        console.error('Failed to generate VAPID keys:', error);
-      }
-    };
+  const setupVapidKeys = async () => {
+    try {
+      const keys = await generateAndStoreVapidKeys();
+      console.log('VAPID keys generated successfully:', keys);
+    } catch (error) {
+      console.error('Failed to generate VAPID keys:', error);
+    }
+  };
 
+  useEffect(() => {
     setupVapidKeys();
   }, []);
 
