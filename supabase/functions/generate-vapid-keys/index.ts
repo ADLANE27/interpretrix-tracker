@@ -18,27 +18,42 @@ serve(async (req) => {
     const vapidKeys = webPush.generateVAPIDKeys()
     console.log('VAPID keys generated:', vapidKeys)
 
-    // Initialize Supabase client
+    // Initialize Supabase client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     )
 
-    // Store VAPID keys as secrets
-    const { error: publicKeyError } = await supabaseAdmin.functions.setSecret(
-      'VAPID_PUBLIC_KEY',
-      vapidKeys.publicKey
-    )
+    console.log('Storing public key...')
+    const { error: publicKeyError } = await supabaseAdmin
+      .from('secrets')
+      .upsert({ 
+        name: 'VAPID_PUBLIC_KEY',
+        value: vapidKeys.publicKey
+      }, {
+        onConflict: 'name'
+      })
 
     if (publicKeyError) {
       console.error('Error storing public key:', publicKeyError)
       throw publicKeyError
     }
 
-    const { error: privateKeyError } = await supabaseAdmin.functions.setSecret(
-      'VAPID_PRIVATE_KEY',
-      vapidKeys.privateKey
-    )
+    console.log('Storing private key...')
+    const { error: privateKeyError } = await supabaseAdmin
+      .from('secrets')
+      .upsert({ 
+        name: 'VAPID_PRIVATE_KEY',
+        value: vapidKeys.privateKey
+      }, {
+        onConflict: 'name'
+      })
 
     if (privateKeyError) {
       console.error('Error storing private key:', privateKeyError)
@@ -58,9 +73,12 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error generating or storing VAPID keys:', error)
+    console.error('Error in generate-vapid-keys:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.toString()
+      }),
       { 
         headers: { 
           ...corsHeaders,
