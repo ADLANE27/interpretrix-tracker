@@ -331,11 +331,20 @@ export const MissionManagement = () => {
 
   const calculateDuration = (mission: Mission) => {
     if (mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time) {
-      const duration = differenceInMinutes(
+      const minutes = differenceInMinutes(
         new Date(mission.scheduled_end_time),
         new Date(mission.scheduled_start_time)
       );
-      return `${duration} minutes`;
+      
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      
+      if (hours > 0) {
+        return remainingMinutes > 0 
+          ? `${hours} heure${hours > 1 ? 's' : ''} et ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`
+          : `${hours} heure${hours > 1 ? 's' : ''}`;
+      }
+      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
     }
     return `${mission.estimated_duration} minutes`;
   };
@@ -506,27 +515,22 @@ export const MissionManagement = () => {
                   <p className="text-sm text-gray-600 mt-2">
                     {mission.source_language} → {mission.target_language}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Durée: {calculateDuration(mission)}
-                  </p>
                   
-                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
+                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
                     <p className="text-sm text-gray-600">
-                      Horaire: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                      Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy", { locale: fr })} 
+                      de {format(new Date(mission.scheduled_start_time), "HH:mm", { locale: fr })} 
+                      à {format(new Date(mission.scheduled_end_time), "HH:mm", { locale: fr })} 
+                      <span className="ml-1">({calculateDuration(mission)})</span>
                     </p>
                   )}
                   
-                  <Badge 
-                    variant={mission.status === "accepted" ? "default" : "secondary"}
-                    className="mt-2"
-                  >
-                    {mission.status === "awaiting_acceptance" 
-                      ? "En attente d'acceptation" 
-                      : mission.status === "accepted" 
-                        ? "Acceptée" 
-                        : mission.status}
-                  </Badge>
-                  
+                  {mission.mission_type === 'immediate' && (
+                    <p className="text-sm text-gray-600">
+                      Durée: {calculateDuration(mission)}
+                    </p>
+                  )}
+
                   {mission.assigned_interpreter && (
                     <div className="mt-2 flex items-center gap-2">
                       <Avatar className="h-6 w-6">
