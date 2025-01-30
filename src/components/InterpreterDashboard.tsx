@@ -33,7 +33,6 @@ interface Profile {
 
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -44,21 +43,8 @@ export const InterpreterDashboard = () => {
 
   const fetchProfile = async () => {
     try {
-      console.log('Fetching profile...');
-      setIsLoading(true);
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('Error fetching user:', userError);
-        throw userError;
-      }
-      
-      if (!user) {
-        console.error('No user found');
-        throw new Error("Non authentifié");
-      }
-
-      console.log('User found:', user.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("interpreter_profiles")
@@ -66,13 +52,8 @@ export const InterpreterDashboard = () => {
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('Profile data fetched:', data);
-
       const languagePairs = data.languages.map((lang: string) => {
         const [source, target] = lang.split(" → ");
         return { source, target };
@@ -110,8 +91,6 @@ export const InterpreterDashboard = () => {
         description: "Impossible de charger votre profil",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -187,20 +166,8 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Chargement de votre profil...</div>
-      </div>
-    );
-  }
-
   if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">Erreur lors du chargement du profil</div>
-      </div>
-    );
+    return <div>Chargement...</div>;
   }
 
   if (!profile.password_changed) {
