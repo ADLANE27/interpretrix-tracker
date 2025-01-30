@@ -44,6 +44,7 @@ export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -52,9 +53,11 @@ export const UserManagement = () => {
   const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
   const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
   const [rate15min, setRate15min] = useState<number>(0);
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: users, refetch } = useQuery({
@@ -103,8 +106,8 @@ export const UserManagement = () => {
               id: userRole.user_id,
               email: userData.email,
               role: userRole.role,
-              first_name: userData.first_name,
-              last_name: userData.last_name,
+              first_name: userRole.first_name,
+              last_name: userRole.last_name,
               active: userRole.active,
               tarif_15min: 0,
             };
@@ -281,6 +284,49 @@ export const UserManagement = () => {
     return matchesRole && matchesStatus;
   });
 
+  const handleResetPassword = async () => {
+    if (!selectedUserId || !password) return;
+
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.functions.invoke('reset-user-password', {
+        body: { 
+          userId: selectedUserId,
+          password: password,
+        },
+      });
+
+      if (error) throw error;
+
+      // Update password_changed flag in interpreter_profiles
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ password_changed: true })
+        .eq('id', selectedUserId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Le mot de passe de l'interprète a été mis à jour avec succès",
+      });
+
+      setIsResetPasswordOpen(false);
+      setPassword("");
+      setSelectedUserId(null);
+      refetch();
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le mot de passe: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -447,13 +493,24 @@ export const UserManagement = () => {
                     {user.active ? "Désactiver" : "Activer"}
                   </Button>
                   {user.role === "interpreter" && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEditDialog(user)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openEditDialog(user)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedUserId(user.id);
+                          setIsResetPasswordOpen(true);
+                        }}
+                      >
+                        Mot de passe
+                      </Button>
+                    </>
                   )}
                   <Button
                     variant="destructive"
@@ -560,6 +617,36 @@ export const UserManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Reset Password Dialog */}
+      <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+            <DialogDescription>
+              Définissez un nouveau mot de passe pour l'interprète
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="password">Nouveau mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <Button 
+              onClick={handleResetPassword}
+              className="w-full"
+              disabled={isSubmitting || !password}
+            >
+              {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
 import { MissionsTab } from "./interpreter/MissionsTab";
 import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface LanguagePair {
   source: string;
@@ -37,6 +39,7 @@ interface Profile {
   siret_number: string | null;
   vat_number: string | null;
   profile_picture_url: string | null;
+  password_changed: boolean;
 }
 
 const statusConfig = {
@@ -48,6 +51,10 @@ const statusConfig = {
 
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -90,6 +97,7 @@ export const InterpreterDashboard = () => {
         siret_number: data.siret_number,
         vat_number: data.vat_number,
         profile_picture_url: data.profile_picture_url,
+        password_changed: data.password_changed,
       };
       
       setProfile(profileData);
@@ -103,79 +111,100 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file) return;
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    try {
+      setIsSubmitting(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('profile_pictures')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('profile_pictures')
-        .getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from('interpreter_profiles')
-        .update({ profile_picture_url: publicUrl })
-        .eq('id', user.id);
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
 
       if (updateError) throw updateError;
 
-      setProfile(prev => prev ? { ...prev, profile_picture_url: publicUrl } : null);
+      const { error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .update({ password_changed: true })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      setIsPasswordDialogOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
       
       toast({
-        title: "Photo de profil mise à jour",
-        description: "Votre photo de profil a été mise à jour avec succès",
+        title: "Mot de passe mis à jour",
+        description: "Votre mot de passe a été mis à jour avec succès",
       });
+      
+      fetchProfile();
     } catch (error) {
-      console.error("Erreur lors de l'upload de la photo:", error);
+      console.error("Error updating password:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre photo de profil",
+        description: "Impossible de mettre à jour votre mot de passe",
         variant: "destructive",
       });
-    }
-  };
-
-  const handleStatusChange = async (newStatus: Profile['status']) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const { error } = await supabase
-        .from("interpreter_profiles")
-        .update({ status: newStatus })
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      setProfile(prev => prev ? { ...prev, status: newStatus } : null);
-      toast({
-        title: "Statut mis à jour",
-        description: "Votre statut a été mis à jour avec succès",
-      });
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du statut:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
-        variant: "destructive",
-      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   if (!profile) {
     return <div>Chargement...</div>;
+  }
+
+  if (!profile.password_changed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md p-6">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-center">Bienvenue</h2>
+            <p className="text-center text-gray-600">
+              Pour des raisons de sécurité, veuillez changer votre mot de passe avant d'accéder à votre tableau de bord.
+            </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nouveau mot de passe</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handlePasswordChange}
+                disabled={isSubmitting || !newPassword || !confirmPassword}
+              >
+                {isSubmitting ? "Mise à jour..." : "Mettre à jour le mot de passe"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   const getInitials = (firstName: string, lastName: string) => {
