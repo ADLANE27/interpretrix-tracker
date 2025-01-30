@@ -34,11 +34,19 @@ export const InterpreterLoginForm = () => {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Update the password_changed flag in interpreter_profiles
+      const { error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .update({ password_changed: true })
+        .eq('id', (await supabase.auth.getUser()).data.user?.id);
+
+      if (profileError) throw profileError;
 
       toast({
         title: "Mot de passe mis à jour",
@@ -99,7 +107,7 @@ export const InterpreterLoginForm = () => {
         .eq('id', authData.user.id)
         .single();
 
-      if (!metadataError && !metadata?.password_changed) {
+      if (!metadataError && metadata && !metadata.password_changed) {
         setShowChangePassword(true);
         return;
       }
