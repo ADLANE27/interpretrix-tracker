@@ -3,8 +3,10 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { CheckSquare, XSquare } from "lucide-react";
+import { CheckSquare, XSquare, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface Mission {
   id: string;
@@ -16,6 +18,9 @@ interface Mission {
   created_at: string;
   assigned_interpreter_id: string | null;
   assignment_time: string | null;
+  mission_type: 'immediate' | 'scheduled';
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
 }
 
 export const MissionsTab = () => {
@@ -48,7 +53,7 @@ export const MissionsTab = () => {
       }
       
       console.log('Fetched missions:', missionsData);
-      setMissions(missionsData || []);
+      setMissions(missionsData as Mission[] || []);
     } catch (error) {
       console.error('Error fetching missions:', error);
       toast({
@@ -196,8 +201,24 @@ export const MissionsTab = () => {
           <Card key={mission.id} className="p-4">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  {mission.mission_type === 'scheduled' ? (
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-green-500" />
+                  )}
+                  <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
+                    {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
+                  </Badge>
+                </div>
+                
                 <div className="text-sm text-gray-600">
-                  <p>Date: {new Date(mission.created_at).toLocaleDateString()}</p>
+                  <p>Date: {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}</p>
+                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
+                    <p className="text-blue-600">
+                      Horaire: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                    </p>
+                  )}
                   <p>Durée: {mission.estimated_duration} minutes</p>
                   <p>Langues: {mission.source_language} → {mission.target_language}</p>
                 </div>
