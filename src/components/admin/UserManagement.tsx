@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -17,29 +10,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Edit, Search, Trash2, UserCog, Headset } from "lucide-react";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
+import { AdminList } from "./AdminList";
+import { InterpreterList } from "./InterpreterList";
 
 interface UserData {
   id: string;
@@ -56,13 +32,8 @@ interface UserData {
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -139,29 +110,8 @@ export const UserManagement = () => {
     },
   });
 
-  const filteredUsers = users?.filter((user) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      user.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.languages?.some((lang) =>
-        lang.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-    const matchesRole =
-      roleFilter === "all" || user.role === roleFilter;
-
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && user.active) ||
-      (statusFilter === "inactive" && !user.active);
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  const adminUsers = filteredUsers?.filter(user => user.role === "admin") || [];
-  const interpreterUsers = filteredUsers?.filter(user => user.role === "interpreter") || [];
+  const adminUsers = users?.filter(user => user.role === "admin") || [];
+  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
 
   const handleAddUser = async (formData: InterpreterFormData) => {
     try {
@@ -266,7 +216,6 @@ export const UserManagement = () => {
         description: "L'utilisateur a été supprimé avec succès",
       });
 
-      setIsDeleteDialogOpen(false);
       refetch();
     } catch (error: any) {
       console.error("Error deleting user:", error);
@@ -339,91 +288,6 @@ export const UserManagement = () => {
     }
   };
 
-  const renderUserTable = (users: UserData[], title: string, icon: React.ReactNode) => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        {icon}
-        <h3 className="text-xl font-semibold">{title}</h3>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Statut</TableHead>
-            {title === "Interprètes" && <TableHead>Tarif (15 min)</TableHead>}
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                {user.first_name} {user.last_name}
-              </TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                <span
-                  className={`px-2 py-1 rounded-full text-sm ${
-                    user.active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {user.active ? "Actif" : "Inactif"}
-                </span>
-              </TableCell>
-              {title === "Interprètes" && <TableCell>{user.tarif_15min || 0} €</TableCell>}
-              <TableCell>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => toggleUserStatus(user.id, user.active)}
-                  >
-                    {user.active ? "Désactiver" : "Activer"}
-                  </Button>
-                  {user.role === "interpreter" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setIsEditUserOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedUserId(user.id);
-                          setIsResetPasswordOpen(true);
-                        }}
-                      >
-                        Mot de passe
-                      </Button>
-                    </>
-                  )}
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      setUserToDelete(user.id);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -448,53 +312,25 @@ export const UserManagement = () => {
         </Dialog>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom, email ou langue..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
+      <AdminList
+        admins={adminUsers}
+        onToggleStatus={toggleUserStatus}
+        onDeleteUser={handleDeleteUser}
+      />
 
-        <div className="flex gap-4">
-          <div className="w-48">
-            <Label htmlFor="roleFilter">Filtrer par rôle</Label>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les rôles</SelectItem>
-                <SelectItem value="admin">Administrateur</SelectItem>
-                <SelectItem value="interpreter">Interprète</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-48">
-            <Label htmlFor="statusFilter">Filtrer par statut</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="active">Actif</SelectItem>
-                <SelectItem value="inactive">Inactif</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-8">
-        {renderUserTable(adminUsers, "Administrateurs", <UserCog className="h-6 w-6" />)}
-        {renderUserTable(interpreterUsers, "Interprètes", <Headset className="h-6 w-6" />)}
-      </div>
+      <InterpreterList
+        interpreters={interpreterUsers}
+        onToggleStatus={toggleUserStatus}
+        onDeleteUser={handleDeleteUser}
+        onEditUser={(user) => {
+          setSelectedUser(user);
+          setIsEditUserOpen(true);
+        }}
+        onResetPassword={(userId) => {
+          setSelectedUserId(userId);
+          setIsResetPasswordOpen(true);
+        }}
+      />
 
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
         <DialogContent className="max-w-4xl">
@@ -514,31 +350,6 @@ export const UserManagement = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet utilisateur ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. L'utilisateur sera définitivement supprimé du système.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setUserToDelete(null);
-              setIsDeleteDialogOpen(false);
-            }}>
-              Annuler
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => userToDelete && handleDeleteUser(userToDelete)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
