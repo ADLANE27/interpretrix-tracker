@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Search, Trash2 } from "lucide-react";
+import { Edit, Search, Trash2, UserCrown, Headset } from "lucide-react";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 
 interface UserData {
@@ -160,6 +160,10 @@ export const UserManagement = () => {
 
     return matchesSearch && matchesRole && matchesStatus;
   });
+
+  // Separate users by role
+  const adminUsers = filteredUsers?.filter(user => user.role === "admin") || [];
+  const interpreterUsers = filteredUsers?.filter(user => user.role === "interpreter") || [];
 
   const handleAddUser = async (formData: InterpreterFormData) => {
     try {
@@ -342,6 +346,91 @@ export const UserManagement = () => {
     }
   };
 
+  const renderUserTable = (users: UserData[], title: string, icon: React.ReactNode) => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="text-xl font-semibold">{title}</h3>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nom</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Statut</TableHead>
+            {title === "Interprètes" && <TableHead>Tarif (15 min)</TableHead>}
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell>
+                {user.first_name} {user.last_name}
+              </TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>
+                <span
+                  className={`px-2 py-1 rounded-full text-sm ${
+                    user.active
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {user.active ? "Actif" : "Inactif"}
+                </span>
+              </TableCell>
+              {title === "Interprètes" && <TableCell>{user.tarif_15min || 0} €</TableCell>}
+              <TableCell>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => toggleUserStatus(user.id, user.active)}
+                  >
+                    {user.active ? "Désactiver" : "Activer"}
+                  </Button>
+                  {user.role === "interpreter" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsEditUserOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedUserId(user.id);
+                          setIsResetPasswordOpen(true);
+                        }}
+                      >
+                        Mot de passe
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => {
+                      setUserToDelete(user.id);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -409,86 +498,10 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Rôle</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Tarif (15 min)</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredUsers?.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                {user.first_name} {user.last_name}
-              </TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                {user.role === "admin" ? "Administrateur" : "Interprète"}
-              </TableCell>
-              <TableCell>
-                <span
-                  className={`px-2 py-1 rounded-full text-sm ${
-                    user.active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {user.active ? "Actif" : "Inactif"}
-                </span>
-              </TableCell>
-              <TableCell>{user.tarif_15min || 0} €</TableCell>
-              <TableCell>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => toggleUserStatus(user.id, user.active)}
-                  >
-                    {user.active ? "Désactiver" : "Activer"}
-                  </Button>
-                  {user.role === "interpreter" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setIsEditUserOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedUserId(user.id);
-                          setIsResetPasswordOpen(true);
-                        }}
-                      >
-                        Mot de passe
-                      </Button>
-                    </>
-                  )}
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => {
-                      setUserToDelete(user.id);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <div className="space-y-8">
+        {renderUserTable(adminUsers, "Administrateurs", <UserCrown className="h-6 w-6" />)}
+        {renderUserTable(interpreterUsers, "Interprètes", <Headset className="h-6 w-6" />)}
+      </div>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
