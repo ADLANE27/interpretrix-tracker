@@ -56,31 +56,35 @@ export const UserManagement = () => {
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
+      // Récupérer d'abord les profils d'interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select("id, first_name, last_name, email");
+        .select("*");
 
       if (interpreterError) throw interpreterError;
 
+      // Récupérer ensuite les rôles des utilisateurs
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("user_id, role, active");
+        .select("*");
 
       if (rolesError) throw rolesError;
 
+      // Créer une Map des profils pour un accès rapide
       const profilesMap = new Map(
         interpreterProfiles.map(profile => [profile.id, profile])
       );
 
-      return userRoles.map(role => {
-        const profile = profilesMap.get(role.user_id);
+      // Combiner les données
+      return userRoles.map(userRole => {
+        const profile = profilesMap.get(userRole.user_id);
         return {
-          id: role.user_id,
+          id: userRole.user_id,
           email: profile?.email || "",
-          role: role.role,
+          role: userRole.role,
           first_name: profile?.first_name || "",
           last_name: profile?.last_name || "",
-          active: role.active,
+          active: userRole.active,
         };
       });
     },
