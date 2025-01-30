@@ -56,31 +56,26 @@ export const UserManagement = () => {
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // D'abord, récupérer les rôles des utilisateurs
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
 
       if (rolesError) throw rolesError;
 
-      // Ensuite, récupérer les profils d'interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
         .select("*");
 
       if (interpreterError) throw interpreterError;
 
-      // Créer une Map des profils pour un accès rapide
       const profilesMap = new Map(
         interpreterProfiles.map(profile => [profile.id, profile])
       );
 
-      // Pour chaque rôle d'utilisateur, combiner avec les informations de profil
       const usersData = await Promise.all(
         userRoles.map(async (userRole) => {
           const profile = profilesMap.get(userRole.user_id);
           
-          // Si pas de profil trouvé, récupérer les infos via l'Edge Function
           if (!profile) {
             const response = await supabase.functions.invoke('get-user-info', {
               body: { userId: userRole.user_id }
@@ -271,6 +266,44 @@ export const UserManagement = () => {
     }
   };
 
+  const sendInvitation = async (userId: string, email: string, firstName: string, lastName: string) => {
+    try {
+      const { data, error: resetError } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+      });
+
+      if (resetError) throw resetError;
+      
+      if (!data.properties?.action_link) {
+        throw new Error("No reset link generated");
+      }
+
+      const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email,
+          firstName,
+          lastName,
+          resetLink: data.properties.action_link,
+        },
+      });
+
+      if (emailError) throw emailError;
+
+      toast({
+        title: "Invitation envoyée",
+        description: `Un email d'invitation a été envoyé à ${email}`,
+      });
+    } catch (error: any) {
+      console.error("Error sending invitation:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer l'invitation: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredUsers = users?.filter(user => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus = statusFilter === "all" || 
@@ -429,6 +462,14 @@ export const UserManagement = () => {
                   >
                     {user.active ? "Désactiver" : "Activer"}
                   </Button>
+                  {user.role === "interpreter" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => sendInvitation(user.id, user.email, user.first_name, user.last_name)}
+                    >
+                      Envoyer invitation
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     onClick={() => {
