@@ -329,6 +329,17 @@ export const MissionManagement = () => {
     }
   }, [sourceLanguage, targetLanguage]);
 
+  const calculateDuration = (mission: Mission) => {
+    if (mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time) {
+      const duration = differenceInMinutes(
+        new Date(mission.scheduled_end_time),
+        new Date(mission.scheduled_start_time)
+      );
+      return `${duration} minutes`;
+    }
+    return `${mission.estimated_duration} minutes`;
+  };
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -496,7 +507,7 @@ export const MissionManagement = () => {
                     {mission.source_language} → {mission.target_language}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Durée estimée: {mission.estimated_duration} minutes
+                    Durée: {calculateDuration(mission)}
                   </p>
                   
                   {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
