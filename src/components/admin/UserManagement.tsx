@@ -126,6 +126,43 @@ export const UserManagement = () => {
     },
   });
 
+  const handleAddUser = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Call the Supabase Edge Function to send invitation
+      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email,
+          firstName,
+          lastName,
+          role,
+          employmentStatus: role === "interpreter" ? employmentStatus : undefined,
+          rate15min: role === "interpreter" ? rate15min : undefined,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Invitation envoyée",
+        description: "Un email d'invitation a été envoyé à l'utilisateur",
+      });
+
+      setIsAddUserOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error adding user:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleEditUser = async () => {
     if (!selectedUser) return;
 
