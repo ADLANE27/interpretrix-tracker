@@ -48,7 +48,6 @@ const statusConfig = {
 
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -58,7 +57,6 @@ export const InterpreterDashboard = () => {
 
   const fetchProfile = async () => {
     try {
-      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
@@ -70,22 +68,20 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
       
-      // Transform language strings to LanguagePair objects, handling empty arrays
-      const languagePairs = (data.languages || []).map((lang: string) => {
+      const languagePairs = data.languages.map((lang: string) => {
         const [source, target] = lang.split(" → ");
         return { source, target };
       });
 
-      // Handle potentially null address
       const address = data.address as { street: string; postal_code: string; city: string } | null;
       
       const profileData: Profile = {
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
-        email: data.email || '',
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
         phone_number: data.phone_number,
         languages: languagePairs,
-        employment_status: data.employment_status || 'salaried',
+        employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
         address: address,
         birth_country: data.birth_country,
@@ -104,8 +100,6 @@ export const InterpreterDashboard = () => {
         description: "Impossible de charger votre profil",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -180,12 +174,8 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
-  }
-
   if (!profile) {
-    return <div className="flex items-center justify-center min-h-screen">Erreur de chargement du profil</div>;
+    return <div>Chargement...</div>;
   }
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -211,9 +201,7 @@ export const InterpreterDashboard = () => {
               />
             </div>
             <div>
-              <h2 className="text-2xl font-bold">
-                Bonjour {profile.first_name || 'Interprète'} {profile.last_name}
-              </h2>
+              <h2 className="text-2xl font-bold">Bonjour {profile.first_name} {profile.last_name}</h2>
               <Badge className={statusConfig[profile.status].color}>
                 {statusConfig[profile.status].label}
               </Badge>
@@ -239,7 +227,7 @@ export const InterpreterDashboard = () => {
           </div>
 
           <Card className="p-6">
-            <Tabs defaultValue="profile" className="space-y-4">
+            <Tabs defaultValue="missions" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="missions">Missions</TabsTrigger>
                 <TabsTrigger value="profile">Mon Profil</TabsTrigger>

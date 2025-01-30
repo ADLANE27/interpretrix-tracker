@@ -75,7 +75,6 @@ export type Database = {
           languages: string[]
           last_name: string
           nationality: string | null
-          password_changed: boolean | null
           phone_interpretation_rate: number | null
           phone_number: string | null
           profile_picture_url: string | null
@@ -98,7 +97,6 @@ export type Database = {
           languages?: string[]
           last_name: string
           nationality?: string | null
-          password_changed?: boolean | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           profile_picture_url?: string | null
@@ -121,7 +119,6 @@ export type Database = {
           languages?: string[]
           last_name?: string
           nationality?: string | null
-          password_changed?: boolean | null
           phone_interpretation_rate?: number | null
           phone_number?: string | null
           profile_picture_url?: string | null
