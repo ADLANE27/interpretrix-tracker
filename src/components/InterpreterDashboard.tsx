@@ -59,6 +59,14 @@ export const InterpreterDashboard = () => {
         return { source, target };
       });
 
+      // Safely transform the address from JSON
+      const addressData = data.address as { street: string; postal_code: string; city: string; } | null;
+      const transformedAddress = addressData ? {
+        street: addressData.street || "",
+        postal_code: addressData.postal_code || "",
+        city: addressData.city || "",
+      } : null;
+
       setProfile({
         first_name: data.first_name,
         last_name: data.last_name,
@@ -67,7 +75,7 @@ export const InterpreterDashboard = () => {
         languages: languagePairs,
         employment_status: data.employment_status,
         status: (data.status || 'available') as Profile['status'],
-        address: data.address,
+        address: transformedAddress,
         birth_country: data.birth_country,
         nationality: data.nationality,
         phone_interpretation_rate: data.phone_interpretation_rate,
