@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Search, Trash2 } from "lucide-react";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 
 interface UserData {
@@ -50,6 +50,7 @@ interface UserData {
   active: boolean;
   tarif_15min: number;
   employment_status?: "salaried" | "self_employed";
+  languages?: string[];
 }
 
 export const UserManagement = () => {
@@ -61,6 +62,7 @@ export const UserManagement = () => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,12 +130,35 @@ export const UserManagement = () => {
             active: userRole.active || false,
             tarif_15min: profile.tarif_15min || 0,
             employment_status: profile.employment_status,
+            languages: profile.languages,
           };
         })
       );
 
       return usersData;
     },
+  });
+
+  // Filter users based on search query and filters
+  const filteredUsers = users?.filter((user) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      user.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.languages?.some((lang) =>
+        lang.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+    const matchesRole =
+      roleFilter === "all" || user.role === roleFilter;
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && user.active) ||
+      (statusFilter === "inactive" && !user.active);
+
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   const handleAddUser = async (formData: InterpreterFormData) => {
@@ -341,32 +366,46 @@ export const UserManagement = () => {
         </Dialog>
       </div>
 
-      <div className="flex gap-4 mb-4">
-        <div className="w-48">
-          <Label htmlFor="roleFilter">Filtrer par rôle</Label>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les rôles</SelectItem>
-              <SelectItem value="admin">Administrateur</SelectItem>
-              <SelectItem value="interpreter">Interprète</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom, email ou langue..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-        <div className="w-48">
-          <Label htmlFor="statusFilter">Filtrer par statut</Label>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="active">Actif</SelectItem>
-              <SelectItem value="inactive">Inactif</SelectItem>
-            </SelectContent>
-          </Select>
+
+        <div className="flex gap-4">
+          <div className="w-48">
+            <Label htmlFor="roleFilter">Filtrer par rôle</Label>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les rôles</SelectItem>
+                <SelectItem value="admin">Administrateur</SelectItem>
+                <SelectItem value="interpreter">Interprète</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-48">
+            <Label htmlFor="statusFilter">Filtrer par statut</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="active">Actif</SelectItem>
+                <SelectItem value="inactive">Inactif</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -382,7 +421,7 @@ export const UserManagement = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users?.map((user) => (
+          {filteredUsers?.map((user) => (
             <TableRow key={user.id}>
               <TableCell>
                 {user.first_name} {user.last_name}
