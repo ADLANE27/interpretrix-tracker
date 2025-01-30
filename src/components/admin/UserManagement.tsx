@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, Copy } from "lucide-react";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -52,6 +52,8 @@ export const UserManagement = () => {
   const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
   const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
   const [rate15min, setRate15min] = useState<number>(0);
+  const [temporaryPassword, setTemporaryPassword] = useState("Bienvenue123!");
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -130,13 +132,14 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Call the Supabase Edge Function to send invitation
-      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
+      // Call the Supabase Edge Function to create user
+      const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email,
           firstName,
           lastName,
           role,
+          password: temporaryPassword,
           employmentStatus: role === "interpreter" ? employmentStatus : undefined,
           rate15min: role === "interpreter" ? rate15min : undefined,
         },
@@ -145,8 +148,8 @@ export const UserManagement = () => {
       if (error) throw error;
 
       toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'utilisateur",
+        title: "Utilisateur créé",
+        description: "L'utilisateur a été créé avec succès. N'oubliez pas de lui communiquer son mot de passe temporaire.",
       });
 
       setIsAddUserOpen(false);
@@ -293,7 +296,7 @@ export const UserManagement = () => {
             <DialogHeader>
               <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
               <DialogDescription>
-                Un email sera envoyé à l'utilisateur avec les instructions de connexion.
+                Un mot de passe temporaire sera généré pour l'utilisateur.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -321,6 +324,28 @@ export const UserManagement = () => {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="temporaryPassword">Mot de passe temporaire</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="temporaryPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={temporaryPassword}
+                    onChange={(e) => setTemporaryPassword(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Ce mot de passe devra être changé à la première connexion
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Rôle</Label>
