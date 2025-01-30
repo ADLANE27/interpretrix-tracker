@@ -3,29 +3,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+
+// Initialize Supabase client with service role key for admin operations
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
     }
   }
 );
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-interface InvitationEmailRequest {
-  email: string;
-  firstName: string;
-  lastName: string;
-  resetLink: string;
-}
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -42,12 +36,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Generating reset link for:", { email, firstName, lastName });
 
+    // Use supabaseAdmin to generate the reset link
     const { data, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'recovery',
       email: email,
     });
 
-    if (resetError) throw resetError;
+    if (resetError) {
+      console.error("Error generating reset link:", resetError);
+      throw resetError;
+    }
     
     if (!data.properties?.action_link) {
       throw new Error("No reset link generated");
@@ -77,7 +75,10 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    if (emailError) throw emailError;
+    if (emailError) {
+      console.error("Error sending email:", emailError);
+      throw emailError;
+    }
 
     console.log("Email sent successfully:", emailResponse);
 
