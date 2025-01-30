@@ -49,14 +49,14 @@ export const AdminLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-xl rounded-xl">
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-lg rounded-xl border-0">
       <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-[#8B5CF6]">Administration</h2>
-        <p className="text-sm text-gray-500">Connectez-vous à votre espace administrateur</p>
+        <h2 className="text-3xl font-bold tracking-tight text-[#1A1F2C]">Administration</h2>
+        <p className="text-sm text-[#8E9196]">Connectez-vous à votre espace administrateur</p>
       </div>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="text-sm font-medium text-[#403E43]">
             Email
           </label>
           <Input
@@ -65,12 +65,12 @@ export const AdminLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent transition-all duration-200"
             placeholder="admin@example.com"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="text-sm font-medium text-[#403E43]">
             Mot de passe
           </label>
           <Input
@@ -79,13 +79,13 @@ export const AdminLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent transition-all duration-200"
             placeholder="••••••••"
           />
         </div>
         <Button 
           type="submit" 
-          className="w-full py-3 font-semibold text-white transition-colors bg-[#8B5CF6] hover:bg-[#7C3AED] rounded-lg"
+          className="w-full py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] hover:from-[#2A2F3C] hover:to-[#504E53] rounded-lg shadow-md hover:shadow-lg"
         >
           Se connecter
         </Button>
