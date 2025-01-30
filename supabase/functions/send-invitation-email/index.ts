@@ -1,7 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from '@supabase/supabase-js';
 import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,13 +34,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, firstName, lastName, resetLink }: InvitationEmailRequest = await req.json();
+    const { email, firstName, lastName }: Omit<InvitationEmailRequest, 'resetLink'> = await req.json();
 
-    if (!email || !firstName || !lastName || !resetLink) {
+    if (!email || !firstName || !lastName) {
       throw new Error("Missing required fields");
     }
 
-    console.log("Sending invitation email to:", { email, firstName, lastName });
+    console.log("Generating reset link for:", { email, firstName, lastName });
+
+    const { data, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+    });
+
+    if (resetError) throw resetError;
+    
+    if (!data.properties?.action_link) {
+      throw new Error("No reset link generated");
+    }
+
+    console.log("Reset link generated successfully");
 
     const { data: emailResponse } = await resend.emails.send({
       from: "Interprétation <onboarding@resend.dev>",
@@ -41,7 +65,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Votre compte interprète a été créé avec succès.</p>
           <p>Pour accéder à votre espace, veuillez d'abord définir votre mot de passe en cliquant sur le lien ci-dessous :</p>
           <p>
-            <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
+            <a href="${data.properties.action_link}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">
               Définir mon mot de passe
             </a>
           </p>
