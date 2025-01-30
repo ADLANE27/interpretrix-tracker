@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -144,12 +145,20 @@ export const UserManagement = () => {
         (pair) => `${pair.source} → ${pair.target}`
       );
 
+      // Transform address to JSON compatible format
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
       // Call the Supabase Edge Function to send invitation
       const { data, error } = await supabase.functions.invoke('send-invitation-email', {
         body: {
           ...formData,
           role: "interpreter",
           languages: languageStrings,
+          address: addressJson,
         },
       });
 
@@ -185,11 +194,19 @@ export const UserManagement = () => {
         (pair) => `${pair.source} → ${pair.target}`
       );
 
+      // Transform address to JSON compatible format
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
       const { error: profileError } = await supabase
         .from("interpreter_profiles")
         .update({
           ...formData,
           languages: languageStrings,
+          address: addressJson,
         })
         .eq("id", selectedUser.id);
 
@@ -207,6 +224,67 @@ export const UserManagement = () => {
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Utilisateur supprimé",
+        description: "L'utilisateur a été supprimé avec succès",
+      });
+
+      setIsDeleteDialogOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      if (!selectedUserId || !password) {
+        throw new Error("Missing user ID or password");
+      }
+
+      const { error } = await supabase.functions.invoke('reset-user-password', {
+        body: { 
+          userId: selectedUserId,
+          newPassword: password,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Le mot de passe a été mis à jour avec succès",
+      });
+
+      setIsResetPasswordOpen(false);
+      setPassword("");
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de réinitialiser le mot de passe: " + error.message,
         variant: "destructive",
       });
     } finally {
