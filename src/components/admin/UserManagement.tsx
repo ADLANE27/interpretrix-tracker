@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Search, Trash2, UserCrown, Headset } from "lucide-react";
+import { Edit, Search, Trash2, UserCog, Headset } from "lucide-react";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 
 interface UserData {
@@ -139,7 +139,6 @@ export const UserManagement = () => {
     },
   });
 
-  // Filter users based on search query and filters
   const filteredUsers = users?.filter((user) => {
     const matchesSearch =
       searchQuery === "" ||
@@ -161,7 +160,6 @@ export const UserManagement = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  // Separate users by role
   const adminUsers = filteredUsers?.filter(user => user.role === "admin") || [];
   const interpreterUsers = filteredUsers?.filter(user => user.role === "interpreter") || [];
 
@@ -169,19 +167,16 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Transform language pairs to string array
       const languageStrings = formData.languages.map(
         (pair) => `${pair.source} → ${pair.target}`
       );
 
-      // Transform address to JSON compatible format
       const addressJson = formData.address ? {
         street: formData.address.street,
         postal_code: formData.address.postal_code,
         city: formData.address.city,
       } : null;
 
-      // Call the Supabase Edge Function to send invitation
       const { data, error } = await supabase.functions.invoke('send-invitation-email', {
         body: {
           ...formData,
@@ -218,12 +213,10 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Transform language pairs to string array
       const languageStrings = formData.languages.map(
         (pair) => `${pair.source} → ${pair.target}`
       );
 
-      // Transform address to JSON compatible format
       const addressJson = formData.address ? {
         street: formData.address.street,
         postal_code: formData.address.postal_code,
@@ -499,11 +492,10 @@ export const UserManagement = () => {
       </div>
 
       <div className="space-y-8">
-        {renderUserTable(adminUsers, "Administrateurs", <UserCrown className="h-6 w-6" />)}
+        {renderUserTable(adminUsers, "Administrateurs", <UserCog className="h-6 w-6" />)}
         {renderUserTable(interpreterUsers, "Interprètes", <Headset className="h-6 w-6" />)}
       </div>
 
-      {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -523,7 +515,6 @@ export const UserManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -549,7 +540,6 @@ export const UserManagement = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Add Reset Password Dialog */}
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
           <DialogHeader>
