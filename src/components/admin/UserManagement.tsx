@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { generateAndStoreVapidKeys } from "@/lib/generateVapidKeys";
 import {
   Table,
   TableBody,
@@ -38,15 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface User {
-  id: string;
-  email: string;
-  role: "admin" | "interpreter";
-  first_name: string;
-  last_name: string;
-  active: boolean;
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -61,6 +54,24 @@ export const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
+
+  const setupVapidKeys = async () => {
+    try {
+      const keys = await generateAndStoreVapidKeys();
+      console.log('VAPID keys generated successfully:', keys);
+      toast({
+        title: "Succès",
+        description: "Les clés VAPID ont été générées avec succès",
+      });
+    } catch (error) {
+      console.error('Failed to generate VAPID keys:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer les clés VAPID",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
@@ -331,6 +342,25 @@ export const UserManagement = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuration système</CardTitle>
+          <CardDescription>
+            Gérez les paramètres système comme les clés de notification push (VAPID)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Button onClick={setupVapidKeys} variant="outline">
+              Regénérer les clés VAPID
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Ces clés sont nécessaires pour l'envoi des notifications push aux interprètes
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-4 mb-4">
         <div className="w-48">
