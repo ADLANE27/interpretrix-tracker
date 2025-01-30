@@ -28,6 +28,39 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // First, verify the JWT token from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    console.log("Verifying token...");
+
+    // Verify the JWT and get the user
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error("Auth error:", authError);
+      throw new Error('Invalid token');
+    }
+
+    console.log("Token verified, checking admin role...");
+
+    // Check if the user has admin role
+    const { data: roles, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || !roles || roles.role !== 'admin') {
+      console.error("Role error:", roleError);
+      throw new Error('User is not an admin');
+    }
+
+    console.log("Admin role verified, proceeding with invitation...");
+
     const { email, firstName, lastName } = await req.json();
 
     if (!email || !firstName || !lastName) {
