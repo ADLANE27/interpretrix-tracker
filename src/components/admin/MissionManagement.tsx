@@ -142,11 +142,16 @@ export const MissionManagement = () => {
     
     try {
       const languagePair = `${sourceLang} → ${targetLang}`;
-      const { data, error } = await supabase
+      let query = supabase
         .from("interpreter_profiles")
-        .select("id, first_name, last_name, languages, status, profile_picture_url")
-        .eq("status", "available")
-        .contains("languages", [languagePair]);
+        .select("id, first_name, last_name, languages, status, profile_picture_url");
+
+      // Only filter by available status for immediate missions
+      if (missionType === 'immediate') {
+        query = query.eq("status", "available");
+      }
+
+      const { data, error } = await query.contains("languages", [languagePair]);
 
       if (error) throw error;
       setAvailableInterpreters(data || []);
@@ -544,7 +549,15 @@ export const MissionManagement = () => {
                       <p className="font-medium">
                         {interpreter.first_name} {interpreter.last_name}
                       </p>
-                      <Badge variant="secondary">Disponible</Badge>
+                      <div className="flex items-center gap-2">
+                        {interpreter.status === 'busy' && missionType === 'scheduled' ? (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            Actuellement en appel
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Disponible</Badge>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 ))}
