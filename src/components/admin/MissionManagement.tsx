@@ -76,7 +76,7 @@ export const MissionManagement = () => {
 
       if (error) throw error;
       console.log("Fetched missions:", data);
-      setMissions(data || []);
+      setMissions(data as Mission[]);
     } catch (error) {
       console.error("Error fetching missions:", error);
       toast({
@@ -240,7 +240,7 @@ export const MissionManagement = () => {
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
-      const missionData = {
+      const newMissionData = {
         source_language: sourceLanguage,
         target_language: targetLanguage,
         estimated_duration: parseInt(estimatedDuration),
@@ -252,16 +252,16 @@ export const MissionManagement = () => {
         scheduled_end_time: missionType === 'scheduled' ? scheduledEndTime : null
       };
 
-      const { data: missionData, error: missionError } = await supabase
+      const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
-        .insert(missionData)
+        .insert(newMissionData)
         .select()
         .single();
 
       if (missionError) throw missionError;
 
       const notifications = selectedInterpreters.map(interpreter => ({
-        mission_id: missionData.id,
+        mission_id: createdMission.id,
         interpreter_id: interpreter,
         status: "pending"
       }));
