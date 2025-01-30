@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Calendar, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { format, differenceInMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface Mission {
@@ -236,6 +236,24 @@ export const MissionManagement = () => {
       return;
     }
 
+    // Calculate duration for scheduled missions
+    let calculatedDuration = parseInt(estimatedDuration);
+    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+      calculatedDuration = differenceInMinutes(
+        new Date(scheduledEndTime),
+        new Date(scheduledStartTime)
+      );
+      
+      if (calculatedDuration <= 0) {
+        toast({
+          title: "Erreur",
+          description: "La date de fin doit être postérieure à la date de début",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
@@ -243,7 +261,7 @@ export const MissionManagement = () => {
       const newMissionData = {
         source_language: sourceLanguage,
         target_language: targetLanguage,
-        estimated_duration: parseInt(estimatedDuration),
+        estimated_duration: calculatedDuration,
         status: "awaiting_acceptance",
         notification_expiry: notificationExpiry.toISOString(),
         notified_interpreters: selectedInterpreters,
@@ -330,7 +348,7 @@ export const MissionManagement = () => {
               </Select>
             </div>
 
-            {missionType === 'scheduled' && (
+            {missionType === 'scheduled' ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="scheduled_start">Date et heure de début</Label>
@@ -353,6 +371,18 @@ export const MissionManagement = () => {
                   />
                 </div>
               </>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="estimated_duration">Durée estimée (minutes)</Label>
+                <Input
+                  id="estimated_duration"
+                  type="number"
+                  min="1"
+                  value={estimatedDuration}
+                  onChange={(e) => setEstimatedDuration(e.target.value)}
+                  required
+                />
+              </div>
             )}
 
             <div className="space-y-2">
@@ -385,18 +415,6 @@ export const MissionManagement = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="estimated_duration">Durée estimée (minutes)</Label>
-              <Input
-                id="estimated_duration"
-                type="number"
-                min="1"
-                value={estimatedDuration}
-                onChange={(e) => setEstimatedDuration(e.target.value)}
-                required
-              />
             </div>
           </div>
 
