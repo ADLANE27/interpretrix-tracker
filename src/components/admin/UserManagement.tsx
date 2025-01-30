@@ -80,15 +80,31 @@ export const UserManagement = () => {
         userRoles.map(async (userRole) => {
           const profile = profilesMap.get(userRole.user_id);
           
-          // Si pas de profil trouvé, récupérer les infos de base de l'utilisateur
+          // Si pas de profil trouvé, récupérer les infos via l'Edge Function
           if (!profile) {
-            const { data: userData } = await supabase.auth.admin.getUserById(userRole.user_id);
+            const response = await supabase.functions.invoke('get-user-info', {
+              body: { userId: userRole.user_id }
+            });
+            
+            if (response.error) {
+              console.error('Error fetching user info:', response.error);
+              return {
+                id: userRole.user_id,
+                email: "",
+                role: userRole.role,
+                first_name: "",
+                last_name: "",
+                active: userRole.active,
+              };
+            }
+
+            const userData = response.data;
             return {
               id: userRole.user_id,
-              email: userData?.user?.email || "",
+              email: userData.email,
               role: userRole.role,
-              first_name: userData?.user?.user_metadata?.first_name || "",
-              last_name: userData?.user?.user_metadata?.last_name || "",
+              first_name: userData.first_name,
+              last_name: userData.last_name,
               active: userRole.active,
             };
           }
