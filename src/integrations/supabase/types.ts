@@ -170,6 +170,53 @@ export type Database = {
           },
         ]
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          interpreter_id: string
+          last_successful_push: string | null
+          p256dh: string
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          interpreter_id: string
+          last_successful_push?: string | null
+          p256dh: string
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          interpreter_id?: string
+          last_successful_push?: string | null
+          p256dh?: string
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           active: boolean | null
@@ -228,6 +275,7 @@ export type Database = {
         | "mental_health"
         | "financial"
         | "diplomatic"
+      subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }
     CompositeTypes: {
