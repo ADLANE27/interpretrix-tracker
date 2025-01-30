@@ -18,7 +18,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -39,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Edit, Trash2 } from "lucide-react";
+import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 
 interface UserData {
   id: string;
@@ -58,17 +58,11 @@ export const UserManagement = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
-  const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
-  const [rate15min, setRate15min] = useState<number>(0);
-  const [password, setPassword] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const { data: users, refetch } = useQuery({
@@ -141,19 +135,21 @@ export const UserManagement = () => {
     },
   });
 
-  const handleAddUser = async () => {
+  const handleAddUser = async (formData: InterpreterFormData) => {
     try {
       setIsSubmitting(true);
+
+      // Transform language pairs to string array
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
 
       // Call the Supabase Edge Function to send invitation
       const { data, error } = await supabase.functions.invoke('send-invitation-email', {
         body: {
-          email,
-          firstName,
-          lastName,
-          role,
-          employmentStatus: role === "interpreter" ? employmentStatus : undefined,
-          rate15min: role === "interpreter" ? rate15min : undefined,
+          ...formData,
+          role: "interpreter",
+          languages: languageStrings,
         },
       });
 
@@ -178,19 +174,22 @@ export const UserManagement = () => {
     }
   };
 
-  const handleEditUser = async () => {
+  const handleEditUser = async (formData: InterpreterFormData) => {
     if (!selectedUser) return;
 
     try {
       setIsSubmitting(true);
 
+      // Transform language pairs to string array
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
+
       const { error: profileError } = await supabase
         .from("interpreter_profiles")
         .update({
-          first_name: firstName,
-          last_name: lastName,
-          tarif_15min: rate15min,
-          employment_status: employmentStatus,
+          ...formData,
+          languages: languageStrings,
         })
         .eq("id", selectedUser.id);
 
@@ -212,54 +211,6 @@ export const UserManagement = () => {
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const openEditDialog = (user: any) => {
-    setSelectedUser(user);
-    setFirstName(user.first_name);
-    setLastName(user.last_name);
-    setEmail(user.email);
-    setRole(user.role);
-    setEmploymentStatus(user.employment_status || "salaried");
-    setRate15min(user.tarif_15min || 0);
-    setIsEditUserOpen(true);
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        throw new Error('Authentication required');
-      }
-
-      console.log('Sending delete request for user:', userId);
-
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
-      });
-
-      refetch();
-    } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUserToDelete(null);
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -288,57 +239,6 @@ export const UserManagement = () => {
     }
   };
 
-  const filteredUsers = users?.filter(user => {
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "active" && user.active) || 
-      (statusFilter === "inactive" && !user.active);
-    return matchesRole && matchesStatus;
-  });
-
-  const handleResetPassword = async () => {
-    if (!selectedUserId || !password) return;
-
-    try {
-      setIsSubmitting(true);
-      const { error } = await supabase.functions.invoke('reset-user-password', {
-        body: { 
-          userId: selectedUserId,
-          password: password,
-        },
-      });
-
-      if (error) throw error;
-
-      // Update password_changed flag in interpreter_profiles
-      const { error: updateError } = await supabase
-        .from('interpreter_profiles')
-        .update({ password_changed: true })
-        .eq('id', selectedUserId);
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Mot de passe mis à jour",
-        description: "Le mot de passe de l'interprète a été mis à jour avec succès",
-      });
-
-      setIsResetPasswordOpen(false);
-      setPassword("");
-      setSelectedUserId(null);
-      refetch();
-    } catch (error: any) {
-      console.error("Error resetting password:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le mot de passe: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -347,89 +247,18 @@ export const UserManagement = () => {
           <DialogTrigger asChild>
             <Button>Ajouter un utilisateur</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
+              <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
               <DialogDescription>
-                Un email sera envoyé à l'utilisateur avec les instructions de connexion.
+                Un email sera envoyé à l'interprète avec les instructions de connexion.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="firstName">Prénom</Label>
-                <Input
-                  id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Nom</Label>
-                <Input
-                  id="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Rôle</Label>
-                <Select value={role} onValueChange={(value: "admin" | "interpreter") => setRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="interpreter">Interprète</SelectItem>
-                    <SelectItem value="admin">Administrateur</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {role === "interpreter" && (
-                <div className="space-y-2">
-                  <Label htmlFor="employmentStatus">Statut professionnel</Label>
-                  <Select 
-                    value={employmentStatus} 
-                    onValueChange={(value: "salaried" | "self_employed") => setEmploymentStatus(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="salaried">Salarié</SelectItem>
-                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {role === "interpreter" && (
-                <div className="space-y-2">
-                  <Label htmlFor="rate_15min">Tarif (15 minutes)</Label>
-                  <Input
-                    id="rate_15min"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={rate15min}
-                    onChange={(e) => setRate15min(parseFloat(e.target.value))}
-                  />
-                </div>
-              )}
-              <Button 
-                onClick={handleAddUser} 
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Création en cours..." : "Ajouter"}
-              </Button>
-            </div>
+            <InterpreterProfileForm
+              isEditing={true}
+              onSubmit={handleAddUser}
+              isSubmitting={isSubmitting}
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -475,7 +304,7 @@ export const UserManagement = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredUsers?.map((user) => (
+          {users?.map((user) => (
             <TableRow key={user.id}>
               <TableCell>
                 {user.first_name} {user.last_name}
@@ -509,7 +338,10 @@ export const UserManagement = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => openEditDialog(user)}
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsEditUserOpen(true);
+                        }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -543,64 +375,21 @@ export const UserManagement = () => {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
             <DialogDescription>
-              Modifiez les informations de l'interprète, y compris son tarif.
+              Modifiez les informations de l'interprète.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">Prénom</Label>
-              <Input
-                id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Nom</Label>
-              <Input
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="employmentStatus">Statut professionnel</Label>
-              <Select 
-                value={employmentStatus} 
-                onValueChange={(value: "salaried" | "self_employed") => setEmploymentStatus(value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="salaried">Salarié</SelectItem>
-                  <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rate_15min">Tarif (15 minutes)</Label>
-              <Input
-                id="rate_15min"
-                type="number"
-                min="0"
-                step="0.01"
-                value={rate15min}
-                onChange={(e) => setRate15min(parseFloat(e.target.value))}
-              />
-            </div>
-            <Button 
-              onClick={handleEditUser} 
-              className="w-full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
-            </Button>
-          </div>
+          {selectedUser && (
+            <InterpreterProfileForm
+              isEditing={true}
+              onSubmit={handleEditUser}
+              initialData={selectedUser}
+              isSubmitting={isSubmitting}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
