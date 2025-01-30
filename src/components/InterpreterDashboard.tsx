@@ -80,7 +80,7 @@ export const InterpreterDashboard = () => {
         return { source, target };
       });
 
-      const address = data.address as { street: string; postal_code: string; city: string } | null;
+      const address = data.address as { street: string; postal_code: string; city } | null;
       
       const profileData: Profile = {
         first_name: data.first_name,
@@ -106,6 +106,78 @@ export const InterpreterDashboard = () => {
       toast({
         title: "Erreur",
         description: "Impossible de charger votre profil",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile_pictures')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile_pictures')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+
+      toast({
+        title: "Photo de profil mise à jour",
+        description: "Votre photo de profil a été mise à jour avec succès",
+      });
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre photo de profil",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      await fetchProfile();
+
+      toast({
+        title: "Statut mis à jour",
+        description: "Votre statut a été mis à jour avec succès",
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut",
         variant: "destructive",
       });
     }

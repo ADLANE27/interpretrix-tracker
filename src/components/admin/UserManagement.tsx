@@ -40,6 +40,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Edit, Trash2 } from "lucide-react";
 
+interface UserData {
+  id: string;
+  email: string;
+  role: "admin" | "interpreter";
+  first_name: string;
+  last_name: string;
+  active: boolean;
+  tarif_15min: number;
+  employment_status?: "salaried" | "self_employed";
+}
+
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
@@ -79,7 +90,7 @@ export const UserManagement = () => {
         interpreterProfiles.map(profile => [profile.id, profile])
       );
 
-      const usersData = await Promise.all(
+      const usersData: UserData[] = await Promise.all(
         userRoles.map(async (userRole) => {
           const profile = profilesMap.get(userRole.user_id);
           
@@ -96,7 +107,7 @@ export const UserManagement = () => {
                 role: userRole.role,
                 first_name: "",
                 last_name: "",
-                active: userRole.active,
+                active: userRole.active || false,
                 tarif_15min: 0,
               };
             }
@@ -104,11 +115,11 @@ export const UserManagement = () => {
             const userData = response.data;
             return {
               id: userRole.user_id,
-              email: userData.email,
+              email: userData.email || "",
               role: userRole.role,
-              first_name: userRole.first_name,
-              last_name: userRole.last_name,
-              active: userRole.active,
+              first_name: userData.first_name || "",
+              last_name: userData.last_name || "",
+              active: userRole.active || false,
               tarif_15min: 0,
             };
           }
@@ -119,8 +130,9 @@ export const UserManagement = () => {
             role: userRole.role,
             first_name: profile.first_name,
             last_name: profile.last_name,
-            active: userRole.active,
+            active: userRole.active || false,
             tarif_15min: profile.tarif_15min || 0,
+            employment_status: profile.employment_status,
           };
         })
       );
