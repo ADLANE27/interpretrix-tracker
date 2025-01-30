@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { generateAndStoreVapidKeys } from "@/lib/generateVapidKeys";
+import { VapidKeysViewer } from "./VapidKeysViewer";
 import {
   Table,
   TableBody,
@@ -350,7 +351,7 @@ export const UserManagement = () => {
             Gérez les paramètres système comme les clés de notification push (VAPID)
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <Button onClick={setupVapidKeys} variant="outline">
               Regénérer les clés VAPID
@@ -359,6 +360,7 @@ export const UserManagement = () => {
               Ces clés sont nécessaires pour l'envoi des notifications push aux interprètes
             </p>
           </div>
+          <VapidKeysViewer />
         </CardContent>
       </Card>
 
