@@ -56,14 +56,14 @@ export const UserManagement = () => {
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // Récupérer tous les rôles des utilisateurs
+      // D'abord, récupérer les rôles des utilisateurs
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
 
       if (rolesError) throw rolesError;
 
-      // Récupérer tous les profils d'interprètes
+      // Ensuite, récupérer les profils d'interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
         .select("*");
@@ -76,17 +76,35 @@ export const UserManagement = () => {
       );
 
       // Pour chaque rôle d'utilisateur, combiner avec les informations de profil
-      return userRoles.map(userRole => {
-        const profile = profilesMap.get(userRole.user_id);
-        return {
-          id: userRole.user_id,
-          email: profile?.email || "",
-          role: userRole.role,
-          first_name: profile?.first_name || "",
-          last_name: profile?.last_name || "",
-          active: userRole.active,
-        };
-      });
+      const usersData = await Promise.all(
+        userRoles.map(async (userRole) => {
+          const profile = profilesMap.get(userRole.user_id);
+          
+          // Si pas de profil trouvé, récupérer les infos de base de l'utilisateur
+          if (!profile) {
+            const { data: userData } = await supabase.auth.admin.getUserById(userRole.user_id);
+            return {
+              id: userRole.user_id,
+              email: userData?.user?.email || "",
+              role: userRole.role,
+              first_name: userData?.user?.user_metadata?.first_name || "",
+              last_name: userData?.user?.user_metadata?.last_name || "",
+              active: userRole.active,
+            };
+          }
+
+          return {
+            id: userRole.user_id,
+            email: profile.email,
+            role: userRole.role,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: userRole.active,
+          };
+        })
+      );
+
+      return usersData;
     },
   });
 
