@@ -49,11 +49,14 @@ export const AdminLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-6 space-y-4 bg-slate-50">
-      <h2 className="text-2xl font-bold text-center text-blue-900">Administration - Connexion</h2>
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-xl rounded-xl">
+      <div className="space-y-2 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-[#8B5CF6]">Administration</h2>
+        <p className="text-sm text-gray-500">Connectez-vous à votre espace administrateur</p>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-blue-900">
+          <label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email
           </label>
           <Input
@@ -62,11 +65,12 @@ export const AdminLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="border-blue-200 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
+            placeholder="admin@example.com"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-blue-900">
+          <label htmlFor="password" className="text-sm font-medium text-gray-700">
             Mot de passe
           </label>
           <Input
@@ -75,10 +79,14 @@ export const AdminLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="border-blue-200 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent"
+            placeholder="••••••••"
           />
         </div>
-        <Button type="submit" className="w-full bg-blue-900 hover:bg-blue-800">
+        <Button 
+          type="submit" 
+          className="w-full py-3 font-semibold text-white transition-colors bg-[#8B5CF6] hover:bg-[#7C3AED] rounded-lg"
+        >
           Se connecter
         </Button>
       </form>

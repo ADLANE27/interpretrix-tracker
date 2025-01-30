@@ -18,7 +18,6 @@ export const InterpreterLoginForm = () => {
     setIsLoading(true);
 
     try {
-      // First, attempt to sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
@@ -35,7 +34,6 @@ export const InterpreterLoginForm = () => {
         throw new Error("Aucune donnée utilisateur retournée");
       }
 
-      // Then check if the user has the interpreter role
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
@@ -47,7 +45,6 @@ export const InterpreterLoginForm = () => {
       }
 
       if (roles?.role !== 'interpreter') {
-        // If not an interpreter, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
       }
@@ -70,11 +67,14 @@ export const InterpreterLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-6 space-y-4 bg-green-50">
-      <h2 className="text-2xl font-bold text-center text-green-900">Espace Interprète - Connexion</h2>
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-xl rounded-xl">
+      <div className="space-y-2 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-[#D946EF]">Espace Interprète</h2>
+        <p className="text-sm text-gray-500">Connectez-vous à votre espace personnel</p>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-green-900">
+          <label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email
           </label>
           <Input
@@ -83,13 +83,13 @@ export const InterpreterLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="border-green-200 focus:border-green-500"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D946EF] focus:border-transparent"
             disabled={isLoading}
-            placeholder="votre@email.com"
+            placeholder="interpreter@example.com"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-green-900">
+          <label htmlFor="password" className="text-sm font-medium text-gray-700">
             Mot de passe
           </label>
           <Input
@@ -98,14 +98,14 @@ export const InterpreterLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="border-green-200 focus:border-green-500"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D946EF] focus:border-transparent"
             disabled={isLoading}
             placeholder="••••••••"
           />
         </div>
         <Button 
           type="submit" 
-          className="w-full bg-green-800 hover:bg-green-700"
+          className="w-full py-3 font-semibold text-white transition-colors bg-[#D946EF] hover:bg-[#C026D3] rounded-lg"
           disabled={isLoading}
         >
           {isLoading ? "Connexion en cours..." : "Se connecter"}
