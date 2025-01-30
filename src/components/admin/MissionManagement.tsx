@@ -578,6 +578,11 @@ export const MissionManagement = () => {
                     <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
                       {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
                     </Badge>
+                    {mission.status === 'awaiting_acceptance' && (
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                        En attente d'acceptation
+                      </Badge>
+                    )}
                   </div>
                   
                   <p className="text-sm text-gray-600 mt-2">
