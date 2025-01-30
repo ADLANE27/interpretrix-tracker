@@ -81,6 +81,7 @@ export type Database = {
           siret_number: string | null
           specializations: string[] | null
           status: string | null
+          tarif_15min: number
           updated_at: string
           vat_number: string | null
         }
@@ -102,6 +103,7 @@ export type Database = {
           siret_number?: string | null
           specializations?: string[] | null
           status?: string | null
+          tarif_15min?: number
           updated_at?: string
           vat_number?: string | null
         }
@@ -123,6 +125,7 @@ export type Database = {
           siret_number?: string | null
           specializations?: string[] | null
           status?: string | null
+          tarif_15min?: number
           updated_at?: string
           vat_number?: string | null
         }

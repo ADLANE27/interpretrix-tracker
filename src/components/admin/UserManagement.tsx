@@ -48,6 +48,7 @@ export const UserManagement = () => {
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<"admin" | "interpreter">("interpreter");
   const [employmentStatus, setEmploymentStatus] = useState<"salaried" | "self_employed">("salaried");
+  const [rate15min, setRate15min] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -90,6 +91,7 @@ export const UserManagement = () => {
                 first_name: "",
                 last_name: "",
                 active: userRole.active,
+                tarif_15min: 0,
               };
             }
 
@@ -101,6 +103,7 @@ export const UserManagement = () => {
               first_name: userData.first_name,
               last_name: userData.last_name,
               active: userRole.active,
+              tarif_15min: 0,
             };
           }
 
@@ -111,6 +114,7 @@ export const UserManagement = () => {
             first_name: profile.first_name,
             last_name: profile.last_name,
             active: userRole.active,
+            tarif_15min: profile.tarif_15min || 0,
           };
         })
       );
@@ -154,6 +158,24 @@ export const UserManagement = () => {
         throw roleError;
       }
 
+      // Create interpreter profile with default rate if role is interpreter
+      if (role === 'interpreter') {
+        const { error: profileError } = await supabase
+          .from("interpreter_profiles")
+          .insert([{
+            id: user.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            employment_status: employmentStatus,
+            tarif_15min: rate15min
+          }]);
+
+        if (profileError) {
+          console.error("Error creating interpreter profile:", profileError);
+        }
+      }
+
       try {
         const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
           body: {
@@ -191,6 +213,7 @@ export const UserManagement = () => {
       setLastName("");
       setRole("interpreter");
       setEmploymentStatus("salaried");
+      setRate15min(0);
       refetch();
     } catch (error: any) {
       console.error("Error adding user:", error);
@@ -344,6 +367,19 @@ export const UserManagement = () => {
                   </Select>
                 </div>
               )}
+              {role === "interpreter" && (
+                <div className="space-y-2">
+                  <Label htmlFor="rate_15min">Tarif (15 minutes)</Label>
+                  <Input
+                    id="rate_15min"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={rate15min}
+                    onChange={(e) => setRate15min(parseFloat(e.target.value))}
+                  />
+                </div>
+              )}
               <Button 
                 onClick={handleAddUser} 
                 className="w-full"
@@ -392,6 +428,7 @@ export const UserManagement = () => {
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
             <TableHead>Statut</TableHead>
+            <TableHead>Tarif (15 min)</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -416,6 +453,7 @@ export const UserManagement = () => {
                   {user.active ? "Actif" : "Inactif"}
                 </span>
               </TableCell>
+              <TableCell>{user.tarif_15min} €</TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   <Button

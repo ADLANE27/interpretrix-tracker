@@ -10,8 +10,10 @@ interface PersonalInfoProps {
   mobilePhone: string | null;
   landlinePhone: string | null;
   nationality: string | null;
+  rate15min: number;
   isEditing: boolean;
-  onChange: (field: string, value: string | null) => void;
+  isAdmin?: boolean;
+  onChange: (field: string, value: string | null | number) => void;
 }
 
 export const PersonalInfoSection = ({
@@ -21,7 +23,9 @@ export const PersonalInfoSection = ({
   mobilePhone,
   landlinePhone,
   nationality,
+  rate15min,
   isEditing,
+  isAdmin = false,
   onChange,
 }: PersonalInfoProps) => {
   return (
@@ -87,6 +91,21 @@ export const PersonalInfoSection = ({
             disabled={!isEditing}
           />
         </div>
+
+        {isAdmin && (
+          <div className="space-y-2">
+            <Label htmlFor="rate_15min">Tarif (15 minutes)</Label>
+            <Input
+              id="rate_15min"
+              type="number"
+              min="0"
+              step="0.01"
+              value={rate15min}
+              onChange={(e) => onChange("rate15min", parseFloat(e.target.value))}
+              disabled={!isEditing}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

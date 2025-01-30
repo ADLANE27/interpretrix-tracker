@@ -29,16 +29,36 @@ interface Profile {
   nationality: string | null;
   employment_status: "salaried" | "self_employed";
   languages: LanguagePair[];
+  tarif_15min: number;
 }
 
 export const InterpreterProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchProfile();
+    checkAdminStatus();
   }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      setIsAdmin(userRole?.role === 'admin');
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -78,6 +98,7 @@ export const InterpreterProfile = () => {
         nationality: data.nationality,
         employment_status: data.employment_status,
         languages: languagePairs,
+        tarif_15min: data.tarif_15min || 0,
       };
 
       setProfile(transformedProfile);
@@ -119,6 +140,7 @@ export const InterpreterProfile = () => {
           nationality: profile.nationality,
           employment_status: profile.employment_status,
           languages: languageStrings,
+          ...(isAdmin && { tarif_15min: profile.tarif_15min }),
         })
         .eq("id", profile.id);
 
@@ -162,12 +184,21 @@ export const InterpreterProfile = () => {
           mobilePhone={profile.phone_number}
           landlinePhone={profile.landline_phone}
           nationality={profile.nationality}
+          rate15min={profile.tarif_15min}
           isEditing={isEditing}
+          isAdmin={isAdmin}
           onChange={(field, value) => {
-            setProfile({
-              ...profile,
-              [field]: value,
-            });
+            if (field === "rate15min" && typeof value === "number") {
+              setProfile({
+                ...profile,
+                tarif_15min: value,
+              });
+            } else if (typeof value === "string") {
+              setProfile({
+                ...profile,
+                [field]: value,
+              });
+            }
           }}
         />
 
