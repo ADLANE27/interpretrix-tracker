@@ -17,8 +17,11 @@ export type Database = {
           created_at: string
           estimated_duration: number
           id: string
+          mission_type: string
           notification_expiry: string
           notified_interpreters: string[] | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
           source_language: string
           status: string
           target_language: string
@@ -31,8 +34,11 @@ export type Database = {
           created_at?: string
           estimated_duration: number
           id?: string
+          mission_type?: string
           notification_expiry: string
           notified_interpreters?: string[] | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           source_language: string
           status?: string
           target_language: string
@@ -45,8 +51,11 @@ export type Database = {
           created_at?: string
           estimated_duration?: number
           id?: string
+          mission_type?: string
           notification_expiry?: string
           notified_interpreters?: string[] | null
+          scheduled_end_time?: string | null
+          scheduled_start_time?: string | null
           source_language?: string
           status?: string
           target_language?: string

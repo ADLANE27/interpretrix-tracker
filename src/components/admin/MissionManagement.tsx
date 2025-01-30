@@ -10,8 +10,10 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2 } from "lucide-react";
+import { Trash2, Calendar, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface Mission {
   id: string;
@@ -29,6 +31,9 @@ interface Mission {
     status: string;
   };
   notified_interpreters: string[];
+  mission_type: 'immediate' | 'scheduled';
+  scheduled_start_time?: string;
+  scheduled_end_time?: string;
 }
 
 interface Interpreter {
@@ -48,6 +53,9 @@ export const MissionManagement = () => {
   const [sourceLanguage, setSourceLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
+  const [scheduledStartTime, setScheduledStartTime] = useState("");
+  const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
 
   const fetchMissions = async () => {
@@ -173,71 +181,6 @@ export const MissionManagement = () => {
     }
   };
 
-  const createMission = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (selectedInterpreters.length === 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner au moins un interprète",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const notificationExpiry = new Date();
-      notificationExpiry.setHours(notificationExpiry.getHours() + 24);
-
-      const { data: missionData, error: missionError } = await supabase
-        .from("interpretation_missions")
-        .insert({
-          source_language: sourceLanguage,
-          target_language: targetLanguage,
-          estimated_duration: parseInt(estimatedDuration),
-          status: "awaiting_acceptance",
-          notification_expiry: notificationExpiry.toISOString(),
-          notified_interpreters: selectedInterpreters
-        })
-        .select()
-        .single();
-
-      if (missionError) throw missionError;
-
-      const notifications = selectedInterpreters.map(interpreter => ({
-        mission_id: missionData.id,
-        interpreter_id: interpreter,
-        status: "pending"
-      }));
-
-      const { error: notificationError } = await supabase
-        .from("mission_notifications")
-        .insert(notifications);
-
-      if (notificationError) throw notificationError;
-
-      toast({
-        title: "Succès",
-        description: "La mission a été créée et les interprètes ont été notifiés",
-      });
-
-      setSourceLanguage("");
-      setTargetLanguage("");
-      setEstimatedDuration("");
-      setSelectedInterpreters([]);
-      setAvailableInterpreters([]);
-      
-      fetchMissions();
-    } catch (error) {
-      console.error("Error creating mission:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer la mission",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDeleteMission = async (missionId: string) => {
     try {
       // First, delete related notifications
@@ -272,95 +215,83 @@ export const MissionManagement = () => {
     }
   };
 
-  const handleMissionStatusUpdate = async (missionId: string, interpreterId: string, accept: boolean) => {
+  const createMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (selectedInterpreters.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner au moins un interprète",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (missionType === 'scheduled' && (!scheduledStartTime || !scheduledEndTime)) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez spécifier les horaires de la mission programmée",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Get the current mission details to notify other interpreters
-      const { data: currentMission } = await supabase
-        .from("interpretation_missions")
-        .select("notified_interpreters")
-        .eq("id", missionId)
-        .single();
+      const notificationExpiry = new Date();
+      notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
-      if (!currentMission) throw new Error("Mission not found");
-
-      const updates = {
-        status: accept ? "accepted" : "declined",
-        assigned_interpreter_id: accept ? interpreterId : null,
-        assignment_time: accept ? new Date().toISOString() : null,
-        notified_interpreters: [] // Clear notified interpreters when mission is accepted/declined
+      const missionData = {
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        estimated_duration: parseInt(estimatedDuration),
+        status: "awaiting_acceptance",
+        notification_expiry: notificationExpiry.toISOString(),
+        notified_interpreters: selectedInterpreters,
+        mission_type: missionType,
+        scheduled_start_time: missionType === 'scheduled' ? scheduledStartTime : null,
+        scheduled_end_time: missionType === 'scheduled' ? scheduledEndTime : null
       };
 
-      const { error: missionError } = await supabase
+      const { data: missionData, error: missionError } = await supabase
         .from("interpretation_missions")
-        .update(updates)
-        .eq("id", missionId);
+        .insert(missionData)
+        .select()
+        .single();
 
       if (missionError) throw missionError;
 
-      // Update mission_notifications status for the current interpreter
+      const notifications = selectedInterpreters.map(interpreter => ({
+        mission_id: missionData.id,
+        interpreter_id: interpreter,
+        status: "pending"
+      }));
+
       const { error: notificationError } = await supabase
         .from("mission_notifications")
-        .update({ status: accept ? "accepted" : "declined" })
-        .eq("mission_id", missionId)
-        .eq("interpreter_id", interpreterId);
+        .insert(notifications);
 
       if (notificationError) throw notificationError;
 
-      // If accepted, update interpreter status to busy
-      if (accept) {
-        const { error: interpreterError } = await supabase
-          .from("interpreter_profiles")
-          .update({ status: "busy" })
-          .eq("id", interpreterId);
-
-        if (interpreterError) throw interpreterError;
-
-        // Get interpreter details for notification message
-        const { data: acceptingInterpreter } = await supabase
-          .from("interpreter_profiles")
-          .select("first_name, last_name")
-          .eq("id", interpreterId)
-          .single();
-
-        // Update notifications for other interpreters to inform them the mission was taken
-        if (currentMission.notified_interpreters && currentMission.notified_interpreters.length > 0) {
-          const otherInterpreters = currentMission.notified_interpreters.filter(id => id !== interpreterId);
-          
-          if (otherInterpreters.length > 0) {
-            const { error: updateOthersError } = await supabase
-              .from("mission_notifications")
-              .update({
-                status: "cancelled",
-                updated_at: new Date().toISOString()
-              })
-              .eq("mission_id", missionId)
-              .in("interpreter_id", otherInterpreters);
-
-            if (updateOthersError) throw updateOthersError;
-          }
-        }
-      }
-
-      // Clean up other notifications
-      const { error: cleanupError } = await supabase
-        .from("mission_notifications")
-        .delete()
-        .eq("mission_id", missionId)
-        .neq("interpreter_id", interpreterId);
-
-      if (cleanupError) throw cleanupError;
-
       toast({
-        title: accept ? "Mission acceptée" : "Mission refusée",
-        description: `La mission a été ${accept ? 'acceptée' : 'refusée'} avec succès`,
+        title: "Succès",
+        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
       });
 
+      setSourceLanguage("");
+      setTargetLanguage("");
+      setEstimatedDuration("");
+      setSelectedInterpreters([]);
+      setAvailableInterpreters([]);
+      setMissionType('immediate');
+      setScheduledStartTime("");
+      setScheduledEndTime("");
+      
       fetchMissions();
     } catch (error) {
-      console.error("Error updating mission status:", error);
+      console.error("Error creating mission:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut de la mission",
+        description: "Impossible de créer la mission",
         variant: "destructive",
       });
     }
@@ -386,6 +317,44 @@ export const MissionManagement = () => {
         <h3 className="text-lg font-semibold mb-4">Créer une nouvelle mission</h3>
         <form onSubmit={createMission} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Type de mission</Label>
+              <Select value={missionType} onValueChange={(value: 'immediate' | 'scheduled') => setMissionType(value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner le type de mission" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="immediate">Immédiate</SelectItem>
+                  <SelectItem value="scheduled">Programmée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {missionType === 'scheduled' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduled_start">Date et heure de début</Label>
+                  <Input
+                    id="scheduled_start"
+                    type="datetime-local"
+                    value={scheduledStartTime}
+                    onChange={(e) => setScheduledStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="scheduled_end">Date et heure de fin</Label>
+                  <Input
+                    id="scheduled_end"
+                    type="datetime-local"
+                    value={scheduledEndTime}
+                    onChange={(e) => setScheduledEndTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="source_language">Langue source</Label>
               <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
@@ -494,12 +463,30 @@ export const MissionManagement = () => {
             <Card key={mission.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    {mission.mission_type === 'scheduled' ? (
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-green-500" />
+                    )}
+                    <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
+                      {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
+                    </Badge>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mt-2">
                     {mission.source_language} → {mission.target_language}
                   </p>
                   <p className="text-sm text-gray-600">
                     Durée estimée: {mission.estimated_duration} minutes
                   </p>
+                  
+                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
+                    <p className="text-sm text-gray-600">
+                      Horaire: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                    </p>
+                  )}
+                  
                   <Badge 
                     variant={mission.status === "accepted" ? "default" : "secondary"}
                     className="mt-2"
@@ -510,6 +497,7 @@ export const MissionManagement = () => {
                         ? "Acceptée" 
                         : mission.status}
                   </Badge>
+                  
                   {mission.assigned_interpreter && (
                     <div className="mt-2 flex items-center gap-2">
                       <Avatar className="h-6 w-6">
@@ -525,9 +513,10 @@ export const MissionManagement = () => {
                     </div>
                   )}
                 </div>
+                
                 <div className="flex items-center gap-4">
                   <p className="text-sm text-gray-600">
-                    {new Date(mission.created_at).toLocaleDateString()}
+                    {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}
                   </p>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
