@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, firstName, lastName }: Omit<InvitationEmailRequest, 'resetLink'> = await req.json();
+    const { email, firstName, lastName } = await req.json();
 
     if (!email || !firstName || !lastName) {
       throw new Error("Missing required fields");
@@ -55,7 +55,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Reset link generated successfully");
 
-    const { data: emailResponse } = await resend.emails.send({
+    const { data: emailResponse, error: emailError } = await resend.emails.send({
       from: "Interprétation <onboarding@resend.dev>",
       to: [email],
       subject: "Bienvenue sur la plateforme d'interprétation",
@@ -76,6 +76,8 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `,
     });
+
+    if (emailError) throw emailError;
 
     console.log("Email sent successfully:", emailResponse);
 
