@@ -38,10 +38,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Edit, Trash2 } from "lucide-react";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -123,108 +126,52 @@ export const UserManagement = () => {
     },
   });
 
-  const handleAddUser = async () => {
+  const handleEditUser = async () => {
+    if (!selectedUser) return;
+
     try {
       setIsSubmitting(true);
-      console.log("Creating user with metadata:", {
-        first_name: firstName,
-        last_name: lastName,
-        employment_status: employmentStatus,
+
+      const { error: profileError } = await supabase
+        .from("interpreter_profiles")
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          tarif_15min: rate15min,
+          employment_status: employmentStatus,
+        })
+        .eq("id", selectedUser.id);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil de l'interprète a été mis à jour avec succès",
       });
 
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password: crypto.randomUUID(),
-        options: {
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-            employment_status: employmentStatus,
-          },
-        },
-      });
-
-      if (signUpError) throw signUpError;
-      if (!user) throw new Error("No user returned from signup");
-
-      console.log("User created successfully:", user);
-
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{ user_id: user.id, role }]);
-
-      if (roleError) {
-        await supabase.auth.admin.deleteUser(user.id);
-        throw roleError;
-      }
-
-      // Create interpreter profile with default rate if role is interpreter
-      if (role === 'interpreter') {
-        const { error: profileError } = await supabase
-          .from("interpreter_profiles")
-          .insert([{
-            id: user.id,
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            employment_status: employmentStatus,
-            tarif_15min: rate15min
-          }]);
-
-        if (profileError) {
-          console.error("Error creating interpreter profile:", profileError);
-        }
-      }
-
-      try {
-        const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-          body: {
-            email,
-            firstName,
-            lastName,
-          },
-        });
-
-        if (emailError) {
-          console.error("Error sending welcome email:", emailError);
-          toast({
-            title: "Attention",
-            description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Utilisateur créé",
-            description: "Un email a été envoyé à l'utilisateur avec les instructions de connexion.",
-          });
-        }
-      } catch (emailError) {
-        console.error("Error invoking welcome email function:", emailError);
-        toast({
-          title: "Attention",
-          description: "L'utilisateur a été créé mais l'email de bienvenue n'a pas pu être envoyé.",
-          variant: "destructive",
-        });
-      }
-
-      setIsAddUserOpen(false);
-      setEmail("");
-      setFirstName("");
-      setLastName("");
-      setRole("interpreter");
-      setEmploymentStatus("salaried");
-      setRate15min(0);
+      setIsEditUserOpen(false);
       refetch();
     } catch (error: any) {
-      console.error("Error adding user:", error);
+      console.error("Error updating user:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer l'utilisateur: " + error.message,
+        description: "Impossible de mettre à jour le profil: " + error.message,
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openEditDialog = (user: any) => {
+    setSelectedUser(user);
+    setFirstName(user.first_name);
+    setLastName(user.last_name);
+    setEmail(user.email);
+    setRole(user.role);
+    setEmploymentStatus(user.employment_status || "salaried");
+    setRate15min(user.tarif_15min || 0);
+    setIsEditUserOpen(true);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -453,7 +400,7 @@ export const UserManagement = () => {
                   {user.active ? "Actif" : "Inactif"}
                 </span>
               </TableCell>
-              <TableCell>{user.tarif_15min} €</TableCell>
+              <TableCell>{user.tarif_15min || 0} €</TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   <Button
@@ -462,14 +409,24 @@ export const UserManagement = () => {
                   >
                     {user.active ? "Désactiver" : "Activer"}
                   </Button>
+                  {user.role === "interpreter" && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => openEditDialog(user)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
+                    size="icon"
                     onClick={() => {
                       setUserToDelete(user.id);
                       setIsDeleteDialogOpen(true);
                     }}
                   >
-                    Supprimer
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>
@@ -478,6 +435,70 @@ export const UserManagement = () => {
         </TableBody>
       </Table>
 
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de l'interprète, y compris son tarif.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">Prénom</Label>
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Nom</Label>
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="employmentStatus">Statut professionnel</Label>
+              <Select 
+                value={employmentStatus} 
+                onValueChange={(value: "salaried" | "self_employed") => setEmploymentStatus(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="salaried">Salarié</SelectItem>
+                  <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rate_15min">Tarif (15 minutes)</Label>
+              <Input
+                id="rate_15min"
+                type="number"
+                min="0"
+                step="0.01"
+                value={rate15min}
+                onChange={(e) => setRate15min(parseFloat(e.target.value))}
+              />
+            </div>
+            <Button 
+              onClick={handleEditUser} 
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
