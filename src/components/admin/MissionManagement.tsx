@@ -163,6 +163,16 @@ export const MissionManagement = () => {
     });
   };
 
+  const handleSelectAllInterpreters = () => {
+    if (selectedInterpreters.length === availableInterpreters.length) {
+      // If all are selected, deselect all
+      setSelectedInterpreters([]);
+    } else {
+      // Otherwise, select all
+      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+    }
+  };
+
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -370,8 +380,6 @@ export const MissionManagement = () => {
     }
   }, [sourceLanguage, targetLanguage]);
 
-  // ... keep existing code (JSX rendering part remains the same)
-
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -425,7 +433,19 @@ export const MissionManagement = () => {
 
           {availableInterpreters.length > 0 && (
             <div className="space-y-2">
-              <Label>Interprètes disponibles ({availableInterpreters.length})</Label>
+              <div className="flex justify-between items-center">
+                <Label>Interprètes disponibles ({availableInterpreters.length})</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSelectAllInterpreters}
+                  className="text-sm"
+                >
+                  {selectedInterpreters.length === availableInterpreters.length
+                    ? "Désélectionner tout"
+                    : "Sélectionner tout"}
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableInterpreters.map((interpreter) => (
                   <Card 
