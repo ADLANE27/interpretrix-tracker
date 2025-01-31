@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { subscribeToPushNotifications } from '@/lib/pushNotifications';
-import { Bell, AlertCircle } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Bell } from 'lucide-react';
 
 export const NotificationPermission = ({ interpreterId }: { interpreterId: string }) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -21,16 +20,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const handleEnableNotifications = async () => {
     try {
       console.log('[Notifications] Attempting to enable notifications for interpreter:', interpreterId);
-      
-      if (!('Notification' in window)) {
-        toast({
-          title: "Erreur",
-          description: "Votre navigateur ne supporte pas les notifications",
-          variant: "destructive",
-        });
-        return;
-      }
-
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
       console.log('[Notifications] Successfully enabled notifications');
@@ -41,9 +30,14 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     } catch (error) {
       console.error('[Notifications] Error enabling notifications:', error);
       
+      // Handle specific error cases
       if (error instanceof Error) {
         if (error.message === 'Notification permission denied') {
-          setPermission('denied');
+          toast({
+            title: "Notifications bloquées",
+            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur pour recevoir les alertes de missions",
+            variant: "destructive",
+          });
         } else {
           toast({
             title: "Erreur",
@@ -54,23 +48,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       }
     }
   };
-
-  if (permission === 'denied') {
-    return (
-      <Card className="bg-red-500 text-white p-4 max-w-md">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="font-semibold">Notifications bloquées</h4>
-            <p className="text-sm">
-              Veuillez autoriser les notifications dans les paramètres de votre navigateur 
-              pour recevoir les alertes de missions
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
 
   if (permission === 'granted') {
     return (
