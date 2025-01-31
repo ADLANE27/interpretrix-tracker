@@ -11,6 +11,7 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 
 interface Profile {
+  id: string;  // Added this line
   first_name: string;
   last_name: string;
   email: string;
@@ -68,6 +69,7 @@ export const InterpreterDashboard = () => {
       } : null;
 
       setProfile({
+        id: data.id,  // Added this line
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
