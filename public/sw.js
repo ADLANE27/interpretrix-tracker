@@ -49,7 +49,7 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
-  // Ouvrir ou focus l'application
+  // Open or focus the application
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(clientList => {
       console.log('[Service Worker] Found clients:', clientList);
@@ -71,15 +71,38 @@ self.addEventListener('notificationclick', event => {
 
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing Service Worker:', event);
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    Promise.all([
+      self.skipWaiting(),
+      caches.open('v1').then(cache => {
+        return cache.addAll([
+          '/',
+          '/favicon.ico'
+        ]);
+      })
+    ])
+  );
 });
 
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating Service Worker:', event);
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
 });
 
-// Gérer les erreurs de notification
+// Handle notification errors
 self.addEventListener('notificationerror', event => {
   console.error('[Service Worker] Notification error:', event.error);
 });

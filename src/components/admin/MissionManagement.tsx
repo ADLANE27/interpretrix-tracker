@@ -90,8 +90,10 @@ export const MissionManagement = () => {
   };
 
   const setupRealtimeSubscription = () => {
+    console.log('[MissionManagement] Setting up realtime subscription');
+    
     const channel = supabase
-      .channel('mission-updates')
+      .channel('mission-management')
       .on(
         'postgres_changes',
         {
@@ -100,7 +102,7 @@ export const MissionManagement = () => {
           table: 'interpretation_missions'
         },
         (payload) => {
-          console.log('Realtime update received:', payload);
+          console.log('[MissionManagement] Mission update received:', payload);
           fetchMissions();
         }
       )
@@ -112,7 +114,7 @@ export const MissionManagement = () => {
           table: 'mission_notifications'
         },
         (payload) => {
-          console.log('Notification update received:', payload);
+          console.log('[MissionManagement] Notification update received:', payload);
           fetchMissions();
         }
       )
@@ -124,15 +126,31 @@ export const MissionManagement = () => {
           table: 'interpreter_profiles'
         },
         (payload) => {
-          console.log('Interpreter profile update received:', payload);
+          console.log('[MissionManagement] Interpreter profile update received:', payload);
           if (sourceLanguage && targetLanguage) {
             findAvailableInterpreters(sourceLanguage, targetLanguage);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[MissionManagement] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MissionManagement] Successfully subscribed to changes');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MissionManagement] Error subscribing to changes');
+          toast({
+            title: "Erreur",
+            description: "Impossible de recevoir les mises à jour en temps réel",
+            variant: "destructive",
+          });
+        }
+      });
 
     return () => {
+      console.log('[MissionManagement] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   };
