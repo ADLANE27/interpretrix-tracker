@@ -35,6 +35,8 @@ self.addEventListener('push', event => {
           console.error('[Service Worker] Error showing notification:', error);
         })
     );
+  } else {
+    console.warn('[Service Worker] Push event received but no data');
   }
 });
 
@@ -69,10 +71,12 @@ self.addEventListener('notificationclick', event => {
 
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing Service Worker:', event);
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating Service Worker:', event);
+  event.waitUntil(self.clients.claim());
 });
 
 // Gérer les erreurs de notification

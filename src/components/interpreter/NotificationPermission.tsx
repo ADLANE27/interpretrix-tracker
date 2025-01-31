@@ -10,20 +10,25 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   useEffect(() => {
     if ('Notification' in window) {
+      console.log('[Notifications] Current permission status:', Notification.permission);
       setPermission(Notification.permission);
+    } else {
+      console.warn('[Notifications] Notifications not supported in this browser');
     }
   }, []);
 
   const handleEnableNotifications = async () => {
     try {
+      console.log('[Notifications] Attempting to enable notifications for interpreter:', interpreterId);
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
+      console.log('[Notifications] Successfully enabled notifications');
       toast({
         title: "Notifications activées",
         description: "Vous recevrez des notifications pour les nouvelles missions",
       });
     } catch (error) {
-      console.error('Error enabling notifications:', error);
+      console.error('[Notifications] Error enabling notifications:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'activer les notifications",
