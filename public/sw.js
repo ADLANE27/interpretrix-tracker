@@ -2,39 +2,43 @@ self.addEventListener('push', event => {
   console.log('[Service Worker] Push message received:', event);
   
   if (event.data) {
-    const data = event.data.json();
-    console.log('[Service Worker] Push data:', data);
-    
-    const options = {
-      body: data.body,
-      icon: data.icon || '/favicon.ico',
-      badge: '/favicon.ico',
-      data: data.data || {},
-      requireInteraction: true,
-      vibrate: [200, 100, 200],
-      actions: [
-        {
-          action: 'open',
-          title: 'Voir la mission'
-        },
-        {
-          action: 'close',
-          title: 'Fermer'
-        }
-      ]
-    };
+    try {
+      const data = event.data.json();
+      console.log('[Service Worker] Push data:', data);
+      
+      const options = {
+        body: data.body,
+        icon: data.icon || '/favicon.ico',
+        badge: '/favicon.ico',
+        data: data.data || {},
+        requireInteraction: true,
+        vibrate: [200, 100, 200],
+        actions: [
+          {
+            action: 'open',
+            title: 'Voir la mission'
+          },
+          {
+            action: 'close',
+            title: 'Fermer'
+          }
+        ]
+      };
 
-    console.log('[Service Worker] Showing notification with options:', options);
+      console.log('[Service Worker] Showing notification with options:', options);
 
-    event.waitUntil(
-      self.registration.showNotification(data.title, options)
-        .then(() => {
-          console.log('[Service Worker] Notification shown successfully');
-        })
-        .catch(error => {
-          console.error('[Service Worker] Error showing notification:', error);
-        })
-    );
+      event.waitUntil(
+        self.registration.showNotification(data.title, options)
+          .then(() => {
+            console.log('[Service Worker] Notification shown successfully');
+          })
+          .catch(error => {
+            console.error('[Service Worker] Error showing notification:', error);
+          })
+      );
+    } catch (error) {
+      console.error('[Service Worker] Error processing push data:', error);
+    }
   } else {
     console.warn('[Service Worker] Push event received but no data');
   }
@@ -50,20 +54,28 @@ self.addEventListener('notificationclick', event => {
   }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+    clients.matchAll({ 
+      type: 'window',
+      includeUncontrolled: true 
+    }).then(clientList => {
       console.log('[Service Worker] Found clients:', clientList);
-      if (clientList.length > 0) {
-        let client = clientList[0];
-        for (let i = 0; i < clientList.length; i++) {
-          if (clientList[i].focused) {
-            client = clientList[i];
-          }
+      
+      // Try to find an existing window
+      const hadWindowToFocus = clientList.some(client => {
+        if (client.url === '/' && 'focus' in client) {
+          client.focus();
+          return true;
         }
-        console.log('[Service Worker] Focusing client:', client);
-        return client.focus();
+        return false;
+      });
+
+      // If no existing window, open a new one
+      if (!hadWindowToFocus) {
+        console.log('[Service Worker] Opening new window');
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
       }
-      console.log('[Service Worker] Opening new window');
-      return clients.openWindow('/');
     })
   );
 });
