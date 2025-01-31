@@ -11,7 +11,7 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 
 interface Profile {
-  id: string;  // Added this line
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -41,7 +41,31 @@ export const InterpreterDashboard = () => {
 
   useEffect(() => {
     fetchProfile();
-  }, []);
+
+    // Set up realtime subscription for profile updates
+    const channel = supabase
+      .channel('interpreter-profile-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${profile?.id}`,
+        },
+        (payload) => {
+          console.log('Profile update received:', payload);
+          fetchProfile();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id]);
 
   const fetchProfile = async () => {
     try {
@@ -69,7 +93,7 @@ export const InterpreterDashboard = () => {
       } : null;
 
       setProfile({
-        id: data.id,  // Added this line
+        id: data.id,
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
