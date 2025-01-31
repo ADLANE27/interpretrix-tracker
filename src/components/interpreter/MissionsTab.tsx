@@ -37,6 +37,7 @@ export const MissionsTab = () => {
         return;
       }
 
+      // First, get all missions where the interpreter is notified or assigned
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
@@ -47,9 +48,32 @@ export const MissionsTab = () => {
         console.error('[MissionsTab] Error fetching missions:', missionsError);
         throw missionsError;
       }
+
+      // Then, get the notifications to filter out declined missions
+      const { data: notifications, error: notificationsError } = await supabase
+        .from('mission_notifications')
+        .select('mission_id, status')
+        .eq('interpreter_id', user.id);
+
+      if (notificationsError) {
+        console.error('[MissionsTab] Error fetching notifications:', notificationsError);
+        throw notificationsError;
+      }
+
+      // Create a map of declined mission IDs
+      const declinedMissions = new Set(
+        notifications
+          ?.filter(n => n.status === 'declined')
+          .map(n => n.mission_id)
+      );
+
+      // Filter out declined missions from the missions list
+      const filteredMissions = missionsData?.filter(
+        mission => !declinedMissions.has(mission.id)
+      ) || [];
       
-      console.log('[MissionsTab] Fetched missions:', missionsData);
-      setMissions(missionsData as Mission[] || []);
+      console.log('[MissionsTab] Fetched missions:', filteredMissions);
+      setMissions(filteredMissions as Mission[]);
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
       toast({
@@ -169,6 +193,9 @@ export const MissionsTab = () => {
           console.error('Error declining mission:', declineError);
           throw declineError;
         }
+
+        // Remove the declined mission from the local state
+        setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
 
         console.log('Mission declined successfully');
         toast({
