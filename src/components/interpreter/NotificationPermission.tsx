@@ -21,6 +21,16 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const handleEnableNotifications = async () => {
     try {
       console.log('[Notifications] Attempting to enable notifications for interpreter:', interpreterId);
+      
+      if (!('Notification' in window)) {
+        toast({
+          title: "Erreur",
+          description: "Votre navigateur ne supporte pas les notifications",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
       console.log('[Notifications] Successfully enabled notifications');
@@ -33,7 +43,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       
       if (error instanceof Error) {
         if (error.message === 'Notification permission denied') {
-          return; // Don't show toast, we'll show the error card instead
+          setPermission('denied');
         } else {
           toast({
             title: "Erreur",
