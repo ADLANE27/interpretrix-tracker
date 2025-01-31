@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -21,7 +20,7 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('[Edge Function] VAPID keys not found in environment variables');
+      console.error('[Edge Function] VAPID keys not found');
       throw new Error('VAPID keys not configured');
     }
     
@@ -59,7 +58,6 @@ serve(async (req) => {
           icon: message.icon,
           data: message.data
         });
-        console.log(`[Edge Function] Notification payload:`, payload);
         
         await webPush.sendNotification(
           {
@@ -74,7 +72,6 @@ serve(async (req) => {
         
         console.log(`[Edge Function] Successfully sent notification to subscription ${sub.id}`);
         
-        // Update last successful push timestamp
         await supabase
           .from('push_subscriptions')
           .update({ 
@@ -86,8 +83,8 @@ serve(async (req) => {
       } catch (error) {
         console.error(`[Edge Function] Failed to send notification to subscription ${sub.id}:`, error);
         
-        if (error.statusCode === 410) {
-          console.log(`[Edge Function] Subscription ${sub.id} is expired, updating status`);
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          console.log(`[Edge Function] Subscription ${sub.id} is expired or invalid, updating status`);
           await supabase
             .from('push_subscriptions')
             .update({ 
