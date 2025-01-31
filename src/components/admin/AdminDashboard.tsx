@@ -2,12 +2,11 @@ import { useEffect } from 'react';
 import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
-const Admin = () => {
+const AdminDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -72,9 +71,8 @@ const Admin = () => {
           Cette action génère de nouvelles clés pour les notifications push.
         </p>
       </div>
-      <AdminDashboard />
     </div>
   );
 };
 
-export default Admin;
+export default AdminDashboard;

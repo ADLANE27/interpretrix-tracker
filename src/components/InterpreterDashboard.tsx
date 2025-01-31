@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionsTab } from "./interpreter/MissionsTab";
 import { InterpreterProfile } from "./interpreter/InterpreterProfile";
@@ -12,8 +12,24 @@ import { useNavigate } from "react-router-dom";
 
 export const InterpreterDashboard = () => {
   const [activeTab, setActiveTab] = useState("missions");
+  const [currentStatus, setCurrentStatus] = useState("available");
+  const [interpreterId, setInterpreterId] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setInterpreterId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
+
+  const handleStatusChange = (status: string) => {
+    setCurrentStatus(status);
+  };
 
   const handleLogout = async () => {
     try {
@@ -48,8 +64,11 @@ export const InterpreterDashboard = () => {
       </div>
 
       <div className="space-y-6">
-        <StatusManager />
-        <NotificationPermission />
+        <StatusManager 
+          currentStatus={currentStatus} 
+          onStatusChange={handleStatusChange}
+        />
+        <NotificationPermission interpreterId={interpreterId} />
         
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
