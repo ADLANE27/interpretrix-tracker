@@ -29,11 +29,23 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       });
     } catch (error) {
       console.error('[Notifications] Error enabling notifications:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'activer les notifications",
-        variant: "destructive",
-      });
+      
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message === 'Notification permission denied') {
+          toast({
+            title: "Notifications bloquées",
+            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur pour recevoir les alertes de missions",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erreur",
+            description: "Impossible d'activer les notifications. Veuillez réessayer.",
+            variant: "destructive",
+          });
+        }
+      }
     }
   };
 
