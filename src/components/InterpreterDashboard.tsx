@@ -8,6 +8,7 @@ import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
+import { NotificationPermission } from "./interpreter/NotificationPermission";
 
 interface Profile {
   first_name: string;
@@ -59,7 +60,6 @@ export const InterpreterDashboard = () => {
         return { source, target };
       });
 
-      // Safely transform the address from JSON
       const addressData = data.address as { street: string; postal_code: string; city: string; } | null;
       const transformedAddress = addressData ? {
         street: addressData.street || "",
@@ -191,6 +191,7 @@ export const InterpreterDashboard = () => {
             profilePictureUrl={profile.profile_picture_url}
             onAvatarClick={() => fileInputRef.current?.click()}
           />
+          <NotificationPermission interpreterId={profile.id} />
           <input
             type="file"
             ref={fileInputRef}
