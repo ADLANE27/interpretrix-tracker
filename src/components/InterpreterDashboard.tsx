@@ -164,6 +164,34 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const handleProfilePictureDelete = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: null })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+
+      toast({
+        title: "Photo de profil supprimée",
+        description: "Votre photo de profil a été supprimée avec succès",
+      });
+    } catch (error) {
+      console.error("Error deleting profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer votre photo de profil",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleStatusChange = async (newStatus: Profile['status']) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -216,6 +244,7 @@ export const InterpreterDashboard = () => {
             status={profile.status}
             profilePictureUrl={profile.profile_picture_url}
             onAvatarClick={() => fileInputRef.current?.click()}
+            onDeletePicture={handleProfilePictureDelete}
           />
           <NotificationPermission interpreterId={profile.id} />
           <input
