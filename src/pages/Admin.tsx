@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import AdminDashboard from '@/components/admin/AdminDashboard';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 const Admin = () => {
   const { toast } = useToast();
