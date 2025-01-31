@@ -1,5 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export async function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     try {
@@ -48,6 +63,9 @@ export async function subscribeToPushNotifications(interpreterId: string) {
 
     console.log('[Push Notifications] Got VAPID public key');
 
+    // Convert VAPID key to Uint8Array for Firefox compatibility
+    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+
     // Check for existing subscription
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
@@ -59,7 +77,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: vapidPublicKey
+      applicationServerKey
     });
 
     console.log('[Push Notifications] Push subscription created:', subscription);

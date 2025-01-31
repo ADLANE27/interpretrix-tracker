@@ -49,9 +49,8 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
-  // Open or focus the application
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(clientList => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       console.log('[Service Worker] Found clients:', clientList);
       if (clientList.length > 0) {
         let client = clientList[0];
