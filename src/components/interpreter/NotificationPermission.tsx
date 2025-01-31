@@ -30,7 +30,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     } catch (error) {
       console.error('[Notifications] Error enabling notifications:', error);
       
-      // Handle specific error cases
       if (error instanceof Error) {
         if (error.message === 'Notification permission denied') {
           toast({
@@ -54,6 +53,15 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       <div className="flex items-center gap-2 text-sm text-green-600">
         <Bell className="h-4 w-4" />
         <span>Notifications activées</span>
+      </div>
+    );
+  }
+
+  if (permission === 'denied') {
+    return (
+      <div className="flex items-center gap-2 text-sm text-red-600">
+        <Bell className="h-4 w-4" />
+        <span>Notifications bloquées - Vérifiez les paramètres de votre navigateur</span>
       </div>
     );
   }
