@@ -28,16 +28,12 @@ export const MissionsTab = () => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-    fetchMissions();
-    setupRealtimeSubscription();
-  }, []);
-
   const fetchMissions = async () => {
     try {
+      console.log('[MissionsTab] Fetching missions');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('No user found');
+        console.log('[MissionsTab] No user found');
         return;
       }
 
@@ -48,14 +44,14 @@ export const MissionsTab = () => {
         .order('created_at', { ascending: false });
 
       if (missionsError) {
-        console.error('Error fetching missions:', missionsError);
+        console.error('[MissionsTab] Error fetching missions:', missionsError);
         throw missionsError;
       }
       
-      console.log('Fetched missions:', missionsData);
+      console.log('[MissionsTab] Fetched missions:', missionsData);
       setMissions(missionsData as Mission[] || []);
     } catch (error) {
-      console.error('Error fetching missions:', error);
+      console.error('[MissionsTab] Error fetching missions:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les missions",
@@ -65,9 +61,10 @@ export const MissionsTab = () => {
   };
 
   const setupRealtimeSubscription = () => {
-    console.log('Setting up realtime subscription');
+    console.log('[MissionsTab] Setting up realtime subscription');
+    
     const channel = supabase
-      .channel('mission-updates')
+      .channel('interpreter-missions')
       .on(
         'postgres_changes',
         {
@@ -76,7 +73,7 @@ export const MissionsTab = () => {
           table: 'interpretation_missions'
         },
         (payload) => {
-          console.log('Mission update received:', payload);
+          console.log('[MissionsTab] Mission update received:', payload);
           fetchMissions();
         }
       )
@@ -88,14 +85,29 @@ export const MissionsTab = () => {
           table: 'mission_notifications'
         },
         (payload) => {
-          console.log('Notification update received:', payload);
+          console.log('[MissionsTab] Notification update received:', payload);
           fetchMissions();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[MissionsTab] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MissionsTab] Successfully subscribed to changes');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MissionsTab] Error subscribing to changes');
+          toast({
+            title: "Erreur",
+            description: "Impossible de recevoir les mises à jour en temps réel",
+            variant: "destructive",
+          });
+        }
+      });
 
     return () => {
-      console.log('Cleaning up realtime subscription');
+      console.log('[MissionsTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   };
@@ -177,6 +189,16 @@ export const MissionsTab = () => {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    console.log('[MissionsTab] Component mounted');
+    fetchMissions();
+    const cleanup = setupRealtimeSubscription();
+    return () => {
+      console.log('[MissionsTab] Component unmounting');
+      cleanup();
+    };
+  }, []);
 
   const getMissionStatusDisplay = (status: string) => {
     switch (status) {

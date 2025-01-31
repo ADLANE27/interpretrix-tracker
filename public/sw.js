@@ -102,7 +102,6 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Handle notification errors
 self.addEventListener('notificationerror', event => {
   console.error('[Service Worker] Notification error:', event.error);
 });
