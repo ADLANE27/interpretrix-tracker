@@ -264,9 +264,16 @@ export const MissionsTab = () => {
                 <div className="text-sm text-gray-600">
                   <p>Date: {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}</p>
                   {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
-                    <p className="text-blue-600">
-                      Horaire: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-blue-600">
+                        Début: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                      </p>
+                      {mission.scheduled_end_time && (
+                        <p className="text-blue-600">
+                          Fin: {format(new Date(mission.scheduled_end_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                        </p>
+                      )}
+                    </div>
                   )}
                   <p>Durée: {mission.estimated_duration} minutes</p>
                   <p>Langues: {mission.source_language} → {mission.target_language}</p>
