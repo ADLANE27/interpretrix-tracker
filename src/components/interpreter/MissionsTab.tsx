@@ -262,8 +262,9 @@ export const MissionsTab = () => {
                 </div>
                 
                 <div className="text-sm text-gray-600">
-                  <p>Date: {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}</p>
-                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && (
+                  {mission.mission_type === 'immediate' ? (
+                    <p>Date: {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}</p>
+                  ) : mission.scheduled_start_time && (
                     <div className="space-y-1">
                       <p className="text-blue-600">
                         Début: {format(new Date(mission.scheduled_start_time), "d MMMM yyyy 'à' HH:mm", { locale: fr })}
