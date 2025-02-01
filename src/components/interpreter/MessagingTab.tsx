@@ -101,7 +101,6 @@ export const MessagingTab = () => {
     try {
       console.log('Fetching messages for channel:', channelId);
       
-      // First, get all messages for the channel
       const { data: messages, error: messagesError } = await supabase
         .from('messages')
         .select('*')
@@ -118,10 +117,8 @@ export const MessagingTab = () => {
         return;
       }
 
-      // Get all unique sender IDs
       const senderIds = [...new Set(messages.map(m => m.sender_id))];
       
-      // Get interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
@@ -132,7 +129,6 @@ export const MessagingTab = () => {
         throw interpreterError;
       }
 
-      // Get user roles to identify admins
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role')
@@ -144,12 +140,10 @@ export const MessagingTab = () => {
         throw rolesError;
       }
 
-      // Create a map of interpreter names
       const interpreterNames = new Map(
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      // For admin users, get their info from auth.users via Edge Function
       const adminIds = userRoles?.map(r => r.user_id) || [];
       const adminNames = new Map();
 
@@ -168,7 +162,6 @@ export const MessagingTab = () => {
         }
       }
 
-      // Combine messages with sender names
       const messagesWithNames = messages.map(message => ({
         ...message,
         sender_name: interpreterNames.get(message.sender_id) || 
@@ -189,27 +182,44 @@ export const MessagingTab = () => {
   };
 
   const subscribeToChannelMessages = () => {
+    console.log('Setting up channel messages subscription');
     const channel = supabase
-      .channel('channel-messages')
+      .channel('public:messages')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'messages',
-          filter: `channel_id=eq.${selectedChannel}`,
+          filter: selectedChannel ? `channel_id=eq.${selectedChannel}` : undefined
         },
         (payload) => {
-          console.log('New channel message:', payload);
+          console.log('Received real-time message update:', payload);
           if (selectedChannel) {
             fetchChannelMessages(selectedChannel);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Channel messages subscription status:', status);
+      });
 
     return channel;
   };
+
+  useEffect(() => {
+    if (selectedChannel) {
+      console.log('Selected channel changed, fetching messages for:', selectedChannel);
+      fetchChannelMessages(selectedChannel);
+      
+      const channelSubscription = subscribeToChannelMessages();
+      
+      return () => {
+        console.log('Cleaning up channel subscription');
+        supabase.removeChannel(channelSubscription);
+      };
+    }
+  }, [selectedChannel]);
 
   const fetchAdmins = async () => {
     try {
@@ -301,9 +311,6 @@ export const MessagingTab = () => {
       });
 
       if (error) throw error;
-
-      // Fetch messages again to update the view
-      await fetchChannelMessages(selectedChannel);
       setNewMessage("");
     } catch (error) {
       console.error("Error sending channel message:", error);
@@ -440,7 +447,7 @@ export const MessagingTab = () => {
                         }`}
                       >
                         <div className="text-xs font-medium mb-1">
-                          {message.sender?.first_name} {message.sender?.last_name}
+                          {message.sender_name}
                         </div>
                         {message.content}
                         <div className="text-xs opacity-70 mt-1">
