@@ -1,4 +1,4 @@
-import { format, isWithinInterval, areIntervalsOverlapping } from 'date-fns';
+import { format, isWithinInterval, areIntervalsOverlapping, addMinutes } from 'date-fns';
 
 export const hasTimeOverlap = (
   startTime1: string,
@@ -23,7 +23,6 @@ export const isInterpreterAvailableForScheduledMission = async (
   endTime: string,
   supabase: any
 ): Promise<boolean> => {
-  // Get interpreter's accepted scheduled missions
   const { data: existingMissions, error } = await supabase
     .from('interpretation_missions')
     .select('scheduled_start_time, scheduled_end_time')
@@ -36,7 +35,6 @@ export const isInterpreterAvailableForScheduledMission = async (
     return false;
   }
 
-  // Check for any overlaps with existing missions
   return !existingMissions?.some(mission => 
     hasTimeOverlap(
       mission.scheduled_start_time,
@@ -56,12 +54,16 @@ export const isInterpreterAvailableForImmediateMission = (
   }
 
   const now = new Date();
-  const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60000);
+  const fifteenMinutesFromNow = addMinutes(now, 15);
 
   // Check if interpreter has any scheduled missions starting in the next 15 minutes
   return !scheduledMissions.some(mission => {
     if (!mission.scheduled_start_time) return false;
+    
     const missionStart = new Date(mission.scheduled_start_time);
-    return missionStart >= now && missionStart <= fifteenMinutesFromNow;
+    return isWithinInterval(missionStart, {
+      start: now,
+      end: fifteenMinutesFromNow
+    });
   });
 };

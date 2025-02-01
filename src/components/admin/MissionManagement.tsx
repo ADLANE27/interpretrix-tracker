@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Calendar, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format, differenceInMinutes } from "date-fns";
+import { format, differenceInMinutes, addMinutes, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
 
@@ -181,6 +181,7 @@ export const MissionManagement = () => {
           .eq("status", "accepted");
 
         const availableInterpreters = potentialInterpreters?.filter(interpreter =>
+          interpreter.status === 'available' &&
           isInterpreterAvailableForImmediateMission(interpreter, scheduledMissions || [])
         );
 
@@ -468,7 +469,12 @@ export const MissionManagement = () => {
           {availableInterpreters.length > 0 && (
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label>Interprètes disponibles ({availableInterpreters.length})</Label>
+                <Label>
+                  {missionType === 'immediate' 
+                    ? `Interprètes disponibles (${availableInterpreters.length})`
+                    : `Interprètes (${availableInterpreters.length})`
+                  }
+                </Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -504,13 +510,23 @@ export const MissionManagement = () => {
                         {interpreter.first_name} {interpreter.last_name}
                       </p>
                       <div className="flex items-center gap-2">
-                        {interpreter.status === 'busy' && missionType === 'scheduled' ? (
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                            Actuellement en appel
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Disponible</Badge>
-                        )}
+                        <Badge 
+                          variant="secondary" 
+                          className={
+                            interpreter.status === 'available'
+                              ? 'bg-green-100 text-green-800'
+                              : interpreter.status === 'busy'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }
+                        >
+                          {interpreter.status === 'available' 
+                            ? 'Disponible' 
+                            : interpreter.status === 'busy'
+                            ? 'En appel'
+                            : 'Indisponible'
+                          }
+                        </Badge>
                       </div>
                     </div>
                   </Card>
