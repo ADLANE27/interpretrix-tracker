@@ -86,8 +86,8 @@ export const ChannelManagement = () => {
         user_id: member.user_id,
         channel_id: member.channel_id,
         email: member.users.email,
-        first_name: member.users.first_name,
-        last_name: member.users.last_name,
+        first_name: member.users.raw_user_meta_data.first_name,
+        last_name: member.users.raw_user_meta_data.last_name,
       })) as ChannelMember[];
     },
   });
