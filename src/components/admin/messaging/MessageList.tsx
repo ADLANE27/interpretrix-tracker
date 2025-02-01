@@ -2,10 +2,17 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, User } from "lucide-react";
+
+interface Sender {
+  id: string;
+  first_name: string;
+  last_name: string;
+  profile_picture_url: string | null;
+}
 
 interface Message {
   id: string;
@@ -16,12 +23,7 @@ interface Message {
   channel_id: string | null;
   recipient_id: string | null;
   updated_at: string;
-  sender?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-  } | null;
+  sender?: Sender | null;
 }
 
 interface MessageListProps {
@@ -128,11 +130,15 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         {messages.map((message) => (
           <div key={message.id} className="flex items-start gap-3">
             <Avatar className="h-8 w-8">
-              {message.sender?.profile_picture_url && (
+              {message.sender?.profile_picture_url ? (
                 <AvatarImage
                   src={message.sender.profile_picture_url}
                   alt={`${message.sender.first_name} ${message.sender.last_name}`}
                 />
+              ) : (
+                <AvatarFallback>
+                  <User className="h-4 w-4" />
+                </AvatarFallback>
               )}
             </Avatar>
             <div>
