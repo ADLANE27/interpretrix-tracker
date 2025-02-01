@@ -10,35 +10,48 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const { toast } = useToast();
 
   useEffect(() => {
-    if ('Notification' in window) {
-      console.log('[Notifications] Current permission status:', Notification.permission);
-      setPermission(Notification.permission);
-    } else {
-      console.warn('[Notifications] Notifications not supported in this browser');
-    }
+    checkNotificationPermission();
   }, []);
+
+  const checkNotificationPermission = () => {
+    if (!('Notification' in window)) {
+      console.warn('[Notifications] Notifications not supported');
+      return;
+    }
+
+    console.log('[Notifications] Current permission:', Notification.permission);
+    setPermission(Notification.permission);
+  };
 
   const handleEnableNotifications = async () => {
     try {
       setIsSubscribing(true);
-      console.log('[Notifications] Attempting to enable notifications for interpreter:', interpreterId);
-      
+      console.log('[Notifications] Requesting permission...');
+
+      // First request notification permission
+      const permission = await Notification.requestPermission();
+      console.log('[Notifications] Permission result:', permission);
+
+      if (permission !== 'granted') {
+        throw new Error('Notification permission denied');
+      }
+
+      // Then register service worker and subscribe to push
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
       
-      console.log('[Notifications] Successfully enabled notifications');
       toast({
         title: "Notifications activées",
         description: "Vous recevrez des notifications pour les nouvelles missions",
       });
     } catch (error) {
-      console.error('[Notifications] Error enabling notifications:', error);
+      console.error('[Notifications] Error:', error);
       
       if (error instanceof Error) {
         if (error.message === 'Notification permission denied') {
           toast({
             title: "Notifications bloquées",
-            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur pour recevoir les alertes de missions",
+            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
             variant: "destructive",
           });
         } else {
@@ -56,7 +69,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   const handleDisableNotifications = async () => {
     try {
-      console.log('[Notifications] Disabling notifications for interpreter:', interpreterId);
       await unsubscribeFromPushNotifications(interpreterId);
       setPermission('default');
       
@@ -65,14 +77,23 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
       });
     } catch (error) {
-      console.error('[Notifications] Error disabling notifications:', error);
+      console.error('[Notifications] Error disabling:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de désactiver les notifications. Veuillez réessayer.",
+        description: "Impossible de désactiver les notifications",
         variant: "destructive",
       });
     }
   };
+
+  if (!('Notification' in window)) {
+    return (
+      <div className="text-sm text-yellow-600 flex items-center gap-2">
+        <Bell className="h-4 w-4" />
+        <span>Votre navigateur ne supporte pas les notifications</span>
+      </div>
+    );
+  }
 
   if (permission === 'granted') {
     return (
