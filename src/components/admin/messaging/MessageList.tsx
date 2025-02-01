@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface Message {
   id: string;
@@ -19,7 +21,7 @@ interface Message {
     first_name: string;
     last_name: string;
     profile_picture_url: string | null;
-  };
+  } | null;
 }
 
 interface MessageListProps {
@@ -30,7 +32,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
 
-  const { data: channelMessages } = useQuery({
+  const { data: channelMessages, isError } = useQuery({
     queryKey: ["messages", channelId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -48,6 +50,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .order("created_at", { ascending: true });
 
       if (error) {
+        console.error("Error fetching messages:", error);
         toast({
           title: "Error",
           description: "Failed to load messages",
@@ -91,6 +94,15 @@ export const MessageList = ({ channelId }: MessageListProps) => {
     };
   }, [channelId]);
 
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>Failed to load messages</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <ScrollArea className="h-[500px] p-4">
       <div className="space-y-4">
@@ -106,7 +118,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             </Avatar>
             <div>
               <div className="font-semibold">
-                {message.sender?.first_name} {message.sender?.last_name}
+                {message.sender ? `${message.sender.first_name} ${message.sender.last_name}` : "Unknown User"}
               </div>
               <div className="text-sm text-gray-600">{message.content}</div>
             </div>
