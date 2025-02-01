@@ -35,7 +35,7 @@ interface ChannelMember {
   id: string;
   user_id: string;
   channel_id: string;
-  users: {
+  user: {
     email: string;
     raw_user_meta_data: {
       first_name: string;
@@ -75,7 +75,7 @@ export const ChannelManagement = () => {
           id,
           user_id,
           channel_id,
-          users (
+          user:user_id (
             email,
             raw_user_meta_data
           )
@@ -83,7 +83,7 @@ export const ChannelManagement = () => {
         .eq("channel_id", selectedChannel?.id);
 
       if (error) throw error;
-      return data as ChannelMember[];
+      return data as unknown as ChannelMember[];
     },
   });
 
@@ -245,11 +245,11 @@ export const ChannelManagement = () => {
                       >
                         <div>
                           <div className="font-medium">
-                            {member.users.raw_user_meta_data.first_name}{" "}
-                            {member.users.raw_user_meta_data.last_name}
+                            {member.user.raw_user_meta_data.first_name}{" "}
+                            {member.user.raw_user_meta_data.last_name}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {member.users.email}
+                            {member.user.email}
                           </div>
                         </div>
                       </div>
