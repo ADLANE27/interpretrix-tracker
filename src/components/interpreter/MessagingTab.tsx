@@ -146,11 +146,11 @@ export const MessagingTab = () => {
           <ScrollArea className="h-[300px] w-full pr-4">
             <div className="space-y-4">
               {messages
-                .filter(
-                  (msg) =>
-                    (msg.sender_id === admin.id && msg.recipient_id === supabase.auth.user()?.id) ||
-                    (msg.recipient_id === admin.id && msg.sender_id === supabase.auth.user()?.id)
-                )
+                .filter(async (msg) => {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  return (msg.sender_id === admin.id && msg.recipient_id === user?.id) ||
+                         (msg.recipient_id === admin.id && msg.sender_id === user?.id);
+                })
                 .map((message) => (
                   <div
                     key={message.id}
