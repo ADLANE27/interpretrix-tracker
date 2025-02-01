@@ -1,4 +1,25 @@
-// Enhanced service worker with better error handling and notification management
+// Enhanced service worker with comprehensive error handling and logging
+const SW_VERSION = '1.0.0';
+console.log(`[Service Worker ${SW_VERSION}] Initializing`);
+
+// Enhanced error handling for uncaught errors
+self.addEventListener('error', event => {
+  console.error('[Service Worker] Uncaught error:', {
+    error: event.error,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno
+  });
+});
+
+self.addEventListener('unhandledrejection', event => {
+  console.error('[Service Worker] Unhandled promise rejection:', {
+    reason: event.reason,
+    promise: event.promise
+  });
+});
+
+// Enhanced push event handler with better error management
 self.addEventListener('push', event => {
   console.log('[Service Worker] Push message received:', event);
   
@@ -11,7 +32,7 @@ self.addEventListener('push', event => {
     const data = event.data.json();
     console.log('[Service Worker] Push data:', data);
     
-    // Enhanced notification options with better mobile support
+    // Enhanced notification options with better mobile and desktop support
     const options = {
       body: `${data.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
       icon: '/favicon.ico',
@@ -21,14 +42,13 @@ self.addEventListener('push', event => {
         url: '/',
         timestamp: Date.now()
       },
-      requireInteraction: true,
-      // Enhanced vibration pattern for better attention on mobile
+      // Enhanced mobile experience
       vibrate: [200, 100, 200],
-      // Sound for desktop notifications
+      tag: `mission-${data.mission_id}`,
+      renotify: true,
+      requireInteraction: true,
       silent: false,
-      // Ensure notifications are shown immediately
       timestamp: Date.now(),
-      // Enhanced actions for better user interaction
       actions: [
         {
           action: 'accept',
@@ -39,32 +59,24 @@ self.addEventListener('push', event => {
           title: 'Décliner'
         }
       ],
-      // Improved notification grouping
-      tag: `mission-${data.mission_id}`,
-      renotify: true,
       // Priority for Android devices
       priority: 'high'
     };
 
     console.log('[Service Worker] Showing notification with options:', options);
 
-    // More robust notification handling with proper error management
     event.waitUntil(
       (async () => {
         try {
-          // Enhanced permission check
-          if (Notification.permission !== 'granted') {
-            console.error('[Service Worker] Notification permission not granted');
-            throw new Error('Notification permission not granted');
-          }
-
-          // Check if we can show notifications
+          // Enhanced permission and support checks
           if (!self.registration.showNotification) {
-            console.error('[Service Worker] Notifications not supported');
             throw new Error('Notifications not supported');
           }
 
-          // Show notification with enhanced error handling
+          if (Notification.permission !== 'granted') {
+            throw new Error('Notification permission not granted');
+          }
+
           const notification = await self.registration.showNotification(
             'Nouvelle mission disponible',
             options
@@ -96,31 +108,28 @@ self.addEventListener('push', event => {
   }
 });
 
-// Enhanced notification click handling with better error management
+// Enhanced notification click handling
 self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification clicked:', event);
+  console.log('[Service Worker] Notification clicked:', {
+    action: event.action,
+    notification: event.notification
+  });
   
-  // Close the notification
   event.notification.close();
 
-  // Enhanced action handling
   if (event.action === 'decline') {
     console.log('[Service Worker] Mission declined');
     return;
   }
 
-  // Get the mission data with proper error handling
   const missionData = event.notification.data || {};
   console.log('[Service Worker] Notification data:', missionData);
 
-  // Enhanced URL handling with validation
   const urlToOpen = new URL('/', self.location.origin).href;
 
-  // More robust window handling with proper error management
   event.waitUntil(
     (async () => {
       try {
-        // Enhanced window client handling
         const windowClients = await clients.matchAll({
           type: 'window',
           includeUncontrolled: true
@@ -128,11 +137,10 @@ self.addEventListener('notificationclick', event => {
         
         console.log('[Service Worker] Found window clients:', windowClients);
 
-        // Try to find and focus an existing window
+        // Try to focus existing window
         for (const client of windowClients) {
           if (client.url === urlToOpen && 'focus' in client) {
             await client.focus();
-            // Post message to client for mission handling
             client.postMessage({
               type: 'NOTIFICATION_CLICK',
               missionId: missionData.missionId,
@@ -142,24 +150,19 @@ self.addEventListener('notificationclick', event => {
           }
         }
 
-        // If no existing window, open a new one with enhanced error handling
+        // Open new window if none exists
         if (clients.openWindow) {
-          try {
-            const newWindow = await clients.openWindow(urlToOpen);
-            console.log('[Service Worker] New window opened:', newWindow);
-            if (newWindow) {
-              // Wait for the window to load and post message
-              setTimeout(() => {
-                newWindow.postMessage({
-                  type: 'NOTIFICATION_CLICK',
-                  missionId: missionData.missionId,
-                  action: event.action
-                });
-              }, 1000);
-            }
-          } catch (windowError) {
-            console.error('[Service Worker] Error opening window:', windowError);
-            throw windowError;
+          const newWindow = await clients.openWindow(urlToOpen);
+          console.log('[Service Worker] New window opened:', newWindow);
+          
+          if (newWindow) {
+            setTimeout(() => {
+              newWindow.postMessage({
+                type: 'NOTIFICATION_CLICK',
+                missionId: missionData.missionId,
+                action: event.action
+              });
+            }, 1000);
           }
         }
       } catch (error) {
@@ -170,9 +173,10 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-// Enhanced service worker installation with better cache management
+// Enhanced installation handling
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing Service Worker:', event);
+  
   event.waitUntil(
     Promise.all([
       self.skipWaiting(),
@@ -192,13 +196,13 @@ self.addEventListener('install', event => {
   );
 });
 
-// Enhanced activation handling with proper cache cleanup
+// Enhanced activation handling with cache cleanup
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating Service Worker:', event);
+  
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      // Clean up old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
@@ -216,13 +220,4 @@ self.addEventListener('activate', event => {
       throw error;
     })
   );
-});
-
-// Enhanced error handling for uncaught errors
-self.addEventListener('error', event => {
-  console.error('[Service Worker] Uncaught error:', event.error);
-});
-
-self.addEventListener('unhandledrejection', event => {
-  console.error('[Service Worker] Unhandled promise rejection:', event.reason);
 });
