@@ -41,11 +41,11 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:sender_id (
+          sender:users!messages_sender_id_fkey (
             id,
-            first_name,
-            last_name,
-            profile_picture_url
+            raw_user_meta_data->first_name as first_name,
+            raw_user_meta_data->last_name as last_name,
+            raw_user_meta_data->profile_picture_url as profile_picture_url
           )
         `)
         .eq("channel_id", channelId)
@@ -61,8 +61,15 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         throw error;
       }
 
-      // Type assertion to ensure the data matches our Message interface
-      return (data as Message[]) || [];
+      return data.map(message => ({
+        ...message,
+        sender: message.sender ? {
+          id: message.sender.id,
+          first_name: message.sender.first_name,
+          last_name: message.sender.last_name,
+          profile_picture_url: message.sender.profile_picture_url
+        } : null
+      })) as Message[];
     },
     enabled: !!channelId,
   });
@@ -90,18 +97,28 @@ export const MessageList = ({ channelId }: MessageListProps) => {
               .from("messages")
               .select(`
                 *,
-                sender:sender_id (
+                sender:users!messages_sender_id_fkey (
                   id,
-                  first_name,
-                  last_name,
-                  profile_picture_url
+                  raw_user_meta_data->first_name as first_name,
+                  raw_user_meta_data->last_name as last_name,
+                  raw_user_meta_data->profile_picture_url as profile_picture_url
                 )
               `)
               .eq("id", payload.new.id)
               .single();
 
             if (!error && data) {
-              setMessages((prev) => [...prev, data as Message]);
+              const newMessage = {
+                ...data,
+                sender: data.sender ? {
+                  id: data.sender.id,
+                  first_name: data.sender.first_name,
+                  last_name: data.sender.last_name,
+                  profile_picture_url: data.sender.profile_picture_url
+                } : null
+              } as Message;
+              
+              setMessages((prev) => [...prev, newMessage]);
             }
           }
         }
