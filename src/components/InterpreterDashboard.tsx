@@ -40,6 +40,7 @@ interface Profile {
 
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -47,6 +48,7 @@ export const InterpreterDashboard = () => {
 
   useEffect(() => {
     fetchProfile();
+    fetchScheduledMissions();
 
     // Set up realtime subscription for profile updates
     const channel = supabase
@@ -72,6 +74,31 @@ export const InterpreterDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [profile?.id]);
+
+  const fetchScheduledMissions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { data, error } = await supabase
+        .from('interpretation_missions')
+        .select('*')
+        .eq('assigned_interpreter_id', user.id)
+        .eq('status', 'accepted')
+        .eq('mission_type', 'scheduled');
+
+      if (error) throw error;
+      
+      setScheduledMissions(data || []);
+    } catch (error) {
+      console.error("Error fetching scheduled missions:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les missions programmées",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -336,7 +363,7 @@ export const InterpreterDashboard = () => {
                 
                 <TabsContent value="calendar" className="m-0 h-full">
                   <MissionsCalendar 
-                    missions={[]}
+                    missions={scheduledMissions}
                   />
                 </TabsContent>
                 
