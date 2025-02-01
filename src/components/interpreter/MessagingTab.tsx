@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface Message {
   sender_id: string;
   recipient_id: string;
   created_at: string;
+  sender_name?: string;
 }
 
 interface Admin {
@@ -97,21 +98,84 @@ export const MessagingTab = () => {
 
   const fetchChannelMessages = async (channelId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching messages for channel:', channelId);
+      
+      // First, get all messages
+      const { data: messages, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:interpreter_profiles!messages_sender_id_fkey(
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      setChannelMessages(data || []);
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      if (!messages) {
+        setChannelMessages([]);
+        return;
+      }
+
+      // Get all unique sender IDs
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      
+      // Get interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', senderIds);
+
+      if (interpreterError) {
+        console.error('Error fetching interpreter profiles:', interpreterError);
+        throw interpreterError;
+      }
+
+      // Get user roles to identify admins
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', senderIds)
+        .eq('role', 'admin');
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        throw rolesError;
+      }
+
+      // Create a map of interpreter names
+      const interpreterNames = new Map(
+        interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
+      );
+
+      // For admin users, get their info from auth.users via Edge Function
+      const adminIds = userRoles?.map(r => r.user_id) || [];
+      const adminNames = new Map();
+
+      if (adminIds.length > 0) {
+        for (const adminId of adminIds) {
+          const response = await supabase.functions.invoke('get-user-info', {
+            body: { userId: adminId }
+          });
+          
+          if (!response.error && response.data) {
+            adminNames.set(
+              adminId, 
+              `${response.data.first_name || ''} ${response.data.last_name || ''}`
+            );
+          }
+        }
+      }
+
+      // Combine messages with sender names
+      const messagesWithNames = messages.map(message => ({
+        ...message,
+        sender_name: interpreterNames.get(message.sender_id) || 
+                    adminNames.get(message.sender_id) ||
+                    "Unknown User"
+      }));
+
+      setChannelMessages(messagesWithNames);
     } catch (error) {
       console.error("Error fetching channel messages:", error);
       toast({
