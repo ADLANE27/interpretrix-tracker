@@ -7,13 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, User } from "lucide-react";
 
-interface Sender {
-  id: string;
-  first_name: string;
-  last_name: string;
-  profile_picture_url: string | null;
-}
-
 interface Message {
   id: string;
   content: string;
@@ -23,7 +16,12 @@ interface Message {
   channel_id: string | null;
   recipient_id: string | null;
   updated_at: string;
-  sender?: Sender | null;
+  sender: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+  } | null;
 }
 
 interface MessageListProps {
@@ -41,7 +39,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:users!messages_sender_id_fkey (
+          sender:users (
             id,
             raw_user_meta_data->first_name as first_name,
             raw_user_meta_data->last_name as last_name,
@@ -61,14 +59,16 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         throw error;
       }
 
-      return data.map(message => ({
+      return data.map((message) => ({
         ...message,
-        sender: message.sender ? {
-          id: message.sender.id,
-          first_name: message.sender.first_name,
-          last_name: message.sender.last_name,
-          profile_picture_url: message.sender.profile_picture_url
-        } : null
+        sender: message.sender
+          ? {
+              id: message.sender.id,
+              first_name: message.sender.first_name,
+              last_name: message.sender.last_name,
+              profile_picture_url: message.sender.profile_picture_url,
+            }
+          : null,
       })) as Message[];
     },
     enabled: !!channelId,
@@ -97,7 +97,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
               .from("messages")
               .select(`
                 *,
-                sender:users!messages_sender_id_fkey (
+                sender:users (
                   id,
                   raw_user_meta_data->first_name as first_name,
                   raw_user_meta_data->last_name as last_name,
@@ -110,14 +110,16 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             if (!error && data) {
               const newMessage = {
                 ...data,
-                sender: data.sender ? {
-                  id: data.sender.id,
-                  first_name: data.sender.first_name,
-                  last_name: data.sender.last_name,
-                  profile_picture_url: data.sender.profile_picture_url
-                } : null
+                sender: data.sender
+                  ? {
+                      id: data.sender.id,
+                      first_name: data.sender.first_name,
+                      last_name: data.sender.last_name,
+                      profile_picture_url: data.sender.profile_picture_url,
+                    }
+                  : null,
               } as Message;
-              
+
               setMessages((prev) => [...prev, newMessage]);
             }
           }
@@ -158,8 +160,8 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             </Avatar>
             <div>
               <div className="font-semibold">
-                {message.sender 
-                  ? `${message.sender.first_name} ${message.sender.last_name}` 
+                {message.sender
+                  ? `${message.sender.first_name} ${message.sender.last_name}`
                   : "Unknown User"}
               </div>
               <div className="text-sm text-gray-600">{message.content}</div>

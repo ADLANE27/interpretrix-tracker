@@ -75,7 +75,7 @@ export const ChannelManagement = () => {
           id,
           user_id,
           channel_id,
-          user:user_id (
+          user:users (
             email,
             raw_user_meta_data
           )
@@ -83,12 +83,7 @@ export const ChannelManagement = () => {
         .eq("channel_id", selectedChannel?.id);
 
       if (error) throw error;
-      return data.map(member => ({
-        ...member,
-        email: member.user?.email,
-        first_name: member.user?.raw_user_meta_data?.first_name,
-        last_name: member.user?.raw_user_meta_data?.last_name,
-      })) as ChannelMember[];
+      return data as ChannelMember[];
     },
   });
 
@@ -169,7 +164,9 @@ export const ChannelManagement = () => {
                 <Label htmlFor="type">Channel Type</Label>
                 <Select
                   value={newChannelType}
-                  onValueChange={(value: Channel["type"]) => setNewChannelType(value)}
+                  onValueChange={(value: Channel["type"]) =>
+                    setNewChannelType(value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select channel type" />
@@ -183,8 +180,8 @@ export const ChannelManagement = () => {
                 </Select>
               </div>
 
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={handleCreateChannel}
                 disabled={!newChannelName}
               >
@@ -202,7 +199,9 @@ export const ChannelManagement = () => {
               {channels?.map((channel) => (
                 <Button
                   key={channel.id}
-                  variant={selectedChannel?.id === channel.id ? "default" : "ghost"}
+                  variant={
+                    selectedChannel?.id === channel.id ? "default" : "ghost"
+                  }
                   className="w-full justify-start"
                   onClick={() => setSelectedChannel(channel)}
                 >
@@ -249,10 +248,11 @@ export const ChannelManagement = () => {
                       >
                         <div>
                           <div className="font-medium">
-                            {member.first_name} {member.last_name}
+                            {member.user.raw_user_meta_data.first_name}{" "}
+                            {member.user.raw_user_meta_data.last_name}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {member.email}
+                            {member.user.email}
                           </div>
                         </div>
                       </div>
