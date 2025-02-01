@@ -283,6 +283,7 @@ export const AdminMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      // Delete all messages between the admin and interpreter (both directions)
       const { error } = await supabase
         .from("direct_messages")
         .delete()
@@ -291,7 +292,7 @@ export const AdminMessaging = () => {
       if (error) throw error;
 
       setMessages([]);
-      setIsDeleteAllDialogOpen(false); // Close the dialog after successful deletion
+      setIsDeleteAllDialogOpen(false);
       toast({
         title: "Succès",
         description: "Historique des messages supprimé",
