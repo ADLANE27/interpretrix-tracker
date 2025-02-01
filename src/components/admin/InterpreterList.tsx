@@ -29,13 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { StatusFilter } from "@/components/StatusFilter";
 
 interface InterpreterData {
   id: string;
@@ -46,6 +40,7 @@ interface InterpreterData {
   tarif_15min: number;
   employment_status?: "salaried" | "self_employed";
   languages?: string[];
+  status?: string;
 }
 
 interface InterpreterListProps {
@@ -65,7 +60,7 @@ export const InterpreterList = ({
 }: InterpreterListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredInterpreters = interpreters.filter((interpreter) => {
@@ -79,9 +74,7 @@ export const InterpreterList = ({
       );
 
     const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && interpreter.active) ||
-      (statusFilter === "inactive" && !interpreter.active);
+      !selectedStatus || interpreter.status === selectedStatus;
 
     return matchesSearch && matchesStatus;
   });
@@ -106,20 +99,12 @@ export const InterpreterList = ({
                 className="pl-8"
               />
             </div>
-            <div className="w-48">
-              <Label htmlFor="statusFilter">Filtrer par statut</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="active">Actif</SelectItem>
-                  <SelectItem value="inactive">Inactif</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
+
+          <StatusFilter
+            selectedStatus={selectedStatus}
+            onStatusChange={setSelectedStatus}
+          />
 
           <Table>
             <TableHeader>
