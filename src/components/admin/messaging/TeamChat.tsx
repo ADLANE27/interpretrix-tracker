@@ -27,79 +27,67 @@ export const TeamChat = () => {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const { toast } = useToast();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels();
-    
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('channel-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'channels'
-        },
-        () => {
-          console.log('Channel change detected, refreshing channels...');
-          fetchChannels();
-        }
-      )
-      .subscribe((status) => {
-        console.log('Channel subscription status:', status);
-      });
-
+    const messageChannel = subscribeToMessages();
     return () => {
-      console.log('Cleaning up channel subscription...');
-      supabase.removeChannel(channel);
+      supabase.removeChannel(messageChannel);
     };
   }, []);
 
   const fetchChannels = async () => {
     try {
-      console.log('Fetching channels...');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user found');
-        return;
-      }
+      if (!user) return;
+      setCurrentUserId(user.id);
 
-      // First get channels where user is a member
       const { data: memberChannels, error: memberError } = await supabase
         .from('channel_members')
         .select('channel_id')
         .eq('user_id', user.id);
 
-      if (memberError) {
-        console.error('Error fetching channel memberships:', memberError);
-        throw memberError;
-      }
+      if (memberError) throw memberError;
 
       const channelIds = memberChannels?.map(m => m.channel_id) || [];
-      console.log('Found channel IDs:', channelIds);
-
-      // Then fetch the actual channels
       const { data: channels, error } = await supabase
         .from('channels')
         .select('*')
         .in('id', channelIds);
 
-      if (error) {
-        console.error('Error fetching channels:', error);
-        throw error;
-      }
-
-      console.log('Successfully fetched channels:', channels);
+      if (error) throw error;
       setChannels(channels || []);
     } catch (error) {
-      console.error('Error in fetchChannels:', error);
+      console.error('Error fetching channels:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les canaux",
         variant: "destructive",
       });
     }
+  };
+
+  const subscribeToMessages = () => {
+    const channel = supabase
+      .channel("messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const newMessage = payload.new;
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      )
+      .subscribe();
+
+    return channel;
   };
 
   const handleCreateChannelSuccess = () => {
@@ -161,7 +149,45 @@ export const TeamChat = () => {
 
         <div className="col-span-3 border rounded-lg p-4">
           {selectedChannel ? (
-            <ChannelMessages channelId={selectedChannel} />
+            <div className="h-full flex flex-col">
+              <ScrollArea className="flex-1 pr-4 mb-4">
+                <div className="space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`p-3 rounded-lg max-w-[80%] ${
+                        message.sender_id === currentUserId
+                          ? "bg-primary text-primary-foreground ml-auto"
+                          : "bg-secondary mr-auto"
+                      }`}
+                    >
+                      <div className="text-xs font-medium mb-1">
+                        {message.sender_name}
+                      </div>
+                      {message.content}
+                      <div className="text-xs opacity-70 mt-1">
+                        {new Date(message.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Tapez votre message..."
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      sendMessage();
+                    }
+                  }}
+                />
+                <Button onClick={sendMessage}>
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
               Sélectionnez un canal pour commencer à discuter
