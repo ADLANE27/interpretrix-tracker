@@ -334,11 +334,8 @@ export const AdminDashboard = () => {
         <TabsContent value="users">
           <UserManagement />
         </TabsContent>
-
-        <TabsContent value="guide">
-          <AdminHowToUseGuide />
-        </TabsContent>
       </Tabs>
+      <AdminHowToUseGuide />
     </div>
   );
 };
