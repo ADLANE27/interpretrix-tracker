@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Search, Edit2, Trash2, Check, X, Bell } from "lucide-react";
+import { Send, Search, Edit2, Trash2, Check, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
@@ -36,6 +36,8 @@ export const AdminMessaging = () => {
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [unreadCounts, setUnreadCounts] = useState<UnreadCount>({});
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -261,6 +263,7 @@ export const AdminMessaging = () => {
 
       if (error) throw error;
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      setIsDeleteDialogOpen(false); // Close the dialog after successful deletion
       toast({
         title: "Succès",
         description: "Message supprimé avec succès",
@@ -288,6 +291,7 @@ export const AdminMessaging = () => {
       if (error) throw error;
 
       setMessages([]);
+      setIsDeleteAllDialogOpen(false); // Close the dialog after successful deletion
       toast({
         title: "Succès",
         description: "Historique des messages supprimé",
@@ -341,7 +345,7 @@ export const AdminMessaging = () => {
                 className="flex-1"
               />
             </div>
-            <Dialog>
+            <Dialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="destructive" size="sm">
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -356,7 +360,7 @@ export const AdminMessaging = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => {}}>Annuler</Button>
+                  <Button variant="outline" onClick={() => setIsDeleteAllDialogOpen(false)}>Annuler</Button>
                   <Button 
                     variant="destructive" 
                     onClick={() => deleteAllMessages(selectedInterpreter)}
@@ -421,7 +425,7 @@ export const AdminMessaging = () => {
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Dialog>
+                            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                               <DialogTrigger asChild>
                                 <Button size="sm" variant="ghost">
                                   <Trash2 className="h-4 w-4" />
@@ -435,7 +439,7 @@ export const AdminMessaging = () => {
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => {}}>Annuler</Button>
+                                  <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Annuler</Button>
                                   <Button
                                     variant="destructive"
                                     onClick={() => deleteMessage(message.id)}
