@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Search, Edit2, Trash2, Check, X } from "lucide-react";
+import { Send, Search, Edit2, Trash2, Check, X, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Message {
   id: string;
@@ -22,6 +23,10 @@ interface Interpreter {
   last_name: string;
 }
 
+interface UnreadCount {
+  [interpreterId: string]: number;
+}
+
 export const AdminMessaging = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
@@ -30,10 +35,12 @@ export const AdminMessaging = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [unreadCounts, setUnreadCounts] = useState<UnreadCount>({});
   const { toast } = useToast();
 
   useEffect(() => {
     fetchInterpreters();
+    subscribeToNewMessages();
   }, []);
 
   useEffect(() => {
@@ -46,6 +53,67 @@ export const AdminMessaging = () => {
       };
     }
   }, [selectedInterpreter]);
+
+  const subscribeToNewMessages = () => {
+    const channel = supabase
+      .channel('new-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'direct_messages',
+        },
+        async (payload) => {
+          const message = payload.new as Message;
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          // Only show notification for messages where we are the recipient
+          if (message.recipient_id === user?.id) {
+            const sender = interpreters.find(i => i.id === message.sender_id);
+            if (sender) {
+              toast({
+                title: `New message from ${sender.first_name} ${sender.last_name}`,
+                description: message.content,
+              });
+              
+              // Update unread count
+              setUnreadCounts(prev => ({
+                ...prev,
+                [message.sender_id]: (prev[message.sender_id] || 0) + 1
+              }));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return channel;
+  };
+
+  const fetchUnreadCounts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('sender_id, count')
+        .eq('recipient_id', user.id)
+        .is('read_at', null)
+        .group_by('sender_id');
+
+      if (error) throw error;
+
+      const counts: UnreadCount = {};
+      data.forEach(item => {
+        counts[item.sender_id] = parseInt(item.count);
+      });
+      setUnreadCounts(counts);
+    } catch (error) {
+      console.error('Error fetching unread counts:', error);
+    }
+  };
 
   const fetchInterpreters = async () => {
     try {
@@ -221,8 +289,17 @@ export const AdminMessaging = () => {
             key={interpreter.id}
             variant={selectedInterpreter === interpreter.id ? "default" : "outline"}
             onClick={() => setSelectedInterpreter(interpreter.id)}
+            className="relative"
           >
             {interpreter.first_name} {interpreter.last_name}
+            {unreadCounts[interpreter.id] > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 rounded-full"
+              >
+                {unreadCounts[interpreter.id]}
+              </Badge>
+            )}
           </Button>
         ))}
       </div>
