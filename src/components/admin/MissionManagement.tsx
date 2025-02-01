@@ -27,6 +27,13 @@ interface Mission {
   scheduled_start_time?: string;
   scheduled_end_time?: string;
   mission_type: 'immediate' | 'scheduled';
+  interpreter_profiles?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+    status: string;
+  };
 }
 
 interface Interpreter {
@@ -51,13 +58,32 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
 
+  const handleSelectAllInterpreters = () => {
+    if (selectedInterpreters.length === availableInterpreters.length) {
+      setSelectedInterpreters([]);
+    } else {
+      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+    }
+  };
+
+  const calculateDuration = (mission: Mission) => {
+    if (mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time) {
+      const durationInMinutes = differenceInMinutes(
+        new Date(mission.scheduled_end_time),
+        new Date(mission.scheduled_start_time)
+      );
+      return `${durationInMinutes} minutes`;
+    }
+    return `${mission.estimated_duration} minutes`;
+  };
+
   const fetchMissions = async () => {
     try {
       const { data, error } = await supabase
         .from("interpretation_missions")
         .select(`
           *,
-          assigned_interpreter:interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+          interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
             id,
             first_name,
             last_name,
@@ -140,7 +166,6 @@ export const MissionManagement = () => {
     try {
       const languagePair = `${sourceLang} → ${targetLang}`;
       
-      // Get all interpreters that match the language pair
       const { data: potentialInterpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
@@ -149,8 +174,6 @@ export const MissionManagement = () => {
       if (error) throw error;
 
       if (missionType === 'immediate') {
-        // For immediate missions, only show available interpreters
-        // and check 15-min window before scheduled missions
         const { data: scheduledMissions } = await supabase
           .from("interpretation_missions")
           .select("*")
@@ -163,11 +186,10 @@ export const MissionManagement = () => {
 
         setAvailableInterpreters(availableInterpreters || []);
       } else {
-        // For scheduled missions, show all interpreters
         setAvailableInterpreters(potentialInterpreters || []);
       }
 
-      setSelectedInterpreters([]); // Reset selections when interpreters list changes
+      setSelectedInterpreters([]);
     } catch (error) {
       console.error("Error finding interpreters:", error);
       toast({
@@ -180,7 +202,6 @@ export const MissionManagement = () => {
 
   const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-      // For scheduled missions, check for time overlaps before allowing selection
       const isAvailable = await isInterpreterAvailableForScheduledMission(
         interpreterId,
         scheduledStartTime,
@@ -209,7 +230,6 @@ export const MissionManagement = () => {
 
   const handleDeleteMission = async (missionId: string) => {
     try {
-      // First, delete related notifications
       const { error: notificationError } = await supabase
         .from("mission_notifications")
         .delete()
@@ -217,7 +237,6 @@ export const MissionManagement = () => {
 
       if (notificationError) throw notificationError;
 
-      // Then delete the mission
       const { error } = await supabase
         .from("interpretation_missions")
         .delete()
@@ -262,7 +281,6 @@ export const MissionManagement = () => {
       return;
     }
 
-    // Calculate duration for scheduled missions
     let calculatedDuration = parseInt(estimatedDuration);
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
       calculatedDuration = differenceInMinutes(
@@ -553,17 +571,17 @@ export const MissionManagement = () => {
                     </p>
                   )}
 
-                  {mission.assigned_interpreter && (
+                  {mission.interpreter_profiles && (
                     <div className="mt-2 flex items-center gap-2">
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={mission.assigned_interpreter.profile_picture_url || undefined} />
+                        <AvatarImage src={mission.interpreter_profiles.profile_picture_url || undefined} />
                         <AvatarFallback>
-                          {mission.assigned_interpreter.first_name[0]}
-                          {mission.assigned_interpreter.last_name[0]}
+                          {mission.interpreter_profiles.first_name[0]}
+                          {mission.interpreter_profiles.last_name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm text-gray-600">
-                        Mission acceptée par {mission.assigned_interpreter.first_name} {mission.assigned_interpreter.last_name}
+                        Mission acceptée par {mission.interpreter_profiles.first_name} {mission.interpreter_profiles.last_name}
                       </span>
                     </div>
                   )}
