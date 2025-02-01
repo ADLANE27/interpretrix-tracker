@@ -43,27 +43,13 @@ export const GroupChatManager = () => {
 
   useEffect(() => {
     fetchChannels();
-    const channel = supabase
-      .channel("channels-updates")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "channels" },
-        () => {
-          fetchChannels();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   useEffect(() => {
     if (selectedChannel) {
       fetchMessages(selectedChannel);
       const messagesChannel = supabase
-        .channel("messages-updates")
+        .channel(`messages-${selectedChannel}`)
         .on(
           "postgres_changes",
           {
@@ -86,18 +72,25 @@ export const GroupChatManager = () => {
 
   const fetchChannels = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
       const { data, error } = await supabase
         .from("channels")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching channels:", error);
+        throw error;
+      }
+
       setChannels(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching channels:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les canaux de discussion",
+        description: "Impossible de charger les canaux de discussion. Veuillez réessayer.",
         variant: "destructive",
       });
     }
@@ -145,6 +138,7 @@ export const GroupChatManager = () => {
       setNewChannelName("");
       setNewChannelDescription("");
       setIsNewChannelOpen(false);
+      fetchChannels();
     } catch (error) {
       console.error("Error creating channel:", error);
       toast({
@@ -159,7 +153,6 @@ export const GroupChatManager = () => {
     try {
       if (!selectedChannel) return;
 
-      // First, get the user ID from the email
       const { data: users, error: userError } = await supabase
         .from("interpreter_profiles")
         .select("id")
@@ -187,11 +180,12 @@ export const GroupChatManager = () => {
 
       setMemberEmail("");
       setIsAddMemberOpen(false);
+      fetchChannels();
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error.message || "Impossible d'ajouter le membre",
         variant: "destructive",
       });
     }
