@@ -131,7 +131,6 @@ export const MessagingTab = () => {
 
   const fetchAdmins = async () => {
     try {
-      // First, get admin user_ids from user_roles
       const { data: adminRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -145,7 +144,6 @@ export const MessagingTab = () => {
         return;
       }
 
-      // Then, get admin emails from auth.users using Edge Function
       const adminIds = adminRoles.map(role => role.user_id);
       const { data: adminData, error } = await supabase.functions.invoke('get-admin-emails', {
         body: { adminIds }
@@ -278,8 +276,8 @@ export const MessagingTab = () => {
               <div className="space-y-4">
                 {messages
                   .filter((msg) => 
-                    (msg.sender_id === admin.id && msg.recipient_id === supabase.auth.user()?.id) ||
-                    (msg.recipient_id === admin.id && msg.sender_id === supabase.auth.user()?.id)
+                    (msg.sender_id === admin.id && msg.recipient_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id)) ||
+                    (msg.recipient_id === admin.id && msg.sender_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id))
                   )
                   .map((message) => (
                     <div
@@ -351,7 +349,7 @@ export const MessagingTab = () => {
                       <div
                         key={message.id}
                         className={`p-3 rounded-lg max-w-[80%] ${
-                          message.sender_id === supabase.auth.user()?.id
+                          message.sender_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id)
                             ? "bg-primary text-primary-foreground ml-auto"
                             : "bg-secondary"
                         }`}
