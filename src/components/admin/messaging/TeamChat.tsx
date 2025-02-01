@@ -74,8 +74,8 @@ export const TeamChat = () => {
     } catch (error) {
       console.error('Error fetching channels:', error);
       toast({
-        title: "Error",
-        description: "Failed to load channels",
+        title: "Erreur",
+        description: "Impossible de charger les canaux",
         variant: "destructive",
       });
     }
@@ -84,14 +84,14 @@ export const TeamChat = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Team Chat</h2>
+        <h2 className="text-2xl font-bold">Chat d'équipe</h2>
         <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
           <DialogTrigger asChild>
-            <Button>Create Channel</Button>
+            <Button>Créer un canal</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create a New Channel</DialogTitle>
+              <DialogTitle>Créer un nouveau canal</DialogTitle>
             </DialogHeader>
             <CreateChannelDialog onClose={() => setIsCreateChannelOpen(false)} />
           </DialogContent>
@@ -112,11 +112,16 @@ export const TeamChat = () => {
                   <div>
                     <div className="font-medium">{channel.name}</div>
                     <div className="text-xs text-gray-500">
-                      {channel.members_count} members
+                      {channel.members_count} membres
                     </div>
                   </div>
                 </Button>
               ))}
+              {channels.length === 0 && (
+                <div className="text-center text-gray-500 py-4">
+                  Aucun canal disponible
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -126,7 +131,7 @@ export const TeamChat = () => {
             <ChannelMessages channelId={selectedChannel} />
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
-              Select a channel to start chatting
+              Sélectionnez un canal pour commencer à discuter
             </div>
           )}
         </div>

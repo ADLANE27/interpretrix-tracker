@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,11 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Fetch users when dialog opens
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -86,8 +91,8 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({
-        title: "Error",
-        description: "Failed to load users",
+        title: "Erreur",
+        description: "Impossible de charger les utilisateurs",
         variant: "destructive",
       });
     }
@@ -96,8 +101,8 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
   const handleCreateChannel = async () => {
     if (!name.trim()) {
       toast({
-        title: "Error",
-        description: "Channel name is required",
+        title: "Erreur",
+        description: "Le nom du canal est requis",
         variant: "destructive",
       });
       return;
@@ -106,7 +111,7 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("Non authentifié");
 
       // Create channel
       const { data: channel, error: channelError } = await supabase
@@ -149,16 +154,16 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
       }
 
       toast({
-        title: "Success",
-        description: "Channel created successfully",
+        title: "Succès",
+        description: "Canal créé avec succès",
       });
 
       onClose();
     } catch (error) {
       console.error("Error creating channel:", error);
       toast({
-        title: "Error",
-        description: "Failed to create channel",
+        title: "Erreur",
+        description: "Impossible de créer le canal",
         variant: "destructive",
       });
     } finally {
@@ -169,27 +174,27 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Channel Name</Label>
+        <Label htmlFor="name">Nom du canal</Label>
         <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Enter channel name"
+          placeholder="Entrez le nom du canal"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description (Optional)</Label>
+        <Label htmlFor="description">Description (Optionnel)</Label>
         <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Enter channel description"
+          placeholder="Entrez la description du canal"
         />
       </div>
 
       <div className="space-y-2">
-        <Label>Add Members</Label>
+        <Label>Ajouter des membres</Label>
         <ScrollArea className="h-[200px] border rounded-md p-4">
           <div className="space-y-2">
             {users.map((user) => (
@@ -216,10 +221,10 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
 
       <div className="flex justify-end space-x-2">
         <Button variant="outline" onClick={onClose}>
-          Cancel
+          Annuler
         </Button>
         <Button onClick={handleCreateChannel} disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Channel"}
+          {isLoading ? "Création..." : "Créer le canal"}
         </Button>
       </div>
     </div>
