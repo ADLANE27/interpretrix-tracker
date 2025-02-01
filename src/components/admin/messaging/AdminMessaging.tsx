@@ -287,7 +287,7 @@ export const AdminMessaging = () => {
       const { error } = await supabase
         .from("direct_messages")
         .delete()
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`);
+        .or(`sender_id.eq.${interpreterId},recipient_id.eq.${interpreterId}`);
 
       if (error) throw error;
 
