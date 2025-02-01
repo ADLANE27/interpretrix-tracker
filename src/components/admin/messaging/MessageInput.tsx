@@ -35,7 +35,7 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
         .from('channel_members')
         .select(`
           user_id,
-          user:user_id (
+          users:user_id (
             id,
             email,
             raw_user_meta_data
@@ -48,7 +48,7 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
         return;
       }
 
-      const users = data.map(member => member.user as User);
+      const users = data.map(member => member.users as User);
       setChannelUsers(users);
     };
 

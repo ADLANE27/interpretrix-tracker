@@ -34,10 +34,6 @@ interface Message {
   }[];
 }
 
-interface MessageListProps {
-  channelId: string;
-}
-
 interface PresenceState {
   [key: string]: {
     online_at: string;
@@ -45,7 +41,7 @@ interface PresenceState {
   }[];
 }
 
-export const MessageList = ({ channelId }: MessageListProps) => {
+export const MessageList = ({ channelId }: { channelId: string }) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [presenceState, setPresenceState] = useState<PresenceState>({});
@@ -95,12 +91,11 @@ export const MessageList = ({ channelId }: MessageListProps) => {
   }, [channelMessages]);
 
   useEffect(() => {
-    // Set up real-time presence tracking
     const channel = supabase.channel(`presence:${channelId}`);
 
     channel
       .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
+        const state = channel.presenceState<{ user_id: string; online_at: string }>();
         setPresenceState(state);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
