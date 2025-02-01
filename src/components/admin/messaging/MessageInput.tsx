@@ -44,8 +44,8 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
       const userIds = memberData.map(member => member.user_id);
 
       const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, email, raw_user_meta_data')
+        .from('interpreter_profiles')
+        .select('id, email, first_name, last_name')
         .in('id', userIds);
 
       if (userError) {
@@ -53,7 +53,16 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
         return;
       }
 
-      setChannelUsers(userData as User[]);
+      const formattedUsers = userData.map(user => ({
+        id: user.id,
+        email: user.email,
+        raw_user_meta_data: {
+          first_name: user.first_name,
+          last_name: user.last_name
+        }
+      }));
+
+      setChannelUsers(formattedUsers);
     };
 
     fetchChannelUsers();

@@ -54,9 +54,10 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
         .from("messages")
         .select(`
           *,
-          sender:users!messages_sender_id_fkey (
+          sender:interpreter_profiles!messages_sender_id_fkey (
             email,
-            raw_user_meta_data
+            first_name,
+            last_name
           )
         `)
         .eq("channel_id", channelId)
@@ -72,18 +73,36 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
             .select(`
               id,
               mentioned_user_id,
-              mentioned_user:users!message_mentions_mentioned_user_id_fkey (
+              mentioned_user:interpreter_profiles!message_mentions_mentioned_user_id_fkey (
                 email,
-                raw_user_meta_data
+                first_name,
+                last_name
               )
             `)
             .eq("message_id", message.id);
 
           if (mentionsError) throw mentionsError;
 
+          // Format the data to match the Message interface
           return {
             ...message,
-            mentions: mentions || [],
+            sender: {
+              email: message.sender.email,
+              raw_user_meta_data: {
+                first_name: message.sender.first_name,
+                last_name: message.sender.last_name
+              }
+            },
+            mentions: mentions ? mentions.map(mention => ({
+              ...mention,
+              mentioned_user: {
+                email: mention.mentioned_user.email,
+                raw_user_meta_data: {
+                  first_name: mention.mentioned_user.first_name,
+                  last_name: mention.mentioned_user.last_name
+                }
+              }
+            })) : []
           };
         })
       );
@@ -125,50 +144,8 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
         }
       });
 
-    // Set up real-time message updates
-    const messageChannel = supabase
-      .channel(`messages:${channelId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `channel_id=eq.${channelId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === "INSERT") {
-            const { data, error } = await supabase
-              .from("messages")
-              .select(`
-                *,
-                sender:users!messages_sender_id_fkey (
-                  email,
-                  raw_user_meta_data
-                ),
-                mentions:message_mentions (
-                  id,
-                  mentioned_user_id,
-                  mentioned_user:users!message_mentions_mentioned_user_id_fkey (
-                    email,
-                    raw_user_meta_data
-                  )
-                )
-              `)
-              .eq("id", payload.new.id)
-              .single();
-
-            if (!error && data) {
-              setMessages((prev) => [...prev, data as Message]);
-            }
-          }
-        }
-      )
-      .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(messageChannel);
     };
   }, [channelId]);
 
