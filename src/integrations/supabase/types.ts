@@ -47,7 +47,6 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
-          members_count: number | null
           name: string
           type: Database["public"]["Enums"]["channel_type"]
           updated_at: string
@@ -57,7 +56,6 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
-          members_count?: number | null
           name: string
           type: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
@@ -67,7 +65,6 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
-          members_count?: number | null
           name?: string
           type?: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
