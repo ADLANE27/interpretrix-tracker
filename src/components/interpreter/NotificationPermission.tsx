@@ -88,10 +88,15 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   if (!('Notification' in window)) {
     return (
-      <div className="text-sm text-yellow-600 flex items-center gap-2">
+      <Button 
+        variant="outline" 
+        size="sm"
+        disabled
+        className="flex items-center gap-2"
+      >
         <Bell className="h-4 w-4" />
-        <span>Votre navigateur ne supporte pas les notifications</span>
-      </div>
+        Notifications non supportées
+      </Button>
     );
   }
 
@@ -111,10 +116,21 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   if (permission === 'denied') {
     return (
-      <div className="flex items-center gap-2 text-sm text-red-600">
+      <Button 
+        variant="outline" 
+        size="sm"
+        className="flex items-center gap-2 text-red-600 hover:text-red-700"
+        onClick={() => {
+          toast({
+            title: "Notifications bloquées",
+            description: "Pour activer les notifications, veuillez les autoriser dans les paramètres de votre navigateur",
+            variant: "destructive",
+          });
+        }}
+      >
         <Bell className="h-4 w-4" />
-        <span>Notifications bloquées - Vérifiez les paramètres de votre navigateur</span>
-      </div>
+        Notifications bloquées
+      </Button>
     );
   }
 
