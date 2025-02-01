@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
 import { UserManagement } from "./UserManagement";
 import { AdminHowToUseGuide } from "./AdminHowToUseGuide";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const LANGUAGES = [
   // Langues européennes
@@ -80,6 +82,7 @@ export const AdminDashboard = () => {
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchInterpreters();
@@ -156,6 +159,26 @@ export const AdminDashboard = () => {
     };
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Déconnexion réussie",
+        description: "Vous avez été déconnecté avec succès",
+      });
+      
+      navigate("/admin/login");
+    } catch (error: any) {
+      toast({
+        title: "Erreur de déconnexion",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleStatusChange = (status: string) => {
     setSelectedStatuses(prev =>
       prev.includes(status)
@@ -208,14 +231,24 @@ export const AdminDashboard = () => {
   return (
     <div className="container mx-auto py-6">
       <Tabs defaultValue="interpreters" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-          <TabsTrigger value="missions">Missions</TabsTrigger>
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-trigger')?.click()}>
-            Guide d'utilisation
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center mb-4">
+          <TabsList>
+            <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+            <TabsTrigger value="missions">Missions</TabsTrigger>
+            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+            <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-trigger')?.click()}>
+              Guide d'utilisation
+            </TabsTrigger>
+          </TabsList>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            className="gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Se déconnecter
+          </Button>
+        </div>
 
         <TabsContent value="interpreters">
           <div className="space-y-6">
