@@ -9,6 +9,68 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      channel_members: {
+        Row: {
+          added_by: string
+          channel_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          channel_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          channel_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interpretation_missions: {
         Row: {
           assigned_interpreter_id: string | null
@@ -142,6 +204,86 @@ export type Database = {
           vat_number?: string | null
         }
         Relationships: []
+      }
+      message_mentions: {
+        Row: {
+          created_at: string
+          id: string
+          mentioned_language: string | null
+          mentioned_user_id: string | null
+          message_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mentioned_language?: string | null
+          mentioned_user_id?: string | null
+          message_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mentioned_language?: string | null
+          mentioned_user_id?: string | null
+          message_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_mentions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          channel_id: string | null
+          content: string
+          created_at: string
+          id: string
+          parent_id: string | null
+          recipient_id: string | null
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          recipient_id?: string | null
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          recipient_id?: string | null
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mission_notifications: {
         Row: {
@@ -301,6 +443,7 @@ export type Database = {
       }
     }
     Enums: {
+      channel_type: "admin_only" | "internal" | "external" | "mixed"
       employment_status: "salaried" | "self_employed"
       interpreter_specialization:
         | "medical"
