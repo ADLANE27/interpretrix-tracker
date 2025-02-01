@@ -7,10 +7,9 @@ import { Send } from "lucide-react";
 
 interface MessageInputProps {
   channelId: string;
-  parentId?: string;
 }
 
-export const MessageInput = ({ channelId, parentId }: MessageInputProps) => {
+export const MessageInput = ({ channelId }: MessageInputProps) => {
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,7 +27,6 @@ export const MessageInput = ({ channelId, parentId }: MessageInputProps) => {
         channel_id: channelId,
         content: content.trim(),
         sender_id: user.id,
-        parent_id: parentId || null,
       });
 
       if (error) throw error;

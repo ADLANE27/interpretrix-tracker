@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, User } from "lucide-react";
@@ -12,19 +12,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  parent_id: string | null;
-  channel_id: string | null;
-  recipient_id: string | null;
-  updated_at: string;
-  sender: {
-    id: string;
-    email: string;
-    raw_user_meta_data: {
-      first_name: string;
-      last_name: string;
-      profile_picture_url: string | null;
-    };
-  };
+  channel_id: string;
 }
 
 interface MessageListProps {
@@ -40,14 +28,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select(`
-          *,
-          sender:users (
-            id,
-            email,
-            raw_user_meta_data
-          )
-        `)
+        .select("*")
         .eq("channel_id", channelId)
         .order("created_at", { ascending: true });
 
@@ -87,14 +68,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
           if (payload.eventType === "INSERT") {
             const { data, error } = await supabase
               .from("messages")
-              .select(`
-                *,
-                sender:users (
-                  id,
-                  email,
-                  raw_user_meta_data
-                )
-              `)
+              .select("*")
               .eq("id", payload.new.id)
               .single();
 
@@ -126,23 +100,12 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         {messages.map((message) => (
           <div key={message.id} className="flex items-start gap-3">
             <Avatar className="h-8 w-8">
-              {message.sender?.raw_user_meta_data?.profile_picture_url ? (
-                <AvatarImage
-                  src={message.sender.raw_user_meta_data.profile_picture_url}
-                  alt={`${message.sender.raw_user_meta_data.first_name} ${message.sender.raw_user_meta_data.last_name}`}
-                />
-              ) : (
-                <AvatarFallback>
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              )}
+              <AvatarFallback>
+                <User className="h-4 w-4" />
+              </AvatarFallback>
             </Avatar>
             <div>
-              <div className="font-semibold">
-                {message.sender
-                  ? `${message.sender.raw_user_meta_data.first_name} ${message.sender.raw_user_meta_data.last_name}`
-                  : "Unknown User"}
-              </div>
+              <div className="font-semibold">User {message.sender_id}</div>
               <div className="text-sm text-gray-600">{message.content}</div>
             </div>
           </div>

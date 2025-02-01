@@ -9,7 +9,6 @@ interface Channel {
   id: string;
   name: string;
   description: string | null;
-  type: "admin_only" | "internal" | "external" | "mixed";
   created_at: string;
 }
 
@@ -53,7 +52,6 @@ export const ChannelList = ({ onChannelSelect }: ChannelListProps) => {
           table: "channels",
         },
         () => {
-          // Invalidate and refetch channels
           void queryClient.invalidateQueries({ queryKey: ["channels"] });
         }
       )
