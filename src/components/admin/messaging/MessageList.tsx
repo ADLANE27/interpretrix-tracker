@@ -33,7 +33,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:sender_id (
+          sender:interpreter_profiles!messages_sender_id_fkey (
             first_name,
             last_name,
             profile_picture_url

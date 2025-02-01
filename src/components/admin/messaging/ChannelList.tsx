@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Channel {
   id: string;
@@ -19,6 +19,7 @@ interface ChannelListProps {
 
 export const ChannelList = ({ onChannelSelect }: ChannelListProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: channels, isLoading } = useQuery({
     queryKey: ["channels"],
@@ -61,7 +62,7 @@ export const ChannelList = ({ onChannelSelect }: ChannelListProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [queryClient]);
 
   if (isLoading) {
     return <div>Loading channels...</div>;
