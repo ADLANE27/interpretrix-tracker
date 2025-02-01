@@ -49,37 +49,46 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
   const { data: channelMessages, isError } = useQuery({
     queryKey: ["messages", channelId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, get messages with sender information
+      const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
           *,
-          sender:sender_id (
+          sender:users!messages_sender_id_fkey (
             email,
             raw_user_meta_data
-          ),
-          mentions:message_mentions (
-            id,
-            mentioned_user_id,
-            mentioned_user:mentioned_user_id (
-              email,
-              raw_user_meta_data
-            )
           )
         `)
         .eq("channel_id", channelId)
         .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching messages:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load messages",
-          variant: "destructive",
-        });
-        throw error;
-      }
+      if (messagesError) throw messagesError;
 
-      return data as Message[];
+      // Then, get mentions for each message
+      const messagesWithMentions = await Promise.all(
+        messagesData.map(async (message) => {
+          const { data: mentions, error: mentionsError } = await supabase
+            .from("message_mentions")
+            .select(`
+              id,
+              mentioned_user_id,
+              mentioned_user:users!message_mentions_mentioned_user_id_fkey (
+                email,
+                raw_user_meta_data
+              )
+            `)
+            .eq("message_id", message.id);
+
+          if (mentionsError) throw mentionsError;
+
+          return {
+            ...message,
+            mentions: mentions || [],
+          };
+        })
+      );
+
+      return messagesWithMentions as Message[];
     },
     enabled: !!channelId,
   });
@@ -96,7 +105,7 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ user_id: string; online_at: string }>();
-        setPresenceState(state);
+        setPresenceState(state as PresenceState);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         console.log('join', key, newPresences);
@@ -133,14 +142,14 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
               .from("messages")
               .select(`
                 *,
-                sender:sender_id (
+                sender:users!messages_sender_id_fkey (
                   email,
                   raw_user_meta_data
                 ),
                 mentions:message_mentions (
                   id,
                   mentioned_user_id,
-                  mentioned_user:mentioned_user_id (
+                  mentioned_user:users!message_mentions_mentioned_user_id_fkey (
                     email,
                     raw_user_meta_data
                   )

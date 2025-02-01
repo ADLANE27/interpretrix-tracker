@@ -31,25 +31,29 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
 
   useEffect(() => {
     const fetchChannelUsers = async () => {
-      const { data, error } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('channel_members')
-        .select(`
-          user_id,
-          users:user_id (
-            id,
-            email,
-            raw_user_meta_data
-          )
-        `)
+        .select('user_id')
         .eq('channel_id', channelId);
 
-      if (error) {
-        console.error('Error fetching channel users:', error);
+      if (memberError) {
+        console.error('Error fetching channel members:', memberError);
         return;
       }
 
-      const users = data.map(member => member.users as User);
-      setChannelUsers(users);
+      const userIds = memberData.map(member => member.user_id);
+
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, raw_user_meta_data')
+        .in('id', userIds);
+
+      if (userError) {
+        console.error('Error fetching users:', userError);
+        return;
+      }
+
+      setChannelUsers(userData as User[]);
     };
 
     fetchChannelUsers();
