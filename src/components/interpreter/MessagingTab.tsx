@@ -27,8 +27,12 @@ export const MessagingTab = () => {
 
   useEffect(() => {
     fetchMessages();
-    subscribeToMessages();
+    const channel = subscribeToMessages();
     fetchAdmins();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchAdmins = async () => {
@@ -106,9 +110,7 @@ export const MessagingTab = () => {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
   const sendMessage = async (adminId: string) => {
@@ -146,8 +148,8 @@ export const MessagingTab = () => {
               {messages
                 .filter(
                   (msg) =>
-                    (msg.sender_id === admin.id ||
-                      msg.recipient_id === admin.id)
+                    (msg.sender_id === admin.id && msg.recipient_id === supabase.auth.user()?.id) ||
+                    (msg.recipient_id === admin.id && msg.sender_id === supabase.auth.user()?.id)
                 )
                 .map((message) => (
                   <div
@@ -159,6 +161,9 @@ export const MessagingTab = () => {
                     }`}
                   >
                     {message.content}
+                    <div className="text-xs opacity-70 mt-1">
+                      {new Date(message.created_at).toLocaleString()}
+                    </div>
                   </div>
                 ))}
             </div>

@@ -34,7 +34,10 @@ export const AdminMessaging = () => {
   useEffect(() => {
     if (selectedInterpreter) {
       fetchMessages(selectedInterpreter);
-      subscribeToMessages(selectedInterpreter);
+      const channel = subscribeToMessages(selectedInterpreter);
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [selectedInterpreter]);
 
@@ -58,10 +61,13 @@ export const AdminMessaging = () => {
 
   const fetchMessages = async (interpreterId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
       const { data, error } = await supabase
         .from("direct_messages")
         .select("*")
-        .or(`sender_id.eq.${interpreterId},recipient_id.eq.${interpreterId}`)
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -85,7 +91,7 @@ export const AdminMessaging = () => {
           event: "*",
           schema: "public",
           table: "direct_messages",
-          filter: `sender_id=eq.${interpreterId},recipient_id=eq.${interpreterId}`,
+          filter: `or(and(sender_id.eq.${interpreterId},recipient_id.eq.auth.uid()),and(sender_id.eq.auth.uid(),recipient_id.eq.${interpreterId}))`,
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
@@ -95,19 +101,20 @@ export const AdminMessaging = () => {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
   const sendMessage = async () => {
     if (!selectedInterpreter || !newMessage.trim()) return;
 
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
       const { error } = await supabase.from("direct_messages").insert({
         content: newMessage.trim(),
         recipient_id: selectedInterpreter,
-        sender_id: (await supabase.auth.getUser()).data.user?.id,
+        sender_id: user.id,
       });
 
       if (error) throw error;
@@ -150,6 +157,9 @@ export const AdminMessaging = () => {
                   }`}
                 >
                   {message.content}
+                  <div className="text-xs opacity-70 mt-1">
+                    {new Date(message.created_at).toLocaleString()}
+                  </div>
                 </div>
               ))}
             </div>
