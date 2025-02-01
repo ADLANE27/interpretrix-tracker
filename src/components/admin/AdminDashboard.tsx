@@ -11,6 +11,7 @@ import { CountrySelect } from "../CountrySelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
 import { UserManagement } from "./UserManagement";
+import { AdminHowToUseGuide } from "./AdminHowToUseGuide";
 
 const LANGUAGES = [
   // Langues européennes
@@ -211,6 +212,9 @@ export const AdminDashboard = () => {
           <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
           <TabsTrigger value="missions">Missions</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+          <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-dialog')?.click()}>
+            Guide d'utilisation
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="interpreters">
@@ -329,6 +333,10 @@ export const AdminDashboard = () => {
 
         <TabsContent value="users">
           <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="guide">
+          <AdminHowToUseGuide />
         </TabsContent>
       </Tabs>
     </div>
