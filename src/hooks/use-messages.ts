@@ -10,11 +10,20 @@ export const useMessages = (channelId: string) => {
         .from("messages")
         .select(`
           *,
-          sender:interpreter_profiles!messages_sender_id_fkey (
+          sender:sender_id (
             id,
             email,
             first_name,
             last_name
+          ),
+          mentions:message_mentions (
+            id,
+            mentioned_user:mentioned_user_id (
+              id,
+              email,
+              first_name,
+              last_name
+            )
           )
         `)
         .eq("channel_id", channelId)
@@ -22,50 +31,31 @@ export const useMessages = (channelId: string) => {
 
       if (messagesError) throw messagesError;
 
-      const messagesWithMentions = await Promise.all(
-        messagesData.map(async (message) => {
-          const { data: mentions, error: mentionsError } = await supabase
-            .from("message_mentions")
-            .select(`
-              id,
-              mentioned_user_id,
-              mentioned_user:interpreter_profiles!message_mentions_mentioned_user_id_fkey (
-                id,
-                email,
-                first_name,
-                last_name
-              )
-            `)
-            .eq("message_id", message.id);
+      const formattedMessages = messagesData.map(message => ({
+        ...message,
+        sender: {
+          id: message.sender?.id || "",
+          email: message.sender?.email || "",
+          raw_user_meta_data: {
+            first_name: message.sender?.first_name || "",
+            last_name: message.sender?.last_name || ""
+          }
+        },
+        mentions: (message.mentions || []).map(mention => ({
+          id: mention.id,
+          mentioned_user_id: mention.mentioned_user?.id || "",
+          mentioned_user: {
+            id: mention.mentioned_user?.id || "",
+            email: mention.mentioned_user?.email || "",
+            raw_user_meta_data: {
+              first_name: mention.mentioned_user?.first_name || "",
+              last_name: mention.mentioned_user?.last_name || ""
+            }
+          }
+        }))
+      }));
 
-          if (mentionsError) throw mentionsError;
-
-          return {
-            ...message,
-            sender: {
-              id: message.sender.id,
-              email: message.sender.email,
-              raw_user_meta_data: {
-                first_name: message.sender.first_name,
-                last_name: message.sender.last_name
-              }
-            },
-            mentions: mentions.map(mention => ({
-              ...mention,
-              mentioned_user: {
-                id: mention.mentioned_user.id,
-                email: mention.mentioned_user.email,
-                raw_user_meta_data: {
-                  first_name: mention.mentioned_user.first_name,
-                  last_name: mention.mentioned_user.last_name
-                }
-              }
-            }))
-          };
-        })
-      );
-
-      return messagesWithMentions as Message[];
+      return formattedMessages as Message[];
     },
     enabled: !!channelId,
   });
