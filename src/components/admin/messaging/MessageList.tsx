@@ -39,7 +39,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:users (
+          sender:users!inner (
             id,
             raw_user_meta_data->first_name,
             raw_user_meta_data->last_name,
@@ -62,10 +62,10 @@ export const MessageList = ({ channelId }: MessageListProps) => {
       return data.map((message) => ({
         ...message,
         sender: {
-          id: message.sender?.id || "",
-          first_name: message.sender?.raw_user_meta_data?.first_name || "",
-          last_name: message.sender?.raw_user_meta_data?.last_name || "",
-          profile_picture_url: message.sender?.raw_user_meta_data?.profile_picture_url || null,
+          id: message.sender.id,
+          first_name: message.sender.raw_user_meta_data.first_name,
+          last_name: message.sender.raw_user_meta_data.last_name,
+          profile_picture_url: message.sender.raw_user_meta_data.profile_picture_url,
         },
       })) as Message[];
     },
