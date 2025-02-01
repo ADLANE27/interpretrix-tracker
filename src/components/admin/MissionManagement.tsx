@@ -160,6 +160,8 @@ export const MissionManagement = () => {
     
     try {
       const languagePair = `${sourceLang} → ${targetLang}`;
+      
+      // First, get all potential interpreters
       let query = supabase
         .from("interpreter_profiles")
         .select("id, first_name, last_name, languages, status, profile_picture_url");
@@ -169,10 +171,40 @@ export const MissionManagement = () => {
         query = query.eq("status", "available");
       }
 
-      const { data, error } = await query.contains("languages", [languagePair]);
+      const { data: potentialInterpreters, error } = await query.contains("languages", [languagePair]);
 
       if (error) throw error;
-      setAvailableInterpreters(data || []);
+
+      // For immediate missions, check upcoming scheduled missions
+      if (missionType === 'immediate' && potentialInterpreters) {
+        const now = new Date();
+        const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60000);
+
+        // Get all scheduled missions starting in the next 15 minutes
+        const { data: upcomingMissions, error: missionsError } = await supabase
+          .from("interpretation_missions")
+          .select("assigned_interpreter_id")
+          .eq("mission_type", "scheduled")
+          .eq("status", "accepted")
+          .lt("scheduled_start_time", fifteenMinutesFromNow.toISOString())
+          .gt("scheduled_start_time", now.toISOString());
+
+        if (missionsError) throw missionsError;
+
+        // Filter out interpreters who have upcoming missions
+        const busyInterpreterIds = new Set(
+          upcomingMissions?.map(mission => mission.assigned_interpreter_id) || []
+        );
+
+        const availableInterpreters = potentialInterpreters.filter(
+          interpreter => !busyInterpreterIds.has(interpreter.id)
+        );
+
+        setAvailableInterpreters(availableInterpreters || []);
+      } else {
+        setAvailableInterpreters(potentialInterpreters || []);
+      }
+
       setSelectedInterpreters([]); // Reset selections when interpreters list changes
     } catch (error) {
       console.error("Error finding interpreters:", error);
