@@ -83,8 +83,27 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            const newMessage = payload.new as Message;
-            setMessages((prev) => [...prev, newMessage]);
+            // Fetch the complete message with sender information
+            const fetchNewMessage = async () => {
+              const { data, error } = await supabase
+                .from("messages")
+                .select(`
+                  *,
+                  sender:sender_id (
+                    id,
+                    first_name,
+                    last_name,
+                    profile_picture_url
+                  )
+                `)
+                .eq("id", payload.new.id)
+                .single();
+
+              if (!error && data) {
+                setMessages((prev) => [...prev, data as Message]);
+              }
+            };
+            fetchNewMessage();
           }
         }
       )
@@ -119,7 +138,9 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             </Avatar>
             <div>
               <div className="font-semibold">
-                {message.sender ? `${message.sender.first_name} ${message.sender.last_name}` : "Unknown User"}
+                {message.sender 
+                  ? `${message.sender.first_name} ${message.sender.last_name}` 
+                  : "Unknown User"}
               </div>
               <div className="text-sm text-gray-600">{message.content}</div>
             </div>
