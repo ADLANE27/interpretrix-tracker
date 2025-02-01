@@ -19,9 +19,10 @@ interface User {
 
 interface CreateChannelDialogProps {
   onClose: () => void;
+  onSuccess: () => void;
 }
 
-export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
+export const CreateChannelDialog = ({ onClose, onSuccess }: CreateChannelDialogProps) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -158,11 +159,7 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
         if (membersError) throw membersError;
       }
 
-      toast({
-        title: "Succès",
-        description: "Canal créé avec succès",
-      });
-
+      onSuccess();
       onClose();
     } catch (error) {
       console.error("Error creating channel:", error);
