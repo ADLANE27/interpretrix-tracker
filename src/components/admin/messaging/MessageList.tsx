@@ -54,7 +54,7 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
         .from("messages")
         .select(`
           *,
-          sender:interpreter_profiles!messages_sender_id_fkey (
+          sender:interpreter_profiles(
             email,
             first_name,
             last_name
@@ -73,7 +73,7 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
             .select(`
               id,
               mentioned_user_id,
-              mentioned_user:interpreter_profiles!message_mentions_mentioned_user_id_fkey (
+              mentioned_user:interpreter_profiles(
                 email,
                 first_name,
                 last_name
@@ -87,19 +87,19 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
           return {
             ...message,
             sender: {
-              email: message.sender.email,
+              email: message.sender?.email || "",
               raw_user_meta_data: {
-                first_name: message.sender.first_name,
-                last_name: message.sender.last_name
+                first_name: message.sender?.first_name || "",
+                last_name: message.sender?.last_name || ""
               }
             },
             mentions: mentions ? mentions.map(mention => ({
               ...mention,
               mentioned_user: {
-                email: mention.mentioned_user.email,
+                email: mention.mentioned_user?.email || "",
                 raw_user_meta_data: {
-                  first_name: mention.mentioned_user.first_name,
-                  last_name: mention.mentioned_user.last_name
+                  first_name: mention.mentioned_user?.first_name || "",
+                  last_name: mention.mentioned_user?.last_name || ""
                 }
               }
             })) : []
@@ -125,12 +125,6 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<{ user_id: string; online_at: string }>();
         setPresenceState(state as PresenceState);
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('join', key, newPresences);
-      })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('leave', key, leftPresences);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
