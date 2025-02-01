@@ -212,7 +212,7 @@ export const AdminDashboard = () => {
           <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
           <TabsTrigger value="missions">Missions</TabsTrigger>
           <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-          <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-dialog')?.click()}>
+          <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-trigger')?.click()}>
             Guide d'utilisation
           </TabsTrigger>
         </TabsList>
@@ -334,8 +334,14 @@ export const AdminDashboard = () => {
         <TabsContent value="users">
           <UserManagement />
         </TabsContent>
+
+        <TabsContent value="guide">
+          <AdminHowToUseGuide />
+        </TabsContent>
       </Tabs>
-      <AdminHowToUseGuide />
+      
+      {/* Hidden trigger for the guide dialog */}
+      <button id="admin-guide-trigger" className="hidden" />
     </div>
   );
 };
