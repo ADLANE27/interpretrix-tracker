@@ -11,6 +11,9 @@ interface Message {
   sender_id: string;
   created_at: string;
   parent_id: string | null;
+  channel_id: string | null;
+  recipient_id: string | null;
+  updated_at: string;
   sender?: {
     first_name: string;
     last_name: string;
@@ -33,7 +36,8 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:interpreter_profiles!messages_sender_id_fkey (
+          sender:user_id (
+            id,
             first_name,
             last_name,
             profile_picture_url
