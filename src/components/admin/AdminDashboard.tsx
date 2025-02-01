@@ -75,7 +75,7 @@ interface Interpreter {
 
 export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [nameFilter, setNameFilter] = useState("");
   const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
@@ -180,18 +180,9 @@ export const AdminDashboard = () => {
     }
   };
 
-  const handleStatusChange = (status: string) => {
-    setSelectedStatuses(prev =>
-      prev.includes(status)
-        ? prev.filter(s => s !== status)
-        : [...prev, status]
-    );
-  };
-
   const filteredInterpreters = interpreters.filter(interpreter => {
-    // Filter out "Adlane Admin"
     const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
-    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(interpreter.status);
+    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     const matchesName = nameFilter === "" || 
       `${interpreter.first_name} ${interpreter.last_name}`
         .toLowerCase()
@@ -339,8 +330,8 @@ export const AdminDashboard = () => {
             </div>
 
             <StatusFilter
-              selectedStatuses={selectedStatuses}
-              onStatusChange={handleStatusChange}
+              selectedStatus={selectedStatus}
+              onStatusChange={setSelectedStatus}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
