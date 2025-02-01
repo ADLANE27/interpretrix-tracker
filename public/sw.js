@@ -1,19 +1,24 @@
-// Enhanced service worker with comprehensive browser support
-const SW_VERSION = '1.0.2';
+// Enhanced service worker with comprehensive browser support and logging
+const SW_VERSION = '1.0.3';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
-// Enhanced error handling
+// Enhanced error handling with detailed logging
 self.addEventListener('error', event => {
   console.error('[Service Worker] Uncaught error:', event.error);
+  console.error('[Service Worker] Stack:', event.error.stack);
+  console.error('[Service Worker] Message:', event.error.message);
 });
 
 self.addEventListener('unhandledrejection', event => {
   console.error('[Service Worker] Unhandled promise rejection:', event.reason);
+  if (event.reason.stack) {
+    console.error('[Service Worker] Stack:', event.reason.stack);
+  }
 });
 
-// Enhanced push event handler with better browser support
+// Enhanced push event handler with better debugging
 self.addEventListener('push', event => {
-  console.log('[Service Worker] Push message received');
+  console.log('[Service Worker] Push received at:', new Date().toISOString());
   
   if (!event.data) {
     console.warn('[Service Worker] Push event received but no data');
@@ -22,7 +27,7 @@ self.addEventListener('push', event => {
 
   try {
     const data = event.data.json();
-    console.log('[Service Worker] Push data:', data);
+    console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
     
     const options = {
       body: `${data.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
@@ -47,11 +52,8 @@ self.addEventListener('push', event => {
           title: 'Décliner'
         }
       ],
-      // High priority for all browsers
       priority: 'high',
-      // Sound for mobile devices
       silent: false,
-      // Ensure notification stays visible
       timestamp: Date.now()
     };
 
@@ -62,6 +64,7 @@ self.addEventListener('push', event => {
             throw new Error('Notifications not supported');
           }
 
+          console.log('[Service Worker] Showing notification with options:', JSON.stringify(options, null, 2));
           const notification = await self.registration.showNotification(
             'Nouvelle mission disponible',
             options
@@ -71,18 +74,30 @@ self.addEventListener('push', event => {
           return notification;
         } catch (error) {
           console.error('[Service Worker] Error showing notification:', error);
+          console.error('[Service Worker] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
           throw error;
         }
       })()
     );
   } catch (error) {
     console.error('[Service Worker] Error processing push data:', error);
+    console.error('[Service Worker] Stack:', error.stack);
   }
 });
 
-// Enhanced notification click handling
+// Enhanced notification click handling with debugging
 self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification clicked:', event.action);
+  console.log('[Service Worker] Notification clicked:', {
+    action: event.action,
+    notification: {
+      tag: event.notification.tag,
+      data: event.notification.data
+    }
+  });
   
   event.notification.close();
 
@@ -101,31 +116,36 @@ self.addEventListener('notificationclick', event => {
           includeUncontrolled: true
         });
 
+        console.log('[Service Worker] Found window clients:', windowClients.length);
+
         for (const client of windowClients) {
           if (client.url === urlToOpen && 'focus' in client) {
+            console.log('[Service Worker] Focusing existing window');
             await client.focus();
             return;
           }
         }
 
         if (clients.openWindow) {
+          console.log('[Service Worker] Opening new window:', urlToOpen);
           await clients.openWindow(urlToOpen);
         }
       } catch (error) {
         console.error('[Service Worker] Error handling notification click:', error);
+        console.error('[Service Worker] Stack:', error.stack);
       }
     })()
   );
 });
 
-// Enhanced installation handling
+// Enhanced installation handling with version logging
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing');
+  console.log(`[Service Worker ${SW_VERSION}] Installing`);
   event.waitUntil(self.skipWaiting());
 });
 
-// Enhanced activation handling
+// Enhanced activation handling with client claim
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activating');
+  console.log(`[Service Worker ${SW_VERSION}] Activating`);
   event.waitUntil(self.clients.claim());
 });
