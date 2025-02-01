@@ -192,6 +192,12 @@ export const AdminDashboard = () => {
     setIsGuideOpen(true);
   };
 
+  const handleTabChange = (value: string) => {
+    if (value === "guide") {
+      setIsGuideOpen(true);
+    }
+  };
+
   const filteredInterpreters = interpreters.filter(interpreter => {
     // Filter out "Adlane Admin"
     const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
@@ -235,13 +241,13 @@ export const AdminDashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs defaultValue="interpreters" className="space-y-6">
+      <Tabs defaultValue="interpreters" className="space-y-6" onValueChange={handleTabChange}>
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
             <TabsTrigger value="missions">Missions</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-            <TabsTrigger value="guide" onClick={handleGuideClick}>
+            <TabsTrigger value="guide">
               Guide d'utilisation
             </TabsTrigger>
           </TabsList>
@@ -374,11 +380,11 @@ export const AdminDashboard = () => {
         </TabsContent>
 
         <TabsContent value="guide">
-          <AdminHowToUseGuide />
+          {/* Empty TabsContent to handle the tab selection */}
         </TabsContent>
       </Tabs>
       
-      {isGuideOpen && <AdminHowToUseGuide />}
+      {isGuideOpen && <AdminHowToUseGuide onOpenChange={setIsGuideOpen} />}
     </div>
   );
 };

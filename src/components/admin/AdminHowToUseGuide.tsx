@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,11 +5,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, UserCog, Clock, Bell, CheckCircle, Settings } from "lucide-react";
+import { UserCog, Clock, Bell, CheckCircle, Settings } from "lucide-react";
 
-export const AdminHowToUseGuide = () => {
+interface AdminHowToUseGuideProps {
+  onOpenChange: (open: boolean) => void;
+}
+
+export const AdminHowToUseGuide = ({ onOpenChange }: AdminHowToUseGuideProps) => {
   return (
-    <Dialog defaultOpen>
+    <Dialog defaultOpen onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Guide d'utilisation - Espace Administrateur</DialogTitle>
