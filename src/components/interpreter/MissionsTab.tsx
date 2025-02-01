@@ -264,7 +264,11 @@ export const MissionsTab = () => {
                 
                 <div className="text-sm text-gray-600">
                   {mission.mission_type === 'immediate' ? (
-                    <p>Date: {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
+                    <>
+                      <p>Date: {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
+                      <p>Langues: {mission.source_language} → {mission.target_language}</p>
+                      <p>Durée: {mission.estimated_duration} minutes</p>
+                    </>
                   ) : mission.scheduled_start_time && (
                     <div className="space-y-1">
                       <p className="text-blue-600">
@@ -275,10 +279,10 @@ export const MissionsTab = () => {
                           Fin: {format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
                         </p>
                       )}
+                      <p>Langues: {mission.source_language} → {mission.target_language}</p>
+                      <p>Durée: {mission.estimated_duration} minutes</p>
                     </div>
                   )}
-                  <p>Durée: {mission.estimated_duration} minutes</p>
-                  <p>Langues: {mission.source_language} → {mission.target_language}</p>
                 </div>
                 <Badge 
                   variant={statusDisplay.variant}
