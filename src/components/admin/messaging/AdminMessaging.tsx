@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send } from "lucide-react";
+import { Send, Search, Edit2, Trash2, Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -12,6 +13,7 @@ interface Message {
   sender_id: string;
   recipient_id: string;
   created_at: string;
+  read_at: string | null;
 }
 
 interface Interpreter {
@@ -25,6 +27,9 @@ export const AdminMessaging = () => {
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingMessage, setEditingMessage] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,6 +40,7 @@ export const AdminMessaging = () => {
     if (selectedInterpreter) {
       fetchMessages(selectedInterpreter);
       const channel = subscribeToMessages(selectedInterpreter);
+      markMessagesAsRead(selectedInterpreter);
       return () => {
         supabase.removeChannel(channel);
       };
@@ -82,6 +88,22 @@ export const AdminMessaging = () => {
     }
   };
 
+  const markMessagesAsRead = async (senderId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.rpc('mark_messages_as_read', {
+        p_recipient_id: user.id,
+        p_sender_id: senderId
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  };
+
   const subscribeToMessages = (interpreterId: string) => {
     const channel = supabase
       .channel("messages")
@@ -91,11 +113,23 @@ export const AdminMessaging = () => {
           event: "*",
           schema: "public",
           table: "direct_messages",
-          filter: `or(and(sender_id.eq.${interpreterId},recipient_id.eq.auth.uid()),and(sender_id.eq.auth.uid(),recipient_id.eq.${interpreterId}))`,
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
             setMessages((prev) => [...prev, payload.new as Message]);
+            if (payload.new.recipient_id === interpreterId) {
+              markMessagesAsRead(payload.new.sender_id);
+            }
+          } else if (payload.eventType === "UPDATE") {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === payload.new.id ? (payload.new as Message) : msg
+              )
+            );
+          } else if (payload.eventType === "DELETE") {
+            setMessages((prev) =>
+              prev.filter((msg) => msg.id !== payload.old.id)
+            );
           }
         }
       )
@@ -129,6 +163,56 @@ export const AdminMessaging = () => {
     }
   };
 
+  const updateMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("direct_messages")
+        .update({ content: editContent })
+        .eq("id", messageId);
+
+      if (error) throw error;
+      setEditingMessage(null);
+      setEditContent("");
+      toast({
+        title: "Succès",
+        description: "Message modifié avec succès",
+      });
+    } catch (error) {
+      console.error("Error updating message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+      toast({
+        title: "Succès",
+        description: "Message supprimé avec succès",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredMessages = messages.filter((message) =>
+    message.content.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
@@ -145,9 +229,19 @@ export const AdminMessaging = () => {
 
       {selectedInterpreter && (
         <div className="border rounded-lg p-4 space-y-4">
+          <div className="flex gap-2">
+            <Search className="w-4 h-4 text-gray-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Rechercher dans les messages..."
+              className="flex-1"
+            />
+          </div>
+
           <ScrollArea className="h-[400px] w-full pr-4">
             <div className="space-y-4">
-              {messages.map((message) => (
+              {filteredMessages.map((message) => (
                 <div
                   key={message.id}
                   className={`p-3 rounded-lg max-w-[80%] ${
@@ -156,10 +250,82 @@ export const AdminMessaging = () => {
                       : "bg-primary text-primary-foreground"
                   }`}
                 >
-                  {message.content}
-                  <div className="text-xs opacity-70 mt-1">
-                    {new Date(message.created_at).toLocaleString()}
-                  </div>
+                  {editingMessage === message.id ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="bg-white"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => updateMessage(message.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingMessage(null);
+                            setEditContent("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1">{message.content}</div>
+                        {message.sender_id !== selectedInterpreter && (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingMessage(message.id);
+                                setEditContent(message.content);
+                              }}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button size="sm" variant="ghost">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Confirmer la suppression</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <p>Êtes-vous sûr de vouloir supprimer ce message ?</p>
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => deleteMessage(message.id)}
+                                    >
+                                      Supprimer
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
+                        {new Date(message.created_at).toLocaleString()}
+                        {message.read_at && message.sender_id !== selectedInterpreter && (
+                          <span className="text-green-500">Lu</span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>

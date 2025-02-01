@@ -474,6 +474,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_messages_as_read: {
+        Args: {
+          p_recipient_id: string
+          p_sender_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       channel_type: "admin_only" | "internal" | "external" | "mixed"
