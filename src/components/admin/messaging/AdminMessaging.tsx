@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Search, Edit2, Trash2, Check, X, Bell } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 
 interface Message {
@@ -68,7 +68,6 @@ export const AdminMessaging = () => {
           const message = payload.new as Message;
           const { data: { user } } = await supabase.auth.getUser();
           
-          // Only show notification for messages where we are the recipient
           if (message.recipient_id === user?.id) {
             const sender = interpreters.find(i => i.id === message.sender_id);
             if (sender) {
@@ -77,7 +76,6 @@ export const AdminMessaging = () => {
                 description: message.content,
               });
               
-              // Update unread count
               setUnreadCounts(prev => ({
                 ...prev,
                 [message.sender_id]: (prev[message.sender_id] || 0) + 1
@@ -104,7 +102,6 @@ export const AdminMessaging = () => {
 
       if (error) throw error;
 
-      // Count unread messages per sender
       const counts: UnreadCount = {};
       data.forEach(message => {
         counts[message.sender_id] = (counts[message.sender_id] || 0) + 1;
@@ -263,6 +260,7 @@ export const AdminMessaging = () => {
         .eq("id", messageId);
 
       if (error) throw error;
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
       toast({
         title: "Succès",
         description: "Message supprimé avec succès",
@@ -272,6 +270,33 @@ export const AdminMessaging = () => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteAllMessages = async (interpreterId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`);
+
+      if (error) throw error;
+
+      setMessages([]);
+      toast({
+        title: "Succès",
+        description: "Historique des messages supprimé",
+      });
+    } catch (error) {
+      console.error("Error deleting all messages:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'historique des messages",
         variant: "destructive",
       });
     }
@@ -306,14 +331,41 @@ export const AdminMessaging = () => {
 
       {selectedInterpreter && (
         <div className="border rounded-lg p-4 space-y-4">
-          <div className="flex gap-2">
-            <Search className="w-4 h-4 text-gray-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Rechercher dans les messages..."
-              className="flex-1"
-            />
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <Search className="w-4 h-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Rechercher dans les messages..."
+                className="flex-1"
+              />
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Supprimer l'historique
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirmer la suppression</DialogTitle>
+                  <DialogDescription>
+                    Êtes-vous sûr de vouloir supprimer tout l'historique des messages avec cet interprète ? Cette action est irréversible.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => {}}>Annuler</Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => deleteAllMessages(selectedInterpreter)}
+                  >
+                    Supprimer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <ScrollArea className="h-[400px] w-full pr-4">
@@ -378,18 +430,19 @@ export const AdminMessaging = () => {
                               <DialogContent>
                                 <DialogHeader>
                                   <DialogTitle>Confirmer la suppression</DialogTitle>
+                                  <DialogDescription>
+                                    Êtes-vous sûr de vouloir supprimer ce message ?
+                                  </DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-4">
-                                  <p>Êtes-vous sûr de vouloir supprimer ce message ?</p>
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() => deleteMessage(message.id)}
-                                    >
-                                      Supprimer
-                                    </Button>
-                                  </div>
-                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => {}}>Annuler</Button>
+                                  <Button
+                                    variant="destructive"
+                                    onClick={() => deleteMessage(message.id)}
+                                  >
+                                    Supprimer
+                                  </Button>
+                                </DialogFooter>
                               </DialogContent>
                             </Dialog>
                           </div>
