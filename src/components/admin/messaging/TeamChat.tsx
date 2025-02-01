@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Send } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -88,6 +89,28 @@ export const TeamChat = () => {
       .subscribe();
 
     return channel;
+  };
+
+  const sendMessage = async () => {
+    if (!selectedChannel || !newMessage.trim() || !currentUserId) return;
+
+    try {
+      const { error } = await supabase.from("messages").insert({
+        channel_id: selectedChannel,
+        sender_id: currentUserId,
+        content: newMessage.trim(),
+      });
+
+      if (error) throw error;
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateChannelSuccess = () => {
