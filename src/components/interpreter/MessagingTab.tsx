@@ -15,6 +15,7 @@ interface Message {
   recipient_id: string;
   created_at: string;
   sender_name?: string;
+  channel_id?: string;
 }
 
 interface Admin {
@@ -100,7 +101,7 @@ export const MessagingTab = () => {
     try {
       console.log('Fetching messages for channel:', channelId);
       
-      // First, get all messages
+      // First, get all messages for the channel
       const { data: messages, error: messagesError } = await supabase
         .from('messages')
         .select('*')
@@ -175,6 +176,7 @@ export const MessagingTab = () => {
                     "Unknown User"
       }));
 
+      console.log('Processed messages:', messagesWithNames);
       setChannelMessages(messagesWithNames);
     } catch (error) {
       console.error("Error fetching channel messages:", error);
@@ -299,6 +301,9 @@ export const MessagingTab = () => {
       });
 
       if (error) throw error;
+
+      // Fetch messages again to update the view
+      await fetchChannelMessages(selectedChannel);
       setNewMessage("");
     } catch (error) {
       console.error("Error sending channel message:", error);
