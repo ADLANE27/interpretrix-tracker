@@ -18,9 +18,12 @@ interface Message {
   updated_at: string;
   sender: {
     id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
+    email: string;
+    raw_user_meta_data: {
+      first_name: string;
+      last_name: string;
+      profile_picture_url: string | null;
+    };
   };
 }
 
@@ -39,11 +42,10 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:users!inner (
+          sender:users (
             id,
-            raw_user_meta_data->first_name,
-            raw_user_meta_data->last_name,
-            raw_user_meta_data->profile_picture_url
+            email,
+            raw_user_meta_data
           )
         `)
         .eq("channel_id", channelId)
@@ -59,15 +61,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         throw error;
       }
 
-      return data.map((message) => ({
-        ...message,
-        sender: {
-          id: message.sender.id,
-          first_name: message.sender.raw_user_meta_data.first_name,
-          last_name: message.sender.raw_user_meta_data.last_name,
-          profile_picture_url: message.sender.raw_user_meta_data.profile_picture_url,
-        },
-      })) as Message[];
+      return data as Message[];
     },
     enabled: !!channelId,
   });
@@ -97,9 +91,8 @@ export const MessageList = ({ channelId }: MessageListProps) => {
                 *,
                 sender:users (
                   id,
-                  raw_user_meta_data->first_name,
-                  raw_user_meta_data->last_name,
-                  raw_user_meta_data->profile_picture_url
+                  email,
+                  raw_user_meta_data
                 )
               `)
               .eq("id", payload.new.id)
@@ -110,9 +103,12 @@ export const MessageList = ({ channelId }: MessageListProps) => {
                 ...data,
                 sender: {
                   id: data.sender?.id || "",
-                  first_name: data.sender?.raw_user_meta_data?.first_name || "",
-                  last_name: data.sender?.raw_user_meta_data?.last_name || "",
-                  profile_picture_url: data.sender?.raw_user_meta_data?.profile_picture_url || null,
+                  email: data.sender?.email || "",
+                  raw_user_meta_data: {
+                    first_name: data.sender?.raw_user_meta_data?.first_name || "",
+                    last_name: data.sender?.raw_user_meta_data?.last_name || "",
+                    profile_picture_url: data.sender?.raw_user_meta_data?.profile_picture_url || null,
+                  },
                 },
               } as Message;
 
@@ -143,10 +139,10 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         {messages.map((message) => (
           <div key={message.id} className="flex items-start gap-3">
             <Avatar className="h-8 w-8">
-              {message.sender?.profile_picture_url ? (
+              {message.sender?.raw_user_meta_data?.profile_picture_url ? (
                 <AvatarImage
-                  src={message.sender.profile_picture_url}
-                  alt={`${message.sender.first_name} ${message.sender.last_name}`}
+                  src={message.sender.raw_user_meta_data.profile_picture_url}
+                  alt={`${message.sender.raw_user_meta_data.first_name} ${message.sender.raw_user_meta_data.last_name}`}
                 />
               ) : (
                 <AvatarFallback>
@@ -157,7 +153,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             <div>
               <div className="font-semibold">
                 {message.sender
-                  ? `${message.sender.first_name} ${message.sender.last_name}`
+                  ? `${message.sender.raw_user_meta_data.first_name} ${message.sender.raw_user_meta_data.last_name}`
                   : "Unknown User"}
               </div>
               <div className="text-sm text-gray-600">{message.content}</div>
