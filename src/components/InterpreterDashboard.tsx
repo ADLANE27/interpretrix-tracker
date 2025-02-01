@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MissionsTab } from "./interpreter/MissionsTab";
@@ -10,6 +11,8 @@ import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
+import { LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Profile {
   id: string;
@@ -39,6 +42,7 @@ export const InterpreterDashboard = () => {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -221,6 +225,24 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Déconnexion réussie",
+        description: "Vous avez été déconnecté avec succès",
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la déconnexion",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!profile) {
     return <div>Chargement...</div>;
   }
@@ -247,9 +269,20 @@ export const InterpreterDashboard = () => {
             onAvatarClick={() => fileInputRef.current?.click()}
             onDeletePicture={handleProfilePictureDelete}
           />
-          <div className="flex items-center gap-2">
-            <HowToUseGuide />
-            <NotificationPermission interpreterId={profile.id} />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <HowToUseGuide />
+              <NotificationPermission interpreterId={profile.id} />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleLogout}
+              className="ml-2"
+              title="Se déconnecter"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
           <input
             type="file"
@@ -282,6 +315,11 @@ export const InterpreterDashboard = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Copyright notice */}
+      <footer className="mt-8 pt-4 border-t text-center text-sm text-gray-500">
+        © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+      </footer>
     </div>
   );
 };
