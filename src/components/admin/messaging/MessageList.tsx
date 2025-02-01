@@ -99,20 +99,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
               .single();
 
             if (!error && data) {
-              const newMessage = {
-                ...data,
-                sender: {
-                  id: data.sender?.id || "",
-                  email: data.sender?.email || "",
-                  raw_user_meta_data: {
-                    first_name: data.sender?.raw_user_meta_data?.first_name || "",
-                    last_name: data.sender?.raw_user_meta_data?.last_name || "",
-                    profile_picture_url: data.sender?.raw_user_meta_data?.profile_picture_url || null,
-                  },
-                },
-              } as Message;
-
-              setMessages((prev) => [...prev, newMessage]);
+              setMessages((prev) => [...prev, data as Message]);
             }
           }
         }

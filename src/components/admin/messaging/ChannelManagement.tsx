@@ -83,15 +83,7 @@ export const ChannelManagement = () => {
         .eq("channel_id", selectedChannel?.id);
 
       if (error) throw error;
-
-      return data?.map((member) => ({
-        id: member.id,
-        user_id: member.user_id,
-        channel_id: member.channel_id,
-        email: member.users.email,
-        first_name: member.users.raw_user_meta_data.first_name,
-        last_name: member.users.raw_user_meta_data.last_name,
-      })) as ChannelMember[];
+      return data as ChannelMember[];
     },
   });
 
@@ -130,72 +122,72 @@ export const ChannelManagement = () => {
 
   return (
     <div className="space-y-6">
-        <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Channel
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Channel</DialogTitle>
-              <DialogDescription>
-                Create a new channel for communication with interpreters
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            New Channel
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Channel</DialogTitle>
+            <DialogDescription>
+              Create a new channel for communication with interpreters
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Channel Name</Label>
-                <Input
-                  id="name"
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
-                  placeholder="Enter channel name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newChannelDescription}
-                  onChange={(e) => setNewChannelDescription(e.target.value)}
-                  placeholder="Enter channel description"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="type">Channel Type</Label>
-                <Select
-                  value={newChannelType}
-                  onValueChange={(value: Channel["type"]) =>
-                    setNewChannelType(value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select channel type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin_only">Admin Only</SelectItem>
-                    <SelectItem value="internal">Internal Interpreters</SelectItem>
-                    <SelectItem value="external">External Interpreters</SelectItem>
-                    <SelectItem value="mixed">Mixed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                className="w-full"
-                onClick={handleCreateChannel}
-                disabled={!newChannelName}
-              >
-                Create Channel
-              </Button>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Channel Name</Label>
+              <Input
+                id="name"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder="Enter channel name"
+              />
             </div>
-          </DialogContent>
-        </Dialog>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={newChannelDescription}
+                onChange={(e) => setNewChannelDescription(e.target.value)}
+                placeholder="Enter channel description"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="type">Channel Type</Label>
+              <Select
+                value={newChannelType}
+                onValueChange={(value: Channel["type"]) =>
+                  setNewChannelType(value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select channel type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin_only">Admin Only</SelectItem>
+                  <SelectItem value="internal">Internal Interpreters</SelectItem>
+                  <SelectItem value="external">External Interpreters</SelectItem>
+                  <SelectItem value="mixed">Mixed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={handleCreateChannel}
+              disabled={!newChannelName}
+            >
+              Create Channel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
@@ -253,10 +245,11 @@ export const ChannelManagement = () => {
                       >
                         <div>
                           <div className="font-medium">
-                            {member.first_name} {member.last_name}
+                            {member.users.raw_user_meta_data.first_name}{" "}
+                            {member.users.raw_user_meta_data.last_name}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {member.email}
+                            {member.users.email}
                           </div>
                         </div>
                       </div>
