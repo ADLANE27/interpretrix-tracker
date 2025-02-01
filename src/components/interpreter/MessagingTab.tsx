@@ -99,7 +99,14 @@ export const MessagingTab = () => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select('*, sender:sender_id(email)')
+        .select(`
+          *,
+          sender:interpreter_profiles!messages_sender_id_fkey(
+            first_name,
+            last_name,
+            email
+          )
+        `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
@@ -364,7 +371,7 @@ export const MessagingTab = () => {
                         }`}
                       >
                         <div className="text-xs font-medium mb-1">
-                          {message.sender?.email}
+                          {message.sender?.first_name} {message.sender?.last_name}
                         </div>
                         {message.content}
                         <div className="text-xs opacity-70 mt-1">
