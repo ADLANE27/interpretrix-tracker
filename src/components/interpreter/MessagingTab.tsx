@@ -29,6 +29,7 @@ interface Channel {
 }
 
 export const MessagingTab = () => {
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -38,6 +39,14 @@ export const MessagingTab = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    const initializeUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    
+    initializeUser();
     fetchMessages();
     fetchChannels();
     const messageChannel = subscribeToMessages();
@@ -276,8 +285,8 @@ export const MessagingTab = () => {
               <div className="space-y-4">
                 {messages
                   .filter((msg) => 
-                    (msg.sender_id === admin.id && msg.recipient_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id)) ||
-                    (msg.recipient_id === admin.id && msg.sender_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id))
+                    (msg.sender_id === admin.id && msg.recipient_id === currentUserId) ||
+                    (msg.recipient_id === admin.id && msg.sender_id === currentUserId)
                   )
                   .map((message) => (
                     <div
@@ -349,7 +358,7 @@ export const MessagingTab = () => {
                       <div
                         key={message.id}
                         className={`p-3 rounded-lg max-w-[80%] ${
-                          message.sender_id === supabase.auth.getUser().then(({ data: { user } }) => user?.id)
+                          message.sender_id === currentUserId
                             ? "bg-primary text-primary-foreground ml-auto"
                             : "bg-secondary"
                         }`}
