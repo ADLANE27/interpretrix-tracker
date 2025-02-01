@@ -21,7 +21,7 @@ interface Message {
     first_name: string;
     last_name: string;
     profile_picture_url: string | null;
-  } | null;
+  };
 }
 
 interface MessageListProps {
@@ -39,11 +39,11 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:users (
+          users!inner (
             id,
-            raw_user_meta_data->first_name as first_name,
-            raw_user_meta_data->last_name as last_name,
-            raw_user_meta_data->profile_picture_url as profile_picture_url
+            raw_user_meta_data->first_name,
+            raw_user_meta_data->last_name,
+            raw_user_meta_data->profile_picture_url
           )
         `)
         .eq("channel_id", channelId)
@@ -61,14 +61,12 @@ export const MessageList = ({ channelId }: MessageListProps) => {
 
       return data.map((message) => ({
         ...message,
-        sender: message.sender
-          ? {
-              id: message.sender.id,
-              first_name: message.sender.first_name,
-              last_name: message.sender.last_name,
-              profile_picture_url: message.sender.profile_picture_url,
-            }
-          : null,
+        sender: {
+          id: message.users.id,
+          first_name: message.users.first_name,
+          last_name: message.users.last_name,
+          profile_picture_url: message.users.profile_picture_url,
+        },
       })) as Message[];
     },
     enabled: !!channelId,
@@ -97,11 +95,11 @@ export const MessageList = ({ channelId }: MessageListProps) => {
               .from("messages")
               .select(`
                 *,
-                sender:users (
+                users!inner (
                   id,
-                  raw_user_meta_data->first_name as first_name,
-                  raw_user_meta_data->last_name as last_name,
-                  raw_user_meta_data->profile_picture_url as profile_picture_url
+                  raw_user_meta_data->first_name,
+                  raw_user_meta_data->last_name,
+                  raw_user_meta_data->profile_picture_url
                 )
               `)
               .eq("id", payload.new.id)
@@ -110,14 +108,12 @@ export const MessageList = ({ channelId }: MessageListProps) => {
             if (!error && data) {
               const newMessage = {
                 ...data,
-                sender: data.sender
-                  ? {
-                      id: data.sender.id,
-                      first_name: data.sender.first_name,
-                      last_name: data.sender.last_name,
-                      profile_picture_url: data.sender.profile_picture_url,
-                    }
-                  : null,
+                sender: {
+                  id: data.users.id,
+                  first_name: data.users.first_name,
+                  last_name: data.users.last_name,
+                  profile_picture_url: data.users.profile_picture_url,
+                },
               } as Message;
 
               setMessages((prev) => [...prev, newMessage]);
