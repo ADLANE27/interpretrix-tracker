@@ -13,15 +13,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Plus, UserPlus } from "lucide-react";
-import { AddChannelMemberForm } from "./AddChannelMemberForm";
+import { Plus, UserPlus, Send } from "lucide-react";
 
 interface Channel {
   id: string;
   name: string;
   description: string | null;
   members_count: number;
-  created_at: string;
 }
 
 interface Message {
@@ -40,11 +38,12 @@ export const GroupChatManager = () => {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
   const [newChannelDescription, setNewChannelDescription] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     fetchChannels();
-    const channelsChannel = supabase
+    const channel = supabase
       .channel("channels-updates")
       .on(
         "postgres_changes",
@@ -56,7 +55,7 @@ export const GroupChatManager = () => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channelsChannel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -132,7 +131,7 @@ export const GroupChatManager = () => {
       const { error } = await supabase.from("channels").insert({
         name: newChannelName,
         description: newChannelDescription,
-        type: "internal", // Changed from "group" to "internal"
+        type: "internal",
         created_by: user.id,
       });
 
@@ -151,6 +150,48 @@ export const GroupChatManager = () => {
       toast({
         title: "Erreur",
         description: "Impossible de créer le canal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addMember = async () => {
+    try {
+      if (!selectedChannel) return;
+
+      // First, get the user ID from the email
+      const { data: users, error: userError } = await supabase
+        .from("interpreter_profiles")
+        .select("id")
+        .eq("email", memberEmail)
+        .single();
+
+      if (userError) throw new Error("Utilisateur non trouvé");
+      if (!users) throw new Error("Utilisateur non trouvé");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error: memberError } = await supabase.from("channel_members").insert({
+        channel_id: selectedChannel,
+        user_id: users.id,
+        added_by: user.id,
+      });
+
+      if (memberError) throw memberError;
+
+      toast({
+        title: "Succès",
+        description: "Le membre a été ajouté avec succès",
+      });
+
+      setMemberEmail("");
+      setIsAddMemberOpen(false);
+    } catch (error: any) {
+      console.error("Error adding member:", error);
+      toast({
+        title: "Erreur",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -272,11 +313,25 @@ export const GroupChatManager = () => {
                   <DialogHeader>
                     <DialogTitle>Ajouter un membre au canal</DialogTitle>
                   </DialogHeader>
-                  <AddChannelMemberForm
-                    channelId={selectedChannel}
-                    onSuccess={() => setIsAddMemberOpen(false)}
-                    onCancel={() => setIsAddMemberOpen(false)}
-                  />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="member-email">Email du membre</Label>
+                      <Input
+                        id="member-email"
+                        type="email"
+                        value={memberEmail}
+                        onChange={(e) => setMemberEmail(e.target.value)}
+                        placeholder="Entrez l'email du membre"
+                      />
+                    </div>
+                    <Button
+                      onClick={addMember}
+                      disabled={!memberEmail.trim()}
+                      className="w-full"
+                    >
+                      Ajouter le membre
+                    </Button>
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
