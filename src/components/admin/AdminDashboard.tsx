@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
 import { UserManagement } from "./UserManagement";
 import { AdminGuideContent } from "./AdminGuideContent";
-import { MessagingTab } from "./messaging/MessagingTab";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -237,7 +236,6 @@ export const AdminDashboard = () => {
             <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
             <TabsTrigger value="missions">Missions</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="guide">
               Guide d'utilisation
             </TabsTrigger>
@@ -368,10 +366,6 @@ export const AdminDashboard = () => {
 
         <TabsContent value="users">
           <UserManagement />
-        </TabsContent>
-
-        <TabsContent value="messages">
-          <MessagingTab />
         </TabsContent>
 
         <TabsContent value="guide">
