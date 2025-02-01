@@ -33,20 +33,29 @@ export const MessagingTab = () => {
 
   const fetchAdmins = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get admin user_ids from user_roles
+      const { data: adminRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("user_id, users:auth.users(email)")
+        .select("user_id")
         .eq("role", "admin")
         .eq("active", true);
 
+      if (rolesError) throw rolesError;
+
+      if (!adminRoles?.length) {
+        setAdmins([]);
+        return;
+      }
+
+      // Then, get admin emails from auth.users using Edge Function
+      const adminIds = adminRoles.map(role => role.user_id);
+      const { data: adminData, error } = await supabase.functions.invoke('get-admin-emails', {
+        body: { adminIds }
+      });
+
       if (error) throw error;
 
-      const formattedAdmins = data.map((item: any) => ({
-        id: item.user_id,
-        email: item.users.email,
-      }));
-
-      setAdmins(formattedAdmins);
+      setAdmins(adminData || []);
     } catch (error) {
       console.error("Error fetching admins:", error);
       toast({
