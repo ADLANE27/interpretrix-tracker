@@ -1,5 +1,5 @@
 // Enhanced service worker with comprehensive error handling and logging
-const SW_VERSION = '1.0.0';
+const SW_VERSION = '1.0.1';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling for uncaught errors
@@ -108,7 +108,7 @@ self.addEventListener('push', event => {
   }
 });
 
-// Enhanced notification click handling
+// Enhanced notification click handling with better window management
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
     action: event.action,
