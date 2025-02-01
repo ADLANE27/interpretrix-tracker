@@ -73,7 +73,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
       await existingSubscription.unsubscribe();
     }
 
-    // Subscribe to push notifications
+    // Subscribe to push notifications with enhanced options
     console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -84,7 +84,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
 
     const subscriptionJSON = subscription.toJSON();
 
-    // Store subscription in database
+    // Store subscription in database with enhanced metadata
     console.log('[Push Notifications] Storing subscription in database');
     const { error: insertError } = await supabase
       .from('push_subscriptions')

@@ -72,7 +72,7 @@ serve(async (req) => {
 
     console.log(`[Edge Function] Found ${subscriptions.length} active subscriptions`);
     
-    // Enhanced notification sending with better error handling
+    // Enhanced notification sending with better error handling and retry logic
     const notificationResults = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
@@ -81,32 +81,59 @@ serve(async (req) => {
             title: message.title,
             body: message.body,
             icon: message.icon,
-            data: message.data
+            data: message.data,
+            badge: '/favicon.ico',
+            vibrate: [200, 100, 200],
+            requireInteraction: true,
+            actions: [
+              {
+                action: 'accept',
+                title: 'Accepter'
+              },
+              {
+                action: 'decline',
+                title: 'Décliner'
+              }
+            ],
+            timestamp: Date.now()
           });
           
-          await webPush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: {
-                p256dh: sub.p256dh,
-                auth: sub.auth
-              }
-            },
-            payload
-          );
+          // Implement retry logic with exponential backoff
+          let attempt = 0;
+          const maxAttempts = 3;
           
-          console.log(`[Edge Function] Successfully sent notification to subscription ${sub.id}`);
-          
-          // Update last successful push
-          await supabase
-            .from('push_subscriptions')
-            .update({ 
-              last_successful_push: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sub.id);
-            
-          return { success: true, subscriptionId: sub.id };
+          while (attempt < maxAttempts) {
+            try {
+              await webPush.sendNotification(
+                {
+                  endpoint: sub.endpoint,
+                  keys: {
+                    p256dh: sub.p256dh,
+                    auth: sub.auth
+                  }
+                },
+                payload
+              );
+              
+              console.log(`[Edge Function] Successfully sent notification to subscription ${sub.id}`);
+              
+              // Update last successful push
+              await supabase
+                .from('push_subscriptions')
+                .update({ 
+                  last_successful_push: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', sub.id);
+                
+              return { success: true, subscriptionId: sub.id };
+            } catch (error) {
+              attempt++;
+              if (attempt === maxAttempts) throw error;
+              // Exponential backoff: 1s, 2s, 4s
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+            }
+          }
         } catch (error) {
           console.error(`[Edge Function] Failed to send notification to subscription ${sub.id}:`, error);
           
@@ -134,8 +161,15 @@ serve(async (req) => {
     // Analyze results
     const results = {
       total: notificationResults.length,
-      successful: notificationResults.filter(r => r.status === 'fulfilled' && r.value.success).length,
-      failed: notificationResults.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length
+      successful: notificationResults.filter(r => r.status === 'fulfilled' && (r.value as any).success).length,
+      failed: notificationResults.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !(r.value as any).success)).length,
+      details: notificationResults.map(r => {
+        if (r.status === 'fulfilled') {
+          return r.value;
+        } else {
+          return { success: false, error: r.reason };
+        }
+      })
     };
     
     console.log('[Edge Function] Notification results:', results);
