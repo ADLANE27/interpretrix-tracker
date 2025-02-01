@@ -394,75 +394,73 @@ export const MissionManagement = () => {
             </div>
 
             {missionType === 'immediate' ? (
-              <div className="space-y-2">
-                <Label htmlFor="estimated_duration">Durée estimée (minutes)</Label>
-                <Input
-                  id="estimated_duration"
-                  type="number"
-                  min="1"
-                  value={estimatedDuration}
-                  onChange={(e) => setEstimatedDuration(e.target.value)}
-                  required
-                />
-              </div>
-            ) : (
               <>
-                <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="source_language">Langue source</Label>
-                    <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une langue" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang} value={lang}>
-                            {lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="target_language">Langue cible</Label>
-                    <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une langue" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang} value={lang}>
-                            {lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduled_start">Date et heure de début</Label>
-                    <Input
-                      id="scheduled_start"
-                      type="datetime-local"
-                      value={scheduledStartTime}
-                      onChange={(e) => setScheduledStartTime(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduled_end">Date et heure de fin</Label>
-                    <Input
-                      id="scheduled_end"
-                      type="datetime-local"
-                      value={scheduledEndTime}
-                      onChange={(e) => setScheduledEndTime(e.target.value)}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estimated_duration">Durée estimée (minutes)</Label>
+                  <Input
+                    id="estimated_duration"
+                    type="number"
+                    min="1"
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="source_language">Langue source</Label>
+                  <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une langue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target_language">Langue cible</Label>
+                  <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une langue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </>
+            ) : (
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="scheduled_start">Date et heure de début</Label>
+                  <Input
+                    id="scheduled_start"
+                    type="datetime-local"
+                    value={scheduledStartTime}
+                    onChange={(e) => setScheduledStartTime(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="scheduled_end">Date et heure de fin</Label>
+                  <Input
+                    id="scheduled_end"
+                    type="datetime-local"
+                    value={scheduledEndTime}
+                    onChange={(e) => setScheduledEndTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
             )}
           </div>
 
