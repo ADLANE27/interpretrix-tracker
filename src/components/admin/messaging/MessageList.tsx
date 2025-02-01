@@ -3,114 +3,22 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useMessages } from "@/hooks/use-messages";
+import type { Message, PresenceState } from "@/types/messaging";
 
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  channel_id: string;
-  sender: {
-    email: string;
-    raw_user_meta_data: {
-      first_name: string;
-      last_name: string;
-    };
-  };
-  mentions: {
-    id: string;
-    mentioned_user_id: string;
-    mentioned_user: {
-      email: string;
-      raw_user_meta_data: {
-        first_name: string;
-        last_name: string;
-      };
-    };
-  }[];
+interface MessageListProps {
+  channelId: string;
 }
 
-interface PresenceState {
-  [key: string]: {
-    online_at: string;
-    user_id: string;
-  }[];
-}
-
-export const MessageList = ({ channelId }: { channelId: string }) => {
+export const MessageList = ({ channelId }: MessageListProps) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [presenceState, setPresenceState] = useState<PresenceState>({});
-
-  const { data: channelMessages, isError } = useQuery({
-    queryKey: ["messages", channelId],
-    queryFn: async () => {
-      // First, get messages with sender information
-      const { data: messagesData, error: messagesError } = await supabase
-        .from("messages")
-        .select(`
-          *,
-          sender:interpreter_profiles(
-            email,
-            first_name,
-            last_name
-          )
-        `)
-        .eq("channel_id", channelId)
-        .order("created_at", { ascending: true });
-
-      if (messagesError) throw messagesError;
-
-      // Then, get mentions for each message
-      const messagesWithMentions = await Promise.all(
-        messagesData.map(async (message) => {
-          const { data: mentions, error: mentionsError } = await supabase
-            .from("message_mentions")
-            .select(`
-              id,
-              mentioned_user_id,
-              mentioned_user:interpreter_profiles(
-                email,
-                first_name,
-                last_name
-              )
-            `)
-            .eq("message_id", message.id);
-
-          if (mentionsError) throw mentionsError;
-
-          // Format the data to match the Message interface
-          return {
-            ...message,
-            sender: {
-              email: message.sender?.email || "",
-              raw_user_meta_data: {
-                first_name: message.sender?.first_name || "",
-                last_name: message.sender?.last_name || ""
-              }
-            },
-            mentions: mentions ? mentions.map(mention => ({
-              ...mention,
-              mentioned_user: {
-                email: mention.mentioned_user?.email || "",
-                raw_user_meta_data: {
-                  first_name: mention.mentioned_user?.first_name || "",
-                  last_name: mention.mentioned_user?.last_name || ""
-                }
-              }
-            })) : []
-          };
-        })
-      );
-
-      return messagesWithMentions as Message[];
-    },
-    enabled: !!channelId,
-  });
+  
+  const { data: channelMessages, isError } = useMessages(channelId);
 
   useEffect(() => {
     if (channelMessages) {
@@ -145,9 +53,7 @@ export const MessageList = ({ channelId }: { channelId: string }) => {
 
   const formatMessage = (content: string) => {
     const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
-    return content.replace(mentionRegex, (match, name) => (
-      `@${name}`
-    ));
+    return content.replace(mentionRegex, (match, name) => `@${name}`);
   };
 
   if (isError) {

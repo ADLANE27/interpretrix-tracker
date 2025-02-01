@@ -6,18 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Send, AtSign } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandItem } from "@/components/ui/command";
+import type { User } from "@/types/messaging";
 
 interface MessageInputProps {
   channelId: string;
-}
-
-interface User {
-  id: string;
-  email: string;
-  raw_user_meta_data: {
-    first_name: string;
-    last_name: string;
-  };
 }
 
 export const MessageInput = ({ channelId }: MessageInputProps) => {
@@ -76,11 +68,9 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Extract mentions from content
       const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
       const mentions = Array.from(content.matchAll(mentionRegex));
       
-      // Insert message
       const { data: message, error: messageError } = await supabase
         .from("messages")
         .insert({
@@ -93,7 +83,6 @@ export const MessageInput = ({ channelId }: MessageInputProps) => {
 
       if (messageError) throw messageError;
 
-      // Insert mentions
       if (mentions.length > 0 && message) {
         const mentionInserts = mentions.map(match => ({
           message_id: message.id,
