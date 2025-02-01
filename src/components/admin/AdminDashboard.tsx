@@ -81,6 +81,7 @@ export const AdminDashboard = () => {
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -187,6 +188,10 @@ export const AdminDashboard = () => {
     );
   };
 
+  const handleGuideClick = () => {
+    setIsGuideOpen(true);
+  };
+
   const filteredInterpreters = interpreters.filter(interpreter => {
     // Filter out "Adlane Admin"
     const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
@@ -236,7 +241,7 @@ export const AdminDashboard = () => {
             <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
             <TabsTrigger value="missions">Missions</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-            <TabsTrigger value="guide" onClick={() => document.getElementById('admin-guide-trigger')?.click()}>
+            <TabsTrigger value="guide" onClick={handleGuideClick}>
               Guide d'utilisation
             </TabsTrigger>
           </TabsList>
@@ -373,8 +378,7 @@ export const AdminDashboard = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Hidden trigger for the guide dialog */}
-      <button id="admin-guide-trigger" className="hidden" />
+      {isGuideOpen && <AdminHowToUseGuide />}
     </div>
   );
 };

@@ -4,20 +4,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Info, UserCog, Clock, Bell, CheckCircle, Settings } from "lucide-react";
 
 export const AdminHowToUseGuide = () => {
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Info className="h-4 w-4" />
-          Guide d'utilisation
-        </Button>
-      </DialogTrigger>
+    <Dialog defaultOpen>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Guide d'utilisation - Espace Administrateur</DialogTitle>
