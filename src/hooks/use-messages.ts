@@ -10,7 +10,7 @@ export const useMessages = (channelId: string) => {
         .from("messages")
         .select(`
           *,
-          sender:sender_id (
+          sender:interpreter_profiles!messages_sender_id_fkey (
             id,
             email,
             first_name,
@@ -18,7 +18,7 @@ export const useMessages = (channelId: string) => {
           ),
           mentions:message_mentions (
             id,
-            mentioned_user:mentioned_user_id (
+            mentioned_user:interpreter_profiles!message_mentions_mentioned_user_id_fkey (
               id,
               email,
               first_name,
@@ -33,12 +33,19 @@ export const useMessages = (channelId: string) => {
 
       const formattedMessages = messagesData.map(message => ({
         ...message,
-        sender: {
-          id: message.sender?.id || "",
-          email: message.sender?.email || "",
+        sender: message.sender ? {
+          id: message.sender.id,
+          email: message.sender.email,
           raw_user_meta_data: {
-            first_name: message.sender?.first_name || "",
-            last_name: message.sender?.last_name || ""
+            first_name: message.sender.first_name,
+            last_name: message.sender.last_name
+          }
+        } : {
+          id: "",
+          email: "",
+          raw_user_meta_data: {
+            first_name: "",
+            last_name: ""
           }
         },
         mentions: (message.mentions || []).map(mention => ({
