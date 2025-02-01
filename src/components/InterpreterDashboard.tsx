@@ -50,8 +50,8 @@ export const InterpreterDashboard = () => {
     fetchProfile();
     fetchScheduledMissions();
 
-    // Set up realtime subscription for profile updates
-    const channel = supabase
+    // Set up realtime subscriptions
+    const profileChannel = supabase
       .channel('interpreter-profile-updates')
       .on(
         'postgres_changes',
@@ -67,11 +67,31 @@ export const InterpreterDashboard = () => {
         }
       )
       .subscribe((status) => {
-        console.log('Subscription status:', status);
+        console.log('Profile subscription status:', status);
+      });
+
+    const missionsChannel = supabase
+      .channel('interpreter-missions-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions',
+          filter: `assigned_interpreter_id=eq.${profile?.id}`,
+        },
+        (payload) => {
+          console.log('Mission update received:', payload);
+          fetchScheduledMissions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Missions subscription status:', status);
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(profileChannel);
+      supabase.removeChannel(missionsChannel);
     };
   }, [profile?.id]);
 
