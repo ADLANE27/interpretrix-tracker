@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GroupChatManager } from "./GroupChatManager";
 
 interface Message {
   id: string;
@@ -132,69 +130,58 @@ export const AdminMessaging = () => {
   };
 
   return (
-    <Tabs defaultValue="direct" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="direct">Messages directs</TabsTrigger>
-        <TabsTrigger value="group">Discussions de groupe</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        {interpreters.map((interpreter) => (
+          <Button
+            key={interpreter.id}
+            variant={selectedInterpreter === interpreter.id ? "default" : "outline"}
+            onClick={() => setSelectedInterpreter(interpreter.id)}
+          >
+            {interpreter.first_name} {interpreter.last_name}
+          </Button>
+        ))}
+      </div>
 
-      <TabsContent value="direct" className="space-y-4">
-        <div className="flex gap-2 flex-wrap">
-          {interpreters.map((interpreter) => (
-            <Button
-              key={interpreter.id}
-              variant={selectedInterpreter === interpreter.id ? "default" : "outline"}
-              onClick={() => setSelectedInterpreter(interpreter.id)}
-            >
-              {interpreter.first_name} {interpreter.last_name}
-            </Button>
-          ))}
-        </div>
-
-        {selectedInterpreter && (
-          <div className="border rounded-lg p-4 space-y-4">
-            <ScrollArea className="h-[400px] w-full pr-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`p-3 rounded-lg max-w-[80%] ${
-                      message.sender_id === selectedInterpreter
-                        ? "bg-secondary ml-auto"
-                        : "bg-primary text-primary-foreground"
-                    }`}
-                  >
-                    {message.content}
-                    <div className="text-xs opacity-70 mt-1">
-                      {new Date(message.created_at).toLocaleString()}
-                    </div>
+      {selectedInterpreter && (
+        <div className="border rounded-lg p-4 space-y-4">
+          <ScrollArea className="h-[400px] w-full pr-4">
+            <div className="space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`p-3 rounded-lg max-w-[80%] ${
+                    message.sender_id === selectedInterpreter
+                      ? "bg-secondary ml-auto"
+                      : "bg-primary text-primary-foreground"
+                  }`}
+                >
+                  {message.content}
+                  <div className="text-xs opacity-70 mt-1">
+                    {new Date(message.created_at).toLocaleString()}
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            <div className="flex gap-2">
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Tapez votre message..."
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    sendMessage();
-                  }
-                }}
-              />
-              <Button onClick={sendMessage}>
-                <Send className="h-4 w-4" />
-              </Button>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-      </TabsContent>
+          </ScrollArea>
 
-      <TabsContent value="group">
-        <GroupChatManager />
-      </TabsContent>
-    </Tabs>
+          <div className="flex gap-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Tapez votre message..."
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  sendMessage();
+                }
+              }}
+            />
+            <Button onClick={sendMessage}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
