@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Search } from "lucide-react";
 
 interface User {
   id: string;
@@ -25,24 +26,22 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
   const [description, setDescription] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Fetch users when dialog opens
   useEffect(() => {
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
     try {
-      // Fetch user roles
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
 
       if (rolesError) throw rolesError;
 
-      // Fetch interpreter profiles
       const { data: interpreterProfiles, error: profilesError } = await supabase
         .from("interpreter_profiles")
         .select("*");
@@ -98,6 +97,15 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
     }
   };
 
+  const filteredUsers = users.filter(user => {
+    const searchTerm = searchQuery.toLowerCase();
+    return (
+      user.first_name.toLowerCase().includes(searchTerm) ||
+      user.last_name.toLowerCase().includes(searchTerm) ||
+      user.email.toLowerCase().includes(searchTerm)
+    );
+  });
+
   const handleCreateChannel = async () => {
     if (!name.trim()) {
       toast({
@@ -113,7 +121,6 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Create channel
       const { data: channel, error: channelError } = await supabase
         .from("channels")
         .insert({
@@ -127,7 +134,6 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
 
       if (channelError) throw channelError;
 
-      // Add creator as member
       const { error: memberError } = await supabase
         .from("channel_members")
         .insert({
@@ -138,7 +144,6 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
 
       if (memberError) throw memberError;
 
-      // Add selected users as members
       if (selectedUsers.length > 0) {
         const { error: membersError } = await supabase
           .from("channel_members")
@@ -195,9 +200,18 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
 
       <div className="space-y-2">
         <Label>Ajouter des membres</Label>
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher par nom ou email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
         <ScrollArea className="h-[200px] border rounded-md p-4">
           <div className="space-y-2">
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <div key={user.id} className="flex items-center space-x-2">
                 <Checkbox
                   id={user.id}
@@ -215,6 +229,11 @@ export const CreateChannelDialog = ({ onClose }: CreateChannelDialogProps) => {
                 </Label>
               </div>
             ))}
+            {filteredUsers.length === 0 && (
+              <div className="text-center text-muted-foreground py-4">
+                Aucun utilisateur trouvé
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
