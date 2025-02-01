@@ -36,7 +36,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:user_id (
+          sender:sender_id (
             id,
             first_name,
             last_name,
