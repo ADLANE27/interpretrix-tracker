@@ -9,6 +9,7 @@ import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
+import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 
 interface Profile {
   id: string;
@@ -246,7 +247,10 @@ export const InterpreterDashboard = () => {
             onAvatarClick={() => fileInputRef.current?.click()}
             onDeletePicture={handleProfilePictureDelete}
           />
-          <NotificationPermission interpreterId={profile.id} />
+          <div className="flex items-center gap-2">
+            <HowToUseGuide />
+            <NotificationPermission interpreterId={profile.id} />
+          </div>
           <input
             type="file"
             ref={fileInputRef}
