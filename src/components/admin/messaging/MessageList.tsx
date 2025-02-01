@@ -83,7 +83,8 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setMessages((prev) => [...prev, payload.new as Message]);
+            const newMessage = payload.new as Message;
+            setMessages((prev) => [...prev, newMessage]);
           }
         }
       )
