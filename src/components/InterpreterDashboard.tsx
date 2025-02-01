@@ -304,47 +304,48 @@ export const InterpreterDashboard = () => {
           </div>
 
           {/* Main Content Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Missions List - Takes 2 columns */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-sm h-full">
-                <div className="p-6">
-                  <h2 className="text-2xl font-bold mb-6">Mes Missions</h2>
-                  <MissionsTab />
-                </div>
-              </Card>
-            </div>
+          <Card className="shadow-sm">
+            <Tabs defaultValue="missions" className="w-full">
+              <div className="border-b">
+                <TabsList className="w-full justify-start h-12 bg-transparent p-0">
+                  <TabsTrigger 
+                    value="missions"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                  >
+                    Missions
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="calendar"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                  >
+                    Calendrier
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="profile"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                  >
+                    Mon Profil
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-            {/* Profile and Calendar - Takes 1 column */}
-            <div className="lg:col-span-1">
-              <Card className="shadow-sm h-full">
-                <Tabs defaultValue="profile" className="p-6">
-                  <TabsList className="mb-6">
-                    <TabsTrigger value="profile" className="text-base">
-                      Mon Profil
-                    </TabsTrigger>
-                    <TabsTrigger value="calendar" className="text-base">
-                      Calendrier
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="profile" className="mt-6">
-                    <InterpreterProfile />
-                  </TabsContent>
-                  
-                  <TabsContent value="calendar" className="mt-6">
-                    <MissionsCalendar 
-                      missions={profile.languages.filter(
-                        m => m.mission_type === 'scheduled' && 
-                        m.status === 'accepted' &&
-                        m.assigned_interpreter_id === profile.id
-                      ) || []}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </Card>
-            </div>
-          </div>
+              <div className="p-6">
+                <TabsContent value="missions" className="m-0">
+                  <MissionsTab />
+                </TabsContent>
+                
+                <TabsContent value="calendar" className="m-0">
+                  <MissionsCalendar 
+                    missions={[]} // We'll fetch missions data separately in the MissionsCalendar component
+                  />
+                </TabsContent>
+                
+                <TabsContent value="profile" className="m-0">
+                  <InterpreterProfile />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </Card>
 
           {/* Hidden file input for profile picture */}
           <input
