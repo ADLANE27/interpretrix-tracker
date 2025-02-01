@@ -3,6 +3,7 @@ import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { AdminHowToUseGuide } from '@/components/admin/AdminHowToUseGuide';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -31,7 +32,10 @@ const Admin = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Tableau de bord administrateur</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Tableau de bord administrateur</h1>
+        <AdminHowToUseGuide />
+      </div>
       <div className="mb-6">
         <Button onClick={setupVapidKeys} className="mb-4">
           Regénérer les clés VAPID
