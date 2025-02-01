@@ -11,7 +11,7 @@ import { CountrySelect } from "../CountrySelect";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MissionManagement } from "./MissionManagement";
 import { UserManagement } from "./UserManagement";
-import { AdminHowToUseGuide } from "./AdminHowToUseGuide";
+import { AdminGuideContent } from "./AdminGuideContent";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -81,7 +81,6 @@ export const AdminDashboard = () => {
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -188,16 +187,6 @@ export const AdminDashboard = () => {
     );
   };
 
-  const handleGuideClick = () => {
-    setIsGuideOpen(true);
-  };
-
-  const handleTabChange = (value: string) => {
-    if (value === "guide") {
-      setIsGuideOpen(true);
-    }
-  };
-
   const filteredInterpreters = interpreters.filter(interpreter => {
     // Filter out "Adlane Admin"
     const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
@@ -241,7 +230,7 @@ export const AdminDashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs defaultValue="interpreters" className="space-y-6" onValueChange={handleTabChange}>
+      <Tabs defaultValue="interpreters" className="space-y-6">
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
@@ -380,11 +369,9 @@ export const AdminDashboard = () => {
         </TabsContent>
 
         <TabsContent value="guide">
-          {/* Empty TabsContent to handle the tab selection */}
+          <AdminGuideContent />
         </TabsContent>
       </Tabs>
-      
-      {isGuideOpen && <AdminHowToUseGuide onOpenChange={setIsGuideOpen} />}
     </div>
   );
 };
