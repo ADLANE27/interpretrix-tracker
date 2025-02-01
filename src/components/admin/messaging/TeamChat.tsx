@@ -30,6 +30,8 @@ export const TeamChat = () => {
 
   useEffect(() => {
     fetchChannels();
+    
+    // Set up realtime subscription
     const channel = supabase
       .channel('channel-changes')
       .on(
@@ -40,45 +42,73 @@ export const TeamChat = () => {
           table: 'channels'
         },
         () => {
+          console.log('Channel change detected, refreshing channels...');
           fetchChannels();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Channel subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up channel subscription...');
       supabase.removeChannel(channel);
     };
   }, []);
 
   const fetchChannels = async () => {
     try {
+      console.log('Fetching channels...');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('No authenticated user found');
+        return;
+      }
 
+      // First get channels where user is a member
       const { data: memberChannels, error: memberError } = await supabase
         .from('channel_members')
         .select('channel_id')
         .eq('user_id', user.id);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Error fetching channel memberships:', memberError);
+        throw memberError;
+      }
 
       const channelIds = memberChannels?.map(m => m.channel_id) || [];
+      console.log('Found channel IDs:', channelIds);
 
+      // Then fetch the actual channels
       const { data: channels, error } = await supabase
         .from('channels')
         .select('*')
         .in('id', channelIds);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching channels:', error);
+        throw error;
+      }
+
+      console.log('Successfully fetched channels:', channels);
       setChannels(channels || []);
     } catch (error) {
-      console.error('Error fetching channels:', error);
+      console.error('Error in fetchChannels:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les canaux",
         variant: "destructive",
       });
     }
+  };
+
+  const handleCreateChannelSuccess = () => {
+    setIsCreateChannelOpen(false);
+    fetchChannels();
+    toast({
+      title: "Succès",
+      description: "Canal créé avec succès",
+    });
   };
 
   return (
@@ -93,7 +123,10 @@ export const TeamChat = () => {
             <DialogHeader>
               <DialogTitle>Créer un nouveau canal</DialogTitle>
             </DialogHeader>
-            <CreateChannelDialog onClose={() => setIsCreateChannelOpen(false)} />
+            <CreateChannelDialog 
+              onClose={() => setIsCreateChannelOpen(false)}
+              onSuccess={handleCreateChannelSuccess}
+            />
           </DialogContent>
         </Dialog>
       </div>
