@@ -244,7 +244,11 @@ export const InterpreterDashboard = () => {
   };
 
   if (!profile) {
-    return <div>Chargement...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-lg">Chargement de votre profil...</div>
+      </div>
+    );
   }
 
   if (!profile.password_changed) {
@@ -258,32 +262,69 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <ProfileHeader
-            firstName={profile.first_name}
-            lastName={profile.last_name}
-            status={profile.status}
-            profilePictureUrl={profile.profile_picture_url}
-            onAvatarClick={() => fileInputRef.current?.click()}
-            onDeletePicture={handleProfilePictureDelete}
-          />
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <HowToUseGuide />
-              <NotificationPermission interpreterId={profile.id} />
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto space-y-8">
+          {/* Header Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <ProfileHeader
+                firstName={profile.first_name}
+                lastName={profile.last_name}
+                status={profile.status}
+                profilePictureUrl={profile.profile_picture_url}
+                onAvatarClick={() => fileInputRef.current?.click()}
+                onDeletePicture={handleProfilePictureDelete}
+              />
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <HowToUseGuide />
+                  <NotificationPermission interpreterId={profile.id} />
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="ml-2 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title="Se déconnecter"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleLogout}
-              className="ml-2"
-              title="Se déconnecter"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
+
+          {/* Status Manager Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <StatusManager
+              currentStatus={profile.status}
+              onStatusChange={handleStatusChange}
+            />
+          </div>
+
+          {/* Main Content Section */}
+          <Card className="shadow-sm">
+            <Tabs defaultValue="missions" className="p-6">
+              <TabsList className="mb-6">
+                <TabsTrigger value="missions" className="text-base">
+                  Mes Missions
+                </TabsTrigger>
+                <TabsTrigger value="profile" className="text-base">
+                  Mon Profil
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="missions" className="mt-6">
+                <MissionsTab />
+              </TabsContent>
+              
+              <TabsContent value="profile" className="mt-6">
+                <InterpreterProfile />
+              </TabsContent>
+            </Tabs>
+          </Card>
+
+          {/* Hidden file input for profile picture */}
           <input
             type="file"
             ref={fileInputRef}
@@ -291,35 +332,13 @@ export const InterpreterDashboard = () => {
             accept="image/*"
             onChange={handleProfilePictureUpload}
           />
-        </div>
 
-        <div className="space-y-6">
-          <StatusManager
-            currentStatus={profile.status}
-            onStatusChange={handleStatusChange}
-          />
-
-          <Card className="p-6">
-            <Tabs defaultValue="missions" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="missions">Missions</TabsTrigger>
-                <TabsTrigger value="profile">Mon Profil</TabsTrigger>
-              </TabsList>
-              <TabsContent value="missions">
-                <MissionsTab />
-              </TabsContent>
-              <TabsContent value="profile">
-                <InterpreterProfile />
-              </TabsContent>
-            </Tabs>
-          </Card>
+          {/* Footer */}
+          <footer className="text-center text-sm text-gray-500 pt-4">
+            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+          </footer>
         </div>
       </div>
-      
-      {/* Copyright notice */}
-      <footer className="mt-8 pt-4 border-t text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-      </footer>
     </div>
   );
 };
