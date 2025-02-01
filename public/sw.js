@@ -7,10 +7,13 @@ self.addEventListener('push', event => {
       console.log('[Service Worker] Push data:', data);
       
       const options = {
-        body: data.body,
-        icon: data.icon || '/favicon.ico',
+        body: `${data.mission_type === 'immediate' ? 'Mission immédiate' : 'Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
+        icon: '/favicon.ico',
         badge: '/favicon.ico',
-        data: data.data || {},
+        data: {
+          missionId: data.mission_id,
+          url: '/'
+        },
         requireInteraction: true,
         vibrate: [200, 100, 200],
         actions: [
@@ -22,13 +25,15 @@ self.addEventListener('push', event => {
             action: 'close',
             title: 'Fermer'
           }
-        ]
+        ],
+        tag: 'new-mission', // This ensures we don't stack multiple notifications
+        renotify: true // This makes the notification alert the user again
       };
 
       console.log('[Service Worker] Showing notification with options:', options);
 
       event.waitUntil(
-        self.registration.showNotification(data.title, options)
+        self.registration.showNotification('Nouvelle mission disponible', options)
           .then(() => {
             console.log('[Service Worker] Notification shown successfully');
           })
@@ -53,16 +58,18 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
+  const urlToOpen = new URL('/', self.location.origin).href;
+
   event.waitUntil(
-    clients.matchAll({ 
+    clients.matchAll({
       type: 'window',
-      includeUncontrolled: true 
+      includeUncontrolled: true
     }).then(clientList => {
       console.log('[Service Worker] Found clients:', clientList);
       
       // Try to find an existing window
       const hadWindowToFocus = clientList.some(client => {
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url === urlToOpen && 'focus' in client) {
           client.focus();
           return true;
         }
@@ -73,7 +80,7 @@ self.addEventListener('notificationclick', event => {
       if (!hadWindowToFocus) {
         console.log('[Service Worker] Opening new window');
         if (clients.openWindow) {
-          return clients.openWindow('/');
+          return clients.openWindow(urlToOpen);
         }
       }
     })

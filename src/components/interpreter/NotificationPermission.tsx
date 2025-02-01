@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { subscribeToPushNotifications } from '@/lib/pushNotifications';
-import { Bell } from 'lucide-react';
+import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/lib/pushNotifications';
+import { Bell, BellOff } from 'lucide-react';
 
 export const NotificationPermission = ({ interpreterId }: { interpreterId: string }) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isSubscribing, setIsSubscribing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -19,9 +20,12 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   const handleEnableNotifications = async () => {
     try {
+      setIsSubscribing(true);
       console.log('[Notifications] Attempting to enable notifications for interpreter:', interpreterId);
+      
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
+      
       console.log('[Notifications] Successfully enabled notifications');
       toast({
         title: "Notifications activées",
@@ -45,15 +49,42 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
           });
         }
       }
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleDisableNotifications = async () => {
+    try {
+      console.log('[Notifications] Disabling notifications for interpreter:', interpreterId);
+      await unsubscribeFromPushNotifications(interpreterId);
+      setPermission('default');
+      
+      toast({
+        title: "Notifications désactivées",
+        description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
+      });
+    } catch (error) {
+      console.error('[Notifications] Error disabling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de désactiver les notifications. Veuillez réessayer.",
+        variant: "destructive",
+      });
     }
   };
 
   if (permission === 'granted') {
     return (
-      <div className="flex items-center gap-2 text-sm text-green-600">
-        <Bell className="h-4 w-4" />
-        <span>Notifications activées</span>
-      </div>
+      <Button 
+        variant="outline" 
+        size="sm"
+        onClick={handleDisableNotifications}
+        className="flex items-center gap-2"
+      >
+        <BellOff className="h-4 w-4" />
+        Désactiver les notifications
+      </Button>
     );
   }
 
@@ -70,10 +101,12 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     <Button 
       onClick={handleEnableNotifications}
       variant="outline"
+      size="sm"
+      disabled={isSubscribing}
       className="flex items-center gap-2"
     >
       <Bell className="h-4 w-4" />
-      Activer les notifications
+      {isSubscribing ? 'Activation...' : 'Activer les notifications'}
     </Button>
   );
 };
