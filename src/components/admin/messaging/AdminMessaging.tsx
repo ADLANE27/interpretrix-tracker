@@ -283,20 +283,24 @@ export const AdminMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      // Delete all messages between the admin and interpreter (both directions)
+      // Delete all messages where either user is involved
       const { error } = await supabase
         .from("direct_messages")
         .delete()
-        .or(`sender_id.eq.${interpreterId},recipient_id.eq.${interpreterId}`);
+        .or(`sender_id.eq.${user.id},sender_id.eq.${interpreterId},recipient_id.eq.${user.id},recipient_id.eq.${interpreterId}`);
 
       if (error) throw error;
 
+      // Clear the messages state
       setMessages([]);
       setIsDeleteAllDialogOpen(false);
       toast({
         title: "Succès",
         description: "Historique des messages supprimé",
       });
+
+      // Refetch messages to ensure state is in sync with database
+      await fetchMessages(interpreterId);
     } catch (error) {
       console.error("Error deleting all messages:", error);
       toast({
