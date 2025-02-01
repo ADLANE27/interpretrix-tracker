@@ -58,7 +58,9 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
   const fetchMessages = async () => {
     try {
-      // First, get all messages with their sender IDs
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
@@ -170,22 +172,33 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     <div className="h-[600px] flex flex-col">
       <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
         <div className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className="flex flex-col space-y-1"
-            >
-              <div className="text-sm font-medium">
-                {message.sender_name}
+          {messages.map((message) => {
+            const isCurrentUser = message.sender_id === supabase.auth.user()?.id;
+            return (
+              <div
+                key={message.id}
+                className={`flex flex-col space-y-1 ${
+                  isCurrentUser ? 'items-end' : 'items-start'
+                }`}
+              >
+                <div className="text-sm font-medium">
+                  {message.sender_name}
+                </div>
+                <div 
+                  className={`p-3 rounded-lg max-w-[80%] ${
+                    isCurrentUser 
+                      ? 'bg-interpreter-navy text-white' 
+                      : 'bg-secondary'
+                  }`}
+                >
+                  {message.content}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {new Date(message.created_at).toLocaleString()}
+                </div>
               </div>
-              <div className="bg-secondary p-3 rounded-lg">
-                {message.content}
-              </div>
-              <div className="text-xs text-gray-500">
-                {new Date(message.created_at).toLocaleString()}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </ScrollArea>
 
