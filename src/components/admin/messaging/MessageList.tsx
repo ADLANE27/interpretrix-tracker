@@ -15,6 +15,7 @@ interface Message {
   recipient_id: string | null;
   updated_at: string;
   sender?: {
+    id: string;
     first_name: string;
     last_name: string;
     profile_picture_url: string | null;
