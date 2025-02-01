@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, XSquare, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { MissionsCalendar } from "./MissionsCalendar";
 
 interface Mission {
   id: string;
@@ -37,7 +39,6 @@ export const MissionsTab = () => {
         return;
       }
 
-      // First, get all missions where the interpreter is notified or assigned
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
@@ -49,7 +50,6 @@ export const MissionsTab = () => {
         throw missionsError;
       }
 
-      // Then, get the notifications to filter out declined missions
       const { data: notifications, error: notificationsError } = await supabase
         .from('mission_notifications')
         .select('mission_id, status')
@@ -60,14 +60,12 @@ export const MissionsTab = () => {
         throw notificationsError;
       }
 
-      // Create a map of declined mission IDs
       const declinedMissions = new Set(
         notifications
           ?.filter(n => n.status === 'declined')
           .map(n => n.mission_id)
       );
 
-      // Filter out declined missions from the missions list
       const filteredMissions = missionsData?.filter(
         mission => !declinedMissions.has(mission.id)
       ) || [];
@@ -194,7 +192,6 @@ export const MissionsTab = () => {
           throw declineError;
         }
 
-        // Remove the declined mission from the local state
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
 
         console.log('Mission declined successfully');
@@ -240,76 +237,97 @@ export const MissionsTab = () => {
     }
   };
 
+  const scheduledMissions = missions.filter(
+    (mission) => 
+      mission.mission_type === 'scheduled' && 
+      mission.status === 'accepted' &&
+      mission.assigned_interpreter_id
+  );
+
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-4">Propositions de missions</h2>
-      {missions.map((mission) => {
-        const statusDisplay = getMissionStatusDisplay(mission.status);
+      <Tabs defaultValue="list" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="list">Liste</TabsTrigger>
+          <TabsTrigger value="calendar">Calendrier</TabsTrigger>
+        </TabsList>
         
-        return (
-          <Card key={mission.id} className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2">
-                  {mission.mission_type === 'scheduled' ? (
-                    <Calendar className="h-4 w-4 text-blue-500" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-green-500" />
-                  )}
-                  <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
-                    {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
-                  </Badge>
-                </div>
-                
-                <div className="text-sm text-gray-600">
-                  {mission.mission_type === 'immediate' ? (
-                    <p>Date: {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
-                  ) : mission.scheduled_start_time && (
-                    <div className="space-y-1">
-                      <p className="text-blue-600">
-                        Début: {format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
-                      </p>
-                      {mission.scheduled_end_time && (
-                        <p className="text-blue-600">
-                          Fin: {format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
-                        </p>
+        <TabsContent value="list">
+          <h2 className="text-2xl font-bold mb-4">Propositions de missions</h2>
+          {missions.map((mission) => {
+            const statusDisplay = getMissionStatusDisplay(mission.status);
+            
+            return (
+              <Card key={mission.id} className="p-4 mb-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      {mission.mission_type === 'scheduled' ? (
+                        <Calendar className="h-4 w-4 text-blue-500" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-green-500" />
                       )}
+                      <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
+                        {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="text-sm text-gray-600">
+                      {mission.mission_type === 'immediate' ? (
+                        <p>Date: {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
+                      ) : mission.scheduled_start_time && (
+                        <div className="space-y-1">
+                          <p className="text-blue-600">
+                            Début: {format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                          </p>
+                          {mission.scheduled_end_time && (
+                            <p className="text-blue-600">
+                              Fin: {format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <p>Durée: {mission.estimated_duration} minutes</p>
+                      <p>Langues: {mission.source_language} → {mission.target_language}</p>
+                    </div>
+                    <Badge 
+                      variant={statusDisplay.variant}
+                      className="mt-2"
+                    >
+                      {statusDisplay.label}
+                    </Badge>
+                  </div>
+                  {mission.status === 'awaiting_acceptance' && !isProcessing && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        onClick={() => handleMissionResponse(mission.id, true)}
+                      >
+                        <CheckSquare className="h-4 w-4" />
+                        Accepter
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        onClick={() => handleMissionResponse(mission.id, false)}
+                      >
+                        <XSquare className="h-4 w-4" />
+                        Décliner
+                      </Button>
                     </div>
                   )}
-                  <p>Durée: {mission.estimated_duration} minutes</p>
-                  <p>Langues: {mission.source_language} → {mission.target_language}</p>
                 </div>
-                <Badge 
-                  variant={statusDisplay.variant}
-                  className="mt-2"
-                >
-                  {statusDisplay.label}
-                </Badge>
-              </div>
-              {mission.status === 'awaiting_acceptance' && !isProcessing && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => handleMissionResponse(mission.id, true)}
-                  >
-                    <CheckSquare className="h-4 w-4" />
-                    Accepter
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex items-center gap-2"
-                    onClick={() => handleMissionResponse(mission.id, false)}
-                  >
-                    <XSquare className="h-4 w-4" />
-                    Décliner
-                  </Button>
-                </div>
-              )}
-            </div>
-          </Card>
-        );
-      })}
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        <TabsContent value="calendar">
+          <h2 className="text-2xl font-bold mb-4">Calendrier des missions</h2>
+          <MissionsCalendar missions={scheduledMissions} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
