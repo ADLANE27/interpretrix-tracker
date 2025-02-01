@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
@@ -39,7 +39,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:sender_id (
+          sender:interpreter_profiles!messages_sender_id_fkey (
             id,
             first_name,
             last_name,
@@ -83,13 +83,12 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            // Fetch the complete message with sender information
             const fetchNewMessage = async () => {
               const { data, error } = await supabase
                 .from("messages")
                 .select(`
                   *,
-                  sender:sender_id (
+                  sender:interpreter_profiles!messages_sender_id_fkey (
                     id,
                     first_name,
                     last_name,
@@ -130,7 +129,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
           <div key={message.id} className="flex items-start gap-3">
             <Avatar className="h-8 w-8">
               {message.sender?.profile_picture_url && (
-                <img
+                <AvatarImage
                   src={message.sender.profile_picture_url}
                   alt={`${message.sender.first_name} ${message.sender.last_name}`}
                 />
