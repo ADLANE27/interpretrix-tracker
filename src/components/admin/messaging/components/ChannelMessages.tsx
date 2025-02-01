@@ -11,10 +11,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  sender?: {
-    first_name: string;
-    last_name: string;
-  };
+  sender_name?: string;
 }
 
 interface ChannelMessagesProps {
@@ -61,23 +58,73 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
+      // First, get all messages with their sender IDs
+      const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
           id,
           content,
           sender_id,
-          created_at,
-          sender:interpreter_profiles!sender_id (
-            first_name,
-            last_name
-          )
+          created_at
         `)
         .eq("channel_id", channelId)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
-      setMessages(data || []);
+      if (messagesError) throw messagesError;
+
+      // Get all unique sender IDs
+      const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
+
+      // Get interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
+        .from("interpreter_profiles")
+        .select("id, first_name, last_name")
+        .in("id", senderIds);
+
+      if (interpreterError) throw interpreterError;
+
+      // Get user roles to identify admins
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", senderIds)
+        .eq("role", "admin");
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of interpreter names
+      const interpreterNames = new Map(
+        interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
+      );
+
+      // For admin users, get their info from auth.users via Edge Function
+      const adminIds = userRoles?.map(r => r.user_id) || [];
+      const adminNames = new Map();
+
+      if (adminIds.length > 0) {
+        for (const adminId of adminIds) {
+          const response = await supabase.functions.invoke('get-user-info', {
+            body: { userId: adminId }
+          });
+          
+          if (!response.error && response.data) {
+            adminNames.set(
+              adminId, 
+              `${response.data.first_name || ''} ${response.data.last_name || ''}`
+            );
+          }
+        }
+      }
+
+      // Combine messages with sender names
+      const messagesWithNames = messagesData?.map(message => ({
+        ...message,
+        sender_name: interpreterNames.get(message.sender_id) || 
+                    adminNames.get(message.sender_id) ||
+                    "Unknown User"
+      }));
+
+      setMessages(messagesWithNames || []);
       setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -129,7 +176,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
               className="flex flex-col space-y-1"
             >
               <div className="text-sm font-medium">
-                {message.sender?.first_name} {message.sender?.last_name}
+                {message.sender_name}
               </div>
               <div className="bg-secondary p-3 rounded-lg">
                 {message.content}
