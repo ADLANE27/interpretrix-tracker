@@ -132,7 +132,7 @@ export const GroupChatManager = () => {
       const { error } = await supabase.from("channels").insert({
         name: newChannelName,
         description: newChannelDescription,
-        type: "group",
+        type: "internal", // Changed from "group" to "internal"
         created_by: user.id,
       });
 
