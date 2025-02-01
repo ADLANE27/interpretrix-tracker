@@ -44,10 +44,10 @@ export const GroupChatManager = () => {
       if (error) throw error;
       setChannels(data || []);
     } catch (error) {
-      console.error("Error fetching channels:", error);
+      console.error("Erreur lors du chargement des canaux:", error);
       toast({
-        title: "Error",
-        description: "Failed to load channels",
+        title: "Erreur",
+        description: "Impossible de charger les canaux",
         variant: "destructive",
       });
     }
@@ -64,10 +64,10 @@ export const GroupChatManager = () => {
       if (error) throw error;
       setMessages(data || []);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error("Erreur lors du chargement des messages:", error);
       toast({
-        title: "Error",
-        description: "Failed to load messages",
+        title: "Erreur",
+        description: "Impossible de charger les messages",
         variant: "destructive",
       });
     }
@@ -76,7 +76,7 @@ export const GroupChatManager = () => {
   const createChannel = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("Non authentifié");
 
       const { data, error } = await supabase
         .from("channels")
@@ -91,7 +91,6 @@ export const GroupChatManager = () => {
 
       if (error) throw error;
 
-      // Add the creator as a member
       const { error: memberError } = await supabase
         .from("channel_members")
         .insert({
@@ -103,8 +102,8 @@ export const GroupChatManager = () => {
       if (memberError) throw memberError;
 
       toast({
-        title: "Success",
-        description: "Channel created successfully",
+        title: "Succès",
+        description: "Canal créé avec succès",
       });
 
       setIsCreateChannelOpen(false);
@@ -112,10 +111,10 @@ export const GroupChatManager = () => {
       setNewChannelDescription("");
       fetchChannels();
     } catch (error) {
-      console.error("Error creating channel:", error);
+      console.error("Erreur lors de la création du canal:", error);
       toast({
-        title: "Error",
-        description: "Failed to create channel",
+        title: "Erreur",
+        description: "Impossible de créer le canal",
         variant: "destructive",
       });
     }
@@ -126,7 +125,7 @@ export const GroupChatManager = () => {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("Non authentifié");
 
       const { error } = await supabase
         .from("messages")
@@ -140,10 +139,10 @@ export const GroupChatManager = () => {
       setNewMessage("");
       fetchMessages(selectedChannel);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Erreur lors de l'envoi du message:", error);
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
     }
@@ -152,39 +151,39 @@ export const GroupChatManager = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Group Chats</h2>
+        <h2 className="text-xl font-semibold">Discussions de groupe</h2>
         <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              New Channel
+              Nouveau Canal
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Channel</DialogTitle>
+              <DialogTitle>Créer un nouveau canal</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="channelName">Channel Name</Label>
+                <Label htmlFor="channelName">Nom du canal</Label>
                 <Input
                   id="channelName"
                   value={newChannelName}
                   onChange={(e) => setNewChannelName(e.target.value)}
-                  placeholder="Enter channel name"
+                  placeholder="Entrez le nom du canal"
                 />
               </div>
               <div>
-                <Label htmlFor="channelDescription">Description (optional)</Label>
+                <Label htmlFor="channelDescription">Description (optionnel)</Label>
                 <Input
                   id="channelDescription"
                   value={newChannelDescription}
                   onChange={(e) => setNewChannelDescription(e.target.value)}
-                  placeholder="Enter channel description"
+                  placeholder="Entrez la description du canal"
                 />
               </div>
               <Button onClick={createChannel} className="w-full">
-                Create Channel
+                Créer le canal
               </Button>
             </div>
           </DialogContent>
@@ -211,7 +210,7 @@ export const GroupChatManager = () => {
                     <div className="text-sm text-gray-500">{channel.description}</div>
                   )}
                   <div className="text-xs text-gray-400">
-                    {channel.members_count} members
+                    {channel.members_count} membres
                   </div>
                 </div>
               ))}
@@ -230,12 +229,12 @@ export const GroupChatManager = () => {
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Add Member
+                      Ajouter un membre
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Member to Channel</DialogTitle>
+                      <DialogTitle>Ajouter un membre au canal</DialogTitle>
                     </DialogHeader>
                     <AddChannelMemberForm
                       channelId={selectedChannel}
@@ -269,7 +268,7 @@ export const GroupChatManager = () => {
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
+                  placeholder="Tapez votre message..."
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       sendMessage();
@@ -283,7 +282,7 @@ export const GroupChatManager = () => {
             </>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-500">
-              Select a channel to start messaging
+              Sélectionnez un canal pour commencer à discuter
             </div>
           )}
         </div>
