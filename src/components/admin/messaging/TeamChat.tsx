@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./components/CreateChannelDialog";
-import { ChannelMessages } from "./components/ChannelMessages";
 
 interface Channel {
   id: string;
@@ -104,9 +103,11 @@ export const TeamChat = () => {
           content,
           sender_id,
           created_at,
-          interpreter_profiles!inner (
-            first_name,
-            last_name
+          sender:sender_id (
+            interpreter:interpreter_profiles (
+              first_name,
+              last_name
+            )
           )
         `)
         .eq('channel_id', selectedChannel)
@@ -116,7 +117,9 @@ export const TeamChat = () => {
 
       const formattedMessages = data.map(message => ({
         ...message,
-        sender_name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`
+        sender_name: message.sender?.interpreter ? 
+          `${message.sender.interpreter.first_name} ${message.sender.interpreter.last_name}` :
+          'Unknown User'
       }));
 
       setMessages(formattedMessages);
