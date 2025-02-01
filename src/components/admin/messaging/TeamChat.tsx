@@ -23,22 +23,44 @@ interface Channel {
   members_count: number;
 }
 
+interface Message {
+  id: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
+  sender_name?: string;
+}
+
 export const TeamChat = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const { toast } = useToast();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels();
+    getCurrentUser();
     const messageChannel = subscribeToMessages();
     return () => {
       supabase.removeChannel(messageChannel);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedChannel) {
+      fetchMessages();
+    }
+  }, [selectedChannel]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
+  };
 
   const fetchChannels = async () => {
     try {
@@ -71,6 +93,43 @@ export const TeamChat = () => {
     }
   };
 
+  const fetchMessages = async () => {
+    if (!selectedChannel) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          id,
+          content,
+          sender_id,
+          created_at,
+          interpreter_profiles!inner (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('channel_id', selectedChannel)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedMessages = data.map(message => ({
+        ...message,
+        sender_name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`
+      }));
+
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les messages",
+        variant: "destructive",
+      });
+    }
+  };
+
   const subscribeToMessages = () => {
     const channel = supabase
       .channel("messages")
@@ -80,10 +139,11 @@ export const TeamChat = () => {
           event: "INSERT",
           schema: "public",
           table: "messages",
+          filter: `channel_id=eq.${selectedChannel}`,
         },
         (payload) => {
           const newMessage = payload.new;
-          setMessages((prev) => [...prev, newMessage]);
+          fetchMessages(); // Refresh messages when a new one arrives
         }
       )
       .subscribe();
