@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,7 +13,11 @@ interface Channel {
   created_at: string;
 }
 
-export const ChannelList = () => {
+interface ChannelListProps {
+  onChannelSelect: (channelId: string) => void;
+}
+
+export const ChannelList = ({ onChannelSelect }: ChannelListProps) => {
   const { toast } = useToast();
 
   const { data: channels, isLoading } = useQuery({
@@ -37,6 +41,28 @@ export const ChannelList = () => {
     },
   });
 
+  useEffect(() => {
+    const channel = supabase
+      .channel("channel-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "channels",
+        },
+        () => {
+          // Invalidate and refetch channels
+          void queryClient.invalidateQueries({ queryKey: ["channels"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   if (isLoading) {
     return <div>Loading channels...</div>;
   }
@@ -49,6 +75,7 @@ export const ChannelList = () => {
             key={channel.id}
             variant="ghost"
             className="w-full justify-start"
+            onClick={() => onChannelSelect(channel.id)}
           >
             <div className="truncate">
               <div className="font-medium">{channel.name}</div>
