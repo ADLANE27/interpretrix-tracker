@@ -98,16 +98,16 @@ export const AdminMessaging = () => {
 
       const { data, error } = await supabase
         .from('direct_messages')
-        .select('sender_id, count')
+        .select('*')
         .eq('recipient_id', user.id)
-        .is('read_at', null)
-        .group_by('sender_id');
+        .is('read_at', null);
 
       if (error) throw error;
 
+      // Count unread messages per sender
       const counts: UnreadCount = {};
-      data.forEach(item => {
-        counts[item.sender_id] = parseInt(item.count);
+      data.forEach(message => {
+        counts[message.sender_id] = (counts[message.sender_id] || 0) + 1;
       });
       setUnreadCounts(counts);
     } catch (error) {
