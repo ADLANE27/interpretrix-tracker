@@ -31,6 +31,8 @@ export const useMessages = (channelId: string) => {
 
       if (messagesError) throw messagesError;
 
+      if (!messagesData) return [];
+
       const formattedMessages = messagesData.map(message => ({
         ...message,
         sender: message.sender ? {
@@ -51,12 +53,19 @@ export const useMessages = (channelId: string) => {
         mentions: (message.mentions || []).map(mention => ({
           id: mention.id,
           mentioned_user_id: mention.mentioned_user?.id || "",
-          mentioned_user: {
-            id: mention.mentioned_user?.id || "",
-            email: mention.mentioned_user?.email || "",
+          mentioned_user: mention.mentioned_user ? {
+            id: mention.mentioned_user.id,
+            email: mention.mentioned_user.email,
             raw_user_meta_data: {
-              first_name: mention.mentioned_user?.first_name || "",
-              last_name: mention.mentioned_user?.last_name || ""
+              first_name: mention.mentioned_user.first_name,
+              last_name: mention.mentioned_user.last_name
+            }
+          } : {
+            id: "",
+            email: "",
+            raw_user_meta_data: {
+              first_name: "",
+              last_name: ""
             }
           }
         }))
