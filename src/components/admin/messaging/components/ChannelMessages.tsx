@@ -22,10 +22,19 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
+    const initializeUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+
+    initializeUser();
     fetchMessages();
     const channel = supabase
       .channel(`messages-${channelId}`)
@@ -173,7 +182,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message) => {
-            const isCurrentUser = message.sender_id === supabase.auth.user()?.id;
+            const isCurrentUser = message.sender_id === currentUserId;
             return (
               <div
                 key={message.id}
