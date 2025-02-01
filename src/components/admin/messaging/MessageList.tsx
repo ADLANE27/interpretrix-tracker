@@ -41,7 +41,7 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         .from("messages")
         .select(`
           *,
-          sender:interpreter_profiles!messages_sender_id_fkey (
+          sender:sender_id (
             id,
             first_name,
             last_name,
@@ -61,7 +61,8 @@ export const MessageList = ({ channelId }: MessageListProps) => {
         throw error;
       }
 
-      return data as Message[];
+      // Type assertion to ensure the data matches our Message interface
+      return (data as Message[]) || [];
     },
     enabled: !!channelId,
   });
@@ -83,28 +84,25 @@ export const MessageList = ({ channelId }: MessageListProps) => {
           table: "messages",
           filter: `channel_id=eq.${channelId}`,
         },
-        (payload) => {
+        async (payload) => {
           if (payload.eventType === "INSERT") {
-            const fetchNewMessage = async () => {
-              const { data, error } = await supabase
-                .from("messages")
-                .select(`
-                  *,
-                  sender:interpreter_profiles!messages_sender_id_fkey (
-                    id,
-                    first_name,
-                    last_name,
-                    profile_picture_url
-                  )
-                `)
-                .eq("id", payload.new.id)
-                .single();
+            const { data, error } = await supabase
+              .from("messages")
+              .select(`
+                *,
+                sender:sender_id (
+                  id,
+                  first_name,
+                  last_name,
+                  profile_picture_url
+                )
+              `)
+              .eq("id", payload.new.id)
+              .single();
 
-              if (!error && data) {
-                setMessages((prev) => [...prev, data as Message]);
-              }
-            };
-            fetchNewMessage();
+            if (!error && data) {
+              setMessages((prev) => [...prev, data as Message]);
+            }
           }
         }
       )
