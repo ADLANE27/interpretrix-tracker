@@ -14,6 +14,7 @@ import { Trash2, Calendar, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
+import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
 
 interface Mission {
   id: string;
@@ -23,17 +24,9 @@ interface Mission {
   status: string;
   created_at: string;
   assigned_interpreter_id?: string;
-  assigned_interpreter?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-    status: string;
-  };
-  notified_interpreters: string[];
-  mission_type: 'immediate' | 'scheduled';
   scheduled_start_time?: string;
   scheduled_end_time?: string;
+  mission_type: 'immediate' | 'scheduled';
 }
 
 interface Interpreter {
@@ -118,20 +111,6 @@ export const MissionManagement = () => {
           fetchMissions();
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        (payload) => {
-          console.log('[MissionManagement] Interpreter profile update received:', payload);
-          if (sourceLanguage && targetLanguage) {
-            findAvailableInterpreters(sourceLanguage, targetLanguage);
-          }
-        }
-      )
       .subscribe((status) => {
         console.log('[MissionManagement] Subscription status:', status);
         
@@ -161,47 +140,30 @@ export const MissionManagement = () => {
     try {
       const languagePair = `${sourceLang} → ${targetLang}`;
       
-      // First, get all potential interpreters
-      let query = supabase
+      // Get all interpreters that match the language pair
+      const { data: potentialInterpreters, error } = await supabase
         .from("interpreter_profiles")
-        .select("id, first_name, last_name, languages, status, profile_picture_url");
-
-      // Only filter by available status for immediate missions
-      if (missionType === 'immediate') {
-        query = query.eq("status", "available");
-      }
-
-      const { data: potentialInterpreters, error } = await query.contains("languages", [languagePair]);
+        .select("*")
+        .contains("languages", [languagePair]);
 
       if (error) throw error;
 
-      // For immediate missions, check upcoming scheduled missions
-      if (missionType === 'immediate' && potentialInterpreters) {
-        const now = new Date();
-        const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60000);
-
-        // Get all scheduled missions starting in the next 15 minutes
-        const { data: upcomingMissions, error: missionsError } = await supabase
+      if (missionType === 'immediate') {
+        // For immediate missions, only show available interpreters
+        // and check 15-min window before scheduled missions
+        const { data: scheduledMissions } = await supabase
           .from("interpretation_missions")
-          .select("assigned_interpreter_id")
+          .select("*")
           .eq("mission_type", "scheduled")
-          .eq("status", "accepted")
-          .lt("scheduled_start_time", fifteenMinutesFromNow.toISOString())
-          .gt("scheduled_start_time", now.toISOString());
+          .eq("status", "accepted");
 
-        if (missionsError) throw missionsError;
-
-        // Filter out interpreters who have upcoming missions
-        const busyInterpreterIds = new Set(
-          upcomingMissions?.map(mission => mission.assigned_interpreter_id) || []
-        );
-
-        const availableInterpreters = potentialInterpreters.filter(
-          interpreter => !busyInterpreterIds.has(interpreter.id)
+        const availableInterpreters = potentialInterpreters?.filter(interpreter =>
+          isInterpreterAvailableForImmediateMission(interpreter, scheduledMissions || [])
         );
 
         setAvailableInterpreters(availableInterpreters || []);
       } else {
+        // For scheduled missions, show all interpreters
         setAvailableInterpreters(potentialInterpreters || []);
       }
 
@@ -216,7 +178,26 @@ export const MissionManagement = () => {
     }
   };
 
-  const handleInterpreterSelection = (interpreterId: string, checked: boolean) => {
+  const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
+    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+      // For scheduled missions, check for time overlaps before allowing selection
+      const isAvailable = await isInterpreterAvailableForScheduledMission(
+        interpreterId,
+        scheduledStartTime,
+        scheduledEndTime,
+        supabase
+      );
+
+      if (!isAvailable && checked) {
+        toast({
+          title: "Conflit d'horaire",
+          description: "Cet interprète a déjà une mission programmée qui chevauche cet horaire",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSelectedInterpreters(prev => {
       if (checked) {
         return [...prev, interpreterId];
@@ -224,16 +205,6 @@ export const MissionManagement = () => {
         return prev.filter(id => id !== interpreterId);
       }
     });
-  };
-
-  const handleSelectAllInterpreters = () => {
-    if (selectedInterpreters.length === availableInterpreters.length) {
-      // If all are selected, deselect all
-      setSelectedInterpreters([]);
-    } else {
-      // Otherwise, select all
-      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
-    }
   };
 
   const handleDeleteMission = async (missionId: string) => {
@@ -384,46 +355,6 @@ export const MissionManagement = () => {
     }
   }, [sourceLanguage, targetLanguage]);
 
-  const calculateDuration = (mission: Mission) => {
-    if (mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time) {
-      const minutes = differenceInMinutes(
-        new Date(mission.scheduled_end_time),
-        new Date(mission.scheduled_start_time)
-      );
-      
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      
-      if (hours > 0) {
-        return remainingMinutes > 0 
-          ? `${hours} heure${hours > 1 ? 's' : ''} et ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`
-          : `${hours} heure${hours > 1 ? 's' : ''}`;
-      }
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    }
-    return `${mission.estimated_duration} minutes`;
-  };
-
-  const calculateScheduledDuration = () => {
-    if (scheduledStartTime && scheduledEndTime) {
-      const minutes = differenceInMinutes(
-        new Date(scheduledEndTime),
-        new Date(scheduledStartTime)
-      );
-      
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      
-      if (hours > 0) {
-        return remainingMinutes > 0 
-          ? `${hours} heure${hours > 1 ? 's' : ''} et ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`
-          : `${hours} heure${hours > 1 ? 's' : ''}`;
-      }
-      return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    }
-    return '';
-  };
-
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -511,51 +442,6 @@ export const MissionManagement = () => {
                       required
                     />
                   </div>
-
-                  {scheduledStartTime && scheduledEndTime && (
-                    <div className="col-span-2 space-y-2">
-                      <Label>Durée calculée</Label>
-                      <div className="text-sm text-gray-600">
-                        {calculateScheduledDuration()}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {missionType === 'immediate' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="source_language">Langue source</Label>
-                  <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une langue" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="target_language">Langue cible</Label>
-                  <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner une langue" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGUAGES.map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </>
             )}
