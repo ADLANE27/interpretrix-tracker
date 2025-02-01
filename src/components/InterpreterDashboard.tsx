@@ -329,18 +329,18 @@ export const InterpreterDashboard = () => {
                 </TabsList>
               </div>
 
-              <div className="p-6">
-                <TabsContent value="missions" className="m-0">
+              <div className="p-6 min-h-[600px]">
+                <TabsContent value="missions" className="m-0 h-full">
                   <MissionsTab />
                 </TabsContent>
                 
-                <TabsContent value="calendar" className="m-0">
+                <TabsContent value="calendar" className="m-0 h-full">
                   <MissionsCalendar 
-                    missions={[]} // We'll fetch missions data separately in the MissionsCalendar component
+                    missions={[]}
                   />
                 </TabsContent>
                 
-                <TabsContent value="profile" className="m-0">
+                <TabsContent value="profile" className="m-0 h-full">
                   <InterpreterProfile />
                 </TabsContent>
               </div>
@@ -362,15 +362,6 @@ export const InterpreterDashboard = () => {
           </footer>
         </div>
       </div>
-
-      {/* Password Change Dialog */}
-      {!profile.password_changed && (
-        <PasswordChangeDialog
-          isOpen={true}
-          onClose={() => {}}
-          onSuccess={fetchProfile}
-        />
-      )}
     </div>
   );
 };
