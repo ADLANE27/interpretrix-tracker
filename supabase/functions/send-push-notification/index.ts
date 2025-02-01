@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Enhanced CORS handling
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -16,6 +17,7 @@ serve(async (req) => {
     const { message } = await req.json();
     console.log('[Edge Function] Received push notification request:', message);
     
+    // Validate VAPID keys
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
@@ -24,17 +26,24 @@ serve(async (req) => {
       throw new Error('VAPID keys not configured');
     }
     
+    // Configure web push
     webPush.setVapidDetails(
       'mailto:debassi.adlane@gmail.com',
       vapidPublicKey,
       vapidPrivateKey
     );
     
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Enhanced Supabase client initialization
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration missing');
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Get active subscriptions
     console.log('[Edge Function] Fetching active subscriptions for interpreters:', message.interpreterIds);
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
@@ -47,79 +56,117 @@ serve(async (req) => {
       throw subscriptionError;
     }
 
-    console.log(`[Edge Function] Found ${subscriptions?.length || 0} active subscriptions`);
-    
-    const notifications = subscriptions?.map(async (sub) => {
-      try {
-        console.log(`[Edge Function] Sending notification to subscription ${sub.id}`);
-        const payload = JSON.stringify({
-          title: message.title,
-          body: message.body,
-          icon: message.icon,
-          data: message.data
-        });
-        
-        await webPush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth
-            }
+    if (!subscriptions?.length) {
+      console.log('[Edge Function] No active subscriptions found');
+      return new Response(
+        JSON.stringify({ message: 'No active subscriptions found' }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json' 
           },
-          payload
-        );
-        
-        console.log(`[Edge Function] Successfully sent notification to subscription ${sub.id}`);
-        
-        await supabase
-          .from('push_subscriptions')
-          .update({ 
-            last_successful_push: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sub.id);
+          status: 200 
+        }
+      );
+    }
+
+    console.log(`[Edge Function] Found ${subscriptions.length} active subscriptions`);
+    
+    // Enhanced notification sending with better error handling
+    const notificationResults = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          console.log(`[Edge Function] Sending notification to subscription ${sub.id}`);
+          const payload = JSON.stringify({
+            title: message.title,
+            body: message.body,
+            icon: message.icon,
+            data: message.data
+          });
           
-      } catch (error) {
-        console.error(`[Edge Function] Failed to send notification to subscription ${sub.id}:`, error);
-        
-        if (error.statusCode === 410 || error.statusCode === 404) {
-          console.log(`[Edge Function] Subscription ${sub.id} is expired or invalid, updating status`);
+          await webPush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth
+              }
+            },
+            payload
+          );
+          
+          console.log(`[Edge Function] Successfully sent notification to subscription ${sub.id}`);
+          
+          // Update last successful push
           await supabase
             .from('push_subscriptions')
             .update({ 
-              status: 'expired',
+              last_successful_push: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', sub.id);
+            
+          return { success: true, subscriptionId: sub.id };
+        } catch (error) {
+          console.error(`[Edge Function] Failed to send notification to subscription ${sub.id}:`, error);
+          
+          // Handle expired subscriptions
+          if (error.statusCode === 410 || error.statusCode === 404) {
+            console.log(`[Edge Function] Subscription ${sub.id} is expired or invalid, updating status`);
+            await supabase
+              .from('push_subscriptions')
+              .update({ 
+                status: 'expired',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sub.id);
+          }
+          
+          return { 
+            success: false, 
+            subscriptionId: sub.id, 
+            error: error.message 
+          };
         }
-      }
-    });
+      })
+    );
     
-    await Promise.all(notifications || []);
-    console.log('[Edge Function] All notifications processed');
+    // Analyze results
+    const results = {
+      total: notificationResults.length,
+      successful: notificationResults.filter(r => r.status === 'fulfilled' && r.value.success).length,
+      failed: notificationResults.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length
+    };
+    
+    console.log('[Edge Function] Notification results:', results);
     
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ 
+        success: true,
+        results 
+      }),
       { 
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json' 
         },
         status: 200 
-      },
+      }
     );
   } catch (error) {
     console.error('[Edge Function] Error in send-push-notification:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack 
+      }),
       { 
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json' 
         },
         status: 500
-      },
+      }
     );
   }
 });
