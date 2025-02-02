@@ -141,7 +141,8 @@ export const MessageList = ({
                 )}
               </div>
             </div>
-          ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
     </ScrollArea>
