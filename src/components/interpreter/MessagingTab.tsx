@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Users, MessageSquare } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, MessageSquare, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface Message {
@@ -14,8 +13,9 @@ interface Message {
   sender_id: string;
   recipient_id: string;
   created_at: string;
-  sender_name?: string;
-  channel_id?: string;
+  read_at: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
 }
 
 interface Admin {
@@ -23,21 +23,21 @@ interface Admin {
   email: string;
 }
 
-interface Channel {
+interface ChatHistory {
   id: string;
   name: string;
-  description: string | null;
-  type: 'admin_only' | 'internal' | 'external' | 'mixed';
+  lastMessage?: string;
+  unreadCount: number;
 }
 
 export const MessagingTab = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [selectedAdmin, setSelectedAdmin] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-  const [channelMessages, setChannelMessages] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,181 +45,23 @@ export const MessagingTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
+        fetchAdmins();
+        fetchChatHistory();
       }
     };
-    
-    initializeUser();
-    fetchMessages();
-    fetchChannels();
-    const messageChannel = subscribeToMessages();
-    const channelMessagesSubscription = subscribeToChannelMessages();
-    fetchAdmins();
 
-    return () => {
-      supabase.removeChannel(messageChannel);
-      supabase.removeChannel(channelMessagesSubscription);
-    };
+    initializeUser();
   }, []);
 
-  const fetchChannels = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const { data: memberChannels, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
-
-      if (memberError) throw memberError;
-
-      if (!memberChannels?.length) {
-        setChannels([]);
-        return;
-      }
-
-      const channelIds = memberChannels.map(m => m.channel_id);
-
-      const { data: channels, error } = await supabase
-        .from('channels')
-        .select('*')
-        .in('id', channelIds);
-
-      if (error) throw error;
-      setChannels(channels || []);
-    } catch (error) {
-      console.error("Error fetching channels:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchChannelMessages = async (channelId: string) => {
-    try {
-      console.log('Fetching messages for channel:', channelId);
-      
-      const { data: messages, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
-
-      if (messagesError) {
-        console.error('Error fetching messages:', messagesError);
-        throw messagesError;
-      }
-
-      if (!messages) {
-        setChannelMessages([]);
-        return;
-      }
-
-      const senderIds = [...new Set(messages.map(m => m.sender_id))];
-      
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select('id, first_name, last_name')
-        .in('id', senderIds);
-
-      if (interpreterError) {
-        console.error('Error fetching interpreter profiles:', interpreterError);
-        throw interpreterError;
-      }
-
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', senderIds)
-        .eq('role', 'admin');
-
-      if (rolesError) {
-        console.error('Error fetching user roles:', rolesError);
-        throw rolesError;
-      }
-
-      const interpreterNames = new Map(
-        interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
-      );
-
-      const adminIds = userRoles?.map(r => r.user_id) || [];
-      const adminNames = new Map();
-
-      if (adminIds.length > 0) {
-        for (const adminId of adminIds) {
-          const response = await supabase.functions.invoke('get-user-info', {
-            body: { userId: adminId }
-          });
-          
-          if (!response.error && response.data) {
-            adminNames.set(
-              adminId, 
-              `${response.data.first_name || ''} ${response.data.last_name || ''}`
-            );
-          }
-        }
-      }
-
-      const messagesWithNames = messages.map(message => ({
-        ...message,
-        sender_name: interpreterNames.get(message.sender_id) || 
-                    adminNames.get(message.sender_id) ||
-                    "Unknown User"
-      }));
-
-      console.log('Processed messages:', messagesWithNames);
-      setChannelMessages(messagesWithNames);
-    } catch (error) {
-      console.error("Error fetching channel messages:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les messages du canal",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const subscribeToChannelMessages = () => {
-    console.log('Setting up channel messages subscription');
-    const channel = supabase
-      .channel('public:messages')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: selectedChannel ? `channel_id=eq.${selectedChannel}` : undefined
-        },
-        (payload) => {
-          console.log('Received real-time message update:', payload);
-          if (selectedChannel) {
-            fetchChannelMessages(selectedChannel);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Channel messages subscription status:', status);
-      });
-
-    return channel;
-  };
-
   useEffect(() => {
-    if (selectedChannel) {
-      console.log('Selected channel changed, fetching messages for:', selectedChannel);
-      fetchChannelMessages(selectedChannel);
-      
-      const channelSubscription = subscribeToChannelMessages();
-      
+    if (selectedAdmin) {
+      fetchMessages(selectedAdmin);
+      const channel = subscribeToMessages(selectedAdmin);
       return () => {
-        console.log('Cleaning up channel subscription');
-        supabase.removeChannel(channelSubscription);
+        supabase.removeChannel(channel);
       };
     }
-  }, [selectedChannel]);
+  }, [selectedAdmin]);
 
   const fetchAdmins = async () => {
     try {
@@ -242,7 +84,6 @@ export const MessagingTab = () => {
       });
 
       if (error) throw error;
-
       setAdmins(adminData || []);
     } catch (error) {
       console.error("Error fetching admins:", error);
@@ -254,7 +95,49 @@ export const MessagingTab = () => {
     }
   };
 
-  const fetchMessages = async () => {
+  const fetchChatHistory = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: messageUsers, error: msgError } = await supabase
+        .from('direct_messages')
+        .select('sender_id, recipient_id')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+      if (msgError) throw msgError;
+
+      const uniqueAdminIds = new Set<string>();
+      messageUsers?.forEach(msg => {
+        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        uniqueAdminIds.add(otherId);
+      });
+
+      const adminIds = Array.from(uniqueAdminIds);
+      const { data: adminData, error } = await supabase.functions.invoke('get-admin-emails', {
+        body: { adminIds }
+      });
+
+      if (error) throw error;
+
+      const history: ChatHistory[] = adminData?.map((admin: Admin) => ({
+        id: admin.id,
+        name: admin.email,
+        unreadCount: 0
+      })) || [];
+
+      setChatHistory(history);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger l'historique des conversations",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchMessages = async (adminId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
@@ -262,7 +145,7 @@ export const MessagingTab = () => {
       const { data, error } = await supabase
         .from("direct_messages")
         .select("*")
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -277,53 +160,32 @@ export const MessagingTab = () => {
     }
   };
 
-  const subscribeToMessages = () => {
+  const subscribeToMessages = (adminId: string) => {
     const channel = supabase
       .channel("messages")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "direct_messages",
+          filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${currentUserId}))`
         },
         (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages((prev) => [...prev, newMessage]);
+          console.log("Message update received:", payload);
+          fetchMessages(adminId);
+          fetchChatHistory();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+      });
 
     return channel;
   };
 
-  const sendChannelMessage = async () => {
-    if (!newMessage.trim() || !selectedChannel) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const { error } = await supabase.from("messages").insert({
-        content: newMessage.trim(),
-        channel_id: selectedChannel,
-        sender_id: user.id,
-      });
-
-      if (error) throw error;
-      setNewMessage("");
-    } catch (error) {
-      console.error("Error sending channel message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendMessage = async (adminId: string) => {
-    if (!newMessage.trim()) return;
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedAdmin) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -331,7 +193,7 @@ export const MessagingTab = () => {
 
       const { error } = await supabase.from("direct_messages").insert({
         content: newMessage.trim(),
-        recipient_id: adminId,
+        recipient_id: selectedAdmin,
         sender_id: user.id,
       });
 
@@ -348,36 +210,78 @@ export const MessagingTab = () => {
   };
 
   return (
-    <Tabs defaultValue="direct" className="w-full">
-      <TabsList>
-        <TabsTrigger value="direct" className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" />
-          Messages Directs
-        </TabsTrigger>
-        <TabsTrigger value="group" className="flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          Canaux de Groupe
-        </TabsTrigger>
-      </TabsList>
+    <div className="h-[calc(100vh-4rem)] flex">
+      {/* Sidebar with chat history */}
+      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
+        <div className="p-4">
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un administrateur..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+          
+          <ScrollArea className="h-[calc(100vh-8rem)]">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
+              {chatHistory.map((chat) => (
+                <Button
+                  key={chat.id}
+                  variant={selectedAdmin === chat.id ? "secondary" : "ghost"}
+                  className="w-full justify-start text-left"
+                  onClick={() => setSelectedAdmin(chat.id)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  <div className="flex flex-col items-start">
+                    <span>{chat.name}</span>
+                    {chat.lastMessage && (
+                      <span className="text-xs text-gray-500 truncate">
+                        {chat.lastMessage}
+                      </span>
+                    )}
+                  </div>
+                  {chat.unreadCount > 0 && (
+                    <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                      {chat.unreadCount}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
 
-      <TabsContent value="direct">
-        {admins.map((admin) => (
-          <div key={admin.id} className="border rounded-lg p-4 space-y-4 mb-4">
-            <h3 className="font-medium">Chat avec {admin.email}</h3>
-            <ScrollArea className="h-[300px] w-full pr-4">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col bg-white">
+        {selectedAdmin ? (
+          <>
+            {/* Chat Header */}
+            <div className="h-14 border-b flex items-center px-4">
+              <div className="font-medium">
+                {chatHistory.find(c => c.id === selectedAdmin)?.name || 
+                 admins.find(a => a.id === selectedAdmin)?.email}
+              </div>
+            </div>
+
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {messages
-                  .filter((msg) => 
-                    (msg.sender_id === admin.id && msg.recipient_id === currentUserId) ||
-                    (msg.recipient_id === admin.id && msg.sender_id === currentUserId)
-                  )
-                  .map((message) => (
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
+                  >
                     <div
-                      key={message.id}
-                      className={`p-3 rounded-lg max-w-[80%] ${
-                        message.recipient_id === admin.id
-                          ? "bg-primary text-primary-foreground ml-auto"
-                          : "bg-secondary"
+                      className={`max-w-[70%] rounded-lg p-3 ${
+                        message.sender_id === currentUserId
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary'
                       }`}
                     >
                       {message.content}
@@ -385,103 +289,37 @@ export const MessagingTab = () => {
                         {new Date(message.created_at).toLocaleString()}
                       </div>
                     </div>
-                  ))}
-              </div>
-            </ScrollArea>
-
-            <div className="flex gap-2">
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Tapez votre message..."
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    sendMessage(admin.id);
-                  }
-                }}
-              />
-              <Button onClick={() => sendMessage(admin.id)}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </TabsContent>
-
-      <TabsContent value="group">
-        <div className="grid grid-cols-4 gap-4">
-          <Card className="col-span-1 p-4">
-            <h3 className="font-medium mb-4">Mes Canaux</h3>
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2">
-                {channels.map((channel) => (
-                  <Button
-                    key={channel.id}
-                    variant={selectedChannel === channel.id ? "default" : "outline"}
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setSelectedChannel(channel.id);
-                      fetchChannelMessages(channel.id);
-                    }}
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    {channel.name}
-                  </Button>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
-          </Card>
 
-          <Card className="col-span-3 p-4">
-            {selectedChannel ? (
-              <div className="h-full flex flex-col">
-                <ScrollArea className="flex-1 pr-4 mb-4">
-                  <div className="space-y-4">
-                    {channelMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`p-3 rounded-lg max-w-[80%] ${
-                          message.sender_id === currentUserId
-                            ? "bg-primary text-primary-foreground ml-auto"
-                            : "bg-secondary"
-                        }`}
-                      >
-                        <div className="text-xs font-medium mb-1">
-                          {message.sender_name}
-                        </div>
-                        {message.content}
-                        <div className="text-xs opacity-70 mt-1">
-                          {new Date(message.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-
-                <div className="flex gap-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Tapez votre message..."
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        sendChannelMessage();
-                      }
-                    }}
-                  />
-                  <Button onClick={sendChannelMessage}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+            {/* Message Input */}
+            <div className="p-4 border-t">
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Tapez votre message..."
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                />
+                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-500">
-                Sélectionnez un canal pour commencer à discuter
-              </div>
-            )}
-          </Card>
-        </div>
-      </TabsContent>
-    </Tabs>
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            Sélectionnez un administrateur pour commencer une conversation
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
