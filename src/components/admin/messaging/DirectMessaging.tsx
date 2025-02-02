@@ -154,10 +154,31 @@ export const DirectMessaging = () => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!selectedInterpreter || !newMessage.trim()) return;
-    await sendMessage(selectedInterpreter, newMessage);
-    setNewMessage("");
+  const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
+    if (!selectedInterpreter || (!newMessage.trim() && !attachmentUrl)) return;
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error } = await supabase.from("direct_messages").insert({
+        content: newMessage.trim(),
+        recipient_id: selectedInterpreter,
+        sender_id: user.id,
+        attachment_url: attachmentUrl,
+        attachment_name: attachmentName,
+      });
+
+      if (error) throw error;
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredMessages = messages.filter((message) =>

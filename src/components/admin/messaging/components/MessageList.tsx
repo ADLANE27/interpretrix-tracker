@@ -2,6 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Edit2, Trash2, Check, X } from "lucide-react";
+import { FileAttachment } from "./FileAttachment";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,8 @@ interface Message {
   recipient_id: string;
   created_at: string;
   read_at: string | null;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
 }
 
 interface MessageListProps {
@@ -64,17 +67,10 @@ export const MessageList = ({
                   className="bg-white"
                 />
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => onEditSave(message.id)}
-                  >
+                  <Button size="sm" onClick={() => onEditSave(message.id)}>
                     <Check className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={onEditCancel}
-                  >
+                  <Button size="sm" variant="outline" onClick={onEditCancel}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -119,6 +115,12 @@ export const MessageList = ({
                     </div>
                   )}
                 </div>
+                {message.attachment_url && message.attachment_name && (
+                  <FileAttachment
+                    url={message.attachment_url}
+                    name={message.attachment_name}
+                  />
+                )}
                 <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
                   {new Date(message.created_at).toLocaleString()}
                   {message.read_at && message.sender_id !== selectedInterpreter && (
