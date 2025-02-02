@@ -149,11 +149,12 @@ export const MissionManagement = () => {
       const languagePair = `${sourceLang} → ${targetLang}`;
       console.log('[MissionManagement] Looking for language pair:', languagePair);
       
+      // Modification ici : on utilise ilike avec un pattern plus flexible
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
-        .contains("languages", [languagePair])
-        .eq("status", "available");
+        .eq("status", "available")
+        .filter('languages', 'cs', `{${languagePair}}`);
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
@@ -166,7 +167,7 @@ export const MissionManagement = () => {
         console.log('[MissionManagement] No interpreters found for language pair:', languagePair);
         toast({
           title: "Aucun interprète trouvé",
-          description: `Aucun interprète disponible pour la combinaison ${languagePair}`,
+          description: `Aucun interprète disponible pour la combinaison ${sourceLang} → ${targetLang}`,
         });
         return;
       }
