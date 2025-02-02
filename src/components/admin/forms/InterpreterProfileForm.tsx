@@ -50,7 +50,7 @@ export const InterpreterProfileForm = ({
 }: InterpreterProfileFormProps) => {
   const defaultAddress: Address = { street: "", postal_code: "", city: "" };
   const initialAddress = typeof initialData.address === 'string' 
-    ? JSON.parse(initialData.address) as Address 
+    ? JSON.parse(initialData.address as string) as Address 
     : (initialData.address as Address) || defaultAddress;
 
   const [formData, setFormData] = useState<InterpreterFormData>({
