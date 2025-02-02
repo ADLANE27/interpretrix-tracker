@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare } from "lucide-react";
 import { MessageInput } from "./MessageInput";
+import { ThreadView } from "../ThreadView";
 
 interface Message {
   id: string;
@@ -25,6 +26,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedThread, setSelectedThread] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -142,62 +144,81 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full relative">
-      <ScrollArea className="flex-1 px-4 pb-4">
-        <div className="space-y-4 py-4">
-          {messages.map((message) => {
-            const isCurrentUser = message.sender_id === currentUserId;
-            return (
-              <div
-                key={message.id}
-                className="group hover:bg-chat-messageHover rounded-lg p-2 -mx-2"
-              >
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
-                    {message.sender_name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">
-                        {message.sender_name}
-                      </span>
-                      <span className="text-xs text-chat-timestamp">
-                        {new Date(message.created_at).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit'
-                        })}
-                      </span>
+    <div className="flex-1 flex">
+      <div className="flex-1 flex flex-col h-full relative">
+        <ScrollArea className="flex-1 px-4 pb-4">
+          <div className="space-y-4 py-4">
+            {messages.map((message) => {
+              const isCurrentUser = message.sender_id === currentUserId;
+              return (
+                <div
+                  key={message.id}
+                  className="group hover:bg-chat-messageHover rounded-lg p-2 -mx-2"
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
+                      {message.sender_name?.charAt(0).toUpperCase()}
                     </div>
-                    <div className="text-sm mt-1">
-                      {message.content}
-                      {message.attachment_url && (
-                        <div className="mt-2">
-                          <a 
-                            href={message.attachment_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-500 hover:underline flex items-center gap-1"
-                          >
-                            📎 {message.attachment_name || 'Attachment'}
-                          </a>
-                        </div>
-                      )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium">
+                          {message.sender_name}
+                        </span>
+                        <span className="text-xs text-chat-timestamp">
+                          {new Date(message.created_at).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit'
+                          })}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setSelectedThread(message)}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="text-sm mt-1">
+                        {message.content}
+                        {message.attachment_url && (
+                          <div className="mt-2">
+                            <a 
+                              href={message.attachment_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+                            >
+                              📎 {message.attachment_name || 'Attachment'}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
+              );
+            })}
+          </div>
+        </ScrollArea>
 
-      <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider mt-auto">
-        <MessageInput
-          value={newMessage}
-          onChange={setNewMessage}
-          onSend={sendMessage}
-        />
+        <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider mt-auto">
+          <MessageInput
+            value={newMessage}
+            onChange={setNewMessage}
+            onSend={sendMessage}
+          />
+        </div>
       </div>
+
+      {selectedThread && (
+        <div className="w-[400px] border-l border-chat-divider">
+          <ThreadView
+            parentMessage={selectedThread}
+            onClose={() => setSelectedThread(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };
