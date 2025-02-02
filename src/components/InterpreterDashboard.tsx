@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MissionsTab } from "./interpreter/MissionsTab";
@@ -44,7 +43,6 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const [unreadMentions, setUnreadMentions] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -52,14 +50,6 @@ export const InterpreterDashboard = () => {
   useEffect(() => {
     fetchProfile();
     fetchScheduledMissions();
-    fetchUnreadMentions();
-    console.log('[Mentions] Setting up realtime subscriptions for user:', profile?.id);
-
-    // Listen for mentionsRead event
-    const handleMentionsRead = () => {
-      fetchUnreadMentions();
-    };
-    window.addEventListener('mentionsRead', handleMentionsRead);
 
     // Set up realtime subscriptions
     const profileChannel = supabase
@@ -100,66 +90,11 @@ export const InterpreterDashboard = () => {
         console.log('Missions subscription status:', status);
       });
 
-    const mentionsChannel = supabase
-      .channel('interpreter-mentions-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${profile?.id}`,
-        },
-        (payload) => {
-          console.log('[Mentions] New mention received:', payload);
-          fetchUnreadMentions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[Mentions] Subscription status:', status);
-      });
-
     return () => {
-      console.log('[Mentions] Cleaning up subscriptions');
-      window.removeEventListener('mentionsRead', handleMentionsRead);
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(missionsChannel);
-      supabase.removeChannel(mentionsChannel);
     };
   }, [profile?.id]);
-
-  const fetchUnreadMentions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Mentions] No authenticated user found');
-        return;
-      }
-      console.log('[Mentions] Fetching mentions for user:', user.id);
-
-      const { count, error } = await supabase
-        .from('message_mentions')
-        .select('*', { count: 'exact', head: true })
-        .eq('mentioned_user_id', user.id)
-        .is('read_at', null)  // Add this line to only count unread mentions
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-      if (error) {
-        console.error('[Mentions] Error fetching mentions:', error);
-        throw error;
-      }
-
-      console.log('[Mentions] Found unread mentions:', count);
-      setUnreadMentions(count || 0);
-    } catch (error) {
-      console.error("[Mentions] Error in fetchUnreadMentions:", error);
-      toast({
-        title: "Error",
-        description: "Could not fetch unread mentions",
-        variant: "destructive",
-      });
-    }
-  };
 
   const fetchScheduledMissions = async () => {
     try {
@@ -435,17 +370,9 @@ export const InterpreterDashboard = () => {
                   </TabsTrigger>
                   <TabsTrigger 
                     value="messages"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6 relative"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
                     Messages
-                    {unreadMentions > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="ml-2 absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center p-0 rounded-full"
-                      >
-                        {unreadMentions}
-                      </Badge>
-                    )}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="profile"
@@ -468,7 +395,7 @@ export const InterpreterDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="messages" className="m-0 h-full">
-                  <MessagingTab onMentionsRead={fetchUnreadMentions} />
+                  <MessagingTab />
                 </TabsContent>
                 
                 <TabsContent value="profile" className="m-0 h-full">
