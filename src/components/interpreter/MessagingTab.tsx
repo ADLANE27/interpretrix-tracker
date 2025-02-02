@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, MessageSquare, Send } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, MessageSquare, Send, Users } from "lucide-react";
 
 interface Message {
   id: string;
@@ -30,12 +30,22 @@ interface ChatHistory {
   unreadCount: number;
 }
 
+interface Channel {
+  id: string;
+  name: string;
+  description: string | null;
+  type: 'internal' | 'external' | 'mixed';
+  members_count: number;
+}
+
 export const MessagingTab = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedAdmin, setSelectedAdmin] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
@@ -47,21 +57,41 @@ export const MessagingTab = () => {
         setCurrentUserId(user.id);
         fetchAdmins();
         fetchChatHistory();
+        fetchChannels();
       }
     };
 
     initializeUser();
   }, []);
 
-  useEffect(() => {
-    if (selectedAdmin) {
-      fetchMessages(selectedAdmin);
-      const channel = subscribeToMessages(selectedAdmin);
-      return () => {
-        supabase.removeChannel(channel);
-      };
+  const fetchChannels = async () => {
+    try {
+      const { data: channelMembers, error: memberError } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('user_id', currentUserId);
+
+      if (memberError) throw memberError;
+
+      if (channelMembers && channelMembers.length > 0) {
+        const channelIds = channelMembers.map(cm => cm.channel_id);
+        const { data: channelsData, error: channelsError } = await supabase
+          .from('channels')
+          .select('*')
+          .in('id', channelIds);
+
+        if (channelsError) throw channelsError;
+        setChannels(channelsData || []);
+      }
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les canaux de discussion",
+        variant: "destructive",
+      });
     }
-  }, [selectedAdmin]);
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -185,7 +215,7 @@ export const MessagingTab = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedAdmin) return;
+    if (!newMessage.trim() || (!selectedAdmin && !selectedChannel)) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -193,7 +223,7 @@ export const MessagingTab = () => {
 
       const { error } = await supabase.from("direct_messages").insert({
         content: newMessage.trim(),
-        recipient_id: selectedAdmin,
+        recipient_id: selectedAdmin || selectedChannel,
         sender_id: user.id,
       });
 
@@ -210,15 +240,25 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar with chat history */}
+    <Tabs defaultValue="direct" className="h-[calc(100vh-4rem)] flex">
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
         <div className="p-4">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="direct" className="flex-1">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Direct
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="flex-1">
+              <Users className="h-4 w-4 mr-2" />
+              Groupes
+            </TabsTrigger>
+          </TabsList>
+
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un administrateur..."
+                placeholder="Rechercher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8"
@@ -226,46 +266,80 @@ export const MessagingTab = () => {
             </div>
           </div>
           
-          <ScrollArea className="h-[calc(100vh-8rem)]">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Messages récents</h3>
-              {chatHistory.map((chat) => (
-                <Button
-                  key={chat.id}
-                  variant={selectedAdmin === chat.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-left text-chat-sidebarText"
-                  onClick={() => setSelectedAdmin(chat.id)}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  <div className="flex flex-col items-start">
-                    <span>{chat.name}</span>
-                    {chat.lastMessage && (
-                      <span className="text-xs text-chat-sidebarHeading truncate">
-                        {chat.lastMessage}
+          <ScrollArea className="h-[calc(100vh-12rem)]">
+            <TabsContent value="direct" className="m-0">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Messages récents</h3>
+                {chatHistory.map((chat) => (
+                  <Button
+                    key={chat.id}
+                    variant={selectedAdmin === chat.id ? "secondary" : "ghost"}
+                    className="w-full justify-start text-left text-chat-sidebarText"
+                    onClick={() => {
+                      setSelectedAdmin(chat.id);
+                      setSelectedChannel(null);
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    <div className="flex flex-col items-start">
+                      <span>{chat.name}</span>
+                      {chat.lastMessage && (
+                        <span className="text-xs text-chat-sidebarHeading truncate">
+                          {chat.lastMessage}
+                        </span>
+                      )}
+                    </div>
+                    {chat.unreadCount > 0 && (
+                      <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                        {chat.unreadCount}
                       </span>
                     )}
-                  </div>
-                  {chat.unreadCount > 0 && (
-                    <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                      {chat.unreadCount}
-                    </span>
-                  )}
-                </Button>
-              ))}
-            </div>
+                  </Button>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="groups" className="m-0">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Canaux</h3>
+                {channels.map((channel) => (
+                  <Button
+                    key={channel.id}
+                    variant={selectedChannel === channel.id ? "secondary" : "ghost"}
+                    className="w-full justify-start text-left text-chat-sidebarText"
+                    onClick={() => {
+                      setSelectedChannel(channel.id);
+                      setSelectedAdmin(null);
+                    }}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    <div className="flex flex-col items-start">
+                      <span>{channel.name}</span>
+                      <span className="text-xs text-chat-sidebarHeading">
+                        {channel.members_count} membres
+                      </span>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </TabsContent>
           </ScrollArea>
         </div>
       </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
-        {selectedAdmin ? (
+        {(selectedAdmin || selectedChannel) ? (
           <>
             {/* Chat Header */}
             <div className="h-14 border-b flex items-center px-4">
               <div className="font-medium">
-                {chatHistory.find(c => c.id === selectedAdmin)?.name || 
-                 admins.find(a => a.id === selectedAdmin)?.email}
+                {selectedAdmin ? (
+                  chatHistory.find(c => c.id === selectedAdmin)?.name || 
+                  admins.find(a => a.id === selectedAdmin)?.email
+                ) : (
+                  channels.find(c => c.id === selectedChannel)?.name
+                )}
               </div>
             </div>
 
@@ -316,10 +390,10 @@ export const MessagingTab = () => {
           </>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-500">
-            Sélectionnez un administrateur pour commencer une conversation
+            Sélectionnez une conversation pour commencer
           </div>
         )}
       </div>
-    </div>
+    </Tabs>
   );
 };
