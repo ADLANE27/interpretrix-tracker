@@ -7,10 +7,11 @@ import { supabase } from "@/integrations/supabase/client";
 interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSend: (attachmentUrl?: string, attachmentName?: string) => void;
+  onSend: (content: string, file?: File) => void;
+  isLoading?: boolean;
 }
 
-export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => {
+export const MessageInput = ({ value, onChange, onSend, isLoading }: MessageInputProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -20,21 +21,7 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
 
     try {
       setIsUploading(true);
-      
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('message_attachments')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('message_attachments')
-        .getPublicUrl(fileName);
-
-      onSend(publicUrl, file.name);
+      onSend("", file);
       
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -47,7 +34,10 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
   };
 
   const handleSend = () => {
-    onSend();
+    if (value.trim()) {
+      onSend(value);
+      onChange("");
+    }
   };
 
   return (
@@ -59,7 +49,8 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
           placeholder="Type your message..."
           className="w-full bg-chat-input border-chat-divider pl-4 pr-20 py-2 focus-visible:ring-chat-selected"
           onKeyPress={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
               handleSend();
             }
           }}
@@ -70,7 +61,7 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
             size="icon"
             className="h-8 w-8 hover:bg-chat-hover"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isLoading || isUploading}
           >
             <Paperclip className="h-4 w-4 text-gray-500" />
           </Button>
@@ -91,7 +82,7 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
       />
       <Button 
         onClick={handleSend} 
-        disabled={isUploading}
+        disabled={isLoading || isUploading || !value.trim()}
         size="icon"
         className="bg-chat-selected hover:bg-chat-selected/90 h-10 w-10"
       >
