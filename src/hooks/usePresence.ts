@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,12 +25,12 @@ export const usePresence = (userId: string, roomId: string) => {
     try {
       channelRef.current = supabase.channel(`presence_${roomId}`)
         .on('presence', { event: 'sync' }, () => {
-          const presenceData = channelRef.current?.presenceState() || {};
-          console.log('[Presence] Sync state:', presenceData);
+          const state = channelRef.current?.presenceState() || {};
+          console.log('[Presence] Sync state:', state);
           
           // Transform the presence data to match our PresenceState interface
           const transformedState: Record<string, PresenceState> = {};
-          Object.entries(presenceData).forEach(([key, value]) => {
+          Object.entries(state).forEach(([key, value]) => {
             const presences = value as UserPresence[];
             if (presences.length > 0) {
               transformedState[key] = {
@@ -53,18 +53,31 @@ export const usePresence = (userId: string, roomId: string) => {
         console.log('[Presence] Subscription status:', status);
         
         if (status === 'SUBSCRIBED' && userId) {
-          await channelRef.current?.track({
-            user_id: userId,
-            online_at: new Date().toISOString(),
-          });
-
-          // Setup heartbeat
-          heartbeatInterval.current = window.setInterval(async () => {
+          try {
             await channelRef.current?.track({
               user_id: userId,
               online_at: new Date().toISOString(),
             });
-          }, 30000) as unknown as number;
+
+            // Setup heartbeat
+            heartbeatInterval.current = window.setInterval(async () => {
+              try {
+                await channelRef.current?.track({
+                  user_id: userId,
+                  online_at: new Date().toISOString(),
+                });
+              } catch (error) {
+                console.error('[Presence] Heartbeat error:', error);
+              }
+            }, 30000) as unknown as number;
+          } catch (error) {
+            console.error('[Presence] Error tracking presence:', error);
+            toast({
+              title: "Erreur de présence",
+              description: "Impossible de mettre à jour votre statut de présence",
+              variant: "destructive",
+            });
+          }
         }
       });
     } catch (error) {

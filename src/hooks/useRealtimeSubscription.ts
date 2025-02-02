@@ -31,7 +31,7 @@ export const useRealtimeSubscription = (config: SubscriptionConfig) => {
             schema: config.schema || 'public',
             table: config.table,
             filter: config.filter,
-          } as any, // Type assertion to handle the event type
+          },
           (payload) => {
             console.log(`[Realtime] Received ${config.event} event for ${config.table}:`, payload);
             config.onEvent(payload);
