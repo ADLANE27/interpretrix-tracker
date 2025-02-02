@@ -148,37 +148,55 @@ export const MissionManagement = () => {
     if (!sourceLang || !targetLang) return;
     
     try {
-      console.log('[MissionManagement] Finding available interpreters for:', sourceLang, targetLang);
-      const languagePair = `${sourceLang} → ${targetLang}`;
+      console.log('[MissionManagement] Finding available interpreters for:', { sourceLang, targetLang });
       
       const { data: potentialInterpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
-        .contains("languages", [languagePair]);
+        .contains("languages", [`${sourceLang} → ${targetLang}`]);
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
-        throw error;
+        toast({
+          title: "Erreur",
+          description: "Impossible de trouver les interprètes disponibles",
+          variant: "destructive",
+        });
+        return;
       }
 
       console.log('[MissionManagement] Found potential interpreters:', potentialInterpreters);
 
+      if (!potentialInterpreters || potentialInterpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found for language pair');
+        toast({
+          title: "Aucun interprète trouvé",
+          description: `Aucun interprète disponible pour la combinaison ${sourceLang} → ${targetLang}`,
+        });
+        return;
+      }
+
       if (missionType === 'immediate') {
-        const { data: scheduledMissions } = await supabase
+        const { data: scheduledMissions, error: scheduledError } = await supabase
           .from("interpretation_missions")
           .select("*")
           .eq("mission_type", "scheduled")
           .eq("status", "accepted");
 
-        const availableInterpreters = potentialInterpreters?.filter(interpreter =>
+        if (scheduledError) {
+          console.error('[MissionManagement] Error fetching scheduled missions:', scheduledError);
+          return;
+        }
+
+        const availableInterpreters = potentialInterpreters.filter(interpreter =>
           interpreter.status === 'available' &&
           isInterpreterAvailableForImmediateMission(interpreter, scheduledMissions || [])
         );
 
         console.log('[MissionManagement] Filtered available interpreters:', availableInterpreters);
-        setAvailableInterpreters(availableInterpreters || []);
+        setAvailableInterpreters(availableInterpreters);
       } else {
-        setAvailableInterpreters(potentialInterpreters || []);
+        setAvailableInterpreters(potentialInterpreters);
       }
 
       setSelectedInterpreters([]);
