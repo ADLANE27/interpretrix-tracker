@@ -1,54 +1,19 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, MessageSquare, Users } from "lucide-react";
+import { MessageSquare, Users } from "lucide-react";
 import { MessageList } from "./messages/MessageList";
 import { MessageInput } from "./messages/MessageInput";
 import { ChannelList } from "./messages/ChannelList";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-interface Channel {
-  id: string;
-  name: string;
-  description: string | null;
-  type: 'internal' | 'external' | 'mixed' | 'admin_only';
-  members_count: number;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  channel_id?: string | null;
-  recipient_id: string | null;
-  created_at: string;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-  mentions?: { mentioned_user_id: string }[];
-}
-
-interface Interpreter {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  isAdmin: boolean;
-}
-
-interface ChatHistory {
-  id: string;
-  name: string;
-  lastMessage?: string;
-  unreadCount: number;
-  isAdmin?: boolean;
-}
+import { SearchSection } from "./messages/SearchSection";
+import { useUnreadMentions } from "./messages/hooks/useUnreadMentions";
+import { useChannels } from "./messages/hooks/useChannels";
+import { useChatHistory } from "./messages/hooks/useChatHistory";
+import { Message, Interpreter, Channel, ChatHistory } from "./messages/types";
 
 interface MessagingTabProps {
   onMentionsRead?: () => void;
@@ -57,451 +22,19 @@ interface MessagingTabProps {
 export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [senderProfiles, setSenderProfiles] = useState<Record<string, { first_name: string; last_name: string; id: string; }>>({});
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [directMessages, setDirectMessages] = useState<Message[]>([]);
-  const [unreadMentions, setUnreadMentions] = useState(0);
   const { toast } = useToast();
 
-  const fetchChannels = async () => {
-    try {
-      const { data: channelsData, error: channelsError } = await supabase
-        .from('channels')
-        .select('*');
-
-      if (channelsError) throw channelsError;
-      setChannels(channelsData || []);
-    } catch (error) {
-      console.error("Error fetching channels:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchChannelMessages = async (channelId: string) => {
-    try {
-      console.log('[MessagingTab] Fetching messages for channel:', channelId);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // First verify user is a member of the channel
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('channel_id', channelId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (membershipError) {
-        console.error('[MessagingTab] Membership verification error:', membershipError);
-        return;
-      }
-
-      // Fetch messages for the channel
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select('*, message_mentions!left(*)')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
-
-      if (messagesError) {
-        console.error('[MessagingTab] Error fetching messages:', messagesError);
-        throw messagesError;
-      }
-
-      console.log('[MessagingTab] Fetched messages with mentions:', messagesData);
-
-      // Get all unique sender IDs
-      const senderIds = [...new Set(messagesData?.map(msg => msg.sender_id) || [])];
-      
-      // First try to get interpreter profiles
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select('id, first_name, last_name')
-        .in('id', senderIds);
-
-      if (interpreterError) throw interpreterError;
-
-      // Then check which senders are admins
-      const { data: adminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin')
-        .in('user_id', senderIds);
-
-      const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
-
-      // Create initial profiles map from interpreter profiles
-      const profilesMap = interpreterProfiles?.reduce((acc, profile) => ({
-        ...acc,
-        [profile.id]: profile
-      }), {});
-
-      // For admin IDs that weren't found in interpreter profiles, fetch their info
-      const adminProfiles = await Promise.all(
-        senderIds
-          .filter(id => !profilesMap?.[id] && adminIds.has(id))
-          .map(async (adminId) => {
-            const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
-              body: { userId: adminId }
-            });
-            return { id: adminId, ...adminInfo };
-          })
-      );
-
-      // Add admin profiles to the map
-      const finalProfilesMap = {
-        ...profilesMap,
-        ...adminProfiles.reduce((acc, profile) => ({
-          ...acc,
-          [profile.id]: profile
-        }), {})
-      };
-
-      setSenderProfiles(finalProfilesMap || {});
-      setMessages(messagesData || []);
-
-      // Set up realtime subscription for new messages
-      const channel = supabase
-        .channel(`messages-${channelId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'messages',
-            filter: `channel_id=eq.${channelId}`,
-          },
-          async (payload) => {
-            console.log('Message change received:', payload);
-            
-            if (payload.eventType === 'INSERT') {
-              const senderId = payload.new.sender_id;
-              if (!senderProfiles[senderId]) {
-                // First check if it's an interpreter
-                const { data: profile } = await supabase
-                  .from('interpreter_profiles')
-                  .select('id, first_name, last_name')
-                  .eq('id', senderId)
-                  .single();
-                
-                if (profile) {
-                  setSenderProfiles(prev => ({
-                    ...prev,
-                    [senderId]: profile
-                  }));
-                } else {
-                  // If not found in interpreter_profiles, check if admin
-                  const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
-                    body: { userId: senderId }
-                  });
-                  
-                  if (adminInfo) {
-                    setSenderProfiles(prev => ({
-                      ...prev,
-                      [senderId]: {
-                        id: senderId,
-                        ...adminInfo
-                      }
-                    }));
-                  }
-                }
-              }
-              setMessages(prev => [...prev, payload.new as Message]);
-            } else if (payload.eventType === 'DELETE') {
-              setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
-            } else if (payload.eventType === 'UPDATE') {
-              setMessages(prev => prev.map(msg => 
-                msg.id === payload.new.id ? payload.new as Message : msg
-              ));
-            }
-          }
-        )
-        .subscribe((status) => {
-          console.log('Messages subscription status:', status);
-        });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error) {
-      console.error("Error fetching channel messages:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les messages du canal",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchUnreadMentions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[MessagingTab] No authenticated user found');
-        return;
-      }
-
-      // First get interpreter's target languages
-      const { data: profile } = await supabase
-        .from('interpreter_profiles')
-        .select('languages')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) {
-        console.error('[MessagingTab] No interpreter profile found');
-        return;
-      }
-
-      // Extract target languages from language pairs
-      const targetLanguages = profile.languages.map(lang => {
-        const [_, target] = lang.split(' → ');
-        return target.trim();
-      });
-
-      console.log('[MessagingTab] Interpreter target languages:', targetLanguages);
-
-      // Count both direct mentions and language mentions
-      const { count, error } = await supabase
-        .from('message_mentions')
-        .select('*', { count: 'exact', head: true })
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`)
-        .is('read_at', null)
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-      if (error) {
-        console.error('[MessagingTab] Error fetching mentions:', error);
-        throw error;
-      }
-
-      console.log('[MessagingTab] Found unread mentions:', count);
-      setUnreadMentions(count || 0);
-    } catch (error) {
-      console.error("[MessagingTab] Error in fetchUnreadMentions:", error);
-      toast({
-        title: "Error",
-        description: "Could not fetch unread mentions",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchChannels();
-    fetchChatHistory();
-    console.log('[MessagingTab] Setting up realtime subscriptions');
-
-    // Set up realtime subscription for both direct and language mentions
-    const mentionsChannel = supabase
-      .channel('mentions-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_mentions'
-        },
-        async (payload) => {
-          console.log('[MessagingTab] New mention received:', payload);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          // Check if it's a direct mention
-          if (payload.new.mentioned_user_id === user.id) {
-            console.log('[MessagingTab] Direct mention detected');
-            fetchUnreadMentions();
-            return;
-          }
-
-          // Check if it's a language mention that matches interpreter's languages
-          const { data: profile } = await supabase
-            .from('interpreter_profiles')
-            .select('languages')
-            .eq('id', user.id)
-            .single();
-
-          if (profile && profile.languages) {
-            const targetLanguages = profile.languages.map(lang => {
-              const [_, target] = lang.split(' → ');
-              return target.trim();
-            });
-
-            console.log('[MessagingTab] Checking language mention:', payload.new.mentioned_language);
-            console.log('[MessagingTab] Against target languages:', targetLanguages);
-
-            if (payload.new.mentioned_language && targetLanguages.includes(payload.new.mentioned_language)) {
-              console.log('[MessagingTab] Language mention matches interpreter target language');
-              fetchUnreadMentions();
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MessagingTab] Mentions subscription status:', status);
-      });
-
-    return () => {
-      console.log('[MessagingTab] Cleaning up subscriptions');
-      supabase.removeChannel(mentionsChannel);
-    };
-  }, []);
-
-  useEffect(() => {
-    const initializeUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        console.log('[MessagingTab] Current user:', user.id);
-        setCurrentUserId(user.id);
-        await fetchChannels();
-        await fetchChatHistory();
-      }
-    };
-
-    initializeUser();
-  }, []);
-
-  useEffect(() => {
-    if (selectedChannel) {
-      console.log('[MessagingTab] Selected channel changed:', selectedChannel);
-      fetchChannelMessages(selectedChannel);
-      handleMessagesViewed();
-    }
-  }, [selectedChannel]);
-
-  const handleMessagesViewed = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Update all mentions from the last 24 hours to be read
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data: mentions } = await supabase
-        .from('message_mentions')
-        .select('message_id, mentioned_user_id')
-        .eq('mentioned_user_id', user.id)
-        .gt('created_at', oneDayAgo)
-        .is('read_at', null);
-
-      if (mentions && mentions.length > 0) {
-        const updates = mentions.map(mention => ({
-          message_id: mention.message_id,
-          mentioned_user_id: mention.mentioned_user_id,
-          read_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabase
-          .from('message_mentions')
-          .upsert(updates, {
-            onConflict: 'message_id,mentioned_user_id'
-          });
-
-        if (error) {
-          console.error('[MessagingTab] Error marking mentions as read:', error);
-          throw error;
-        }
-
-        // Refresh unread mentions count
-        if (onMentionsRead) {
-          onMentionsRead();
-        }
-      }
-    } catch (error) {
-      console.error('[MessagingTab] Error in handleMessagesViewed:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de marquer les mentions comme lues",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchChatHistory = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: messageUsers, error: msgError } = await supabase
-        .from('direct_messages')
-        .select('sender_id, recipient_id')
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
-
-      if (msgError) throw msgError;
-
-      const uniqueUserIds = new Set<string>();
-      messageUsers?.forEach(msg => {
-        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
-        uniqueUserIds.add(otherId);
-      });
-
-      // Fetch admin roles for these users
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', Array.from(uniqueUserIds))
-        .eq('role', 'admin');
-
-      if (rolesError) throw rolesError;
-
-      const adminIds = new Set(userRoles?.map(role => role.user_id) || []);
-
-      const { data: profiles, error: profileError } = await supabase
-        .from('interpreter_profiles')
-        .select('id, first_name, last_name')
-        .in('id', Array.from(uniqueUserIds));
-
-      if (profileError) throw profileError;
-
-      const history: ChatHistory[] = [];
-
-      // Add interpreter profiles
-      profiles?.forEach(profile => {
-        history.push({
-          id: profile.id,
-          name: `${profile.first_name} ${profile.last_name}`,
-          unreadCount: 0,
-          isAdmin: adminIds.has(profile.id)
-        });
-      });
-
-      // Add admin profiles that might not be in interpreter_profiles
-      for (const adminId of adminIds) {
-        if (!profiles?.some(p => p.id === adminId)) {
-          const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
-            body: { userId: adminId }
-          });
-          
-          if (adminInfo) {
-            history.push({
-              id: adminId,
-              name: `${adminInfo.first_name} ${adminInfo.last_name} (Admin)`,
-              unreadCount: 0,
-              isAdmin: true
-            });
-          }
-        }
-      }
-
-      setChatHistory(history);
-    } catch (error) {
-      console.error("Error fetching chat history:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger l'historique des conversations",
-        variant: "destructive",
-      });
-    }
-  };
+  // Custom hooks
+  const { channels } = useChannels();
+  const { chatHistory, setChatHistory } = useChatHistory(currentUserId);
+  const { unreadMentions } = useUnreadMentions(currentUserId);
 
   const handleSearch = async (term: string) => {
     if (term.length < 2) {
@@ -716,6 +249,18 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
     }
   };
 
+  useEffect(() => {
+    const initializeUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        console.log('[MessagingTab] Current user:', user.id);
+        setCurrentUserId(user.id);
+      }
+    };
+
+    initializeUser();
+  }, []);
+
   return (
     <Tabs defaultValue="groups" className="h-[calc(100vh-4rem)] flex">
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
@@ -739,20 +284,27 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
             </TabsTrigger>
           </TabsList>
 
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  handleSearch(e.target.value);
-                }}
-                className="pl-8"
-              />
-            </div>
-          </div>
+          <SearchSection
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            interpreters={interpreters}
+            onSelectInterpreter={(interpreter) => {
+              setSelectedInterpreter(interpreter.id);
+              setSelectedChannel(null);
+              setSearchTerm("");
+              setInterpreters([]);
+              const newChat = {
+                id: interpreter.id,
+                name: `${interpreter.first_name} ${interpreter.last_name}${interpreter.isAdmin ? ' (Admin)' : ''}`,
+                unreadCount: 0,
+                isAdmin: interpreter.isAdmin
+              };
+              if (!chatHistory.some(chat => chat.id === interpreter.id)) {
+                setChatHistory(prev => [...prev, newChat]);
+              }
+              fetchDirectMessages(interpreter.id);
+            }}
+          />
           
           <ScrollArea className="h-[calc(100vh-12rem)]">
             <TabsContent value="groups" className="m-0">
@@ -767,41 +319,6 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
             </TabsContent>
             <TabsContent value="direct" className="m-0">
               <div className="space-y-2">
-                {searchTerm && interpreters.length > 0 && (
-                  <div className="space-y-2 mb-4">
-                    <h3 className="text-sm font-medium text-gray-400 px-2">Résultats</h3>
-                    {interpreters.map((user) => (
-                      <Button
-                        key={user.id}
-                        variant="ghost"
-                        className="w-full justify-start text-left"
-                        onClick={() => {
-                          setSelectedInterpreter(user.id);
-                          setSelectedChannel(null);
-                          setSearchTerm("");
-                          setInterpreters([]);
-                          const newChat = {
-                            id: user.id,
-                            name: `${user.first_name} ${user.last_name}${user.isAdmin ? ' (Admin)' : ''}`,
-                            unreadCount: 0,
-                            isAdmin: user.isAdmin
-                          };
-                          if (!chatHistory.some(chat => chat.id === user.id)) {
-                            setChatHistory(prev => [...prev, newChat]);
-                          }
-                          fetchDirectMessages(user.id);
-                        }}
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        <div className="flex flex-col items-start">
-                          <span>{user.first_name} {user.last_name}{user.isAdmin ? ' (Admin)' : ''}</span>
-                          <span className="text-xs text-gray-500">{user.email}</span>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                )}
-
                 {!searchTerm && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
