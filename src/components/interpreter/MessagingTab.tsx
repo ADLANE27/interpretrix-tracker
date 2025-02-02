@@ -346,6 +346,62 @@ export const MessagingTab = () => {
     setNewMessage(prev => prev + emojiData.emoji);
   };
 
+  useEffect(() => {
+    if (selectedChannel) {
+      fetchChannelMessages(selectedChannel);
+      
+      // Subscribe to channel messages
+      const channel = supabase
+        .channel(`channel-${selectedChannel}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `channel_id=eq.${selectedChannel}`,
+          },
+          (payload) => {
+            console.log('Channel message update received:', payload);
+            fetchChannelMessages(selectedChannel);
+          }
+        )
+        .subscribe((status) => {
+          console.log('Channel messages subscription status:', status);
+        });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [selectedChannel]);
+
+  const fetchChannelMessages = async (channelId: string) => {
+    try {
+      console.log('Fetching messages for channel:', channelId);
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching channel messages:', error);
+        throw error;
+      }
+
+      console.log('Successfully fetched channel messages:', data);
+      setMessages(data || []);
+    } catch (error) {
+      console.error('Error in fetchChannelMessages:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les messages du canal",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Tabs defaultValue="direct" className="h-[calc(100vh-4rem)] flex">
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
