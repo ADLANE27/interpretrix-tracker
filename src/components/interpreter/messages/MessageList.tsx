@@ -58,13 +58,15 @@ export const MessageList = ({
 
           const { error } = await supabase
             .from('message_mentions')
-            .upsert(updates, { 
+            .upsert(updates, {
               onConflict: 'message_id,mentioned_user_id'
             });
 
-          if (error) throw error;
+          if (error) {
+            console.error('[MessageList] Error marking mentions as read:', error);
+          }
         } catch (error) {
-          console.error('Error marking messages as read:', error);
+          console.error('[MessageList] Error in handleMessagesRead:', error);
         }
       }
     };
