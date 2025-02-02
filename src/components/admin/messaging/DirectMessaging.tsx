@@ -28,6 +28,17 @@ interface ChatHistory {
   unreadCount: number;
 }
 
+interface MessageWithUsers {
+  id: string;
+  content: string;
+  sender_id: string;
+  recipient_id: string;
+  created_at: string;
+  sender: User;
+  recipient: User;
+  read_at: string | null;
+}
+
 export const DirectMessaging = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -82,7 +93,7 @@ export const DirectMessaging = () => {
 
       const history = new Map<string, ChatHistory>();
 
-      messages?.forEach(message => {
+      (messages as MessageWithUsers[])?.forEach(message => {
         const otherUser = message.sender_id === user.id ? message.recipient : message.sender;
         if (!otherUser) return;
 
