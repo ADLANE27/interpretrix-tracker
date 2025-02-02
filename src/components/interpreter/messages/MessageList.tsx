@@ -2,7 +2,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -11,7 +10,6 @@ interface Message {
   created_at: string;
   attachment_url?: string | null;
   attachment_name?: string | null;
-  mentions?: { mentioned_user_id: string }[];
 }
 
 interface SenderProfile {
@@ -48,46 +46,6 @@ export const MessageList = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    const handleMessagesRead = async () => {
-      if (!currentUserId) return;
-      
-      const messageIds = messages
-        .filter(msg => msg.mentions?.some(mention => mention.mentioned_user_id === currentUserId))
-        .map(msg => msg.id);
-
-      if (messageIds.length > 0) {
-        try {
-          const updates = messageIds.map(messageId => ({
-            message_id: messageId,
-            mentioned_user_id: currentUserId,
-            read_at: new Date().toISOString()
-          }));
-
-          const { error } = await supabase
-            .from('message_mentions')
-            .upsert(updates, {
-              onConflict: 'message_id,mentioned_user_id'
-            });
-
-          if (error) {
-            console.error('[MessageList] Error marking mentions as read:', error);
-            throw error;
-          }
-
-          // Only dispatch event after successful update
-          console.log('[MessageList] Successfully marked mentions as read');
-          const event = new CustomEvent('mentionsRead');
-          window.dispatchEvent(event);
-        } catch (error) {
-          console.error('[MessageList] Error in handleMessagesRead:', error);
-        }
-      }
-    };
-
-    handleMessagesRead();
-  }, [messages, currentUserId]);
 
   return (
     <ScrollArea className="flex-1 p-4">

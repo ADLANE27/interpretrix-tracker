@@ -30,7 +30,6 @@ interface Message {
   created_at: string;
   attachment_url?: string | null;
   attachment_name?: string | null;
-  mentions?: { mentioned_user_id: string }[];
 }
 
 interface Interpreter {
@@ -259,57 +258,8 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
     if (selectedChannel) {
       console.log('[MessagingTab] Selected channel changed:', selectedChannel);
       fetchChannelMessages(selectedChannel);
-      handleMessagesViewed();
     }
   }, [selectedChannel]);
-
-  const handleMessagesViewed = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Update all mentions from the last 24 hours to be read
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      const { data: mentions } = await supabase
-        .from('message_mentions')
-        .select('message_id, mentioned_user_id')
-        .eq('mentioned_user_id', user.id)
-        .gt('created_at', oneDayAgo)
-        .is('read_at', null);
-
-      if (mentions && mentions.length > 0) {
-        const updates = mentions.map(mention => ({
-          message_id: mention.message_id,
-          mentioned_user_id: mention.mentioned_user_id,
-          read_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabase
-          .from('message_mentions')
-          .upsert(updates, {
-            onConflict: 'message_id,mentioned_user_id'
-          });
-
-        if (error) {
-          console.error('[MessagingTab] Error marking mentions as read:', error);
-          throw error;
-        }
-
-        // Refresh unread mentions count
-        if (onMentionsRead) {
-          onMentionsRead();
-        }
-      }
-    } catch (error) {
-      console.error('[MessagingTab] Error in handleMessagesViewed:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de marquer les mentions comme lues",
-        variant: "destructive",
-      });
-    }
-  };
 
   const fetchChatHistory = async () => {
     try {
@@ -451,28 +401,6 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
 
       if (error) throw error;
       setDirectMessages(data || []);
-
-      // Update chat history to include admin status
-      const isAdmin = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .single();
-
-      if (isAdmin.data) {
-        const { data: userInfo } = await supabase.functions.invoke('get-user-info', {
-          body: { userId }
-        });
-
-        const updatedHistory = chatHistory.map(chat => 
-          chat.id === userId 
-            ? { ...chat, isAdmin: true, name: `${userInfo.first_name} ${userInfo.last_name} (Admin)` }
-            : chat
-        );
-        setChatHistory(updatedHistory);
-      }
-
     } catch (error) {
       console.error("Error fetching direct messages:", error);
       toast({
