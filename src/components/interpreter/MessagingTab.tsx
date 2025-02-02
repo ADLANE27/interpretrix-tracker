@@ -167,15 +167,18 @@ export const MessagingTab = () => {
       });
 
       const adminIds = Array.from(uniqueAdminIds);
-      const { data: adminData, error } = await supabase.functions.invoke('get-admin-emails', {
-        body: { adminIds }
-      });
+      
+      // Fetch admin profiles from interpreter_profiles table
+      const { data: adminProfiles, error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', adminIds);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
-      const history: ChatHistory[] = adminData?.map((admin: Admin) => ({
-        id: admin.id,
-        name: admin.email,
+      const history: ChatHistory[] = adminProfiles?.map((profile) => ({
+        id: profile.id,
+        name: `${profile.first_name} ${profile.last_name}`,
         unreadCount: 0
       })) || [];
 
