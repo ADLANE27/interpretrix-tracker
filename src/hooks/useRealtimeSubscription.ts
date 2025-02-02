@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -9,7 +9,7 @@ interface SubscriptionConfig {
   schema?: string;
   table: string;
   filter?: string;
-  onEvent: (payload: any) => void;
+  onEvent: (payload: RealtimePostgresChangesPayload<any>) => void;
 }
 
 export const useRealtimeSubscription = (config: SubscriptionConfig) => {
