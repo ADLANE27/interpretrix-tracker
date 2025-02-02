@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
+import { useNavigate } from "react-router-dom";
+import { MessageSquare } from "lucide-react";
 
 interface UserData {
   id: string;
@@ -30,6 +32,7 @@ interface UserData {
 }
 
 export const UserManagement = () => {
+  const navigate = useNavigate();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -112,6 +115,10 @@ export const UserManagement = () => {
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];
   const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
+
+  const handleMessageUser = (userId: string) => {
+    navigate("/admin/messaging", { state: { selectedUserId: userId } });
+  };
 
   const handleAddUser = async (formData: InterpreterFormData) => {
     try {
@@ -316,6 +323,7 @@ export const UserManagement = () => {
         admins={adminUsers}
         onToggleStatus={toggleUserStatus}
         onDeleteUser={handleDeleteUser}
+        onMessageUser={handleMessageUser}
       />
 
       <InterpreterList
@@ -330,6 +338,7 @@ export const UserManagement = () => {
           setSelectedUserId(userId);
           setIsResetPasswordOpen(true);
         }}
+        onMessageUser={handleMessageUser}
       />
 
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
