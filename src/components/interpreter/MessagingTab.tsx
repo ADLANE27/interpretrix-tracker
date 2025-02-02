@@ -555,55 +555,36 @@ export const MessagingTab = () => {
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`group flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className="group relative max-w-[70%]">
-                      <div className="flex items-start space-x-3">
-                        {message.sender_id !== currentUserId && (
-                          <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
-                            {senderProfiles[message.sender_id]?.first_name?.charAt(0).toUpperCase()}
+                      {message.sender_id !== currentUserId && (
+                        <div className="text-sm font-medium text-gray-700 mb-1 px-1">
+                          {senderProfiles[message.sender_id]?.first_name} {senderProfiles[message.sender_id]?.last_name}
+                        </div>
+                      )}
+                      <div
+                        className={`rounded-lg p-3 ${
+                          message.sender_id === currentUserId
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary'
+                        }`}
+                      >
+                        {message.content}
+                        {message.attachment_url && (
+                          <div className="mt-2">
+                            <a 
+                              href={message.attachment_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm underline"
+                            >
+                              {message.attachment_name || 'Attachment'}
+                            </a>
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          {message.sender_id !== currentUserId && senderProfiles[message.sender_id] && (
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">
-                                {senderProfiles[message.sender_id]?.first_name} {senderProfiles[message.sender_id]?.last_name}
-                              </span>
-                              <span className="text-xs text-chat-timestamp">
-                                {new Date(message.created_at).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
-                          )}
-                          <div
-                            className={`rounded-lg p-3 mt-1 ${
-                              message.sender_id === currentUserId
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-secondary'
-                            }`}
-                          >
-                            {message.content}
-                            {message.attachment_url && (
-                              <div className="mt-2">
-                                <a 
-                                  href={message.attachment_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-sm underline"
-                                >
-                                  {message.attachment_name || 'Attachment'}
-                                </a>
-                              </div>
-                            )}
-                            {message.sender_id === currentUserId && (
-                              <div className="text-xs opacity-70 mt-1">
-                                {new Date(message.created_at).toLocaleString()}
-                              </div>
-                            )}
-                          </div>
+                        <div className="text-xs opacity-70 mt-1">
+                          {new Date(message.created_at).toLocaleString()}
                         </div>
                       </div>
                       {message.sender_id === currentUserId && (
