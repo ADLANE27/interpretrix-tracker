@@ -12,7 +12,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  sender_name?: string;
+  sender_name: string; // Made required
   reply_count: number;
 }
 
@@ -87,19 +87,19 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts using proper GROUP BY
+      // Get reply counts
       const { data: replyCountsData, error: replyCountsError } = await supabase
         .from("messages")
-        .select('parent_id, count(*)')
+        .select('parent_id, count')
         .not('parent_id', 'is', null)
         .eq('channel_id', channelId)
-        .group_by('parent_id');
+        .groupBy('parent_id');
 
       if (replyCountsError) throw replyCountsError;
 
       // Create a map of reply counts
       const replyCounts = new Map(
-        replyCountsData?.map(row => [row.parent_id, parseInt(row.count)])
+        replyCountsData?.map(row => [row.parent_id, Number(row.count)]) || []
       );
 
       // Get all unique sender IDs
@@ -153,7 +153,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                     adminNames.get(message.sender_id) ||
                     "Unknown User",
         reply_count: replyCounts.get(message.id) || 0
-      }));
+      })) as Message[];
 
       setMessages(messagesWithNames || []);
       setTimeout(scrollToBottom, 100);
