@@ -86,6 +86,7 @@ export const MessagingTab = () => {
           setCurrentUserId(user.id);
           fetchAdmins();
           fetchChatHistory();
+          fetchChannels(); // Add this line to fetch channels
         } else {
           navigate("/login");
         }
@@ -97,7 +98,6 @@ export const MessagingTab = () => {
 
     initializeUser();
 
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
         navigate("/login");
@@ -108,6 +108,58 @@ export const MessagingTab = () => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  const fetchChannels = async () => {
+    try {
+      console.log('Fetching channels...');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No authenticated user found');
+        return;
+      }
+
+      // First get channels where user is a member
+      const { data: memberChannels, error: memberError } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('user_id', user.id);
+
+      if (memberError) {
+        console.error('Error fetching channel memberships:', memberError);
+        throw memberError;
+      }
+
+      const channelIds = memberChannels?.map(m => m.channel_id) || [];
+      console.log('Found channel IDs:', channelIds);
+
+      if (channelIds.length === 0) {
+        console.log('No channels found for user');
+        setChannels([]);
+        return;
+      }
+
+      // Then fetch the actual channels
+      const { data: channels, error } = await supabase
+        .from('channels')
+        .select('*')
+        .in('id', channelIds);
+
+      if (error) {
+        console.error('Error fetching channels:', error);
+        throw error;
+      }
+
+      console.log('Successfully fetched channels:', channels);
+      setChannels(channels || []);
+    } catch (error) {
+      console.error('Error in fetchChannels:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les canaux",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchAdmins = async () => {
     try {
@@ -185,51 +237,30 @@ export const MessagingTab = () => {
     }
   };
 
-  const fetchMessages = async (adminId: string) => {
+  const fetchChannelMessages = async (channelId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
+      console.log('Fetching messages for channel:', channelId);
       const { data, error } = await supabase
-        .from("direct_messages")
-        .select("*")
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`)
-        .order("created_at", { ascending: true });
+        .from('messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true });
 
-      if (error) throw error;
-      setMessages(data || []);
+      if (error) {
+        console.error('Error fetching channel messages:', error);
+        throw error;
+      }
+
+      console.log('Successfully fetched channel messages:', data);
+      setMessages(data as Message[] || []);
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error('Error in fetchChannelMessages:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les messages",
+        description: "Impossible de charger les messages du canal",
         variant: "destructive",
       });
     }
-  };
-
-  const subscribeToMessages = (adminId: string) => {
-    const channel = supabase
-      .channel("messages")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "direct_messages",
-          filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${currentUserId}))`
-        },
-        (payload) => {
-          console.log("Message update received:", payload);
-          fetchMessages(adminId);
-          fetchChatHistory();
-        }
-      )
-      .subscribe((status) => {
-        console.log("Subscription status:", status);
-      });
-
-    return channel;
   };
 
   const sendMessage = async () => {
@@ -359,32 +390,6 @@ export const MessagingTab = () => {
       };
     }
   }, [selectedChannel]);
-
-  const fetchChannelMessages = async (channelId: string) => {
-    try {
-      console.log('Fetching messages for channel:', channelId);
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching channel messages:', error);
-        throw error;
-      }
-
-      console.log('Successfully fetched channel messages:', data);
-      setMessages(data as ChannelMessage[] || []);
-    } catch (error) {
-      console.error('Error in fetchChannelMessages:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les messages du canal",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <Tabs defaultValue="direct" className="h-[calc(100vh-4rem)] flex">
