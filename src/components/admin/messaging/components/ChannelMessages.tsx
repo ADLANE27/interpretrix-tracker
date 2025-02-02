@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare } from "lucide-react";
-import { ThreadView } from "./ThreadView";
+import { Send } from "lucide-react";
 
 interface Message {
   id: string;
@@ -13,7 +12,6 @@ interface Message {
   sender_id: string;
   created_at: string;
   sender_name?: string;
-  reply_count: number;
 }
 
 interface ChannelMessagesProps {
@@ -25,7 +23,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [selectedThread, setSelectedThread] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -39,7 +36,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
     initializeUser();
     fetchMessages();
-    
     const channel = supabase
       .channel(`messages-${channelId}`)
       .on(
@@ -50,8 +46,10 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           table: 'messages',
           filter: `channel_id=eq.${channelId}`,
         },
-        () => {
-          fetchMessages();
+        (payload) => {
+          const newMessage = payload.new as Message;
+          setMessages(prev => [...prev, newMessage]);
+          scrollToBottom();
         }
       )
       .subscribe();
@@ -72,7 +70,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // First get the main messages
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
@@ -82,27 +79,9 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           created_at
         `)
         .eq("channel_id", channelId)
-        .is("parent_id", null)
         .order("created_at", { ascending: true });
 
       if (messagesError) throw messagesError;
-
-      // Get reply counts using a separate query
-      const { data: replyCounts, error: replyCountError } = await supabase
-        .from("messages")
-        .select('parent_id, count')
-        .not('parent_id', 'is', null)
-        .in('parent_id', messagesData?.map(m => m.id) || []);
-
-      if (replyCountError) throw replyCountError;
-
-      // Create a map of reply counts
-      const replyCountMap = new Map<string, number>();
-      replyCounts?.forEach(reply => {
-        if (reply.parent_id) {
-          replyCountMap.set(reply.parent_id, parseInt(reply.count as string));
-        }
-      });
 
       // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
@@ -124,13 +103,14 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (rolesError) throw rolesError;
 
-      // Create maps for names
+      // Create a map of interpreter names
       const interpreterNames = new Map(
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      const adminNames = new Map();
+      // For admin users, get their info from auth.users via Edge Function
       const adminIds = userRoles?.map(r => r.user_id) || [];
+      const adminNames = new Map();
 
       if (adminIds.length > 0) {
         for (const adminId of adminIds) {
@@ -147,13 +127,12 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         }
       }
 
-      // Combine messages with sender names and reply counts
+      // Combine messages with sender names
       const messagesWithNames = messagesData?.map(message => ({
         ...message,
         sender_name: interpreterNames.get(message.sender_id) || 
                     adminNames.get(message.sender_id) ||
-                    "Unknown User",
-        reply_count: replyCountMap.get(message.id) || 0
+                    "Unknown User"
       }));
 
       setMessages(messagesWithNames || []);
@@ -223,19 +202,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                 >
                   {message.content}
                 </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <span>{new Date(message.created_at).toLocaleString()}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs gap-1"
-                    onClick={() => setSelectedThread(message)}
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                    {message.reply_count > 0 && (
-                      <span>{message.reply_count} replies</span>
-                    )}
-                  </Button>
+                <div className="text-xs text-gray-500">
+                  {new Date(message.created_at).toLocaleString()}
                 </div>
               </div>
             );
@@ -259,13 +227,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           <Send className="h-4 w-4" />
         </Button>
       </div>
-
-      <ThreadView
-        parentMessage={selectedThread}
-        isOpen={!!selectedThread}
-        onClose={() => setSelectedThread(null)}
-        currentUserId={currentUserId}
-      />
     </div>
   );
 };
