@@ -10,7 +10,7 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock } from "lucide-react";
+import { Trash2, Calendar, Clock, Search } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format, differenceInMinutes, addMinutes, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -56,6 +56,7 @@ export const MissionManagement = () => {
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
   const [scheduledStartTime, setScheduledStartTime] = useState("");
   const [scheduledEndTime, setScheduledEndTime] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
   const handleSelectAllInterpreters = () => {
@@ -79,6 +80,7 @@ export const MissionManagement = () => {
 
   const fetchMissions = async () => {
     try {
+      console.log('[MissionManagement] Fetching missions...');
       const { data, error } = await supabase
         .from("interpretation_missions")
         .select(`
@@ -93,11 +95,15 @@ export const MissionManagement = () => {
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      console.log("Fetched missions:", data);
+      if (error) {
+        console.error('[MissionManagement] Error fetching missions:', error);
+        throw error;
+      }
+      
+      console.log('[MissionManagement] Missions fetched successfully:', data);
       setMissions(data as Mission[]);
     } catch (error) {
-      console.error("Error fetching missions:", error);
+      console.error('[MissionManagement] Error in fetchMissions:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les missions",
@@ -164,6 +170,7 @@ export const MissionManagement = () => {
     if (!sourceLang || !targetLang) return;
     
     try {
+      console.log('[MissionManagement] Finding available interpreters for:', sourceLang, targetLang);
       const languagePair = `${sourceLang} → ${targetLang}`;
       
       const { data: potentialInterpreters, error } = await supabase
@@ -171,7 +178,12 @@ export const MissionManagement = () => {
         .select("*")
         .contains("languages", [languagePair]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[MissionManagement] Error fetching interpreters:', error);
+        throw error;
+      }
+
+      console.log('[MissionManagement] Found potential interpreters:', potentialInterpreters);
 
       if (missionType === 'immediate') {
         const { data: scheduledMissions } = await supabase
@@ -185,6 +197,7 @@ export const MissionManagement = () => {
           isInterpreterAvailableForImmediateMission(interpreter, scheduledMissions || [])
         );
 
+        console.log('[MissionManagement] Filtered available interpreters:', availableInterpreters);
         setAvailableInterpreters(availableInterpreters || []);
       } else {
         setAvailableInterpreters(potentialInterpreters || []);
@@ -192,7 +205,7 @@ export const MissionManagement = () => {
 
       setSelectedInterpreters([]);
     } catch (error) {
-      console.error("Error finding interpreters:", error);
+      console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
       toast({
         title: "Erreur",
         description: "Impossible de trouver les interprètes disponibles",
@@ -202,6 +215,8 @@ export const MissionManagement = () => {
   };
 
   const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
+    console.log('[MissionManagement] Handling interpreter selection:', interpreterId, checked);
+    
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
       const isAvailable = await isInterpreterAvailableForScheduledMission(
         interpreterId,
@@ -211,6 +226,7 @@ export const MissionManagement = () => {
       );
 
       if (!isAvailable && checked) {
+        console.log('[MissionManagement] Interpreter has scheduling conflict');
         toast({
           title: "Conflit d'horaire",
           description: "Cet interprète a déjà une mission programmée qui chevauche cet horaire",
@@ -231,6 +247,8 @@ export const MissionManagement = () => {
 
   const handleDeleteMission = async (missionId: string) => {
     try {
+      console.log('[MissionManagement] Deleting mission:', missionId);
+      
       const { error: notificationError } = await supabase
         .from("mission_notifications")
         .delete()
@@ -245,6 +263,7 @@ export const MissionManagement = () => {
 
       if (error) throw error;
 
+      console.log('[MissionManagement] Mission deleted successfully');
       toast({
         title: "Mission supprimée",
         description: "La mission a été supprimée avec succès",
@@ -252,7 +271,7 @@ export const MissionManagement = () => {
 
       fetchMissions();
     } catch (error) {
-      console.error("Error deleting mission:", error);
+      console.error('[MissionManagement] Error deleting mission:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la mission",
@@ -263,8 +282,10 @@ export const MissionManagement = () => {
 
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[MissionManagement] Creating new mission...');
     
     if (selectedInterpreters.length === 0) {
+      console.log('[MissionManagement] No interpreters selected');
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner au moins un interprète",
@@ -274,6 +295,7 @@ export const MissionManagement = () => {
     }
 
     if (missionType === 'scheduled' && (!scheduledStartTime || !scheduledEndTime)) {
+      console.log('[MissionManagement] Missing scheduled times');
       toast({
         title: "Erreur",
         description: "Veuillez spécifier les horaires de la mission programmée",
@@ -290,6 +312,7 @@ export const MissionManagement = () => {
       );
       
       if (calculatedDuration <= 0) {
+        console.log('[MissionManagement] Invalid duration');
         toast({
           title: "Erreur",
           description: "La date de fin doit être postérieure à la date de début",
@@ -315,6 +338,8 @@ export const MissionManagement = () => {
         scheduled_end_time: missionType === 'scheduled' ? scheduledEndTime : null
       };
 
+      console.log('[MissionManagement] Creating mission with data:', newMissionData);
+
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert(newMissionData)
@@ -322,6 +347,8 @@ export const MissionManagement = () => {
         .single();
 
       if (missionError) throw missionError;
+
+      console.log('[MissionManagement] Mission created:', createdMission);
 
       const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: createdMission.id,
@@ -335,11 +362,14 @@ export const MissionManagement = () => {
 
       if (notificationError) throw notificationError;
 
+      console.log('[MissionManagement] Notifications created successfully');
+      
       toast({
         title: "Succès",
         description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
       });
 
+      // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
@@ -351,7 +381,7 @@ export const MissionManagement = () => {
       
       fetchMissions();
     } catch (error) {
-      console.error("Error creating mission:", error);
+      console.error('[MissionManagement] Error creating mission:', error);
       toast({
         title: "Erreur",
         description: "Impossible de créer la mission",
@@ -373,6 +403,18 @@ export const MissionManagement = () => {
       findAvailableInterpreters(sourceLanguage, targetLanguage);
     }
   }, [sourceLanguage, targetLanguage]);
+
+  const filteredMissions = missions.filter(mission => {
+    if (!searchQuery) return true;
+    
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      mission.source_language.toLowerCase().includes(searchLower) ||
+      mission.target_language.toLowerCase().includes(searchLower) ||
+      mission.interpreter_profiles?.first_name.toLowerCase().includes(searchLower) ||
+      mission.interpreter_profiles?.last_name.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -438,29 +480,60 @@ export const MissionManagement = () => {
                 </div>
               </>
             ) : (
-              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled_start">Date et heure de début</Label>
-                  <Input
-                    id="scheduled_start"
-                    type="datetime-local"
-                    value={scheduledStartTime}
-                    onChange={(e) => setScheduledStartTime(e.target.value)}
-                    required
-                  />
+              <>
+                <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_start">Date et heure de début</Label>
+                    <Input
+                      id="scheduled_start"
+                      type="datetime-local"
+                      value={scheduledStartTime}
+                      onChange={(e) => setScheduledStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_end">Date et heure de fin</Label>
+                    <Input
+                      id="scheduled_end"
+                      type="datetime-local"
+                      value={scheduledEndTime}
+                      onChange={(e) => setScheduledEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source_language">Langue source</Label>
+                    <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une langue" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="target_language">Langue cible</Label>
+                    <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une langue" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled_end">Date et heure de fin</Label>
-                  <Input
-                    id="scheduled_end"
-                    type="datetime-local"
-                    value={scheduledEndTime}
-                    onChange={(e) => setScheduledEndTime(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -544,9 +617,20 @@ export const MissionManagement = () => {
       </Card>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Liste des missions</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Liste des missions</h3>
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+        </div>
         <div className="space-y-4">
-          {missions.map((mission) => (
+          {filteredMissions.map((mission) => (
             <Card key={mission.id} className="p-4">
               <div className="flex justify-between items-start">
                 <div>
