@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface PresenceState {
   online: boolean;
   lastSeen?: string;
+}
+
+interface UserPresence {
+  user_id: string;
+  online_at: string;
 }
 
 export const usePresence = (userId: string, roomId: string) => {
@@ -20,9 +25,22 @@ export const usePresence = (userId: string, roomId: string) => {
     try {
       channelRef.current = supabase.channel(`presence_${roomId}`)
         .on('presence', { event: 'sync' }, () => {
-          const state = channelRef.current?.presenceState() || {};
-          console.log('[Presence] Sync state:', state);
-          setPresenceState(state as Record<string, PresenceState>);
+          const presenceData = channelRef.current?.presenceState() || {};
+          console.log('[Presence] Sync state:', presenceData);
+          
+          // Transform the presence data to match our PresenceState interface
+          const transformedState: Record<string, PresenceState> = {};
+          Object.entries(presenceData).forEach(([key, value]) => {
+            const presences = value as UserPresence[];
+            if (presences.length > 0) {
+              transformedState[key] = {
+                online: true,
+                lastSeen: presences[0].online_at
+              };
+            }
+          });
+          
+          setPresenceState(transformedState);
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
           console.log('[Presence] Join:', key, newPresences);
