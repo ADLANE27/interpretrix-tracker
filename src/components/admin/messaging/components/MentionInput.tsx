@@ -105,13 +105,12 @@ export const MentionInput = ({
       setUsers(usersWithRoles);
 
       if (isAdmin) {
-        // Extract and count target languages from interpreter profiles
+        // Extract target languages from interpreter profiles
         const targetLanguages = new Map<string, number>();
         
         interpreters?.forEach(interpreter => {
           if (interpreter.languages) {
             interpreter.languages.forEach(langPair => {
-              // Split on arrow and trim whitespace
               const parts = langPair.split('→').map(s => s.trim());
               if (parts.length === 2) {
                 const target = parts[1];
