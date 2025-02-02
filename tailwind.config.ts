@@ -20,7 +20,7 @@ export default {
     extend: {
       colors: {
         chat: {
-          sidebar: "#1A1F2C",
+          sidebar: "#2D3748", // Changed from #1A1F2C to a lighter grey
           hover: "#F1F0FB",
           selected: "#4A69FF",
           messageHover: "rgba(74, 105, 255, 0.1)",
@@ -31,9 +31,9 @@ export default {
           channelBorder: "#E5E7EB",
           searchBg: "rgba(255, 255, 255, 0.1)",
           searchText: "#FFFFFF",
-          channelCount: "#FFFFFF", // Changed to pure white for maximum contrast
-          sidebarText: "#FFFFFF", // Changed to pure white for maximum contrast
-          sidebarHeading: "#FFFFFF", // Changed to pure white for maximum contrast
+          channelCount: "#FFFFFF",
+          sidebarText: "#FFFFFF",
+          sidebarHeading: "#FFFFFF",
         },
         interpreter: {
           navy: "#1a365d",
