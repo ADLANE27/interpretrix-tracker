@@ -37,7 +37,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   email: string;
-  isAdmin?: boolean;
+  isAdmin: boolean;
 }
 
 interface ChatHistory {
@@ -85,8 +85,8 @@ export const MessagingTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setCurrentUserId(user.id);
-        fetchChannels();
-        fetchChatHistory();
+        await fetchChannels();
+        await fetchChatHistory();
       }
     };
 
@@ -105,24 +105,59 @@ export const MessagingTab = () => {
 
       if (msgError) throw msgError;
 
-      const uniqueInterpreterIds = new Set<string>();
+      const uniqueUserIds = new Set<string>();
       messageUsers?.forEach(msg => {
         const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
-        uniqueInterpreterIds.add(otherId);
+        uniqueUserIds.add(otherId);
       });
+
+      // Fetch admin roles for these users
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', Array.from(uniqueUserIds))
+        .eq('role', 'admin');
+
+      if (rolesError) throw rolesError;
+
+      const adminIds = new Set(userRoles?.map(role => role.user_id) || []);
 
       const { data: profiles, error: profileError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
-        .in('id', Array.from(uniqueInterpreterIds));
+        .in('id', Array.from(uniqueUserIds));
 
       if (profileError) throw profileError;
 
-      const history: ChatHistory[] = profiles?.map(profile => ({
-        id: profile.id,
-        name: `${profile.first_name} ${profile.last_name}`,
-        unreadCount: 0
-      })) || [];
+      const history: ChatHistory[] = [];
+
+      // Add interpreter profiles
+      profiles?.forEach(profile => {
+        history.push({
+          id: profile.id,
+          name: `${profile.first_name} ${profile.last_name}`,
+          unreadCount: 0,
+          isAdmin: adminIds.has(profile.id)
+        });
+      });
+
+      // Add admin profiles that might not be in interpreter_profiles
+      for (const adminId of adminIds) {
+        if (!profiles?.some(p => p.id === adminId)) {
+          const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
+            body: { userId: adminId }
+          });
+          
+          if (adminInfo) {
+            history.push({
+              id: adminId,
+              name: `${adminInfo.first_name} ${adminInfo.last_name} (Admin)`,
+              unreadCount: 0,
+              isAdmin: true
+            });
+          }
+        }
+      }
 
       setChatHistory(history);
     } catch (error) {
@@ -142,55 +177,38 @@ export const MessagingTab = () => {
     }
 
     try {
-      // First, search for interpreters
-      const { data: interpreterData, error: interpreterError } = await supabase
-        .from("interpreter_profiles")
-        .select("id, first_name, last_name, email")
-        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`);
-
-      if (interpreterError) throw interpreterError;
-
-      // Then, search for admins
-      const { data: adminData, error: adminError } = await supabase
-        .from("user_roles")
-        .select(`
-          user_id,
-          users:user_id (
-            email
-          )
-        `)
-        .eq('role', 'admin')
-        .textSearch('users.email', term);
+      // Search for admins
+      const { data: adminRoles, error: adminError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
 
       if (adminError) throw adminError;
 
-      // For admins found, get their details from the get-user-info function
-      const adminProfiles = await Promise.all(
-        adminData.map(async (admin: any) => {
-          try {
-            const { data, error } = await supabase.functions.invoke('get-user-info', {
-              body: { userId: admin.user_id }
-            });
+      const adminIds = adminRoles?.map(role => role.user_id) || [];
 
-            if (error) throw error;
+      // Get admin details
+      const adminProfiles: Interpreter[] = [];
+      for (const adminId of adminIds) {
+        const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
+          body: { userId: adminId }
+        });
 
-            return {
-              id: admin.user_id,
-              first_name: data.first_name || 'Admin',
-              last_name: data.last_name || '',
-              email: admin.users.email,
-              isAdmin: true
-            };
-          } catch (error) {
-            console.error('Error fetching admin info:', error);
-            return null;
-          }
-        })
-      );
+        if (adminInfo && (
+          adminInfo.first_name.toLowerCase().includes(term.toLowerCase()) ||
+          adminInfo.last_name.toLowerCase().includes(term.toLowerCase())
+        )) {
+          adminProfiles.push({
+            id: adminId,
+            first_name: adminInfo.first_name,
+            last_name: adminInfo.last_name,
+            email: adminInfo.email || '',
+            isAdmin: true
+          });
+        }
+      }
 
-      // Combine and filter out any null results from failed admin fetches
-      const validAdminProfiles = adminProfiles.filter((profile): profile is Interpreter => profile !== null);
-      setInterpreters([...interpreterData || [], ...validAdminProfiles]);
+      setInterpreters(adminProfiles);
 
     } catch (error) {
       console.error("Error searching users:", error);
@@ -425,6 +443,7 @@ export const MessagingTab = () => {
                           if (!chatHistory.some(chat => chat.id === user.id)) {
                             setChatHistory(prev => [...prev, newChat]);
                           }
+                          fetchDirectMessages(user.id);
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
@@ -448,6 +467,7 @@ export const MessagingTab = () => {
                         onClick={() => {
                           setSelectedInterpreter(chat.id);
                           setSelectedChannel(null);
+                          fetchDirectMessages(chat.id);
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
