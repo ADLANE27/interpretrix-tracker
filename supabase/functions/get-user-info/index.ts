@@ -7,6 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -23,14 +24,35 @@ serve(async (req) => {
       throw new Error('userId is required')
     }
 
+    console.log('Fetching user info for userId:', userId)
+
+    // First try to get interpreter profile
+    const { data: interpreterProfile, error: interpreterError } = await supabaseClient
+      .from('interpreter_profiles')
+      .select('first_name, last_name')
+      .eq('id', userId)
+      .single()
+
+    if (interpreterProfile) {
+      console.log('Found interpreter profile:', interpreterProfile)
+      return new Response(
+        JSON.stringify(interpreterProfile),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    // If no interpreter profile found, get admin info from auth.users
     const { data: { user }, error: userError } = await supabaseClient.auth.admin.getUserById(userId)
     
     if (userError) throw userError
 
+    console.log('Found user in auth.users:', user)
+
     return new Response(
       JSON.stringify({
-        email: user?.email || '',
-        first_name: user?.user_metadata?.first_name || '',
+        first_name: user?.user_metadata?.first_name || 'Admin',
         last_name: user?.user_metadata?.last_name || '',
       }),
       {
@@ -38,6 +60,7 @@ serve(async (req) => {
       },
     )
   } catch (error) {
+    console.error('Error in get-user-info:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {

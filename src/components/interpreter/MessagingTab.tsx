@@ -145,23 +145,20 @@ export const MessagingTab = () => {
       if (remainingSenderIds.length > 0) {
         for (const senderId of remainingSenderIds) {
           try {
-            const response = await fetch(`${window.location.origin}/functions/v1/get-user-info`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-              },
-              body: JSON.stringify({ userId: senderId })
+            const { data, error } = await supabase.functions.invoke('get-user-info', {
+              body: { userId: senderId }
             });
 
-            if (response.ok) {
-              const userData = await response.json();
-              profileMap[senderId] = {
-                id: senderId,
-                first_name: userData.first_name || 'Admin',
-                last_name: userData.last_name || ''
-              };
+            if (error) {
+              console.error('Error fetching user info:', error);
+              continue;
             }
+
+            profileMap[senderId] = {
+              id: senderId,
+              first_name: data.first_name || 'Admin',
+              last_name: data.last_name || ''
+            };
           } catch (error) {
             console.error('Error fetching admin user info:', error);
           }
