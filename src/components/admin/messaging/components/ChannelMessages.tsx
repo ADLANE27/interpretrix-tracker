@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send } from "lucide-react";
+import { Send, MessageSquare } from "lucide-react";
+import { ThreadView } from "./ThreadView";
 
 interface Message {
   id: string;
@@ -12,6 +13,7 @@ interface Message {
   sender_id: string;
   created_at: string;
   sender_name?: string;
+  reply_count: number;
 }
 
 interface ChannelMessagesProps {
@@ -23,6 +25,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedThread, setSelectedThread] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -36,6 +39,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
     initializeUser();
     fetchMessages();
+    
     const channel = supabase
       .channel(`messages-${channelId}`)
       .on(
@@ -46,10 +50,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           table: 'messages',
           filter: `channel_id=eq.${channelId}`,
         },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
-          scrollToBottom();
+        () => {
+          fetchMessages();
         }
       )
       .subscribe();
@@ -70,6 +72,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Fetch messages
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
@@ -79,9 +82,24 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           created_at
         `)
         .eq("channel_id", channelId)
+        .is("parent_id", null)
         .order("created_at", { ascending: true });
 
       if (messagesError) throw messagesError;
+
+      // Get reply counts for each message
+      const replyCounts = new Map<string, number>();
+      const { data: replyCountsData, error: replyCountsError } = await supabase
+        .from("messages")
+        .select("parent_id, count")
+        .not("parent_id", "is", null)
+        .eq("channel_id", channelId);
+
+      if (replyCountsError) throw replyCountsError;
+
+      replyCountsData?.forEach((row: any) => {
+        replyCounts.set(row.parent_id, parseInt(row.count));
+      });
 
       // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
@@ -108,7 +126,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      // For admin users, get their info from auth.users via Edge Function
+      // For admin users, get their info from Edge Function
       const adminIds = userRoles?.map(r => r.user_id) || [];
       const adminNames = new Map();
 
@@ -127,12 +145,13 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         }
       }
 
-      // Combine messages with sender names
+      // Combine messages with sender names and reply counts
       const messagesWithNames = messagesData?.map(message => ({
         ...message,
         sender_name: interpreterNames.get(message.sender_id) || 
                     adminNames.get(message.sender_id) ||
-                    "Unknown User"
+                    "Unknown User",
+        reply_count: replyCounts.get(message.id) || 0
       }));
 
       setMessages(messagesWithNames || []);
@@ -178,55 +197,77 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   };
 
   return (
-    <div className="h-[600px] flex flex-col">
-      <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
-        <div className="space-y-4">
-          {messages.map((message) => {
-            const isCurrentUser = message.sender_id === currentUserId;
-            return (
-              <div
-                key={message.id}
-                className={`flex flex-col space-y-1 ${
-                  isCurrentUser ? 'items-end' : 'items-start'
-                }`}
-              >
-                <div className="text-sm font-medium">
-                  {message.sender_name}
-                </div>
-                <div 
-                  className={`p-3 rounded-lg max-w-[80%] ${
-                    isCurrentUser 
-                      ? 'bg-interpreter-navy text-white' 
-                      : 'bg-secondary'
+    <div className="h-[600px] grid grid-cols-3 gap-4">
+      <div className={`col-span-${selectedThread ? '2' : '3'} flex flex-col`}>
+        <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+          <div className="space-y-4">
+            {messages.map((message) => {
+              const isCurrentUser = message.sender_id === currentUserId;
+              return (
+                <div
+                  key={message.id}
+                  className={`flex flex-col space-y-1 ${
+                    isCurrentUser ? 'items-end' : 'items-start'
                   }`}
                 >
-                  {message.content}
+                  <div className="text-sm font-medium">
+                    {message.sender_name}
+                  </div>
+                  <div 
+                    className={`p-3 rounded-lg max-w-[80%] ${
+                      isCurrentUser 
+                        ? 'bg-interpreter-navy text-white' 
+                        : 'bg-secondary'
+                    }`}
+                  >
+                    {message.content}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{new Date(message.created_at).toLocaleString()}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => setSelectedThread(message)}
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      {message.reply_count > 0 && (
+                        <span>{message.reply_count}</span>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {new Date(message.created_at).toLocaleString()}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
+              );
+            })}
+          </div>
+        </ScrollArea>
 
-      <div className="flex gap-2 mt-4">
-        <Input
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type your message..."
-          onKeyPress={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-        />
-        <Button onClick={sendMessage} disabled={isLoading}>
-          <Send className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2 mt-4">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type your message..."
+            onKeyPress={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+          />
+          <Button onClick={sendMessage} disabled={isLoading}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
+
+      {selectedThread && (
+        <div className="col-span-1 border-l">
+          <ThreadView
+            parentMessage={selectedThread}
+            onClose={() => setSelectedThread(null)}
+          />
+        </div>
+      )}
     </div>
   );
 };
