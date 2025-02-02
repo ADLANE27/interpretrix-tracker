@@ -153,11 +153,12 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Delete all messages between the two users (both sent and received)
+      // Delete all messages where either user is sender or recipient
       const { error } = await supabase
         .from('direct_messages')
         .delete()
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`);
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .or(`sender_id.eq.${chatId},recipient_id.eq.${chatId}`);
 
       if (error) throw error;
 
