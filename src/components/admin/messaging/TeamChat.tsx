@@ -35,6 +35,8 @@ export const TeamChat = () => {
   const { channelId } = useParams();
   const [newMessage, setNewMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -70,7 +72,7 @@ export const TeamChat = () => {
         .order("created_at");
       
       if (error) throw error;
-      return data as unknown as Message[];
+      return data as Message[];
     },
     enabled: !!channelId,
   });
@@ -101,6 +103,55 @@ export const TeamChat = () => {
       newChannel.unsubscribe();
     };
   }, [channelId, queryClient]);
+
+  const handleEditStart = (messageId: string, content: string) => {
+    setEditingMessage(messageId);
+    setEditContent(content);
+  };
+
+  const handleEditCancel = () => {
+    setEditingMessage(null);
+    setEditContent("");
+  };
+
+  const handleEditSave = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .update({ content: editContent })
+        .eq("id", messageId);
+
+      if (error) throw error;
+
+      setEditingMessage(null);
+      setEditContent("");
+    } catch (error: any) {
+      console.error("Error updating message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleMention = async (mentionData: { type: "user" | "language", value: string }) => {
     if (!selectedChannel) return;
@@ -248,7 +299,17 @@ export const TeamChat = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4">
-        <MessageList messages={messages || []} />
+        <MessageList 
+          messages={messages || []}
+          selectedInterpreter=""
+          editingMessage={editingMessage}
+          editContent={editContent}
+          onEditStart={handleEditStart}
+          onEditCancel={handleEditCancel}
+          onEditSave={handleEditSave}
+          onEditChange={setEditContent}
+          onDeleteMessage={handleDeleteMessage}
+        />
         <div ref={messagesEndRef} />
       </div>
       <div className="p-4 border-t">
