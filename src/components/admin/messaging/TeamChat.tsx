@@ -28,7 +28,16 @@ export const TeamChat = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     fetchChannels();
@@ -113,8 +122,7 @@ export const TeamChat = () => {
     });
   };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const presenceState = usePresence(user?.id || '', 'team-chat');
+  const presenceState = usePresence(currentUser?.id || '', 'team-chat');
   
   useRealtimeSubscription({
     channel: 'team-chat',

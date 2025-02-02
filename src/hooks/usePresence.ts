@@ -22,7 +22,7 @@ export const usePresence = (userId: string, roomId: string) => {
         .on('presence', { event: 'sync' }, () => {
           const state = channelRef.current?.presenceState() || {};
           console.log('[Presence] Sync state:', state);
-          setPresenceState(state);
+          setPresenceState(state as Record<string, PresenceState>);
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
           console.log('[Presence] Join:', key, newPresences);
@@ -34,7 +34,7 @@ export const usePresence = (userId: string, roomId: string) => {
       channelRef.current.subscribe(async (status) => {
         console.log('[Presence] Subscription status:', status);
         
-        if (status === 'SUBSCRIBED') {
+        if (status === 'SUBSCRIBED' && userId) {
           await channelRef.current?.track({
             user_id: userId,
             online_at: new Date().toISOString(),
@@ -60,7 +60,9 @@ export const usePresence = (userId: string, roomId: string) => {
   };
 
   useEffect(() => {
-    setupPresence();
+    if (userId) {
+      setupPresence();
+    }
     
     return () => {
       console.log('[Presence] Cleaning up presence');
