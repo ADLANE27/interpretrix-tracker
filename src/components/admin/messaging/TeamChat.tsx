@@ -13,9 +13,13 @@ interface Message {
   content: string;
   created_at: string;
   sender_id: string;
-  channel_id: string;
+  channel_id?: string;
   recipient_id?: string;
   read_at?: string;
+  attachment_url?: string;
+  attachment_name?: string;
+  parent_id?: string;
+  updated_at: string;
   sender?: {
     first_name: string;
     last_name: string;
@@ -98,19 +102,27 @@ export const TeamChat = () => {
     };
   }, [channelId, queryClient]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const handleMention = async (mentionData: { type: "user" | "language", value: string }) => {
     if (!selectedChannel) return;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    // First create the message
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .insert({
+        content: newMessage,
+        channel_id: channelId,
+        sender_id: user.id
+      })
+      .select()
+      .single();
+
+    if (messageError || !message) {
+      console.error("Error creating message:", messageError);
+      return;
+    }
 
     if (mentionData.type === "language") {
       // Only query interpreters (excluding admins) for language mentions
@@ -130,22 +142,6 @@ export const TeamChat = () => {
 
       if (error) {
         console.error("Error fetching interpreters:", error);
-        return;
-      }
-
-      // First create the message
-      const { data: message, error: messageError } = await supabase
-        .from("messages")
-        .insert({
-          content: newMessage,
-          channel_id: channelId,
-          sender_id: user.id
-        })
-        .select()
-        .single();
-
-      if (messageError || !message) {
-        console.error("Error creating message:", messageError);
         return;
       }
 
@@ -174,22 +170,6 @@ export const TeamChat = () => {
         return;
       }
 
-      // First create the message
-      const { data: message, error: messageError } = await supabase
-        .from("messages")
-        .insert({
-          content: newMessage,
-          channel_id: channelId,
-          sender_id: user.id
-        })
-        .select()
-        .single();
-
-      if (messageError || !message) {
-        console.error("Error creating message:", messageError);
-        return;
-      }
-
       const { error: mentionError } = await supabase
         .from("message_mentions")
         .insert({
@@ -201,6 +181,8 @@ export const TeamChat = () => {
         console.error("Error creating mention:", mentionError);
       }
     }
+
+    setNewMessage("");
   };
 
   const handleSendMessage = async () => {
@@ -236,6 +218,14 @@ export const TeamChat = () => {
       setIsSubmitting(false);
     }
   };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   if (!channelId) {
     return (
