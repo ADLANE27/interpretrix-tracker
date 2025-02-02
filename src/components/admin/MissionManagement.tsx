@@ -282,47 +282,125 @@ export const MissionManagement = () => {
 
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[MissionManagement] Creating new mission...');
+    console.log('[MissionManagement] Starting mission creation process...');
     
-    if (selectedInterpreters.length === 0) {
-      console.log('[MissionManagement] No interpreters selected');
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner au moins un interprète",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (missionType === 'scheduled' && (!scheduledStartTime || !scheduledEndTime)) {
-      console.log('[MissionManagement] Missing scheduled times');
-      toast({
-        title: "Erreur",
-        description: "Veuillez spécifier les horaires de la mission programmée",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    let calculatedDuration = parseInt(estimatedDuration);
-    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-      calculatedDuration = differenceInMinutes(
-        new Date(scheduledEndTime),
-        new Date(scheduledStartTime)
-      );
-      
-      if (calculatedDuration <= 0) {
-        console.log('[MissionManagement] Invalid duration');
+    try {
+      // Validation checks
+      if (selectedInterpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters selected');
         toast({
-          title: "Erreur",
-          description: "La date de fin doit être postérieure à la date de début",
+          title: "Erreur de validation",
+          description: "Veuillez sélectionner au moins un interprète",
           variant: "destructive",
         });
         return;
       }
-    }
 
-    try {
+      if (!sourceLanguage || !targetLanguage) {
+        console.log('[MissionManagement] Missing language selection');
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez sélectionner les langues source et cible",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (missionType === 'scheduled') {
+        if (!scheduledStartTime || !scheduledEndTime) {
+          console.log('[MissionManagement] Missing scheduled times');
+          toast({
+            title: "Erreur de validation",
+            description: "Veuillez spécifier les horaires de la mission programmée",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const startDate = new Date(scheduledStartTime);
+        const endDate = new Date(scheduledEndTime);
+        const now = new Date();
+
+        if (startDate < now) {
+          console.log('[MissionManagement] Start time is in the past');
+          toast({
+            title: "Erreur de validation",
+            description: "La date de début ne peut pas être dans le passé",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (endDate <= startDate) {
+          console.log('[MissionManagement] Invalid time range');
+          toast({
+            title: "Erreur de validation",
+            description: "La date de fin doit être postérieure à la date de début",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
+        console.log('[MissionManagement] Invalid duration');
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez spécifier une durée valide pour la mission",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Calculate duration
+      let calculatedDuration = parseInt(estimatedDuration);
+      if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        calculatedDuration = differenceInMinutes(
+          new Date(scheduledEndTime),
+          new Date(scheduledStartTime)
+        );
+      }
+
+      // Verify interpreter availability one last time
+      for (const interpreterId of selectedInterpreters) {
+        if (missionType === 'scheduled') {
+          const isAvailable = await isInterpreterAvailableForScheduledMission(
+            interpreterId,
+            scheduledStartTime,
+            scheduledEndTime,
+            supabase
+          );
+
+          if (!isAvailable) {
+            const interpreter = availableInterpreters.find(i => i.id === interpreterId);
+            console.log(`[MissionManagement] Interpreter ${interpreterId} has a scheduling conflict`);
+            toast({
+              title: "Conflit d'horaire détecté",
+              description: `L'interprète ${interpreter?.first_name} ${interpreter?.last_name} a un conflit d'horaire`,
+              variant: "destructive",
+            });
+            return;
+          }
+        } else {
+          const { data: interpreter } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', interpreterId)
+            .single();
+
+          if (!interpreter || interpreter.status !== 'available') {
+            console.log(`[MissionManagement] Interpreter ${interpreterId} is no longer available`);
+            toast({
+              title: "Interprète non disponible",
+              description: "Un ou plusieurs interprètes sélectionnés ne sont plus disponibles",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+
+      // Prepare mission data
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
@@ -338,18 +416,23 @@ export const MissionManagement = () => {
         scheduled_end_time: missionType === 'scheduled' ? scheduledEndTime : null
       };
 
-      console.log('[MissionManagement] Creating mission with data:', newMissionData);
+      console.log('[MissionManagement] Creating new mission with data:', newMissionData);
 
+      // Create mission
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert(newMissionData)
         .select()
         .single();
 
-      if (missionError) throw missionError;
+      if (missionError) {
+        console.error('[MissionManagement] Error creating mission:', missionError);
+        throw missionError;
+      }
 
-      console.log('[MissionManagement] Mission created:', createdMission);
+      console.log('[MissionManagement] Mission created successfully:', createdMission);
 
+      // Create notifications
       const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: createdMission.id,
         interpreter_id: interpreter,
@@ -360,14 +443,12 @@ export const MissionManagement = () => {
         .from("mission_notifications")
         .insert(notifications);
 
-      if (notificationError) throw notificationError;
+      if (notificationError) {
+        console.error('[MissionManagement] Error creating notifications:', notificationError);
+        throw notificationError;
+      }
 
       console.log('[MissionManagement] Notifications created successfully');
-      
-      toast({
-        title: "Succès",
-        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
-      });
 
       // Reset form
       setSourceLanguage("");
@@ -378,13 +459,20 @@ export const MissionManagement = () => {
       setMissionType('immediate');
       setScheduledStartTime("");
       setScheduledEndTime("");
-      
+
+      toast({
+        title: "Mission créée avec succès",
+        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
+      });
+
+      // Refresh missions list
       fetchMissions();
+
     } catch (error) {
-      console.error('[MissionManagement] Error creating mission:', error);
+      console.error('[MissionManagement] Error in createMission:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer la mission",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la création de la mission",
         variant: "destructive",
       });
     }
