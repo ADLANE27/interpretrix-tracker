@@ -270,7 +270,7 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
       const { data: mentions, error } = await supabase
         .from('message_mentions')
         .select('*')
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`)
+        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`)
         .is('read_at', null);
 
       if (error) {
