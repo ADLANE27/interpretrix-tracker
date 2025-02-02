@@ -18,6 +18,7 @@ import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 import { useNavigate } from "react-router-dom";
 import { MessageSquare } from "lucide-react";
+import type { Json } from "@/integrations/supabase/types";
 
 interface UserData {
   id: string;

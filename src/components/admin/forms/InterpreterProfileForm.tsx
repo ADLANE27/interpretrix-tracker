@@ -22,7 +22,7 @@ interface Address {
 
 interface InterpreterProfileFormProps {
   isEditing: boolean;
-  onSubmit: (data: InterpreterFormData) => void;
+  onSubmit: (data: InterpreterFormData & { address: Json }) => void;
   initialData?: Partial<InterpreterFormData>;
   isSubmitting?: boolean;
 }
@@ -102,12 +102,10 @@ export const InterpreterProfileForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Convert address to Json type before submitting
-    const submissionData = {
+    onSubmit({
       ...formData,
       address: formData.address as unknown as Json,
-    };
-    onSubmit(submissionData);
+    });
   };
 
   return (
@@ -269,4 +267,3 @@ export const InterpreterProfileForm = ({
       </button>
     </form>
   );
-};
