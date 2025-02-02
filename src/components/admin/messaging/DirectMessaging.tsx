@@ -153,28 +153,9 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('Deleting chat between users:', user.id, 'and', chatId);
+      console.log('Attempting to delete chat between users:', user.id, 'and', chatId);
 
-      // First verify if there are messages to delete
-      const { data: messagesToDelete, error: checkError } = await supabase
-        .from('direct_messages')
-        .select('id')
-        .or(
-          `and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),` +
-          `and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`
-        );
-
-      if (checkError) {
-        console.error('Error checking messages:', checkError);
-        throw checkError;
-      }
-
-      if (!messagesToDelete || messagesToDelete.length === 0) {
-        console.log('No messages found to delete');
-        return;
-      }
-
-      // Delete the messages
+      // Delete all messages between these users
       const { error: deleteError } = await supabase
         .from('direct_messages')
         .delete()
@@ -188,49 +169,23 @@ export const DirectMessaging = () => {
         throw deleteError;
       }
 
-      // Verify deletion was successful
-      const { data: remainingMessages, error: verifyError } = await supabase
-        .from('direct_messages')
-        .select('id')
-        .or(
-          `and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),` +
-          `and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`
-        );
-
-      if (verifyError) {
-        console.error('Error verifying deletion:', verifyError);
-        throw verifyError;
+      // Remove from local state
+      setChatHistory(prevHistory => prevHistory.filter(chat => chat.id !== chatId));
+      
+      if (selectedInterpreter === chatId) {
+        setSelectedInterpreter(null);
       }
 
-      if (!remainingMessages || remainingMessages.length === 0) {
-        // Only update state if deletion was successful
-        setChatHistory(prevHistory => prevHistory.filter(chat => chat.id !== chatId));
-        
-        if (selectedInterpreter === chatId) {
-          setSelectedInterpreter(null);
-        }
-
-        toast({
-          title: "Conversation supprimée",
-          description: "La conversation a été supprimée avec succès",
-        });
-
-        // Force refresh chat history
-        await fetchChatHistory();
-      } else {
-        console.error('Messages still exist after deletion');
-        toast({
-          title: "Erreur",
-          description: "La suppression n'a pas pu être effectuée complètement",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Conversation supprimée",
+        description: "La conversation a été supprimée avec succès",
+      });
 
     } catch (error) {
       console.error("Error deleting chat:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer la conversation",
+        description: "La suppression n'a pas pu être effectuée complètement",
         variant: "destructive",
       });
     } finally {
