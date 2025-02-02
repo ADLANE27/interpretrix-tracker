@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { Languages } from "lucide-react";
 
 interface MentionInputProps {
   value: string;
   onChange: (value: string) => void;
   onMention?: (userId: string) => void;
+  onLanguageMention?: (language: string) => void;
   className?: string;
   placeholder?: string;
 }
@@ -19,38 +21,66 @@ interface User {
   isAdmin?: boolean;
 }
 
+interface LanguageCount {
+  language: string;
+  count: number;
+}
+
 export const MentionInput = ({
   value,
   onChange,
   onMention,
+  onLanguageMention,
   className = "",
   placeholder = "Type your message..."
 }: MentionInputProps) => {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
+  const [languages, setLanguages] = useState<LanguageCount[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, []);
 
   useEffect(() => {
     if (showMentions) {
-      fetchUsers();
+      fetchUsersAndLanguages();
     }
   }, [showMentions, mentionSearch]);
 
-  const fetchUsers = async () => {
+  const checkAdminStatus = async () => {
     try {
-      console.log('Fetching users with search term:', mentionSearch);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      setIsAdmin(userRole?.role === 'admin');
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+    }
+  };
+
+  const fetchUsersAndLanguages = async () => {
+    try {
+      console.log('Fetching users and languages with search term:', mentionSearch);
       
       // First get interpreter profiles that match the search
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
-        .select('id, first_name, last_name, email')
-        .or(`first_name.ilike.%${mentionSearch}%,last_name.ilike.%${mentionSearch}%`)
-        .limit(5);
+        .select('id, first_name, last_name, email, languages')
+        .or(`first_name.ilike.%${mentionSearch}%,last_name.ilike.%${mentionSearch}%`);
 
       if (interpreterError) throw interpreterError;
 
-      // Then get admin roles
+      // Get admin roles
       const { data: adminRoles, error: adminError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -67,8 +97,31 @@ export const MentionInput = ({
       })) || [];
 
       setUsers(usersWithRoles);
+
+      // If user is admin, fetch language counts
+      if (isAdmin) {
+        // Get all unique target languages and count interpreters for each
+        const languageCounts = new Map<string, number>();
+        interpreters?.forEach(interpreter => {
+          interpreter.languages.forEach((lang: string) => {
+            const target = lang.split(' → ')[1]?.toLowerCase();
+            if (target) {
+              if (!mentionSearch || target.includes(mentionSearch.toLowerCase())) {
+                languageCounts.set(target, (languageCounts.get(target) || 0) + 1);
+              }
+            }
+          });
+        });
+
+        const languageList = Array.from(languageCounts.entries()).map(([language, count]) => ({
+          language,
+          count
+        }));
+
+        setLanguages(languageList);
+      }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching users and languages:', error);
     }
   };
 
@@ -95,15 +148,26 @@ export const MentionInput = ({
     onChange(newValue);
   };
 
-  const handleMentionClick = (user: User) => {
+  const handleMentionClick = (item: User | LanguageCount) => {
     const beforeMention = value.slice(0, value.lastIndexOf('@'));
     const afterMention = value.slice(cursorPosition);
-    const newValue = `${beforeMention}@${user.first_name} ${user.last_name}${afterMention}`;
-    onChange(newValue);
-    setShowMentions(false);
-    if (onMention) {
-      onMention(user.id);
+    
+    if ('first_name' in item) {
+      // User mention
+      const newValue = `${beforeMention}@${item.first_name} ${item.last_name}${afterMention}`;
+      onChange(newValue);
+      if (onMention) {
+        onMention(item.id);
+      }
+    } else {
+      // Language mention
+      const newValue = `${beforeMention}@${item.language}${afterMention}`;
+      onChange(newValue);
+      if (onLanguageMention) {
+        onLanguageMention(item.language);
+      }
     }
+    setShowMentions(false);
   };
 
   return (
@@ -135,9 +199,26 @@ export const MentionInput = ({
                   <span className="text-xs text-gray-500">{user.email}</span>
                 </button>
               ))}
-              {users.length === 0 && (
+              
+              {isAdmin && languages.map((lang) => (
+                <button
+                  key={lang.language}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md flex items-center justify-between bg-gray-50"
+                  onClick={() => handleMentionClick(lang)}
+                >
+                  <span className="flex items-center">
+                    <Languages className="h-4 w-4 mr-2 text-gray-500" />
+                    {lang.language}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {lang.count} interpreter{lang.count !== 1 ? 's' : ''}
+                  </span>
+                </button>
+              ))}
+              
+              {users.length === 0 && languages.length === 0 && (
                 <div className="text-center text-gray-500 py-2">
-                  No users found
+                  No results found
                 </div>
               )}
             </div>
