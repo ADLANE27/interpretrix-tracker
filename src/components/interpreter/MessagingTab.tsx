@@ -8,6 +8,7 @@ import { Search, MessageSquare, Users } from "lucide-react";
 import { MessageList } from "./messages/MessageList";
 import { MessageInput } from "./messages/MessageInput";
 import { ChannelList } from "./messages/ChannelList";
+import { Button } from "@/components/ui/button";
 
 interface Channel {
   id: string;
@@ -31,10 +32,18 @@ interface Message {
   attachment_name?: string | null;
 }
 
-interface SenderProfile {
+interface Interpreter {
+  id: string;
   first_name: string;
   last_name: string;
+  email: string;
+}
+
+interface ChatHistory {
   id: string;
+  name: string;
+  lastMessage?: string;
+  unreadCount: number;
 }
 
 export const MessagingTab = () => {
@@ -44,7 +53,11 @@ export const MessagingTab = () => {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [senderProfiles, setSenderProfiles] = useState<Record<string, SenderProfile>>({});
+  const [senderProfiles, setSenderProfiles] = useState<Record<string, { first_name: string; last_name: string; id: string; }>>({});
+  const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
+  const [directMessages, setDirectMessages] = useState<Message[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,11 +66,77 @@ export const MessagingTab = () => {
       if (user) {
         setCurrentUserId(user.id);
         fetchChannels();
+        fetchChatHistory();
       }
     };
 
     initializeUser();
   }, []);
+
+  const fetchChatHistory = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: messageUsers, error: msgError } = await supabase
+        .from('direct_messages')
+        .select('sender_id, recipient_id')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+      if (msgError) throw msgError;
+
+      const uniqueInterpreterIds = new Set<string>();
+      messageUsers?.forEach(msg => {
+        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        uniqueInterpreterIds.add(otherId);
+      });
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', Array.from(uniqueInterpreterIds));
+
+      if (profileError) throw profileError;
+
+      const history: ChatHistory[] = profiles?.map(profile => ({
+        id: profile.id,
+        name: `${profile.first_name} ${profile.last_name}`,
+        unreadCount: 0
+      })) || [];
+
+      setChatHistory(history);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger l'historique des conversations",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchDirectMessages = async (interpreterId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setDirectMessages(data || []);
+    } catch (error) {
+      console.error("Error fetching direct messages:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les messages",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchChannels = async () => {
     try {
@@ -116,7 +195,7 @@ export const MessagingTab = () => {
       const senderIds = [...new Set((messages || []).map(msg => msg.sender_id))];
       
       // Create a map to store all sender profiles
-      const profileMap: Record<string, SenderProfile> = {};
+      const profileMap: Record<string, { first_name: string; last_name: string; id: string; }> = {};
 
       // First, try to fetch interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
@@ -201,6 +280,30 @@ export const MessagingTab = () => {
     }
   };
 
+  const sendDirectMessage = async (content: string) => {
+    if (!content.trim() || !selectedInterpreter) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error } = await supabase.from("direct_messages").insert({
+        content: content.trim(),
+        recipient_id: selectedInterpreter,
+        sender_id: user.id,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!selectedChannel) return;
 
@@ -267,33 +370,33 @@ export const MessagingTab = () => {
   };
 
   useEffect(() => {
-    if (selectedChannel) {
-      fetchChannelMessages(selectedChannel);
+    if (selectedInterpreter) {
+      fetchDirectMessages(selectedInterpreter);
       
       const channel = supabase
-        .channel(`channel-${selectedChannel}`)
+        .channel(`direct-messages-${selectedInterpreter}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
-            table: 'messages',
-            filter: `channel_id=eq.${selectedChannel}`,
+            table: 'direct_messages',
+            filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${selectedInterpreter}),and(sender_id.eq.${selectedInterpreter},recipient_id.eq.${currentUserId}))`,
           },
           (payload) => {
-            console.log('Channel message update received:', payload);
-            fetchChannelMessages(selectedChannel);
+            console.log('Direct message update received:', payload);
+            fetchDirectMessages(selectedInterpreter);
           }
         )
         .subscribe((status) => {
-          console.log('Channel messages subscription status:', status);
+          console.log('Direct messages subscription status:', status);
         });
 
       return () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [selectedChannel]);
+  }, [selectedInterpreter, currentUserId]);
 
   return (
     <Tabs defaultValue="groups" className="h-[calc(100vh-4rem)] flex">
@@ -303,6 +406,10 @@ export const MessagingTab = () => {
             <TabsTrigger value="groups" className="flex-1">
               <Users className="h-4 w-4 mr-2" />
               Groupes
+            </TabsTrigger>
+            <TabsTrigger value="direct" className="flex-1">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Messages directs
             </TabsTrigger>
           </TabsList>
 
@@ -323,31 +430,98 @@ export const MessagingTab = () => {
               <ChannelList
                 channels={channels}
                 selectedChannel={selectedChannel}
-                onSelectChannel={setSelectedChannel}
+                onSelectChannel={(channelId) => {
+                  setSelectedChannel(channelId);
+                  setSelectedInterpreter(null);
+                }}
               />
+            </TabsContent>
+            <TabsContent value="direct" className="m-0">
+              <div className="space-y-2">
+                {/* Search Results */}
+                {searchTerm && interpreters.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    <h3 className="text-sm font-medium text-gray-400 px-2">Résultats</h3>
+                    {interpreters.map((interpreter) => (
+                      <Button
+                        key={interpreter.id}
+                        variant="ghost"
+                        className="w-full justify-start text-left"
+                        onClick={() => {
+                          setSelectedInterpreter(interpreter.id);
+                          setSelectedChannel(null);
+                          setSearchTerm("");
+                          setInterpreters([]);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        {interpreter.first_name} {interpreter.last_name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Chat History */}
+                {!searchTerm && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
+                    {chatHistory.map((chat) => (
+                      <Button
+                        key={chat.id}
+                        variant={selectedInterpreter === chat.id ? "secondary" : "ghost"}
+                        className="w-full justify-start text-left"
+                        onClick={() => {
+                          setSelectedInterpreter(chat.id);
+                          setSelectedChannel(null);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        <div className="flex flex-col items-start">
+                          <span>{chat.name}</span>
+                          {chat.lastMessage && (
+                            <span className="text-xs text-gray-500 truncate">
+                              {chat.lastMessage}
+                            </span>
+                          )}
+                        </div>
+                        {chat.unreadCount > 0 && (
+                          <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
           </ScrollArea>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col bg-white">
-        {selectedChannel ? (
+        {selectedChannel || selectedInterpreter ? (
           <>
             <div className="h-14 border-b flex items-center px-4">
               <div className="font-medium">
-                {channels.find(c => c.id === selectedChannel)?.name}
+                {selectedChannel 
+                  ? channels.find(c => c.id === selectedChannel)?.name
+                  : chatHistory.find(c => c.id === selectedInterpreter)?.name || 
+                    interpreters.find(i => i.id === selectedInterpreter)?.first_name + ' ' + 
+                    interpreters.find(i => i.id === selectedInterpreter)?.last_name
+                }
               </div>
             </div>
 
             <MessageList
-              messages={messages}
+              messages={selectedChannel ? messages : directMessages}
               currentUserId={currentUserId}
               senderProfiles={senderProfiles}
               onDeleteMessage={deleteMessage}
             />
 
             <MessageInput
-              onSendMessage={sendMessage}
+              onSendMessage={selectedChannel ? sendMessage : sendDirectMessage}
               onFileUpload={handleFileUpload}
               isUploading={isUploading}
             />
