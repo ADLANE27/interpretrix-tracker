@@ -1,11 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, MessageSquare, Send, Users } from "lucide-react";
+import { Search, MessageSquare, Send, Users, Paperclip, Smile } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import EmojiPicker from 'emoji-picker-react';
+import type { EmojiClickData } from 'emoji-picker-react';
 
 interface Message {
   id: string;
@@ -52,6 +55,8 @@ export const MessagingTab = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -66,7 +71,6 @@ export const MessagingTab = () => {
     initializeUser();
   }, []);
 
-  // Only fetch channels when we have a valid user ID
   useEffect(() => {
     if (currentUserId) {
       fetchChannels();
@@ -168,7 +172,6 @@ export const MessagingTab = () => {
 
       const adminIds = Array.from(uniqueAdminIds);
       
-      // Fetch admin profiles from interpreter_profiles table
       const { data: adminProfiles, error: profileError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
@@ -265,6 +268,54 @@ export const MessagingTab = () => {
     }
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${crypto.randomUUID()}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('message_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('message_attachments')
+        .getPublicUrl(filePath);
+
+      const { error: messageError } = await supabase.from("direct_messages").insert({
+        content: "",
+        recipient_id: selectedAdmin,
+        sender_id: currentUserId,
+        attachment_url: publicUrl,
+        attachment_name: file.name
+      });
+
+      if (messageError) throw messageError;
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le fichier",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage(prev => prev + emojiData.emoji);
+  };
+
   return (
     <Tabs defaultValue="direct" className="h-[calc(100vh-4rem)] flex">
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
@@ -353,11 +404,9 @@ export const MessagingTab = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
         {(selectedAdmin || selectedChannel) ? (
           <>
-            {/* Chat Header */}
             <div className="h-14 border-b flex items-center px-4">
               <div className="font-medium">
                 {selectedAdmin ? (
@@ -369,7 +418,6 @@ export const MessagingTab = () => {
               </div>
             </div>
 
-            {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message) => (
@@ -394,21 +442,56 @@ export const MessagingTab = () => {
               </div>
             </ScrollArea>
 
-            {/* Message Input */}
             <div className="p-4 border-t">
               <div className="flex gap-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Tapez votre message..."
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
+                <div className="flex-1 relative">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Tapez votre message..."
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-gray-100"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      <Paperclip className="h-4 w-4 text-gray-500" />
+                    </Button>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-gray-100"
+                        >
+                          <Smile className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="end">
+                        <EmojiPicker onEmojiClick={onEmojiClick} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
                 />
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                <Button 
+                  onClick={sendMessage} 
+                  disabled={isUploading || !newMessage.trim()}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
