@@ -4,9 +4,19 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MessageSquare } from "lucide-react";
+import { Search, MessageSquare, Trash2 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useMessages } from "./hooks/useMessages";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Interpreter {
   id: string;
@@ -29,6 +39,7 @@ export const DirectMessaging = () => {
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   
   const {
@@ -97,6 +108,33 @@ export const DirectMessaging = () => {
       toast({
         title: "Erreur",
         description: "Impossible de charger l'historique des conversations",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('direct_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Message supprimé",
+        description: "Le message a été supprimé avec succès",
+      });
+
+      if (selectedInterpreter) {
+        fetchMessages(selectedInterpreter);
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
         variant: "destructive",
       });
     }
@@ -244,7 +282,7 @@ export const DirectMessaging = () => {
                     className={`flex ${message.sender_id === selectedInterpreter ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`max-w-[70%] rounded-lg p-3 ${
+                      className={`group relative max-w-[70%] rounded-lg p-3 ${
                         message.sender_id === selectedInterpreter
                           ? 'bg-gray-100'
                           : 'bg-blue-500 text-white'
@@ -254,6 +292,14 @@ export const DirectMessaging = () => {
                       <div className="text-xs opacity-70 mt-1">
                         {new Date(message.created_at).toLocaleString()}
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -right-10 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setMessageToDelete(message.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -289,6 +335,32 @@ export const DirectMessaging = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Message Dialog */}
+      <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMessageToDelete(null)}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (messageToDelete) {
+                  handleDeleteMessage(messageToDelete);
+                  setMessageToDelete(null);
+                }
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
