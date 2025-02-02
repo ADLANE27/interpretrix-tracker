@@ -172,38 +172,6 @@ export type Database = {
           },
         ]
       }
-      interpreter_languages: {
-        Row: {
-          created_at: string
-          id: string
-          interpreter_id: string
-          source_language: string
-          target_language: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          interpreter_id: string
-          source_language: string
-          target_language: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          interpreter_id?: string
-          source_language?: string
-          target_language?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interpreter_languages_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       interpreter_profiles: {
         Row: {
           address: Json | null
@@ -526,10 +494,6 @@ export type Database = {
           p_recipient_id: string
           p_sender_id: string
         }
-        Returns: undefined
-      }
-      migrate_interpreter_languages: {
-        Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }

@@ -265,8 +265,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           <MessageInput
             value={newMessage}
             onChange={setNewMessage}
-            onSendMessage={sendMessage}
-            isUploading={isLoading}
+            onSend={sendMessage}
+            isLoading={isLoading}
           />
         </div>
       </div>

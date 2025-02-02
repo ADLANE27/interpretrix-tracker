@@ -61,7 +61,45 @@ export const InterpreterDashboard = () => {
     };
     window.addEventListener('mentionsRead', handleMentionsRead);
 
-    // Set up realtime subscription for mentions
+    // Set up realtime subscriptions
+    const profileChannel = supabase
+      .channel('interpreter-profile-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${profile?.id}`,
+        },
+        (payload) => {
+          console.log('Profile update received:', payload);
+          fetchProfile();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Profile subscription status:', status);
+      });
+
+    const missionsChannel = supabase
+      .channel('interpreter-missions-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions',
+          filter: `assigned_interpreter_id=eq.${profile?.id}`,
+        },
+        (payload) => {
+          console.log('Mission update received:', payload);
+          fetchScheduledMissions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Missions subscription status:', status);
+      });
+
     const mentionsChannel = supabase
       .channel('interpreter-mentions-updates')
       .on(
@@ -69,41 +107,12 @@ export const InterpreterDashboard = () => {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'message_mentions'
+          table: 'message_mentions',
+          filter: `mentioned_user_id=eq.${profile?.id}`,
         },
-        async (payload) => {
+        (payload) => {
           console.log('[Mentions] New mention received:', payload);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          // Check if it's a direct mention
-          if (payload.new.mentioned_user_id === user.id) {
-            console.log('[Mentions] Direct mention detected');
-            fetchUnreadMentions();
-            return;
-          }
-
-          // Check if it's a language mention that matches interpreter's languages
-          const { data: profile } = await supabase
-            .from('interpreter_profiles')
-            .select('languages')
-            .eq('id', user.id)
-            .single();
-
-          if (profile && profile.languages) {
-            const targetLanguages = profile.languages.map(lang => {
-              const [_, target] = lang.split(' → ');
-              return target.trim();
-            });
-
-            console.log('[Mentions] Checking language mention:', payload.new.mentioned_language);
-            console.log('[Mentions] Against target languages:', targetLanguages);
-
-            if (payload.new.mentioned_language && targetLanguages.includes(payload.new.mentioned_language)) {
-              console.log('[Mentions] Language mention matches interpreter target language');
-              fetchUnreadMentions();
-            }
-          }
+          fetchUnreadMentions();
         }
       )
       .subscribe((status) => {
@@ -113,6 +122,8 @@ export const InterpreterDashboard = () => {
     return () => {
       console.log('[Mentions] Cleaning up subscriptions');
       window.removeEventListener('mentionsRead', handleMentionsRead);
+      supabase.removeChannel(profileChannel);
+      supabase.removeChannel(missionsChannel);
       supabase.removeChannel(mentionsChannel);
     };
   }, [profile?.id]);
@@ -124,36 +135,14 @@ export const InterpreterDashboard = () => {
         console.log('[Mentions] No authenticated user found');
         return;
       }
-
       console.log('[Mentions] Fetching mentions for user:', user.id);
 
-      // First get interpreter's target languages
-      const { data: profile } = await supabase
-        .from('interpreter_profiles')
-        .select('languages')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) {
-        console.error('[Mentions] No interpreter profile found');
-        return;
-      }
-
-      // Extract target languages from language pairs
-      const targetLanguages = profile.languages.map(lang => {
-        const [_, target] = lang.split(" → ");
-        return target.trim();
-      });
-
-      console.log('[Mentions] Interpreter target languages:', targetLanguages);
-
-      // Build the query
       const { count, error } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
-        .is('read_at', null)
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`);
+        .eq('mentioned_user_id', user.id)
+        .is('read_at', null)  // Add this line to only count unread mentions
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       if (error) {
         console.error('[Mentions] Error fetching mentions:', error);
@@ -507,4 +496,3 @@ export const InterpreterDashboard = () => {
     </div>
   );
 };
-
