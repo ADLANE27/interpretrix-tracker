@@ -46,7 +46,6 @@ export const DirectMessaging = () => {
   } = useMessages();
 
   useEffect(() => {
-    fetchInterpreters();
     subscribeToNewMessages();
   }, []);
 
@@ -62,19 +61,20 @@ export const DirectMessaging = () => {
   }, [selectedInterpreter]);
 
   useEffect(() => {
-    // Filter interpreters based on search term
-    const filtered = interpreters.filter(interpreter => {
-      const fullName = `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase();
-      return fullName.includes(searchTerm.toLowerCase());
-    });
-    setFilteredInterpreters(filtered);
-  }, [searchTerm, interpreters]);
+    // Only fetch interpreters when there's a search term
+    if (searchTerm.length >= 2) {
+      fetchInterpreters();
+    } else {
+      setFilteredInterpreters([]);
+    }
+  }, [searchTerm]);
 
   const fetchInterpreters = async () => {
     try {
       const { data, error } = await supabase
         .from("interpreter_profiles")
-        .select("id, first_name, last_name");
+        .select("id, first_name, last_name")
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`);
 
       if (error) throw error;
       setInterpreters(data || []);
