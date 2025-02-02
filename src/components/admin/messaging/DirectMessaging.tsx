@@ -73,7 +73,6 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get unique users from direct messages
       const { data: messageUsers, error: msgError } = await supabase
         .from('direct_messages')
         .select('sender_id, recipient_id')
@@ -81,14 +80,12 @@ export const DirectMessaging = () => {
 
       if (msgError) throw msgError;
 
-      // Get unique interpreter IDs
       const uniqueInterpreterIds = new Set<string>();
       messageUsers?.forEach(msg => {
         const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
         uniqueInterpreterIds.add(otherId);
       });
 
-      // Get interpreter profiles
       const { data: profiles, error: profileError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
@@ -135,6 +132,38 @@ export const DirectMessaging = () => {
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRecentChat = async (chatId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('direct_messages')
+        .delete()
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`);
+
+      if (error) throw error;
+
+      toast({
+        title: "Conversation supprimée",
+        description: "La conversation a été supprimée avec succès",
+      });
+
+      fetchChatHistory();
+      
+      if (selectedInterpreter === chatId) {
+        setSelectedInterpreter(null);
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la conversation",
         variant: "destructive",
       });
     }
@@ -193,7 +222,6 @@ export const DirectMessaging = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar with chat history and search */}
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
         <div className="p-4">
           <div className="mb-4">
@@ -209,7 +237,6 @@ export const DirectMessaging = () => {
           </div>
           
           <ScrollArea className="h-[calc(100vh-8rem)]">
-            {/* Search Results */}
             {searchTerm && interpreters.length > 0 && (
               <div className="space-y-2 mb-4">
                 <h3 className="text-sm font-medium text-gray-400 px-2">Résultats</h3>
@@ -227,32 +254,43 @@ export const DirectMessaging = () => {
               </div>
             )}
 
-            {/* Chat History */}
             {!searchTerm && (
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
                 {chatHistory.map((chat) => (
-                  <Button
-                    key={chat.id}
-                    variant={selectedInterpreter === chat.id ? "secondary" : "ghost"}
-                    className="w-full justify-start text-left"
-                    onClick={() => handleSelectInterpreter(chat.id)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    <div className="flex flex-col items-start">
-                      <span>{chat.name}</span>
-                      {chat.lastMessage && (
-                        <span className="text-xs text-gray-500 truncate">
-                          {chat.lastMessage}
+                  <div key={chat.id} className="group relative">
+                    <Button
+                      variant={selectedInterpreter === chat.id ? "secondary" : "ghost"}
+                      className="w-full justify-start text-left pr-8"
+                      onClick={() => handleSelectInterpreter(chat.id)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      <div className="flex flex-col items-start">
+                        <span>{chat.name}</span>
+                        {chat.lastMessage && (
+                          <span className="text-xs text-gray-500 truncate">
+                            {chat.lastMessage}
+                          </span>
+                        )}
+                      </div>
+                      {chat.unreadCount > 0 && (
+                        <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                          {chat.unreadCount}
                         </span>
                       )}
-                    </div>
-                    {chat.unreadCount > 0 && (
-                      <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                        {chat.unreadCount}
-                      </span>
-                    )}
-                  </Button>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMessageToDelete(chat.id);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -260,11 +298,9 @@ export const DirectMessaging = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white">
         {selectedInterpreter ? (
           <>
-            {/* Chat Header */}
             <div className="h-14 border-b flex items-center px-4">
               <div className="font-medium">
                 {chatHistory.find(c => c.id === selectedInterpreter)?.name || 
@@ -273,7 +309,6 @@ export const DirectMessaging = () => {
               </div>
             </div>
 
-            {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {messages.map((message) => (
@@ -306,7 +341,6 @@ export const DirectMessaging = () => {
               </div>
             </ScrollArea>
 
-            {/* Message Input */}
             <div className="p-4 border-t">
               <div className="flex gap-2">
                 <Input
@@ -336,21 +370,25 @@ export const DirectMessaging = () => {
         )}
       </div>
 
-      {/* Delete Message Dialog */}
-      <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
+      <AlertDialog 
+        open={!!messageToDelete} 
+        onOpenChange={(open) => !open && setMessageToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer cette conversation ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setMessageToDelete(null)}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setMessageToDelete(null)}>
+              Annuler
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (messageToDelete) {
-                  handleDeleteMessage(messageToDelete);
+                  handleDeleteRecentChat(messageToDelete);
                   setMessageToDelete(null);
                 }
               }}
