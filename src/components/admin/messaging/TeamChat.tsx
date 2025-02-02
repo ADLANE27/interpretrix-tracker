@@ -31,6 +31,26 @@ interface Channel {
   name: string;
 }
 
+interface MessageResponse {
+  id: string;
+  content: string;
+  created_at: string;
+  sender_id: string;
+  channel_id: string | null;
+  recipient_id: string | null;
+  read_at: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  parent_id: string | null;
+  updated_at: string;
+  sender: {
+    profile: {
+      first_name: string | null;
+      last_name: string | null;
+    } | null;
+  } | null;
+}
+
 export const TeamChat = () => {
   const { channelId } = useParams();
   const [newMessage, setNewMessage] = useState("");
@@ -79,7 +99,7 @@ export const TeamChat = () => {
       if (error) throw error;
       
       // Transform the data to match our Message interface
-      return (data || []).map(msg => ({
+      return (data as MessageResponse[] || []).map(msg => ({
         ...msg,
         sender: msg.sender?.profile ? {
           first_name: msg.sender.profile.first_name || null,
