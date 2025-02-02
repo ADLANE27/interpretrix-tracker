@@ -92,9 +92,24 @@ export const DirectMessaging = () => {
       const { data: messages, error } = await supabase
         .from("direct_messages")
         .select(`
-          *,
-          sender:sender_id(id, email, first_name, last_name),
-          recipient:recipient_id(id, email, first_name, last_name)
+          id,
+          content,
+          created_at,
+          sender_id,
+          recipient_id,
+          read_at,
+          sender:interpreter_profiles!direct_messages_sender_id_fkey(
+            id,
+            email,
+            first_name,
+            last_name
+          ),
+          recipient:interpreter_profiles!direct_messages_recipient_id_fkey(
+            id,
+            email,
+            first_name,
+            last_name
+          )
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
