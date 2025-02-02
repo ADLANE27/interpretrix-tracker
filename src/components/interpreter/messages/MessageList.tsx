@@ -30,15 +30,18 @@ export const MessageList = ({
   senderProfiles,
   onDeleteMessage,
 }: MessageListProps) => {
+  const getSenderName = (senderId: string): string => {
+    const profile = senderProfiles[senderId];
+    if (!profile) return "Loading...";
+    return `${profile.first_name} ${profile.last_name}`.trim();
+  };
+
   return (
     <ScrollArea className="flex-1 p-4">
       <div className="space-y-4">
         {messages.map((message) => {
           const isCurrentUser = message.sender_id === currentUserId;
-          const senderProfile = senderProfiles[message.sender_id];
-          const senderName = senderProfile 
-            ? `${senderProfile.first_name} ${senderProfile.last_name}`.trim()
-            : 'Unknown User';
+          const senderName = getSenderName(message.sender_id);
 
           return (
             <div

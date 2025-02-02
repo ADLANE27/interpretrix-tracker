@@ -115,7 +115,10 @@ export const MessagingTab = () => {
       // Get unique sender IDs
       const senderIds = [...new Set((messages || []).map(msg => msg.sender_id))];
       
-      // Fetch interpreter profiles
+      // Create a map to store all sender profiles
+      const profileMap: Record<string, SenderProfile> = {};
+
+      // First, try to fetch interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
@@ -125,9 +128,6 @@ export const MessagingTab = () => {
         console.error('Error fetching interpreter profiles:', interpreterError);
       }
 
-      // Create a map of sender profiles
-      const profileMap: Record<string, SenderProfile> = {};
-      
       // Add interpreter profiles to the map
       if (interpreterProfiles) {
         interpreterProfiles.forEach(profile => {
@@ -140,10 +140,10 @@ export const MessagingTab = () => {
       }
 
       // For senders without interpreter profiles (likely admins), fetch from auth.users
-      const missingProfileIds = senderIds.filter(id => !profileMap[id]);
-      if (missingProfileIds.length > 0) {
-        // Use the edge function to get user info for admins
-        for (const userId of missingProfileIds) {
+      const remainingSenderIds = senderIds.filter(id => !profileMap[id]);
+      
+      if (remainingSenderIds.length > 0) {
+        for (const senderId of remainingSenderIds) {
           try {
             const response = await fetch(`${window.location.origin}/functions/v1/get-user-info`, {
               method: 'POST',
@@ -151,13 +151,13 @@ export const MessagingTab = () => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
               },
-              body: JSON.stringify({ userId })
+              body: JSON.stringify({ userId: senderId })
             });
 
             if (response.ok) {
               const userData = await response.json();
-              profileMap[userId] = {
-                id: userId,
+              profileMap[senderId] = {
+                id: senderId,
                 first_name: userData.first_name || 'Admin',
                 last_name: userData.last_name || ''
               };
