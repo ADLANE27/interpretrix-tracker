@@ -149,7 +149,6 @@ export const MissionManagement = () => {
       const languagePair = `${sourceLang} → ${targetLang}`;
       console.log('[MissionManagement] Looking for language pair:', languagePair);
       
-      // Modification ici : on utilise ilike avec un pattern plus flexible
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
