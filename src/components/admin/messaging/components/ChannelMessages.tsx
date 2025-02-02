@@ -142,8 +142,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col">
-      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+    <div className="flex-1 flex flex-col h-full relative">
+      <ScrollArea className="flex-1 px-4 pb-4">
         <div className="space-y-4 py-4">
           {messages.map((message) => {
             const isCurrentUser = message.sender_id === currentUserId;
@@ -191,7 +191,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-chat-divider">
+      <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider mt-auto">
         <MessageInput
           value={newMessage}
           onChange={setNewMessage}
