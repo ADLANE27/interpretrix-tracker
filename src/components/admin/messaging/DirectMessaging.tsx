@@ -24,6 +24,7 @@ export const DirectMessaging = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [unreadCounts, setUnreadCounts] = useState<UnreadCount>({});
   const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -154,19 +155,41 @@ export const DirectMessaging = () => {
     }
   };
 
-  const handleSendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
-    if (!selectedInterpreter || (!newMessage.trim() && !attachmentUrl)) return;
+  const handleSendMessage = async (content: string, file?: File) => {
+    if (!selectedInterpreter || (!content.trim() && !file)) return;
     
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      let attachment_url = null;
+      let attachment_name = null;
+
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('message_attachments')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('message_attachments')
+          .getPublicUrl(fileName);
+
+        attachment_url = publicUrl;
+        attachment_name = file.name;
+      }
+
       const { error } = await supabase.from("direct_messages").insert({
-        content: newMessage.trim(),
+        content: content.trim(),
         recipient_id: selectedInterpreter,
         sender_id: user.id,
-        attachment_url: attachmentUrl,
-        attachment_name: attachmentName,
+        attachment_url,
+        attachment_name,
       });
 
       if (error) throw error;
@@ -178,12 +201,10 @@ export const DirectMessaging = () => {
         description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const filteredMessages = messages.filter((message) =>
-    message.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="space-y-4">
@@ -205,7 +226,9 @@ export const DirectMessaging = () => {
           />
 
           <MessageList
-            messages={filteredMessages}
+            messages={messages.filter((message) =>
+              message.content.toLowerCase().includes(searchTerm.toLowerCase())
+            )}
             selectedInterpreter={selectedInterpreter}
             editingMessage={editingMessage}
             editContent={editContent}
@@ -226,6 +249,7 @@ export const DirectMessaging = () => {
             value={newMessage}
             onChange={setNewMessage}
             onSend={handleSendMessage}
+            isLoading={isLoading}
           />
         </div>
       )}
