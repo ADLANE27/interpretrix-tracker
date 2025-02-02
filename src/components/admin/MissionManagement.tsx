@@ -10,10 +10,9 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MissionFilters, FilterOptions } from "./mission/MissionFilters";
+import { MissionFilters } from "./mission/MissionFilters";
 import { MissionList } from "./mission/MissionList";
-import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
-import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 
 interface Mission {
   id: string;
@@ -57,7 +56,7 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [filters, setFilters] = useState<FilterOptions>({
+  const [filters, setFilters] = useState({
     search: "",
     status: "",
     missionType: "",
@@ -113,21 +112,18 @@ export const MissionManagement = () => {
 
       const { data, error } = await query;
 
-      if (error) {
-        console.error('[MissionManagement] Error fetching missions:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       console.log('[MissionManagement] Missions fetched successfully:', data);
       setMissions(data as Mission[]);
+      setLoading(false);
     } catch (error) {
-      console.error('[MissionManagement] Error in fetchMissions:', error);
+      console.error('[MissionManagement] Error fetching missions:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les missions",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -150,28 +146,22 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      // First, let's check if the language pair format is correct
       const languagePair = `${sourceLang} → ${targetLang}`;
       console.log('[MissionManagement] Looking for language pair:', languagePair);
       
-      const { data: potentialInterpreters, error } = await supabase
+      const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
         .contains("languages", [languagePair]);
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de trouver les interprètes disponibles",
-          variant: "destructive",
-        });
-        return;
+        throw error;
       }
 
-      console.log('[MissionManagement] Found potential interpreters:', potentialInterpreters);
-
-      if (!potentialInterpreters || potentialInterpreters.length === 0) {
+      console.log('[MissionManagement] Found interpreters:', interpreters);
+      
+      if (!interpreters || interpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for language pair:', languagePair);
         toast({
           title: "Aucun interprète trouvé",
@@ -180,39 +170,7 @@ export const MissionManagement = () => {
         return;
       }
 
-      if (missionType === 'immediate') {
-        console.log('[MissionManagement] Filtering for immediate mission');
-        
-        const { data: scheduledMissions, error: scheduledError } = await supabase
-          .from("interpretation_missions")
-          .select("*")
-          .eq("mission_type", "scheduled")
-          .eq("status", "accepted");
-
-        if (scheduledError) {
-          console.error('[MissionManagement] Error fetching scheduled missions:', scheduledError);
-          return;
-        }
-
-        console.log('[MissionManagement] Found scheduled missions:', scheduledMissions);
-
-        const availableInterpreters = potentialInterpreters.filter(interpreter => {
-          console.log('[MissionManagement] Checking availability for interpreter:', interpreter.id, {
-            status: interpreter.status,
-            isAvailable: interpreter.status === 'available'
-          });
-          
-          return interpreter.status === 'available' &&
-            isInterpreterAvailableForImmediateMission(interpreter, scheduledMissions || []);
-        });
-
-        console.log('[MissionManagement] Filtered available interpreters:', availableInterpreters);
-        setAvailableInterpreters(availableInterpreters);
-      } else {
-        console.log('[MissionManagement] Setting all potential interpreters for scheduled mission');
-        setAvailableInterpreters(potentialInterpreters);
-      }
-
+      setAvailableInterpreters(interpreters);
       setSelectedInterpreters([]);
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
@@ -224,9 +182,13 @@ export const MissionManagement = () => {
     }
   };
 
+  useEffect(() => {
+    if (sourceLanguage && targetLanguage) {
+      findAvailableInterpreters(sourceLanguage, targetLanguage);
+    }
+  }, [sourceLanguage, targetLanguage]);
+
   const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
-    console.log('[MissionManagement] Handling interpreter selection:', interpreterId, checked);
-    
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
       const isAvailable = await isInterpreterAvailableForScheduledMission(
         interpreterId,
@@ -236,7 +198,6 @@ export const MissionManagement = () => {
       );
 
       if (!isAvailable && checked) {
-        console.log('[MissionManagement] Interpreter has scheduling conflict');
         toast({
           title: "Conflit d'horaire",
           description: "Cet interprète a déjà une mission programmée qui chevauche cet horaire",
@@ -257,8 +218,6 @@ export const MissionManagement = () => {
 
   const handleDeleteMission = async (missionId: string) => {
     try {
-      console.log('[MissionManagement] Deleting mission:', missionId);
-      
       const { error: notificationError } = await supabase
         .from("mission_notifications")
         .delete()
@@ -273,7 +232,6 @@ export const MissionManagement = () => {
 
       if (error) throw error;
 
-      console.log('[MissionManagement] Mission deleted successfully');
       toast({
         title: "Mission supprimée",
         description: "La mission a été supprimée avec succès",
@@ -304,10 +262,8 @@ export const MissionManagement = () => {
 
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[MissionManagement] Starting mission creation process...');
     
     if (isProcessing) {
-      console.log('[MissionManagement] Already processing a request');
       toast({
         title: "Action en cours",
         description: "Une mission est déjà en cours de création",
@@ -319,9 +275,7 @@ export const MissionManagement = () => {
     try {
       setIsProcessing(true);
       
-      // Validation checks with specific error messages
       if (selectedInterpreters.length === 0) {
-        console.log('[MissionManagement] No interpreters selected');
         toast({
           title: "Erreur de validation",
           description: "Veuillez sélectionner au moins un interprète",
@@ -331,7 +285,6 @@ export const MissionManagement = () => {
       }
 
       if (!sourceLanguage || !targetLanguage) {
-        console.log('[MissionManagement] Missing language selection');
         toast({
           title: "Erreur de validation",
           description: "Veuillez sélectionner les langues source et cible",
@@ -342,7 +295,6 @@ export const MissionManagement = () => {
 
       if (missionType === 'scheduled') {
         if (!scheduledStartTime || !scheduledEndTime) {
-          console.log('[MissionManagement] Missing scheduled times');
           toast({
             title: "Erreur de validation",
             description: "Veuillez spécifier les horaires de la mission programmée",
@@ -356,7 +308,6 @@ export const MissionManagement = () => {
         const now = new Date();
 
         if (startDate < now) {
-          console.log('[MissionManagement] Start time is in the past');
           toast({
             title: "Erreur de validation",
             description: "La date de début ne peut pas être dans le passé",
@@ -366,7 +317,6 @@ export const MissionManagement = () => {
         }
 
         if (endDate <= startDate) {
-          console.log('[MissionManagement] Invalid time range');
           toast({
             title: "Erreur de validation",
             description: "La date de fin doit être postérieure à la date de début",
@@ -377,7 +327,6 @@ export const MissionManagement = () => {
       }
 
       if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
-        console.log('[MissionManagement] Invalid duration');
         toast({
           title: "Erreur de validation",
           description: "Veuillez spécifier une durée valide pour la mission",
@@ -386,64 +335,13 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Calculate duration with proper validation
       let calculatedDuration = parseInt(estimatedDuration);
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
         calculatedDuration = Math.round(
           (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
         );
-        
-        if (calculatedDuration <= 0) {
-          console.log('[MissionManagement] Invalid duration calculated');
-          toast({
-            title: "Erreur de validation",
-            description: "La durée calculée de la mission n'est pas valide",
-            variant: "destructive",
-          });
-          return;
-        }
       }
 
-      // Verify interpreter availability with detailed error messages
-      for (const interpreterId of selectedInterpreters) {
-        if (missionType === 'scheduled') {
-          const isAvailable = await isInterpreterAvailableForScheduledMission(
-            interpreterId,
-            scheduledStartTime,
-            scheduledEndTime,
-            supabase
-          );
-
-          if (!isAvailable) {
-            const interpreter = availableInterpreters.find(i => i.id === interpreterId);
-            console.log(`[MissionManagement] Interpreter ${interpreterId} has a scheduling conflict`);
-            toast({
-              title: "Conflit d'horaire détecté",
-              description: `L'interprète ${interpreter?.first_name} ${interpreter?.last_name} a un conflit d'horaire`,
-              variant: "destructive",
-            });
-            return;
-          }
-        } else {
-          const { data: interpreter } = await supabase
-            .from('interpreter_profiles')
-            .select('status, first_name, last_name')
-            .eq('id', interpreterId)
-            .single();
-
-          if (!interpreter || interpreter.status !== 'available') {
-            console.log(`[MissionManagement] Interpreter ${interpreterId} is no longer available`);
-            toast({
-              title: "Interprète non disponible",
-              description: `L'interprète ${interpreter?.first_name} ${interpreter?.last_name} n'est plus disponible`,
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-      }
-
-      // Prepare mission data with proper validation
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
@@ -461,26 +359,16 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Creating new mission with data:', newMissionData);
 
-      // Create mission with error handling
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert(newMissionData)
         .select()
         .single();
 
-      if (missionError) {
-        console.error('[MissionManagement] Error creating mission:', missionError);
-        toast({
-          title: "Erreur lors de la création",
-          description: "Une erreur est survenue lors de la création de la mission",
-          variant: "destructive",
-        });
-        return;
-      }
+      if (missionError) throw missionError;
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
-      // Create notifications with error handling
       const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: createdMission.id,
         interpreter_id: interpreter,
@@ -491,19 +379,10 @@ export const MissionManagement = () => {
         .from("mission_notifications")
         .insert(notifications);
 
-      if (notificationError) {
-        console.error('[MissionManagement] Error creating notifications:', notificationError);
-        toast({
-          title: "Erreur lors de la notification",
-          description: "Les interprètes n'ont pas pu être notifiés",
-          variant: "destructive",
-        });
-        // Don't return here, we still want to clean up the form
-      }
+      if (notificationError) throw notificationError;
 
       console.log('[MissionManagement] Notifications created successfully');
 
-      // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
@@ -518,7 +397,6 @@ export const MissionManagement = () => {
         description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
       });
 
-      // Refresh missions list
       fetchMissions();
 
     } catch (error) {
@@ -533,29 +411,57 @@ export const MissionManagement = () => {
     }
   };
 
-  // Add real-time subscription for missions
-  useRealtimeSubscription({
-    channel: 'admin-missions',
-    event: '*',
-    table: 'interpretation_missions',
-    onEvent: () => {
-      console.log('[MissionManagement] Received mission update, refreshing...');
-      fetchMissions();
-    },
-  });
+  // Set up realtime subscription for missions
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        () => {
+          console.log('[MissionManagement] Received mission update, refreshing...');
+          fetchMissions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionManagement] Subscription status:', status);
+      });
 
-  // Add real-time subscription for interpreter status changes
-  useRealtimeSubscription({
-    channel: 'interpreter-status',
-    event: 'UPDATE',
-    table: 'interpreter_profiles',
-    onEvent: (payload) => {
-      console.log('[MissionManagement] Interpreter status changed:', payload);
-      if (sourceLanguage && targetLanguage) {
-        findAvailableInterpreters(sourceLanguage, targetLanguage);
-      }
-    },
-  });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Set up realtime subscription for interpreter status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('interpreter-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        () => {
+          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
+          if (sourceLanguage && targetLanguage) {
+            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionManagement] Interpreter status subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sourceLanguage, targetLanguage]);
 
   return (
     <div className="space-y-6">
