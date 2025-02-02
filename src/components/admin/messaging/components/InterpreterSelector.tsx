@@ -40,7 +40,7 @@ export const InterpreterSelector = ({
             className={`w-full justify-start relative px-3 py-2 text-sm font-medium ${
               selectedInterpreter === interpreter.id
                 ? "bg-chat-selected text-white hover:bg-chat-selected"
-                : "text-chat-sidebarText hover:bg-chat-hover hover:text-chat-sidebarText"
+                : "text-chat-sidebarText hover:bg-chat-hover hover:text-orange-500"
             }`}
           >
             <span className="truncate">
