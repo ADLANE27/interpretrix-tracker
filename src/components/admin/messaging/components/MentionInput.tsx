@@ -68,6 +68,19 @@ export const MentionInput = ({
     }
   };
 
+  const extractTargetLanguages = (languages: string[]): Map<string, number> => {
+    const targetLanguages = new Map<string, number>();
+    
+    languages.forEach(langPair => {
+      const [_, target] = langPair.split('→').map(s => s.trim());
+      if (target) {
+        targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
+      }
+    });
+    
+    return targetLanguages;
+  };
+
   const fetchUsersAndLanguages = async () => {
     try {
       console.log('Fetching users and languages with search term:', mentionSearch);
@@ -96,19 +109,16 @@ export const MentionInput = ({
       setUsers(usersWithRoles);
 
       if (isAdmin) {
-        // Create a map to store target languages and their counts
         const targetLanguageCounts = new Map<string, number>();
         
         interpreters?.forEach(interpreter => {
-          interpreter.languages.forEach((langPair: string) => {
-            const [_, target] = langPair.split('→').map(s => s.trim());
-            if (target) {
-              const normalizedTarget = target.toLowerCase();
-              const normalizedSearch = mentionSearch.toLowerCase();
-              
-              if (!mentionSearch || normalizedTarget.includes(normalizedSearch)) {
-                targetLanguageCounts.set(target, (targetLanguageCounts.get(target) || 0) + 1);
-              }
+          const interpreterTargetLangs = extractTargetLanguages(interpreter.languages);
+          interpreterTargetLangs.forEach((count, lang) => {
+            const normalizedLang = lang.toLowerCase();
+            const normalizedSearch = mentionSearch.toLowerCase();
+            
+            if (!mentionSearch || normalizedLang.includes(normalizedSearch)) {
+              targetLanguageCounts.set(lang, (targetLanguageCounts.get(lang) || 0) + count);
             }
           });
         });
