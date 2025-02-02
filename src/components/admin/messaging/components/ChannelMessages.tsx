@@ -87,19 +87,20 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts for each message
-      const replyCounts = new Map<string, number>();
+      // Get reply counts using proper GROUP BY
       const { data: replyCountsData, error: replyCountsError } = await supabase
         .from("messages")
-        .select("parent_id, count")
-        .not("parent_id", "is", null)
-        .eq("channel_id", channelId);
+        .select('parent_id, count(*)')
+        .not('parent_id', 'is', null)
+        .eq('channel_id', channelId)
+        .group_by('parent_id');
 
       if (replyCountsError) throw replyCountsError;
 
-      replyCountsData?.forEach((row: any) => {
-        replyCounts.set(row.parent_id, parseInt(row.count));
-      });
+      // Create a map of reply counts
+      const replyCounts = new Map(
+        replyCountsData?.map(row => [row.parent_id, parseInt(row.count)])
+      );
 
       // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
