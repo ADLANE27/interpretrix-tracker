@@ -92,14 +92,15 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         .from("messages")
         .select('parent_id, count')
         .not('parent_id', 'is', null)
-        .eq('channel_id', channelId);
+        .eq('channel_id', channelId)
+        .group_by('parent_id');
 
       if (replyCountsError) throw replyCountsError;
 
       // Create a map of reply counts
       const replyCountMap = new Map();
       replyCounts?.forEach(row => {
-        replyCountMap.set(row.parent_id, parseInt(row.count));
+        replyCountMap.set(row.parent_id, parseInt(row.count.toString()));
       });
 
       // Get interpreter profiles
