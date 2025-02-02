@@ -73,23 +73,34 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: messageUsers, error: msgError } = await supabase
+      // First, get all messages to find unique conversations
+      const { data: messages, error: msgError } = await supabase
         .from('direct_messages')
         .select('sender_id, recipient_id')
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
 
       if (msgError) throw msgError;
 
-      const uniqueInterpreterIds = new Set<string>();
-      messageUsers?.forEach(msg => {
+      // Create a map to store unique conversations and their message counts
+      const conversationMap = new Map<string, number>();
+      
+      messages?.forEach(msg => {
         const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
-        uniqueInterpreterIds.add(otherId);
+        conversationMap.set(otherId, (conversationMap.get(otherId) || 0) + 1);
       });
+
+      // Only get profiles for users who have active conversations (message count > 0)
+      const activeUserIds = Array.from(conversationMap.keys()).filter(id => conversationMap.get(id)! > 0);
+
+      if (activeUserIds.length === 0) {
+        setChatHistory([]);
+        return;
+      }
 
       const { data: profiles, error: profileError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
-        .in('id', Array.from(uniqueInterpreterIds));
+        .in('id', activeUserIds);
 
       if (profileError) throw profileError;
 
