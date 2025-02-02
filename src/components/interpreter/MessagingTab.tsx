@@ -9,8 +9,9 @@ import { Search, MessageSquare, Send, Users, Paperclip, Smile } from "lucide-rea
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import EmojiPicker from 'emoji-picker-react';
 import type { EmojiClickData } from 'emoji-picker-react';
+import { useNavigate } from "react-router-dom";
 
-interface Message {
+interface DirectMessage {
   id: string;
   content: string;
   sender_id: string;
@@ -20,6 +21,19 @@ interface Message {
   attachment_url?: string | null;
   attachment_name?: string | null;
 }
+
+interface ChannelMessage {
+  id: string;
+  content: string;
+  sender_id: string;
+  channel_id: string;
+  created_at: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  parent_id?: string | null;
+}
+
+type Message = DirectMessage | ChannelMessage;
 
 interface Admin {
   id: string;
@@ -45,6 +59,7 @@ interface Channel {
 }
 
 export const MessagingTab = () => {
+  const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,65 +75,39 @@ export const MessagingTab = () => {
 
   useEffect(() => {
     const initializeUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setCurrentUserId(user.id);
-        fetchAdmins();
-        fetchChatHistory();
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Auth error:", error);
+          navigate("/login");
+          return;
+        }
+        if (user) {
+          setCurrentUserId(user.id);
+          fetchAdmins();
+          fetchChatHistory();
+        } else {
+          navigate("/login");
+        }
+      } catch (error) {
+        console.error("Error in initializeUser:", error);
+        navigate("/login");
       }
     };
 
     initializeUser();
-  }, []);
 
-  useEffect(() => {
-    if (currentUserId) {
-      fetchChannels();
-    }
-  }, [currentUserId]);
-
-  const fetchChannels = async () => {
-    try {
-      if (!currentUserId) {
-        console.log('No user ID available, skipping channel fetch');
-        return;
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate("/login");
       }
+    });
 
-      const { data: channelMembers, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', currentUserId);
-
-      if (memberError) {
-        console.error("Error fetching channel members:", memberError);
-        throw memberError;
-      }
-
-      if (channelMembers && channelMembers.length > 0) {
-        const channelIds = channelMembers.map(cm => cm.channel_id);
-        const { data: channelsData, error: channelsError } = await supabase
-          .from('channels')
-          .select('*')
-          .in('id', channelIds);
-
-        if (channelsError) {
-          console.error("Error fetching channels:", channelsError);
-          throw channelsError;
-        }
-        
-        setChannels(channelsData || []);
-      } else {
-        setChannels([]);
-      }
-    } catch (error) {
-      console.error("Error fetching channels:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux de discussion",
-        variant: "destructive",
-      });
-    }
-  };
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
 
   const fetchAdmins = async () => {
     try {
@@ -251,7 +240,6 @@ export const MessagingTab = () => {
       if (!user) throw new Error("Non authentifié");
 
       if (selectedChannel) {
-        // Send message to channel
         const { error } = await supabase.from("messages").insert({
           content: newMessage.trim(),
           channel_id: selectedChannel,
@@ -260,7 +248,6 @@ export const MessagingTab = () => {
 
         if (error) throw error;
       } else if (selectedAdmin) {
-        // Send direct message
         const { error } = await supabase.from("direct_messages").insert({
           content: newMessage.trim(),
           recipient_id: selectedAdmin,
@@ -304,7 +291,6 @@ export const MessagingTab = () => {
         .getPublicUrl(filePath);
 
       if (selectedChannel) {
-        // Upload to channel messages
         const { error: messageError } = await supabase.from("messages").insert({
           channel_id: selectedChannel,
           sender_id: user.id,
@@ -315,7 +301,6 @@ export const MessagingTab = () => {
 
         if (messageError) throw messageError;
       } else if (selectedAdmin) {
-        // Upload to direct messages
         const { error: messageError } = await supabase.from("direct_messages").insert({
           recipient_id: selectedAdmin,
           sender_id: user.id,
@@ -350,7 +335,6 @@ export const MessagingTab = () => {
     if (selectedChannel) {
       fetchChannelMessages(selectedChannel);
       
-      // Subscribe to channel messages
       const channel = supabase
         .channel(`channel-${selectedChannel}`)
         .on(
@@ -391,7 +375,7 @@ export const MessagingTab = () => {
       }
 
       console.log('Successfully fetched channel messages:', data);
-      setMessages(data || []);
+      setMessages(data as ChannelMessage[] || []);
     } catch (error) {
       console.error('Error in fetchChannelMessages:', error);
       toast({
