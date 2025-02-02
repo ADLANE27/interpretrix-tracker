@@ -285,7 +285,7 @@ export const MissionManagement = () => {
     console.log('[MissionManagement] Starting mission creation process...');
     
     try {
-      // Validation checks
+      // Validation checks with specific error messages
       if (selectedInterpreters.length === 0) {
         console.log('[MissionManagement] No interpreters selected');
         toast({
@@ -352,16 +352,26 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Calculate duration
+      // Calculate duration with proper validation
       let calculatedDuration = parseInt(estimatedDuration);
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
         calculatedDuration = differenceInMinutes(
           new Date(scheduledEndTime),
           new Date(scheduledStartTime)
         );
+        
+        if (calculatedDuration <= 0) {
+          console.log('[MissionManagement] Invalid duration calculated');
+          toast({
+            title: "Erreur de validation",
+            description: "La durée calculée de la mission n'est pas valide",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      // Verify interpreter availability one last time
+      // Verify interpreter availability with detailed error messages
       for (const interpreterId of selectedInterpreters) {
         if (missionType === 'scheduled') {
           const isAvailable = await isInterpreterAvailableForScheduledMission(
@@ -384,7 +394,7 @@ export const MissionManagement = () => {
         } else {
           const { data: interpreter } = await supabase
             .from('interpreter_profiles')
-            .select('status')
+            .select('status, first_name, last_name')
             .eq('id', interpreterId)
             .single();
 
@@ -392,7 +402,7 @@ export const MissionManagement = () => {
             console.log(`[MissionManagement] Interpreter ${interpreterId} is no longer available`);
             toast({
               title: "Interprète non disponible",
-              description: "Un ou plusieurs interprètes sélectionnés ne sont plus disponibles",
+              description: `L'interprète ${interpreter?.first_name} ${interpreter?.last_name} n'est plus disponible`,
               variant: "destructive",
             });
             return;
@@ -400,7 +410,7 @@ export const MissionManagement = () => {
         }
       }
 
-      // Prepare mission data
+      // Prepare mission data with proper validation
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
@@ -418,7 +428,7 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Creating new mission with data:', newMissionData);
 
-      // Create mission
+      // Create mission with error handling
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert(newMissionData)
@@ -427,12 +437,17 @@ export const MissionManagement = () => {
 
       if (missionError) {
         console.error('[MissionManagement] Error creating mission:', missionError);
-        throw missionError;
+        toast({
+          title: "Erreur lors de la création",
+          description: "Une erreur est survenue lors de la création de la mission",
+          variant: "destructive",
+        });
+        return;
       }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
-      // Create notifications
+      // Create notifications with error handling
       const notifications = selectedInterpreters.map(interpreter => ({
         mission_id: createdMission.id,
         interpreter_id: interpreter,
@@ -445,7 +460,12 @@ export const MissionManagement = () => {
 
       if (notificationError) {
         console.error('[MissionManagement] Error creating notifications:', notificationError);
-        throw notificationError;
+        toast({
+          title: "Erreur lors de la notification",
+          description: "Les interprètes n'ont pas pu être notifiés",
+          variant: "destructive",
+        });
+        // Don't return here, we still want to clean up the form
       }
 
       console.log('[MissionManagement] Notifications created successfully');
@@ -471,8 +491,8 @@ export const MissionManagement = () => {
     } catch (error) {
       console.error('[MissionManagement] Error in createMission:', error);
       toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la création de la mission",
+        title: "Erreur inattendue",
+        description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la création de la mission",
         variant: "destructive",
       });
     }
