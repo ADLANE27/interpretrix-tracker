@@ -87,75 +87,41 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts
-      const { data: replyCountsData, error: replyCountsError } = await supabase
+      // Get reply counts using count aggregate
+      const { data: replyCounts, error: replyCountsError } = await supabase
         .from("messages")
         .select('parent_id, count')
         .not('parent_id', 'is', null)
-        .eq('channel_id', channelId)
-        .group_by('parent_id');
+        .eq('channel_id', channelId);
 
       if (replyCountsError) throw replyCountsError;
 
       // Create a map of reply counts
-      const replyCounts = new Map(
-        replyCountsData?.map(row => [row.parent_id, Number(row.count)]) || []
-      );
-
-      // Get all unique sender IDs
-      const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
+      const replyCountMap = new Map();
+      replyCounts?.forEach(row => {
+        replyCountMap.set(row.parent_id, parseInt(row.count));
+      });
 
       // Get interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select("id, first_name, last_name")
-        .in("id", senderIds);
+        .select("id, first_name, last_name");
 
       if (interpreterError) throw interpreterError;
-
-      // Get user roles to identify admins
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("user_id", senderIds)
-        .eq("role", "admin");
-
-      if (rolesError) throw rolesError;
 
       // Create a map of interpreter names
       const interpreterNames = new Map(
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      // For admin users, get their info from Edge Function
-      const adminIds = userRoles?.map(r => r.user_id) || [];
-      const adminNames = new Map();
-
-      if (adminIds.length > 0) {
-        for (const adminId of adminIds) {
-          const response = await supabase.functions.invoke('get-user-info', {
-            body: { userId: adminId }
-          });
-          
-          if (!response.error && response.data) {
-            adminNames.set(
-              adminId, 
-              `${response.data.first_name || ''} ${response.data.last_name || ''}`
-            );
-          }
-        }
-      }
-
       // Combine messages with sender names and reply counts
-      const messagesWithNames = messagesData?.map(message => ({
+      const messagesWithDetails = messagesData?.map(message => ({
         ...message,
-        sender_name: interpreterNames.get(message.sender_id) || 
-                    adminNames.get(message.sender_id) ||
-                    "Unknown User",
-        reply_count: replyCounts.get(message.id) || 0
-      })) as Message[];
+        sender_name: interpreterNames.get(message.sender_id) || "Unknown User",
+        reply_count: replyCountMap.get(message.id) || 0
+      }));
 
-      setMessages(messagesWithNames || []);
+      setMessages(messagesWithDetails || []);
       setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
