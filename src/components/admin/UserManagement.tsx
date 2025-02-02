@@ -18,7 +18,6 @@ import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 import { useNavigate } from "react-router-dom";
 import { MessageSquare } from "lucide-react";
-import type { Json } from "@/integrations/supabase/types";
 
 interface UserData {
   id: string;
@@ -125,29 +124,26 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
+
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
       const { data, error } = await supabase.functions.invoke('send-invitation-email', {
         body: {
           ...formData,
           role: "interpreter",
+          languages: languageStrings,
+          address: addressJson,
         },
       });
 
       if (error) throw error;
-
-      // Insert language pairs
-      if (formData.languages.length > 0 && data?.user?.id) {
-        const languageInserts = formData.languages.map(lang => ({
-          interpreter_id: data.user.id,
-          source_language: lang.source,
-          target_language: lang.target
-        }));
-
-        const { error: langError } = await supabase
-          .from('interpreter_languages')
-          .insert(languageInserts);
-
-        if (langError) throw langError;
-      }
 
       toast({
         title: "Invitation envoyée",
@@ -174,40 +170,26 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Update profile information
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
+
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
       const { error: profileError } = await supabase
         .from("interpreter_profiles")
         .update({
           ...formData,
-          address: formData.address as unknown as Json,
-          languages: [], // Clear the old array since we're using the new table
+          languages: languageStrings,
+          address: addressJson,
         })
         .eq("id", selectedUser.id);
 
       if (profileError) throw profileError;
-
-      // Delete existing language pairs
-      const { error: deleteError } = await supabase
-        .from('interpreter_languages')
-        .delete()
-        .eq('interpreter_id', selectedUser.id);
-
-      if (deleteError) throw deleteError;
-
-      // Insert new language pairs
-      if (formData.languages.length > 0) {
-        const languageInserts = formData.languages.map(lang => ({
-          interpreter_id: selectedUser.id,
-          source_language: lang.source,
-          target_language: lang.target
-        }));
-
-        const { error: langError } = await supabase
-          .from('interpreter_languages')
-          .insert(languageInserts);
-
-        if (langError) throw langError;
-      }
 
       toast({
         title: "Profil mis à jour",

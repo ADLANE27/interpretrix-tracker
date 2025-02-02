@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CountrySelect } from "@/components/CountrySelect";
-import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
-import { supabase } from "@/integrations/supabase/client";
+import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
 import {
   Select,
   SelectContent,
@@ -11,8 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LanguagePair } from "@/types/interpreter";
-import type { Json } from "@/integrations/supabase/types";
 
 interface Address {
   street: string;
@@ -28,7 +25,6 @@ interface InterpreterProfileFormProps {
 }
 
 export interface InterpreterFormData {
-  id?: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -48,13 +44,7 @@ export const InterpreterProfileForm = ({
   initialData = {},
   isSubmitting = false,
 }: InterpreterProfileFormProps) => {
-  const defaultAddress: Address = { street: "", postal_code: "", city: "" };
-  const initialAddress = typeof initialData.address === 'string' 
-    ? JSON.parse(initialData.address as string) as Address 
-    : (initialData.address as Address) || defaultAddress;
-
   const [formData, setFormData] = useState<InterpreterFormData>({
-    id: initialData.id,
     email: initialData.email || "",
     first_name: initialData.first_name || "",
     last_name: initialData.last_name || "",
@@ -63,36 +53,10 @@ export const InterpreterProfileForm = ({
     nationality: initialData.nationality || "",
     employment_status: initialData.employment_status || "salaried",
     languages: initialData.languages || [],
-    address: initialAddress,
+    address: initialData.address || { street: "", postal_code: "", city: "" },
     birth_country: initialData.birth_country || "",
     tarif_15min: initialData.tarif_15min || 0,
   });
-
-  useEffect(() => {
-    if (initialData.id) {
-      fetchInterpreterLanguages(initialData.id);
-    }
-  }, [initialData.id]);
-
-  const fetchInterpreterLanguages = async (interpreterId: string) => {
-    try {
-      const { data: languages, error } = await supabase
-        .from("interpreter_languages")
-        .select("*")
-        .eq("interpreter_id", interpreterId);
-
-      if (error) throw error;
-
-      const languagePairs: LanguagePair[] = languages.map((lang) => ({
-        source: lang.source_language,
-        target: lang.target_language,
-      }));
-
-      setFormData((prev) => ({ ...prev, languages: languagePairs }));
-    } catch (error) {
-      console.error("Error fetching interpreter languages:", error);
-    }
-  };
 
   const handleChange = (field: keyof InterpreterFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -105,13 +69,9 @@ export const InterpreterProfileForm = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const submissionData = {
-      ...formData,
-      address: JSON.stringify(formData.address),
-    };
-    onSubmit(submissionData as InterpreterFormData);
+    onSubmit(formData);
   };
 
   return (
