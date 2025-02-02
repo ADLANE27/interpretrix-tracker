@@ -72,8 +72,9 @@ export const MentionInput = ({
     const targetLanguages = new Map<string, number>();
     
     languages.forEach(langPair => {
-      const [_, target] = langPair.split('→').map(s => s.trim());
-      if (target) {
+      const parts = langPair.split('→');
+      if (parts.length === 2) {
+        const target = parts[1].trim();
         targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
       }
     });
