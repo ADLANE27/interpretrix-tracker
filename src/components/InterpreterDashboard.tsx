@@ -148,25 +148,35 @@ export const InterpreterDashboard = () => {
       console.log('[Mentions] Raw languages from profile:', profile.languages);
       console.log('[Mentions] Extracted target languages:', targetLanguages);
 
-      // Build the query with exact language matching
-      const { count, error } = await supabase
+      // First count direct mentions
+      const { count: directCount, error: directError } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
+        .eq('mentioned_user_id', user.id)
         .is('read_at', null)
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`);
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-      if (error) {
-        console.error('[Mentions] Error fetching mentions:', error);
-        throw error;
-      }
+      if (directError) throw directError;
 
-      console.log('[Mentions] Found unread mentions:', count);
-      setUnreadMentions(count || 0);
+      // Then count language mentions
+      const { count: languageCount, error: languageError } = await supabase
+        .from('message_mentions')
+        .select('*', { count: 'exact', head: true })
+        .is('mentioned_user_id', null)
+        .is('read_at', null)
+        .in('mentioned_language', targetLanguages)
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      if (languageError) throw languageError;
+
+      const totalCount = (directCount || 0) + (languageCount || 0);
+      console.log('[Mentions] Found unread mentions:', totalCount, '(direct:', directCount, ', language:', languageCount, ')');
+      
+      setUnreadMentions(totalCount);
 
       // Dispatch event to notify other components
-      if (count && count > 0) {
-        const event = new CustomEvent('newMentions', { detail: { count } });
+      if (totalCount > 0) {
+        const event = new CustomEvent('newMentions', { detail: { count: totalCount } });
         window.dispatchEvent(event);
       }
     } catch (error) {
