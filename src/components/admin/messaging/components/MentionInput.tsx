@@ -72,7 +72,6 @@ export const MentionInput = ({
     try {
       console.log('Fetching users and languages with search term:', mentionSearch);
       
-      // First get interpreter profiles that match the search
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email, languages')
@@ -80,7 +79,6 @@ export const MentionInput = ({
 
       if (interpreterError) throw interpreterError;
 
-      // Get admin roles
       const { data: adminRoles, error: adminError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -90,7 +88,6 @@ export const MentionInput = ({
 
       const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
 
-      // Mark interpreters who are also admins
       const usersWithRoles = interpreters?.map(user => ({
         ...user,
         isAdmin: adminIds.has(user.id)
@@ -98,33 +95,24 @@ export const MentionInput = ({
 
       setUsers(usersWithRoles);
 
-      // If user is admin, fetch language counts
       if (isAdmin) {
-        // Create a map to store unique target languages and their interpreter counts
+        // Create a map to store target languages and their counts
         const targetLanguageCounts = new Map<string, number>();
         
-        // Process each interpreter's languages
         interpreters?.forEach(interpreter => {
           interpreter.languages.forEach((langPair: string) => {
-            // Extract only the target language (after the arrow)
-            const [_, target] = langPair.split(' → ');
+            const [_, target] = langPair.split('→').map(s => s.trim());
             if (target) {
-              const normalizedTarget = target.trim().toLowerCase();
+              const normalizedTarget = target.toLowerCase();
               const normalizedSearch = mentionSearch.toLowerCase();
               
-              // Only count if it matches the search term (if any)
               if (!mentionSearch || normalizedTarget.includes(normalizedSearch)) {
-                const originalTarget = target.trim();
-                targetLanguageCounts.set(
-                  originalTarget, 
-                  (targetLanguageCounts.get(originalTarget) || 0) + 1
-                );
+                targetLanguageCounts.set(target, (targetLanguageCounts.get(target) || 0) + 1);
               }
             }
           });
         });
 
-        // Convert the map to array format and sort alphabetically
         const languageList = Array.from(targetLanguageCounts.entries())
           .map(([language, count]) => ({
             language,
@@ -145,7 +133,6 @@ export const MentionInput = ({
     const position = e.target.selectionStart || 0;
     setCursorPosition(position);
 
-    // Check if we should show mentions
     const lastAtSymbol = newValue.lastIndexOf('@', position);
     if (lastAtSymbol !== -1) {
       const nextSpace = newValue.indexOf(' ', lastAtSymbol);
@@ -168,14 +155,12 @@ export const MentionInput = ({
     const afterMention = value.slice(cursorPosition);
     
     if ('first_name' in item) {
-      // User mention
       const newValue = `${beforeMention}@${item.first_name} ${item.last_name}${afterMention}`;
       onChange(newValue);
       if (onMention) {
         onMention(item.id);
       }
     } else {
-      // Language mention
       const newValue = `${beforeMention}@${item.language}${afterMention}`;
       onChange(newValue);
       if (onLanguageMention) {
