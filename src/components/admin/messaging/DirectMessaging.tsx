@@ -156,28 +156,25 @@ export const DirectMessaging = () => {
       console.log('Deleting chat between users:', user.id, 'and', chatId);
 
       // Delete all messages between these two specific users
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from('direct_messages')
         .delete()
         .or(
           `and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),` +
           `and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`
-        )
-        .select('count');
+        );
 
       if (error) {
         console.error('Error deleting messages:', error);
         throw error;
       }
 
-      console.log('Deleted message count:', count);
-
       // Update the chat history by removing the deleted chat
       setChatHistory(prevHistory => prevHistory.filter(chat => chat.id !== chatId));
       
       toast({
         title: "Conversation supprimée",
-        description: `La conversation a été supprimée avec succès (${count} messages)`,
+        description: "La conversation a été supprimée avec succès",
       });
 
       // If the deleted chat was selected, clear the selection
