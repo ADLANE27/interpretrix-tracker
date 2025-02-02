@@ -34,8 +34,18 @@ interface MessageWithUsers {
   sender_id: string;
   recipient_id: string;
   created_at: string;
-  sender: User;
-  recipient: User;
+  sender: {
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  recipient: {
+    id: string;
+    email: string;
+    first_name?: string;
+    last_name?: string;
+  };
   read_at: string | null;
 }
 
@@ -93,7 +103,7 @@ export const DirectMessaging = () => {
 
       const history = new Map<string, ChatHistory>();
 
-      (messages as MessageWithUsers[])?.forEach(message => {
+      messages?.forEach((message: MessageWithUsers) => {
         const otherUser = message.sender_id === user.id ? message.recipient : message.sender;
         if (!otherUser) return;
 
