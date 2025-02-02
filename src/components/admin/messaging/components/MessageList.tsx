@@ -24,9 +24,16 @@ interface Message {
   attachment_name?: string | null;
 }
 
+interface User {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface MessageListProps {
   messages: Message[];
-  selectedInterpreter: string;
+  selectedUser: User | null;
   editingMessage: string | null;
   editContent: string;
   onEditStart: (messageId: string, content: string) => void;
@@ -38,7 +45,7 @@ interface MessageListProps {
 
 export const MessageList = ({
   messages,
-  selectedInterpreter,
+  selectedUser,
   editingMessage,
   editContent,
   onEditStart,
@@ -54,7 +61,7 @@ export const MessageList = ({
           <div
             key={message.id}
             className={`group p-2 rounded-lg hover:bg-chat-messageHover transition-colors ${
-              message.sender_id === selectedInterpreter
+              message.sender_id === selectedUser?.id
                 ? "ml-auto max-w-[80%]"
                 : "mr-auto max-w-[80%]"
             }`}
@@ -87,13 +94,13 @@ export const MessageList = ({
               <>
                 <div className="flex justify-between items-start gap-2">
                   <div className={`flex-1 text-sm ${
-                    message.sender_id === selectedInterpreter
+                    message.sender_id === selectedUser?.id
                       ? "bg-chat-selected text-white"
                       : "bg-chat-hover"
                   } p-3 rounded-lg`}>
                     {message.content}
                   </div>
-                  {message.sender_id !== selectedInterpreter && (
+                  {message.sender_id !== selectedUser?.id && (
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         size="sm"
@@ -142,7 +149,7 @@ export const MessageList = ({
                 )}
                 <div className="text-xs text-chat-timestamp mt-1 flex items-center gap-2">
                   {new Date(message.created_at).toLocaleString()}
-                  {message.read_at && message.sender_id !== selectedInterpreter && (
+                  {message.read_at && message.sender_id !== selectedUser?.id && (
                     <span className="text-chat-selected">Lu</span>
                   )}
                 </div>

@@ -72,8 +72,8 @@ export const DirectMessaging = () => {
         .from("direct_messages")
         .select(`
           *,
-          sender:sender_id(id, email),
-          recipient:recipient_id(id, email)
+          sender:sender_id(id, email, first_name, last_name),
+          recipient:recipient_id(id, email, first_name, last_name)
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
@@ -82,9 +82,9 @@ export const DirectMessaging = () => {
 
       const history = new Map<string, ChatHistory>();
 
-      for (const message of messages || []) {
+      messages?.forEach(message => {
         const otherUser = message.sender_id === user.id ? message.recipient : message.sender;
-        if (!otherUser) continue;
+        if (!otherUser) return;
 
         if (!history.has(otherUser.id)) {
           history.set(otherUser.id, {
@@ -100,7 +100,7 @@ export const DirectMessaging = () => {
           const existing = history.get(otherUser.id)!;
           existing.unreadCount += 1;
         }
-      }
+      });
 
       setChatHistory(Array.from(history.values()));
     } catch (error) {

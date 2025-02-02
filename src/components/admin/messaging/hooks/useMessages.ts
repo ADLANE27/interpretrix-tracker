@@ -20,7 +20,7 @@ export const useMessages = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchMessages = async (interpreterId: string) => {
+  const fetchMessages = async (recipientId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
@@ -28,7 +28,7 @@ export const useMessages = () => {
       const { data, error } = await supabase
         .from("direct_messages")
         .select("*")
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
