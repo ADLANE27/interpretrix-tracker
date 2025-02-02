@@ -147,11 +147,11 @@ export const InterpreterDashboard = () => {
 
       console.log('[Mentions] Interpreter target languages:', targetLanguages);
 
-      // Count both direct mentions and language mentions
+      // Build the query for both direct mentions and language mentions
       const { count, error } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`)
+        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`)
         .is('read_at', null)
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
