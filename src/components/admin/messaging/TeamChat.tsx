@@ -66,7 +66,12 @@ export const TeamChat = () => {
         .from("messages")
         .select(`
           *,
-          sender:interpreter_profiles(first_name, last_name)
+          sender:sender_id (
+            profile:interpreter_profiles (
+              first_name,
+              last_name
+            )
+          )
         `)
         .eq("channel_id", channelId)
         .order("created_at");
@@ -76,9 +81,9 @@ export const TeamChat = () => {
       // Transform the data to match our Message interface
       return (data || []).map(msg => ({
         ...msg,
-        sender: msg.sender ? {
-          first_name: msg.sender.first_name || null,
-          last_name: msg.sender.last_name || null
+        sender: msg.sender?.profile ? {
+          first_name: msg.sender.profile.first_name || null,
+          last_name: msg.sender.profile.last_name || null
         } : null
       })) as Message[];
     },
