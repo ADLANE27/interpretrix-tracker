@@ -43,7 +43,7 @@ export const useMessages = () => {
     }
   };
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, recipientId: string) => {
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -52,9 +52,11 @@ export const useMessages = () => {
       const { error } = await supabase.from("direct_messages").insert({
         content: content.trim(),
         sender_id: user.id,
+        recipient_id: recipientId
       });
 
       if (error) throw error;
+      await fetchMessages(recipientId);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
