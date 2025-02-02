@@ -87,20 +87,21 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts using count aggregate
+      // Get reply counts
       const { data: replyCounts, error: replyCountsError } = await supabase
         .from("messages")
-        .select('parent_id, count')
+        .select('parent_id, count(*)', { count: 'exact' })
         .not('parent_id', 'is', null)
-        .eq('channel_id', channelId)
-        .groupBy('parent_id');
+        .eq('channel_id', channelId);
 
       if (replyCountsError) throw replyCountsError;
 
       // Create a map of reply counts
       const replyCountMap = new Map();
       replyCounts?.forEach(row => {
-        replyCountMap.set(row.parent_id, parseInt(row.count.toString()));
+        if (row.parent_id) {
+          replyCountMap.set(row.parent_id, parseInt(row.count));
+        }
       });
 
       // Get interpreter profiles
