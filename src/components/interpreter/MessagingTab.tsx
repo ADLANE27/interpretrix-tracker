@@ -254,9 +254,9 @@ export const MessagingTab = () => {
   const fetchChannelMessages = async (channelId: string) => {
     try {
       console.log('Fetching messages for channel:', channelId);
-      const { data, error } = await supabase
+      const { data: messages, error } = await supabase
         .from('messages')
-        .select('*')
+        .select('*, sender:sender_id(first_name, last_name)')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
@@ -265,26 +265,8 @@ export const MessagingTab = () => {
         throw error;
       }
 
-      console.log('Successfully fetched channel messages:', data);
-      
-      const senderIds = [...new Set(data?.map(msg => msg.sender_id) || [])];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('interpreter_profiles')
-        .select('id, first_name, last_name')
-        .in('id', senderIds);
-
-      if (profilesError) {
-        console.error('Error fetching sender profiles:', profilesError);
-        throw profilesError;
-      }
-
-      const profileMap = (profiles || []).reduce((acc, profile) => ({
-        ...acc,
-        [profile.id]: profile
-      }), {});
-
-      setSenderProfiles(profileMap);
-      setMessages(data as Message[] || []);
+      console.log('Successfully fetched channel messages:', messages);
+      setMessages(messages || []);
     } catch (error) {
       console.error('Error in fetchChannelMessages:', error);
       toast({
@@ -552,7 +534,7 @@ export const MessagingTab = () => {
 
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                {messages.map((message) => (
+                {messages.map((message: any) => (
                   <div
                     key={message.id}
                     className={`group flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
@@ -561,14 +543,14 @@ export const MessagingTab = () => {
                       <div className="flex items-start space-x-3">
                         {message.sender_id !== currentUserId && (
                           <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
-                            {senderProfiles[message.sender_id]?.first_name?.charAt(0).toUpperCase()}
+                            {message.sender?.first_name?.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          {message.sender_id !== currentUserId && senderProfiles[message.sender_id] && (
+                          {message.sender_id !== currentUserId && message.sender && (
                             <div className="flex items-center space-x-2">
                               <span className="font-medium">
-                                {senderProfiles[message.sender_id]?.first_name} {senderProfiles[message.sender_id]?.last_name}
+                                {message.sender.first_name} {message.sender.last_name}
                               </span>
                               <span className="text-xs text-chat-timestamp">
                                 {new Date(message.created_at).toLocaleTimeString([], { 
