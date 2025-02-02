@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -13,7 +13,7 @@ interface SubscriptionConfig {
 
 export function useRealtimeSubscription(
   config: SubscriptionConfig,
-  callback: (payload: any) => void
+  callback: (payload: RealtimePostgresChangesPayload<any>) => void
 ) {
   useEffect(() => {
     let channel: RealtimeChannel;
@@ -22,7 +22,7 @@ export function useRealtimeSubscription(
       channel = supabase
         .channel('db-changes')
         .on(
-          'postgres_changes',
+          'postgres_changes' as const,
           {
             event: config.event,
             schema: config.schema || 'public',
