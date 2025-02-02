@@ -147,22 +147,13 @@ export const InterpreterDashboard = () => {
 
       console.log('[Mentions] Interpreter target languages:', targetLanguages);
 
-      // Build the base query
-      let query = supabase
+      // Build the query
+      const { count, error } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
         .is('read_at', null)
-        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-      // Add filter conditions
-      if (targetLanguages.length > 0) {
-        // Using separate or conditions for better query construction
-        query = query.or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`);
-      } else {
-        query = query.eq('mentioned_user_id', user.id);
-      }
-
-      const { count, error } = await query;
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`);
 
       if (error) {
         console.error('[Mentions] Error fetching mentions:', error);
@@ -516,3 +507,4 @@ export const InterpreterDashboard = () => {
     </div>
   );
 };
+
