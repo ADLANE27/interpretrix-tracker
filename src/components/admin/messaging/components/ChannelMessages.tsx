@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare } from "lucide-react";
 import { MessageInput } from "./MessageInput";
-import { ThreadView } from "../ThreadView";
+import { ThreadView } from "./ThreadView";
 
 interface Message {
   id: string;
