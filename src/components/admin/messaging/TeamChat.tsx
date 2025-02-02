@@ -20,7 +20,6 @@ interface Channel {
   id: string;
   name: string;
   description: string | null;
-  created_by: string;
   members_count: number;
 }
 
@@ -130,17 +129,18 @@ export const TeamChat = () => {
       {/* Sidebar */}
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
         <div className="p-4">
-          <div className="flex items-center justify-between text-white mb-4">
-            <h2 className="text-lg font-semibold">Channels</h2>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between text-white">
+              <h2 className="text-lg font-semibold">Channels</h2>
+            </div>
+            
             <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
               <DialogTrigger asChild>
                 <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-white hover:bg-chat-searchBg"
-                  title="Créer un nouveau groupe"
+                  className="w-full bg-primary hover:bg-primary/90 text-white"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-5 w-5 mr-2" />
+                  Créer un nouveau groupe
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -153,14 +153,14 @@ export const TeamChat = () => {
                 />
               </DialogContent>
             </Dialog>
-          </div>
-          
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-chat-searchText" />
-            <Input 
-              placeholder="Search channels..."
-              className="w-full bg-chat-searchBg border-0 pl-10 text-white placeholder:text-chat-searchText focus-visible:ring-0 focus-visible:ring-offset-0"
-            />
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-chat-searchText" />
+              <Input 
+                placeholder="Search channels..."
+                className="w-full bg-chat-searchBg border-0 pl-10 text-white placeholder:text-chat-searchText focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            </div>
           </div>
         </div>
 
