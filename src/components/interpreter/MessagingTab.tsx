@@ -65,6 +65,7 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [directMessages, setDirectMessages] = useState<Message[]>([]);
+  const [unreadMentions, setUnreadMentions] = useState(0);
   const { toast } = useToast();
 
   const fetchChannels = async () => {
@@ -236,6 +237,105 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
       toast({
         title: "Erreur",
         description: "Impossible de charger les messages du canal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+    fetchChannels();
+    fetchChatHistory();
+    console.log('[MessagingTab] Setting up realtime subscriptions');
+
+    // Set up realtime subscription for language mentions
+    const mentionsChannel = supabase
+      .channel('language-mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `mentioned_language=not.is.null`,
+        },
+        async (payload) => {
+          console.log('[MessagingTab] New language mention:', payload);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Check if the mentioned language is one of the interpreter's target languages
+          const { data: profile } = await supabase
+            .from('interpreter_profiles')
+            .select('languages')
+            .eq('id', user.id)
+            .single();
+
+          if (profile && profile.languages) {
+            const targetLanguages = profile.languages.map(lang => {
+              const [_, target] = lang.split(' → ');
+              return target;
+            });
+
+            if (targetLanguages.includes(payload.new.mentioned_language)) {
+              console.log('[MessagingTab] Language mention matches interpreter target language');
+              fetchUnreadMentions();
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MessagingTab] Language mentions subscription status:', status);
+      });
+
+    return () => {
+      console.log('[MessagingTab] Cleaning up subscriptions');
+      supabase.removeChannel(mentionsChannel);
+    };
+  }, []);
+
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('[MessagingTab] No authenticated user found');
+        return;
+      }
+
+      // Get interpreter's target languages
+      const { data: profile } = await supabase
+        .from('interpreter_profiles')
+        .select('languages')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) return;
+
+      const targetLanguages = profile.languages.map(lang => {
+        const [_, target] = lang.split(' → ');
+        return target;
+      });
+
+      // Count unread mentions (both direct mentions and language mentions)
+      const { count, error } = await supabase
+        .from('message_mentions')
+        .select('*', { count: 'exact', head: true })
+        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`)
+        .is('read_at', null)
+        .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      if (error) {
+        console.error('[MessagingTab] Error fetching mentions:', error);
+        throw error;
+      }
+
+      console.log('[MessagingTab] Found unread mentions:', count);
+      setUnreadMentions(count || 0);
+    } catch (error) {
+      console.error("[MessagingTab] Error in fetchUnreadMentions:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch unread mentions",
         variant: "destructive",
       });
     }
