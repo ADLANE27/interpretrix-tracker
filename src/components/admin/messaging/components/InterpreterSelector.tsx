@@ -21,6 +21,14 @@ export const InterpreterSelector = ({
   unreadCounts,
   onSelectInterpreter,
 }: InterpreterSelectorProps) => {
+  if (interpreters.length === 0) {
+    return (
+      <div className="p-4 text-sm text-gray-500 text-center">
+        Aucun interprète trouvé
+      </div>
+    );
+  }
+
   return (
     <ScrollArea className="h-[calc(100vh-200px)]">
       <div className="space-y-1 p-2">
