@@ -1,7 +1,7 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
@@ -39,8 +39,17 @@ export const MessageList = ({
     return `${profile.first_name} ${profile.last_name}`.trim();
   };
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
-    // When messages are displayed, mark them as read
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
     const handleMessagesRead = async () => {
       if (!currentUserId) return;
       
@@ -65,6 +74,10 @@ export const MessageList = ({
           if (error) {
             console.error('[MessageList] Error marking mentions as read:', error);
           }
+
+          // Trigger a refresh of unread mentions count in parent components
+          const event = new CustomEvent('mentionsRead');
+          window.dispatchEvent(event);
         } catch (error) {
           console.error('[MessageList] Error in handleMessagesRead:', error);
         }
@@ -128,8 +141,8 @@ export const MessageList = ({
                 )}
               </div>
             </div>
-          );
-        })}
+          ))}
+        <div ref={messagesEndRef} />
       </div>
     </ScrollArea>
   );

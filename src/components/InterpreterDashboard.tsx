@@ -55,6 +55,12 @@ export const InterpreterDashboard = () => {
     fetchUnreadMentions();
     console.log('[Mentions] Setting up realtime subscriptions for user:', profile?.id);
 
+    // Listen for mentionsRead event
+    const handleMentionsRead = () => {
+      fetchUnreadMentions();
+    };
+    window.addEventListener('mentionsRead', handleMentionsRead);
+
     // Set up realtime subscriptions
     const profileChannel = supabase
       .channel('interpreter-profile-updates')
@@ -115,6 +121,7 @@ export const InterpreterDashboard = () => {
 
     return () => {
       console.log('[Mentions] Cleaning up subscriptions');
+      window.removeEventListener('mentionsRead', handleMentionsRead);
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(missionsChannel);
       supabase.removeChannel(mentionsChannel);
