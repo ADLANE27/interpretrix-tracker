@@ -23,7 +23,7 @@ interface Message {
   sender?: {
     first_name: string;
     last_name: string;
-  };
+  } | null;
 }
 
 interface Channel {
@@ -70,7 +70,7 @@ export const TeamChat = () => {
         .order("created_at");
       
       if (error) throw error;
-      return data as Message[];
+      return data as unknown as Message[];
     },
     enabled: !!channelId,
   });

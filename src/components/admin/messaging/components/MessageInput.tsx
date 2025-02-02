@@ -10,8 +10,8 @@ interface MessageInputProps {
   value: string;
   onChange: (value: string) => void;
   onSendMessage: (content: string) => void;
-  onFileUpload: (file: File) => void;
-  isUploading: boolean;
+  onFileUpload?: (file: File) => void;
+  isUploading?: boolean;
   onMention?: (mentionData: { type: "user" | "language"; value: string }) => void;
 }
 
@@ -20,21 +20,19 @@ export const MessageInput = ({
   onChange,
   onSendMessage,
   onFileUpload,
-  isUploading,
+  isUploading = false,
   onMention
 }: MessageInputProps) => {
-  const [newMessage, setNewMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
-    if (newMessage.trim()) {
-      onSendMessage(newMessage);
-      setNewMessage("");
+    if (value.trim()) {
+      onSendMessage(value);
     }
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    setNewMessage(prev => prev + emojiData.emoji);
+    onChange(value + emojiData.emoji);
   };
 
   return (
@@ -53,15 +51,17 @@ export const MessageInput = ({
             }}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 hover:bg-gray-100"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              <Paperclip className="h-4 w-4 text-gray-500" />
-            </Button>
+            {onFileUpload && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-gray-100"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                <Paperclip className="h-4 w-4 text-gray-500" />
+              </Button>
+            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -78,20 +78,22 @@ export const MessageInput = ({
             </Popover>
           </div>
         </div>
-        <input
-          type="file"
-          className="hidden"
-          ref={fileInputRef}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              onFileUpload(file);
-              if (fileInputRef.current) {
-                fileInputRef.current.value = '';
+        {onFileUpload && (
+          <input
+            type="file"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && onFileUpload) {
+                onFileUpload(file);
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
               }
-            }
-          }}
-        />
+            }}
+          />
+        )}
         <Button 
           onClick={handleSend}
           disabled={isUploading || !value.trim()}
