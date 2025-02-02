@@ -149,13 +149,15 @@ export const DirectMessaging = () => {
 
       if (error) throw error;
 
+      // Update the chat history by removing the deleted chat
+      setChatHistory(prevHistory => prevHistory.filter(chat => chat.id !== chatId));
+      
       toast({
         title: "Conversation supprimée",
         description: "La conversation a été supprimée avec succès",
       });
 
-      fetchChatHistory();
-      
+      // If the deleted chat was selected, clear the selection
       if (selectedInterpreter === chatId) {
         setSelectedInterpreter(null);
       }
@@ -166,6 +168,8 @@ export const DirectMessaging = () => {
         description: "Impossible de supprimer la conversation",
         variant: "destructive",
       });
+    } finally {
+      setMessageToDelete(null);
     }
   };
 
