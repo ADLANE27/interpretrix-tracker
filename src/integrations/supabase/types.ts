@@ -9,107 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      channel_members: {
-        Row: {
-          added_by: string
-          channel_id: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          added_by: string
-          channel_id: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          added_by?: string
-          channel_id?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_members_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      channels: {
-        Row: {
-          created_at: string
-          created_by: string
-          description: string | null
-          id: string
-          members_count: number | null
-          name: string
-          type: Database["public"]["Enums"]["channel_type"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          description?: string | null
-          id?: string
-          members_count?: number | null
-          name: string
-          type: Database["public"]["Enums"]["channel_type"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          description?: string | null
-          id?: string
-          members_count?: number | null
-          name?: string
-          type?: Database["public"]["Enums"]["channel_type"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      direct_messages: {
-        Row: {
-          attachment_name: string | null
-          attachment_url: string | null
-          content: string
-          created_at: string
-          id: string
-          read_at: string | null
-          recipient_id: string
-          sender_id: string
-          updated_at: string
-        }
-        Insert: {
-          attachment_name?: string | null
-          attachment_url?: string | null
-          content: string
-          created_at?: string
-          id?: string
-          read_at?: string | null
-          recipient_id: string
-          sender_id: string
-          updated_at?: string
-        }
-        Update: {
-          attachment_name?: string | null
-          attachment_url?: string | null
-          content?: string
-          created_at?: string
-          id?: string
-          read_at?: string | null
-          recipient_id?: string
-          sender_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       interpretation_missions: {
         Row: {
           assigned_interpreter_id: string | null
@@ -276,60 +175,6 @@ export type Database = {
         }
         Relationships: []
       }
-      messages: {
-        Row: {
-          attachment_name: string | null
-          attachment_url: string | null
-          channel_id: string | null
-          content: string
-          created_at: string
-          id: string
-          parent_id: string | null
-          recipient_id: string | null
-          sender_id: string
-          updated_at: string
-        }
-        Insert: {
-          attachment_name?: string | null
-          attachment_url?: string | null
-          channel_id?: string | null
-          content: string
-          created_at?: string
-          id?: string
-          parent_id?: string | null
-          recipient_id?: string | null
-          sender_id: string
-          updated_at?: string
-        }
-        Update: {
-          attachment_name?: string | null
-          attachment_url?: string | null
-          channel_id?: string | null
-          content?: string
-          created_at?: string
-          id?: string
-          parent_id?: string | null
-          recipient_id?: string | null
-          sender_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "messages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mission_notifications: {
         Row: {
           created_at: string
@@ -485,13 +330,6 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }
         Returns: boolean
-      }
-      mark_messages_as_read: {
-        Args: {
-          p_recipient_id: string
-          p_sender_id: string
-        }
-        Returns: undefined
       }
       migrate_interpreter_languages: {
         Args: Record<PropertyKey, never>
