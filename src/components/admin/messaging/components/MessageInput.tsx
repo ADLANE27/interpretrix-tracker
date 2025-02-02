@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Paperclip } from "lucide-react";
+import { Paperclip, Send, Smile } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface MessageInputProps {
@@ -51,38 +51,49 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
   };
 
   return (
-    <div className="flex gap-2 p-4 bg-white border-t">
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Tapez votre message..."
-        className="flex-1"
-        onKeyPress={(e) => {
-          if (e.key === "Enter") {
-            handleSend();
-          }
-        }}
-      />
+    <div className="flex items-center space-x-2">
+      <div className="flex-1 relative">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type your message..."
+          className="w-full bg-chat-input border-chat-divider pl-4 pr-20 py-2 focus-visible:ring-chat-selected"
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleSend();
+            }
+          }}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-chat-hover"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            <Paperclip className="h-4 w-4 text-gray-500" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-chat-hover"
+          >
+            <Smile className="h-4 w-4 text-gray-500" />
+          </Button>
+        </div>
+      </div>
       <input
         type="file"
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileChange}
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading}
-        className="hover:bg-chat-hover"
-      >
-        <Paperclip className="h-4 w-4" />
-      </Button>
       <Button 
         onClick={handleSend} 
         disabled={isUploading}
         size="icon"
-        className="bg-chat-selected hover:bg-chat-selected/90"
+        className="bg-chat-selected hover:bg-chat-selected/90 h-10 w-10"
       >
         <Send className="h-4 w-4" />
       </Button>

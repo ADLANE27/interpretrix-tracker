@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare } from "lucide-react";
-import { ThreadView } from "./ThreadView";
 import { MessageInput } from "./MessageInput";
 
 interface Message {
@@ -26,7 +25,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [selectedThread, setSelectedThread] = useState<Message | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -61,12 +59,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       supabase.removeChannel(channel);
     };
   }, [channelId]);
-
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  };
 
   const fetchMessages = async () => {
     try {
@@ -107,7 +99,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       }));
 
       setMessages(messagesWithDetails || []);
-      setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast({
@@ -151,77 +142,62 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   };
 
   return (
-    <div className="h-[600px] grid grid-cols-3 gap-4">
-      <div className={`col-span-${selectedThread ? '2' : '3'} flex flex-col`}>
-        <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
-          <div className="space-y-4">
-            {messages.map((message) => {
-              const isCurrentUser = message.sender_id === currentUserId;
-              return (
-                <div
-                  key={message.id}
-                  className={`flex flex-col space-y-1 ${
-                    isCurrentUser ? 'items-end' : 'items-start'
-                  }`}
-                >
-                  <div className="text-sm font-medium">
-                    {message.sender_name}
+    <div className="flex-1 flex flex-col">
+      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+        <div className="space-y-4 py-4">
+          {messages.map((message) => {
+            const isCurrentUser = message.sender_id === currentUserId;
+            return (
+              <div
+                key={message.id}
+                className="group hover:bg-chat-messageHover rounded-lg p-2 -mx-2"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
+                    {message.sender_name?.charAt(0).toUpperCase()}
                   </div>
-                  <div 
-                    className={`p-3 rounded-lg max-w-[80%] ${
-                      isCurrentUser 
-                        ? 'bg-interpreter-navy text-white' 
-                        : 'bg-secondary'
-                    }`}
-                  >
-                    {message.content}
-                    {message.attachment_url && (
-                      <div className="mt-2">
-                        <a 
-                          href={message.attachment_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-500 hover:underline flex items-center gap-1"
-                        >
-                          📎 {message.attachment_name || 'Attachment'}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{new Date(message.created_at).toLocaleString()}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2"
-                      onClick={() => setSelectedThread(message)}
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                    </Button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">
+                        {message.sender_name}
+                      </span>
+                      <span className="text-xs text-chat-timestamp">
+                        {new Date(message.created_at).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <div className="text-sm mt-1">
+                      {message.content}
+                      {message.attachment_url && (
+                        <div className="mt-2">
+                          <a 
+                            href={message.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+                          >
+                            📎 {message.attachment_name || 'Attachment'}
+                          </a>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
-
-        <div className="mt-4">
-          <MessageInput
-            value={newMessage}
-            onChange={setNewMessage}
-            onSend={sendMessage}
-          />
+              </div>
+            );
+          })}
         </div>
+      </ScrollArea>
+
+      <div className="p-4 border-t border-chat-divider">
+        <MessageInput
+          value={newMessage}
+          onChange={setNewMessage}
+          onSend={sendMessage}
+        />
       </div>
-
-      {selectedThread && (
-        <div className="col-span-1 border-l">
-          <ThreadView
-            parentMessage={selectedThread}
-            onClose={() => setSelectedThread(null)}
-          />
-        </div>
-      )}
     </div>
   );
 };
