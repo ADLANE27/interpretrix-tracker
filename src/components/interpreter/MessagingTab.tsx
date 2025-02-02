@@ -5,8 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, MessageSquare, Send, Users, Paperclip, Smile } from "lucide-react";
+import { Search, MessageSquare, Send, Users, Paperclip, Smile, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import EmojiPicker from 'emoji-picker-react';
 import type { EmojiClickData } from 'emoji-picker-react';
 import { useNavigate } from "react-router-dom";
@@ -72,6 +80,7 @@ export const MessagingTab = () => {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -362,6 +371,31 @@ export const MessagingTab = () => {
     setNewMessage(prev => prev + emojiData.emoji);
   };
 
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Message supprimé",
+        description: "Le message a été supprimé avec succès",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    } finally {
+      setMessageToDelete(null);
+    }
+  };
+
   useEffect(() => {
     if (selectedChannel) {
       fetchChannelMessages(selectedChannel);
@@ -500,17 +534,41 @@ export const MessagingTab = () => {
                     key={message.id}
                     className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div
-                      className={`max-w-[70%] rounded-lg p-3 ${
-                        message.sender_id === currentUserId
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary'
-                      }`}
-                    >
-                      {message.content}
-                      <div className="text-xs opacity-70 mt-1">
-                        {new Date(message.created_at).toLocaleString()}
+                    <div className="group relative">
+                      <div
+                        className={`max-w-[70%] rounded-lg p-3 ${
+                          message.sender_id === currentUserId
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary'
+                        }`}
+                      >
+                        {message.content}
+                        {message.attachment_url && (
+                          <div className="mt-2">
+                            <a 
+                              href={message.attachment_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm underline"
+                            >
+                              {message.attachment_name || 'Attachment'}
+                            </a>
+                          </div>
+                        )}
+                        <div className="text-xs opacity-70 mt-1">
+                          {new Date(message.created_at).toLocaleString()}
+                        </div>
                       </div>
+                      {message.sender_id === currentUserId && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setMessageToDelete(message.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -578,6 +636,28 @@ export const MessagingTab = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessageToDelete(null)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => messageToDelete && deleteMessage(messageToDelete)}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Tabs>
   );
 };
