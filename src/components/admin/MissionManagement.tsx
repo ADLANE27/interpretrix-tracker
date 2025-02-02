@@ -152,7 +152,8 @@ export const MissionManagement = () => {
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
-        .contains("languages", [languagePair]);
+        .contains("languages", [languagePair])
+        .eq("status", "available");
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
