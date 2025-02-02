@@ -113,10 +113,20 @@ export const TeamChat = () => {
     if (!user) return;
 
     if (mentionData.type === "language") {
+      // Only query interpreters (excluding admins) for language mentions
       const { data: matchingInterpreters, error } = await supabase
         .from("interpreter_profiles")
-        .select("id, languages")
-        .filter('languages', 'cs', `{${mentionData.value}}`);
+        .select(`
+          id, 
+          languages
+        `)
+        .filter('languages', 'cs', `{${mentionData.value}}`)
+        .not('id', 'in', (
+          supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'admin')
+        ));
 
       if (error) {
         console.error("Error fetching interpreters:", error);
@@ -152,6 +162,7 @@ export const TeamChat = () => {
 
       await Promise.all(mentionPromises);
     } else {
+      // For user mentions, we'll allow mentioning both interpreters and admins
       const { data: mentionedUser, error: userError } = await supabase
         .from("interpreter_profiles")
         .select("id")
