@@ -100,29 +100,37 @@ export const MentionInput = ({
 
       // If user is admin, fetch language counts
       if (isAdmin) {
-        // Create a map to store target language counts
+        // Create a map to store unique target languages and their interpreter counts
         const targetLanguageCounts = new Map<string, number>();
         
         // Process each interpreter's languages
         interpreters?.forEach(interpreter => {
           interpreter.languages.forEach((langPair: string) => {
             // Extract only the target language (after the arrow)
-            const target = langPair.split(' → ')[1];
+            const [_, target] = langPair.split(' → ');
             if (target) {
-              const normalizedTarget = target.toLowerCase();
+              const normalizedTarget = target.trim().toLowerCase();
+              const normalizedSearch = mentionSearch.toLowerCase();
+              
               // Only count if it matches the search term (if any)
-              if (!mentionSearch || normalizedTarget.includes(mentionSearch.toLowerCase())) {
-                targetLanguageCounts.set(target, (targetLanguageCounts.get(target) || 0) + 1);
+              if (!mentionSearch || normalizedTarget.includes(normalizedSearch)) {
+                const originalTarget = target.trim();
+                targetLanguageCounts.set(
+                  originalTarget, 
+                  (targetLanguageCounts.get(originalTarget) || 0) + 1
+                );
               }
             }
           });
         });
 
         // Convert the map to array format
-        const languageList = Array.from(targetLanguageCounts.entries()).map(([language, count]) => ({
-          language,
-          count
-        }));
+        const languageList = Array.from(targetLanguageCounts.entries())
+          .map(([language, count]) => ({
+            language,
+            count
+          }))
+          .sort((a, b) => a.language.localeCompare(b.language));
 
         console.log('Language counts:', languageList);
         setLanguages(languageList);
