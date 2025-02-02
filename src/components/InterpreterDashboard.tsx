@@ -53,6 +53,7 @@ export const InterpreterDashboard = () => {
     fetchProfile();
     fetchScheduledMissions();
     fetchUnreadMentions();
+    console.log('[Mentions] Setting up realtime subscriptions for user:', profile?.id);
 
     // Set up realtime subscriptions
     const profileChannel = supabase
@@ -103,15 +104,17 @@ export const InterpreterDashboard = () => {
           table: 'message_mentions',
           filter: `mentioned_user_id=eq.${profile?.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('[Mentions] New mention received:', payload);
           fetchUnreadMentions();
         }
       )
       .subscribe((status) => {
-        console.log('Mentions subscription status:', status);
+        console.log('[Mentions] Subscription status:', status);
       });
 
     return () => {
+      console.log('[Mentions] Cleaning up subscriptions');
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(missionsChannel);
       supabase.removeChannel(mentionsChannel);
@@ -121,7 +124,11 @@ export const InterpreterDashboard = () => {
   const fetchUnreadMentions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('[Mentions] No authenticated user found');
+        return;
+      }
+      console.log('[Mentions] Fetching mentions for user:', user.id);
 
       const { count, error } = await supabase
         .from('message_mentions')
@@ -129,10 +136,15 @@ export const InterpreterDashboard = () => {
         .eq('mentioned_user_id', user.id)
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Mentions] Error fetching mentions:', error);
+        throw error;
+      }
+
+      console.log('[Mentions] Found unread mentions:', count);
       setUnreadMentions(count || 0);
     } catch (error) {
-      console.error("Error fetching unread mentions:", error);
+      console.error("[Mentions] Error in fetchUnreadMentions:", error);
     }
   };
 
