@@ -21,8 +21,8 @@ export interface Message {
   parent_id?: string;
   updated_at: string;
   sender?: {
-    first_name: string;
-    last_name: string;
+    first_name: string | null;
+    last_name: string | null;
   } | null;
 }
 
@@ -72,7 +72,15 @@ export const TeamChat = () => {
         .order("created_at");
       
       if (error) throw error;
-      return data as Message[];
+      
+      // Transform the data to match our Message interface
+      return (data || []).map(msg => ({
+        ...msg,
+        sender: msg.sender ? {
+          first_name: msg.sender.first_name || null,
+          last_name: msg.sender.last_name || null
+        } : null
+      })) as Message[];
     },
     enabled: !!channelId,
   });
