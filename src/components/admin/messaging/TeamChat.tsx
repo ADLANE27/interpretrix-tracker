@@ -134,13 +134,18 @@ export const TeamChat = () => {
             <h2 className="text-lg font-semibold">Channels</h2>
             <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-chat-searchBg">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white hover:bg-chat-searchBg"
+                  title="Créer un nouveau groupe"
+                >
                   <Plus className="h-5 w-5" />
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create a new channel</DialogTitle>
+                  <DialogTitle>Créer un nouveau groupe</DialogTitle>
                 </DialogHeader>
                 <CreateChannelDialog 
                   onClose={() => setIsCreateChannelOpen(false)}
@@ -194,13 +199,14 @@ export const TeamChat = () => {
                       size="icon"
                       className="text-gray-300 hover:bg-chat-searchBg hover:text-white"
                       onClick={() => setSelectedChannelForMember(channel.id)}
+                      title="Ajouter un membre"
                     >
                       <UserPlus className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add member to {channel.name}</DialogTitle>
+                      <DialogTitle>Ajouter un membre à {channel.name}</DialogTitle>
                     </DialogHeader>
                     <AddChannelMemberForm
                       channelId={channel.id}
