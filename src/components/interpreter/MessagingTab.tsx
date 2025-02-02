@@ -48,7 +48,11 @@ interface ChatHistory {
   isAdmin?: boolean;
 }
 
-export const MessagingTab = () => {
+interface MessagingTabProps {
+  onMentionsRead?: () => void;
+}
+
+export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -246,8 +250,9 @@ export const MessagingTab = () => {
   useEffect(() => {
     if (selectedChannel) {
       fetchChannelMessages(selectedChannel);
+      onMentionsRead?.();
     }
-  }, [selectedChannel]);
+  }, [selectedChannel, onMentionsRead]);
 
   const fetchChatHistory = async () => {
     try {
