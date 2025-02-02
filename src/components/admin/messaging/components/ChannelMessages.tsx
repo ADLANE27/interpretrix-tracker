@@ -12,7 +12,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  sender_name: string;
+  sender_name?: string;
   attachment_url?: string;
   attachment_name?: string;
 }
@@ -144,10 +144,10 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   };
 
   return (
-    <div className="flex-1 flex">
+    <div className="flex-1 flex h-full">
       <div className="flex-1 flex flex-col h-full relative">
-        <ScrollArea className="flex-1 px-4 pb-4">
-          <div className="space-y-4 py-4">
+        <ScrollArea className="flex-1">
+          <div className="space-y-4 p-4">
             {messages.map((message) => {
               const isCurrentUser = message.sender_id === currentUserId;
               return (
@@ -199,10 +199,13 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                 </div>
               );
             })}
+            <div className="text-xs text-center text-gray-500 py-4">
+              © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+            </div>
           </div>
         </ScrollArea>
 
-        <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider mt-auto">
+        <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider">
           <MessageInput
             value={newMessage}
             onChange={setNewMessage}
@@ -212,7 +215,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       </div>
 
       {selectedThread && (
-        <div className="w-[400px] border-l border-chat-divider">
+        <div className="w-[400px] border-l border-chat-divider h-full">
           <ThreadView
             parentMessage={selectedThread}
             onClose={() => setSelectedThread(null)}
