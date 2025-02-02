@@ -160,7 +160,7 @@ export const MentionInput = ({
     onChange(newValue);
   };
 
-  const handleMentionClick = (item: User | LanguageCount) => {
+  const handleMentionClick = async (item: User | LanguageCount) => {
     const beforeMention = value.slice(0, value.lastIndexOf('@'));
     const afterMention = value.slice(cursorPosition);
     
@@ -173,8 +173,19 @@ export const MentionInput = ({
     } else {
       const newValue = `${beforeMention}@${item.language}${afterMention}`;
       onChange(newValue);
-      if (onLanguageMention) {
-        onLanguageMention(item.language);
+      
+      // Find all interpreters who have this language as a target language
+      const { data: interpreters } = await supabase
+        .from('interpreter_profiles')
+        .select('id, languages')
+        .filter('languages', 'cs', `{%→ ${item.language}}`)
+        .not('languages', 'eq', '{}');
+
+      if (interpreters && onLanguageMention) {
+        // Notify each interpreter who has this target language
+        interpreters.forEach(interpreter => {
+          onLanguageMention(interpreter.id);
+        });
       }
     }
     setShowMentions(false);
