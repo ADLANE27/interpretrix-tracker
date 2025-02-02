@@ -14,6 +14,8 @@ interface Message {
   created_at: string;
   sender_id: string;
   channel_id: string;
+  recipient_id?: string;
+  read_at?: string;
   sender?: {
     first_name: string;
     last_name: string;
@@ -58,7 +60,7 @@ export const TeamChat = () => {
         .from("messages")
         .select(`
           *,
-          sender:profiles(first_name, last_name)
+          sender:interpreter_profiles(first_name, last_name)
         `)
         .eq("channel_id", channelId)
         .order("created_at");
@@ -84,7 +86,7 @@ export const TeamChat = () => {
           filter: `channel_id=eq.${channelId}`,
         },
         () => {
-          queryClient.invalidateQueries(["messages", channelId]);
+          queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
         }
       )
       .subscribe();
@@ -107,22 +109,42 @@ export const TeamChat = () => {
   const handleMention = async (mentionData: { type: "user" | "language", value: string }) => {
     if (!selectedChannel) return;
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     if (mentionData.type === "language") {
       const { data: matchingInterpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("id, languages")
-        .filter("languages", "cs", `{%→ ${mentionData.value}%}`);
+        .filter('languages', 'cs', `{${mentionData.value}}`);
 
       if (error) {
         console.error("Error fetching interpreters:", error);
         return;
       }
 
+      // First create the message
+      const { data: message, error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          content: newMessage,
+          channel_id: channelId,
+          sender_id: user.id
+        })
+        .select()
+        .single();
+
+      if (messageError || !message) {
+        console.error("Error creating message:", messageError);
+        return;
+      }
+
+      // Then create mentions for each interpreter
       const mentionPromises = matchingInterpreters.map(interpreter => 
         supabase
           .from("message_mentions")
           .insert({
-            message_id: messageId,
+            message_id: message.id,
             mentioned_user_id: interpreter.id,
             mentioned_language: mentionData.value
           })
@@ -131,9 +153,9 @@ export const TeamChat = () => {
       await Promise.all(mentionPromises);
     } else {
       const { data: mentionedUser, error: userError } = await supabase
-        .from("profiles")
+        .from("interpreter_profiles")
         .select("id")
-        .ilike("first_name || ' ' || last_name", mentionData.value)
+        .ilike("first_name || ' ' || last_name", `%${mentionData.value}%`)
         .single();
 
       if (userError || !mentionedUser) {
@@ -141,10 +163,26 @@ export const TeamChat = () => {
         return;
       }
 
+      // First create the message
+      const { data: message, error: messageError } = await supabase
+        .from("messages")
+        .insert({
+          content: newMessage,
+          channel_id: channelId,
+          sender_id: user.id
+        })
+        .select()
+        .single();
+
+      if (messageError || !message) {
+        console.error("Error creating message:", messageError);
+        return;
+      }
+
       const { error: mentionError } = await supabase
         .from("message_mentions")
         .insert({
-          message_id: messageId,
+          message_id: message.id,
           mentioned_user_id: mentionedUser.id
         });
 
@@ -160,14 +198,16 @@ export const TeamChat = () => {
     try {
       setIsSubmitting(true);
 
-      const { data: message, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
         .from("messages")
         .insert({
           content: newMessage,
           channel_id: channelId,
-        })
-        .select()
-        .single();
+          sender_id: user.id
+        });
 
       if (error) throw error;
 
