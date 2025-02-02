@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { LanguagePair } from "@/types/interpreter";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Address {
   street: string;
@@ -27,6 +28,7 @@ interface InterpreterProfileFormProps {
 }
 
 export interface InterpreterFormData {
+  id?: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -47,6 +49,7 @@ export const InterpreterProfileForm = ({
   isSubmitting = false,
 }: InterpreterProfileFormProps) => {
   const [formData, setFormData] = useState<InterpreterFormData>({
+    id: initialData.id,
     email: initialData.email || "",
     first_name: initialData.first_name || "",
     last_name: initialData.last_name || "",
@@ -99,7 +102,12 @@ export const InterpreterProfileForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Convert address to Json type before submitting
+    const submissionData = {
+      ...formData,
+      address: formData.address as unknown as Json,
+    };
+    onSubmit(submissionData);
   };
 
   return (

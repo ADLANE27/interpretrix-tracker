@@ -178,6 +178,7 @@ export const UserManagement = () => {
         .from("interpreter_profiles")
         .update({
           ...formData,
+          address: formData.address as unknown as Json,
           languages: [], // Clear the old array since we're using the new table
         })
         .eq("id", selectedUser.id);
