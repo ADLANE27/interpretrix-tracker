@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, MoreVertical } from "lucide-react";
+import { Plus, Search, MoreVertical, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./components/CreateChannelDialog";
 import { ChannelMessages } from "./components/ChannelMessages";
+import { AddChannelMemberForm } from "./AddChannelMemberForm";
 
 interface Channel {
   id: string;
@@ -27,6 +28,7 @@ export const TeamChat = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -112,6 +114,15 @@ export const TeamChat = () => {
     });
   };
 
+  const handleAddMemberSuccess = () => {
+    setIsAddMemberOpen(false);
+    fetchChannels();
+    toast({
+      title: "Succès",
+      description: "Membre ajouté avec succès",
+    });
+  };
+
   return (
     <div className="h-[calc(100vh-4rem)] flex">
       {/* Sidebar - Updated with h-full to ensure full height */}
@@ -149,25 +160,47 @@ export const TeamChat = () => {
         <ScrollArea className="flex-1">
           <div className="px-2 space-y-1">
             {channels.map((channel) => (
-              <Button
-                key={channel.id}
-                variant="ghost"
-                className={`w-full justify-between px-3 py-2 text-sm ${
-                  selectedChannel === channel.id
-                    ? "bg-chat-selected text-white hover:bg-chat-selected"
-                    : "text-gray-300 hover:bg-chat-searchBg hover:text-white"
-                }`}
-                onClick={() => setSelectedChannel(channel.id)}
-              >
-                <span className="flex items-center">
-                  # {channel.name}
-                </span>
-                {channel.members_count > 0 && (
-                  <span className="text-xs bg-chat-channelCount/20 text-chat-channelCount px-2 py-1 rounded-full">
-                    {channel.members_count}
+              <div key={channel.id} className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className={`flex-1 justify-between px-3 py-2 text-sm ${
+                    selectedChannel === channel.id
+                      ? "bg-chat-selected text-white hover:bg-chat-selected"
+                      : "text-gray-300 hover:bg-chat-searchBg hover:text-white"
+                  }`}
+                  onClick={() => setSelectedChannel(channel.id)}
+                >
+                  <span className="flex items-center">
+                    # {channel.name}
                   </span>
-                )}
-              </Button>
+                  {channel.members_count > 0 && (
+                    <span className="text-xs bg-chat-channelCount/20 text-chat-channelCount px-2 py-1 rounded-full">
+                      {channel.members_count}
+                    </span>
+                  )}
+                </Button>
+                <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="text-gray-300 hover:bg-chat-searchBg hover:text-white"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add member to {channel.name}</DialogTitle>
+                    </DialogHeader>
+                    <AddChannelMemberForm
+                      channelId={channel.id}
+                      onSuccess={handleAddMemberSuccess}
+                      onCancel={() => setIsAddMemberOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
             ))}
           </div>
         </ScrollArea>
