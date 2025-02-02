@@ -83,12 +83,9 @@ export const MentionInput = ({
 
   const fetchUsersAndLanguages = async () => {
     try {
-      console.log('Fetching users and languages with search term:', mentionSearch);
-      
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
-        .select('id, first_name, last_name, email, languages')
-        .or(`first_name.ilike.%${mentionSearch}%,last_name.ilike.%${mentionSearch}%`);
+        .select('id, first_name, last_name, email, languages');
 
       if (interpreterError) throw interpreterError;
 
@@ -101,7 +98,17 @@ export const MentionInput = ({
 
       const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
 
-      const usersWithRoles = interpreters?.map(user => ({
+      // Filter users based on search term
+      const filteredUsers = interpreters?.filter(user => {
+        const searchTerm = mentionSearch.toLowerCase();
+        return (
+          user.first_name.toLowerCase().includes(searchTerm) ||
+          user.last_name.toLowerCase().includes(searchTerm) ||
+          user.email.toLowerCase().includes(searchTerm)
+        );
+      });
+
+      const usersWithRoles = filteredUsers?.map(user => ({
         ...user,
         isAdmin: adminIds.has(user.id)
       })) || [];
@@ -130,7 +137,6 @@ export const MentionInput = ({
           }))
           .sort((a, b) => a.language.localeCompare(b.language));
 
-        console.log('Language counts:', languageList);
         setLanguages(languageList);
       }
     } catch (error) {
@@ -188,7 +194,7 @@ export const MentionInput = ({
         className={className}
         placeholder={placeholder}
       />
-      {showMentions && (
+      {showMentions && (users.length > 0 || languages.length > 0) && (
         <div className="absolute bottom-full left-0 w-full bg-white border rounded-md shadow-lg mb-1 z-50">
           <ScrollArea className="h-[200px]">
             <div className="p-2 space-y-1">
