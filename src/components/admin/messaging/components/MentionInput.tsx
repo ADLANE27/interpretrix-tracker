@@ -70,12 +70,14 @@ export const MentionInput = ({
 
   const fetchUsersAndLanguages = async () => {
     try {
+      // Fetch interpreters and their languages
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email, languages');
 
       if (interpreterError) throw interpreterError;
 
+      // Fetch admin roles
       const { data: adminRoles, error: adminError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -85,6 +87,7 @@ export const MentionInput = ({
 
       const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
 
+      // Filter users based on search term
       const filteredUsers = interpreters?.filter(user => {
         const searchTerm = mentionSearch.toLowerCase();
         return (
