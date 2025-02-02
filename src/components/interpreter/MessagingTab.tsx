@@ -9,6 +9,7 @@ import { MessageList } from "./messages/MessageList";
 import { MessageInput } from "./messages/MessageInput";
 import { ChannelList } from "./messages/ChannelList";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface Channel {
   id: string;
@@ -727,6 +728,14 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
             <TabsTrigger value="direct" className="flex-1">
               <MessageSquare className="h-4 w-4 mr-2" />
               Messages directs
+              {unreadMentions > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="ml-2 absolute -top-1 -right-1 h-5 min-w-[20px] flex items-center justify-center p-0 rounded-full"
+                >
+                  {unreadMentions}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
