@@ -9,134 +9,101 @@ import { useMessages } from "./hooks/useMessages";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreVertical, Search } from "lucide-react";
+import { Search, MessageSquare } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 interface Interpreter {
   id: string;
   first_name: string;
   last_name: string;
+  email: string;
 }
 
-interface UnreadCount {
-  [interpreterId: string]: number;
+interface ChatHistory {
+  id: string;
+  name: string;
+  lastMessage?: string;
+  unreadCount: number;
 }
 
 export const DirectMessaging = () => {
   const location = useLocation();
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
-  const [filteredInterpreters, setFilteredInterpreters] = useState<Interpreter[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
-  const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [unreadCounts, setUnreadCounts] = useState<UnreadCount>({});
-  const [isDeleteAllDialogOpen, setIsDeleteAllDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
   const {
     messages,
-    editingMessage,
-    editContent,
-    setEditingMessage,
-    setEditContent,
+    newMessage,
+    setNewMessage,
     fetchMessages,
     sendMessage,
-    updateMessage,
-    deleteMessage,
-    deleteAllMessages,
   } = useMessages();
 
   useEffect(() => {
-    // Check if there's a selected user from the navigation state
     const state = location.state as { selectedUserId?: string };
     if (state?.selectedUserId) {
       setSelectedInterpreter(state.selectedUserId);
     }
+    fetchChatHistory();
   }, [location]);
-
-  useEffect(() => {
-    subscribeToNewMessages();
-  }, []);
 
   useEffect(() => {
     if (selectedInterpreter) {
       fetchMessages(selectedInterpreter);
       const channel = subscribeToMessages(selectedInterpreter);
-      markMessagesAsRead(selectedInterpreter);
       return () => {
         supabase.removeChannel(channel);
       };
     }
   }, [selectedInterpreter]);
 
-  useEffect(() => {
-    // Only fetch interpreters when there's a search term
-    if (searchTerm.length >= 2) {
-      fetchInterpreters();
-    } else {
-      setFilteredInterpreters([]);
-    }
-  }, [searchTerm]);
-
-  const fetchInterpreters = async () => {
+  const fetchChatHistory = async () => {
     try {
-      const { data, error } = await supabase
-        .from("interpreter_profiles")
-        .select("id, first_name, last_name")
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      if (error) throw error;
-      setInterpreters(data || []);
-      setFilteredInterpreters(data || []);
-    } catch (error) {
-      console.error("Error fetching interpreters:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger la liste des interprètes",
-        variant: "destructive",
+      // Get unique users from direct messages
+      const { data: messageUsers, error: msgError } = await supabase
+        .from('direct_messages')
+        .select('sender_id, recipient_id')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
+
+      if (msgError) throw msgError;
+
+      // Get unique interpreter IDs
+      const uniqueInterpreterIds = new Set<string>();
+      messageUsers?.forEach(msg => {
+        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        uniqueInterpreterIds.add(otherId);
       });
+
+      // Get interpreter profiles
+      const { data: profiles, error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', Array.from(uniqueInterpreterIds));
+
+      if (profileError) throw profileError;
+
+      const history: ChatHistory[] = profiles?.map(profile => ({
+        id: profile.id,
+        name: `${profile.first_name} ${profile.last_name}`,
+        unreadCount: 0
+      })) || [];
+
+      setChatHistory(history);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
     }
-  };
-
-  const subscribeToNewMessages = () => {
-    const channel = supabase
-      .channel('new-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'direct_messages',
-        },
-        async (payload) => {
-          const message = payload.new as any;
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (message.recipient_id === user?.id) {
-            const sender = interpreters.find(i => i.id === message.sender_id);
-            if (sender) {
-              toast({
-                title: `New message from ${sender.first_name} ${sender.last_name}`,
-                description: message.content,
-              });
-              
-              setUnreadCounts(prev => ({
-                ...prev,
-                [message.sender_id]: (prev[message.sender_id] || 0) + 1
-              }));
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return channel;
   };
 
   const subscribeToMessages = (interpreterId: string) => {
     console.log("Subscribing to messages for interpreter:", interpreterId);
-    const channel = supabase
+    return supabase
       .channel("messages")
       .on(
         "postgres_changes",
@@ -148,183 +115,176 @@ export const DirectMessaging = () => {
         },
         (payload) => {
           console.log("Received message update:", payload);
-          if (payload.eventType === "INSERT") {
-            fetchMessages(interpreterId);
-          } else if (payload.eventType === "UPDATE") {
-            fetchMessages(interpreterId);
-          } else if (payload.eventType === "DELETE") {
-            fetchMessages(interpreterId);
-          }
+          fetchMessages(interpreterId);
+          fetchChatHistory(); // Update chat history when new messages arrive
         }
       )
       .subscribe((status) => {
         console.log("Subscription status:", status);
       });
-
-    return channel;
   };
 
-  const markMessagesAsRead = async (senderId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const handleSearch = async (term: string) => {
+    setSearchTerm(term);
+    if (term.length < 2) return;
 
-      const { error } = await supabase.rpc('mark_messages_as_read', {
-        p_recipient_id: user.id,
-        p_sender_id: senderId
-      });
+    try {
+      const { data, error } = await supabase
+        .from("interpreter_profiles")
+        .select("id, first_name, last_name, email")
+        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`);
 
       if (error) throw error;
-      
-      setUnreadCounts(prev => ({
-        ...prev,
-        [senderId]: 0
-      }));
+      setInterpreters(data || []);
     } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  };
-
-  const handleSendMessage = async (content: string, file?: File) => {
-    if (!selectedInterpreter || (!content.trim() && !file)) return;
-    
-    try {
-      setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      let attachment_url = null;
-      let attachment_name = null;
-
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${crypto.randomUUID()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('message_attachments')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('message_attachments')
-          .getPublicUrl(fileName);
-
-        attachment_url = publicUrl;
-        attachment_name = file.name;
-      }
-
-      const { error } = await supabase.from("direct_messages").insert({
-        content: content.trim(),
-        recipient_id: selectedInterpreter,
-        sender_id: user.id,
-        attachment_url,
-        attachment_name,
-      });
-
-      if (error) throw error;
-      setNewMessage("");
-      // Fetch messages immediately after sending
-      fetchMessages(selectedInterpreter);
-    } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error searching interpreters:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer le message",
+        description: "Impossible de rechercher les interprètes",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  };
+
+  const handleSelectInterpreter = (interpreterId: string) => {
+    setSelectedInterpreter(interpreterId);
+    setSearchTerm("");
+    setInterpreters([]);
   };
 
   return (
     <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
+      {/* Sidebar with chat history and search */}
+      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0 border-r">
         <div className="p-4">
-          <div className="flex items-center justify-between text-white mb-4">
-            <h2 className="text-lg font-semibold">Direct Messages</h2>
-          </div>
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher un interprète..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="pl-8"
               />
             </div>
           </div>
-          <InterpreterSelector
-            interpreters={filteredInterpreters}
-            selectedInterpreter={selectedInterpreter}
-            unreadCounts={unreadCounts}
-            onSelectInterpreter={setSelectedInterpreter}
-          />
+          
+          <ScrollArea className="h-[calc(100vh-8rem)]">
+            {/* Search Results */}
+            {searchTerm && interpreters.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <h3 className="text-sm font-medium text-gray-400 px-2">Résultats</h3>
+                {interpreters.map((interpreter) => (
+                  <Button
+                    key={interpreter.id}
+                    variant="ghost"
+                    className="w-full justify-start text-left"
+                    onClick={() => handleSelectInterpreter(interpreter.id)}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {interpreter.first_name} {interpreter.last_name}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {/* Chat History */}
+            {!searchTerm && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
+                {chatHistory.map((chat) => (
+                  <Button
+                    key={chat.id}
+                    variant={selectedInterpreter === chat.id ? "secondary" : "ghost"}
+                    className="w-full justify-start text-left"
+                    onClick={() => handleSelectInterpreter(chat.id)}
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    <div className="flex flex-col items-start">
+                      <span>{chat.name}</span>
+                      {chat.lastMessage && (
+                        <span className="text-xs text-gray-500 truncate">
+                          {chat.lastMessage}
+                        </span>
+                      )}
+                    </div>
+                    {chat.unreadCount > 0 && (
+                      <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
+                        {chat.unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white h-full">
+      <div className="flex-1 flex flex-col bg-white">
         {selectedInterpreter ? (
           <>
-            <div className="h-14 border-b border-chat-channelBorder flex items-center justify-between px-4 bg-chat-channelHeader">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium">
-                  {interpreters.find(i => i.id === selectedInterpreter)?.first_name} {interpreters.find(i => i.id === selectedInterpreter)?.last_name}
-                </span>
+            {/* Chat Header */}
+            <div className="h-14 border-b flex items-center px-4">
+              <div className="font-medium">
+                {chatHistory.find(c => c.id === selectedInterpreter)?.name || 
+                 interpreters.find(i => i.id === selectedInterpreter)?.first_name + ' ' + 
+                 interpreters.find(i => i.id === selectedInterpreter)?.last_name}
               </div>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-5 w-5 text-gray-500" />
-              </Button>
             </div>
 
-            <div className="flex-1 flex flex-col">
-              <MessageActions
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                onDeleteAll={() => deleteAllMessages(selectedInterpreter)}
-                isDeleteDialogOpen={isDeleteAllDialogOpen}
-                setIsDeleteDialogOpen={setIsDeleteAllDialogOpen}
-              />
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.sender_id === selectedInterpreter ? 'justify-start' : 'justify-end'}`}
+                  >
+                    <div
+                      className={`max-w-[70%] rounded-lg p-3 ${
+                        message.sender_id === selectedInterpreter
+                          ? 'bg-gray-100'
+                          : 'bg-blue-500 text-white'
+                      }`}
+                    >
+                      <div className="break-words">{message.content}</div>
+                      <div className="text-xs opacity-70 mt-1">
+                        {new Date(message.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
 
-              <ScrollArea className="flex-1 px-4">
-                <MessageList
-                  messages={messages.filter((message) =>
-                    message.content.toLowerCase().includes(searchTerm.toLowerCase())
-                  )}
-                  selectedInterpreter={selectedInterpreter}
-                  editingMessage={editingMessage}
-                  editContent={editContent}
-                  onEditStart={(messageId, content) => {
-                    setEditingMessage(messageId);
-                    setEditContent(content);
-                  }}
-                  onEditCancel={() => {
-                    setEditingMessage(null);
-                    setEditContent("");
-                  }}
-                  onEditSave={(messageId) => updateMessage(messageId, editContent)}
-                  onEditChange={setEditContent}
-                  onDeleteMessage={deleteMessage}
-                />
-              </ScrollArea>
-
-              <div className="p-4 border-t">
-                <MessageInput
+            {/* Message Input */}
+            <div className="p-4 border-t">
+              <div className="flex gap-2">
+                <Input
                   value={newMessage}
-                  onChange={setNewMessage}
-                  onSend={handleSendMessage}
-                  isLoading={isLoading}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Tapez votre message..."
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(selectedInterpreter);
+                    }
+                  }}
                 />
+                <Button 
+                  onClick={() => sendMessage(selectedInterpreter)}
+                  disabled={isLoading || !newMessage.trim()}
+                >
+                  Envoyer
+                </Button>
               </div>
             </div>
           </>
         ) : (
           <div className="h-full flex items-center justify-center text-gray-500">
-            Select an interpreter to start chatting
+            Sélectionnez un interprète pour commencer une conversation
           </div>
         )}
       </div>
