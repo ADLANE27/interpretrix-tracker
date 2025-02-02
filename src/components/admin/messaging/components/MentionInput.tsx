@@ -39,14 +39,13 @@ export const MentionInput = ({
 
   const fetchUsers = async () => {
     try {
-      // First get interpreter profiles
+      console.log('Fetching users with search term:', mentionSearch);
+      
+      // First get interpreter profiles that match the search
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email')
-        .ilike(
-          mentionSearch ? 'first_name' : 'id',
-          mentionSearch ? `${mentionSearch}%` : '%'
-        )
+        .or(`first_name.ilike.%${mentionSearch}%,last_name.ilike.%${mentionSearch}%`)
         .limit(5);
 
       if (interpreterError) throw interpreterError;
