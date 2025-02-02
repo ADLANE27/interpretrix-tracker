@@ -25,7 +25,7 @@ interface Message {
   id: string;
   content: string;
   sender_id: string;
-  channel_id?: string | null;  // Made optional with ?
+  channel_id?: string | null;
   recipient_id: string | null;
   created_at: string;
   attachment_url?: string | null;
@@ -37,6 +37,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   email: string;
+  isAdmin?: boolean;
 }
 
 interface ChatHistory {
@@ -60,6 +61,24 @@ export const MessagingTab = () => {
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [directMessages, setDirectMessages] = useState<Message[]>([]);
   const { toast } = useToast();
+
+  const fetchChannels = async () => {
+    try {
+      const { data: channelsData, error: channelsError } = await supabase
+        .from('channels')
+        .select('*');
+
+      if (channelsError) throw channelsError;
+      setChannels(channelsData || []);
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les canaux",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -147,7 +166,7 @@ export const MessagingTab = () => {
 
       // For admins found, get their details from the get-user-info function
       const adminProfiles = await Promise.all(
-        adminData.map(async (admin) => {
+        adminData.map(async (admin: any) => {
           try {
             const { data, error } = await supabase.functions.invoke('get-user-info', {
               body: { userId: admin.user_id }
@@ -170,7 +189,7 @@ export const MessagingTab = () => {
       );
 
       // Combine and filter out any null results from failed admin fetches
-      const validAdminProfiles = adminProfiles.filter(profile => profile !== null);
+      const validAdminProfiles = adminProfiles.filter((profile): profile is Interpreter => profile !== null);
       setInterpreters([...interpreterData || [], ...validAdminProfiles]);
 
     } catch (error) {
@@ -225,6 +244,119 @@ export const MessagingTab = () => {
         description: "Impossible de charger les messages",
         variant: "destructive",
       });
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from(selectedChannel ? 'messages' : 'direct_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      if (selectedChannel) {
+        setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      } else {
+        setDirectMessages(prev => prev.filter(msg => msg.id !== messageId));
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendMessage = async (content: string, attachmentUrl?: string, attachmentName?: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            channel_id: selectedChannel,
+            content,
+            sender_id: currentUserId,
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setMessages(prev => [...prev, data]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const sendDirectMessage = async (content: string, attachmentUrl?: string, attachmentName?: string) => {
+    if (!selectedInterpreter || !currentUserId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .insert([
+          {
+            sender_id: currentUserId,
+            recipient_id: selectedInterpreter,
+            content,
+            attachment_url: attachmentUrl,
+            attachment_name: attachmentName
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setDirectMessages(prev => [...prev, data]);
+    } catch (error) {
+      console.error("Error sending direct message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileUpload = async (file: File): Promise<{ url: string; name: string } | null> => {
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('message_attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('message_attachments')
+        .getPublicUrl(filePath);
+
+      return { url: data.publicUrl, name: file.name };
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger le fichier",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsUploading(false);
     }
   };
 
