@@ -70,7 +70,6 @@ export const MentionInput = ({
 
   const fetchUsersAndLanguages = async () => {
     try {
-      // Fetch interpreter profiles with their languages
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email, languages');
@@ -86,7 +85,6 @@ export const MentionInput = ({
 
       const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
 
-      // Filter users based on search term
       const filteredUsers = interpreters?.filter(user => {
         const searchTerm = mentionSearch.toLowerCase();
         return (
@@ -110,19 +108,20 @@ export const MentionInput = ({
         interpreters?.forEach(interpreter => {
           if (interpreter.languages) {
             interpreter.languages.forEach(langPair => {
-              const parts = langPair.split('→');
-              if (parts.length === 2) {
-                const target = parts[1].trim();
-                const normalizedTarget = target.toLowerCase();
+              const [_, target] = langPair.split('→').map(s => s.trim());
+              if (target) {
+                const normalizedTarget = target;
                 const normalizedSearch = mentionSearch.toLowerCase();
                 
-                if (!mentionSearch || normalizedTarget.includes(normalizedSearch)) {
+                if (!mentionSearch || normalizedTarget.toLowerCase().includes(normalizedSearch)) {
                   targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
                 }
               }
             });
           }
         });
+
+        console.log('Available target languages:', Array.from(targetLanguages.keys()));
 
         const languageList = Array.from(targetLanguages.entries())
           .map(([language, count]) => ({
@@ -171,21 +170,12 @@ export const MentionInput = ({
         onMention(item.id);
       }
     } else {
+      console.log('Handling language mention for:', item.language);
       const newValue = `${beforeMention}@${item.language}${afterMention}`;
       onChange(newValue);
       
-      // Find all interpreters who have this language as a target language
-      const { data: interpreters } = await supabase
-        .from('interpreter_profiles')
-        .select('id, languages')
-        .filter('languages', 'cs', `{%→ ${item.language}}`)
-        .not('languages', 'eq', '{}');
-
-      if (interpreters && onLanguageMention) {
-        // Notify each interpreter who has this target language
-        interpreters.forEach(interpreter => {
-          onLanguageMention(interpreter.id);
-        });
+      if (onLanguageMention) {
+        onLanguageMention(item.language);
       }
     }
     setShowMentions(false);
