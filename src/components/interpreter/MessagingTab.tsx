@@ -557,14 +557,14 @@ export const MessagingTab = () => {
                     key={message.id}
                     className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="group relative">
+                    <div className="group relative max-w-[70%]">
                       {message.sender_id !== currentUserId && (
-                        <div className="text-sm text-gray-500 mb-1">
+                        <div className="text-sm font-medium text-gray-700 mb-1 px-1">
                           {senderProfiles[message.sender_id]?.first_name} {senderProfiles[message.sender_id]?.last_name}
                         </div>
                       )}
                       <div
-                        className={`max-w-[70%] rounded-lg p-3 ${
+                        className={`rounded-lg p-3 ${
                           message.sender_id === currentUserId
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-secondary'
