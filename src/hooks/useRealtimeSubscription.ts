@@ -25,7 +25,7 @@ export const useRealtimeSubscription = (config: SubscriptionConfig) => {
       channelRef.current = supabase
         .channel(`${config.channel}-${Date.now()}`)
         .on(
-          'postgres_changes' as 'postgres_changes',
+          'postgres_changes',
           {
             event: config.event,
             schema: config.schema || 'public',
