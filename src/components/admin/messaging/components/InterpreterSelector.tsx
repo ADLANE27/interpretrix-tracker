@@ -23,7 +23,7 @@ export const InterpreterSelector = ({
 }: InterpreterSelectorProps) => {
   if (interpreters.length === 0) {
     return (
-      <div className="p-4 text-sm text-gray-500 text-center">
+      <div className="p-4 text-sm text-chat-sidebarText text-center">
         Aucun interprète trouvé
       </div>
     );
@@ -37,10 +37,10 @@ export const InterpreterSelector = ({
             key={interpreter.id}
             variant="ghost"
             onClick={() => onSelectInterpreter(interpreter.id)}
-            className={`w-full justify-start relative px-3 py-2 text-sm ${
+            className={`w-full justify-start relative px-3 py-2 text-sm font-medium ${
               selectedInterpreter === interpreter.id
                 ? "bg-chat-selected text-white hover:bg-chat-selected"
-                : "hover:bg-chat-hover"
+                : "text-chat-sidebarText hover:bg-chat-hover hover:text-chat-sidebarText"
             }`}
           >
             <span className="truncate">
