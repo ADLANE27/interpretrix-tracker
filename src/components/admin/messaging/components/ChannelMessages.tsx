@@ -13,7 +13,7 @@ interface Message {
   sender_id: string;
   created_at: string;
   sender_name?: string;
-  reply_count?: number;
+  reply_count: number;
 }
 
 interface ChannelMessagesProps {
@@ -87,20 +87,22 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts for each message
-      const messageIds = messagesData?.map(m => m.id) || [];
+      // Get reply counts using a separate query
       const { data: replyCounts, error: replyCountError } = await supabase
         .from("messages")
         .select('parent_id, count')
-        .in('parent_id', messageIds)
-        .group('parent_id');
+        .not('parent_id', 'is', null)
+        .in('parent_id', messagesData?.map(m => m.id) || []);
 
       if (replyCountError) throw replyCountError;
 
       // Create a map of reply counts
-      const replyCountMap = new Map(
-        replyCounts?.map(r => [r.parent_id, parseInt(r.count)])
-      );
+      const replyCountMap = new Map<string, number>();
+      replyCounts?.forEach(reply => {
+        if (reply.parent_id) {
+          replyCountMap.set(reply.parent_id, parseInt(reply.count as string));
+        }
+      });
 
       // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(m => m.sender_id) || [])];
