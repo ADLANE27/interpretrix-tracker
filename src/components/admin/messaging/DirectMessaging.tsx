@@ -6,6 +6,9 @@ import { MessageList } from "./components/MessageList";
 import { MessageInput } from "./components/MessageInput";
 import { MessageActions } from "./components/MessageActions";
 import { useMessages } from "./hooks/useMessages";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { MoreVertical } from "lucide-react";
 
 interface Interpreter {
   id: string;
@@ -207,52 +210,84 @@ export const DirectMessaging = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <InterpreterSelector
-        interpreters={interpreters}
-        selectedInterpreter={selectedInterpreter}
-        unreadCounts={unreadCounts}
-        onSelectInterpreter={setSelectedInterpreter}
-      />
-
-      {selectedInterpreter && (
-        <div className="border rounded-lg p-4 space-y-4">
-          <MessageActions
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onDeleteAll={() => deleteAllMessages(selectedInterpreter)}
-            isDeleteDialogOpen={isDeleteAllDialogOpen}
-            setIsDeleteDialogOpen={setIsDeleteAllDialogOpen}
-          />
-
-          <MessageList
-            messages={messages.filter((message) =>
-              message.content.toLowerCase().includes(searchTerm.toLowerCase())
-            )}
+    <div className="h-[calc(100vh-4rem)] flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
+        <div className="p-4">
+          <div className="flex items-center justify-between text-white mb-4">
+            <h2 className="text-lg font-semibold">Direct Messages</h2>
+          </div>
+          <InterpreterSelector
+            interpreters={interpreters}
             selectedInterpreter={selectedInterpreter}
-            editingMessage={editingMessage}
-            editContent={editContent}
-            onEditStart={(messageId, content) => {
-              setEditingMessage(messageId);
-              setEditContent(content);
-            }}
-            onEditCancel={() => {
-              setEditingMessage(null);
-              setEditContent("");
-            }}
-            onEditSave={(messageId) => updateMessage(messageId, editContent)}
-            onEditChange={setEditContent}
-            onDeleteMessage={deleteMessage}
-          />
-
-          <MessageInput
-            value={newMessage}
-            onChange={setNewMessage}
-            onSend={handleSendMessage}
-            isLoading={isLoading}
+            unreadCounts={unreadCounts}
+            onSelectInterpreter={setSelectedInterpreter}
           />
         </div>
-      )}
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col bg-white h-full">
+        {selectedInterpreter ? (
+          <>
+            <div className="h-14 border-b border-chat-channelBorder flex items-center justify-between px-4 bg-chat-channelHeader">
+              <div className="flex items-center space-x-2">
+                <span className="font-medium">
+                  {interpreters.find(i => i.id === selectedInterpreter)?.first_name} {interpreters.find(i => i.id === selectedInterpreter)?.last_name}
+                </span>
+              </div>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5 text-gray-500" />
+              </Button>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+              <MessageActions
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onDeleteAll={() => deleteAllMessages(selectedInterpreter)}
+                isDeleteDialogOpen={isDeleteAllDialogOpen}
+                setIsDeleteDialogOpen={setIsDeleteAllDialogOpen}
+              />
+
+              <ScrollArea className="flex-1 px-4">
+                <MessageList
+                  messages={messages.filter((message) =>
+                    message.content.toLowerCase().includes(searchTerm.toLowerCase())
+                  )}
+                  selectedInterpreter={selectedInterpreter}
+                  editingMessage={editingMessage}
+                  editContent={editContent}
+                  onEditStart={(messageId, content) => {
+                    setEditingMessage(messageId);
+                    setEditContent(content);
+                  }}
+                  onEditCancel={() => {
+                    setEditingMessage(null);
+                    setEditContent("");
+                  }}
+                  onEditSave={(messageId) => updateMessage(messageId, editContent)}
+                  onEditChange={setEditContent}
+                  onDeleteMessage={deleteMessage}
+                />
+              </ScrollArea>
+
+              <div className="p-4 border-t">
+                <MessageInput
+                  value={newMessage}
+                  onChange={setNewMessage}
+                  onSend={handleSendMessage}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            Select an interpreter to start chatting
+          </div>
+        )}
+      </div>
     </div>
   );
 };

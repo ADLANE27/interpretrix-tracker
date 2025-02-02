@@ -9,12 +9,15 @@ interface Message {
   recipient_id: string;
   created_at: string;
   read_at: string | null;
+  attachment_url?: string;
+  attachment_name?: string;
 }
 
 export const useMessages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const fetchMessages = async (interpreterId: string) => {
@@ -40,14 +43,14 @@ export const useMessages = () => {
     }
   };
 
-  const sendMessage = async (interpreterId: string, content: string) => {
+  const sendMessage = async (content: string) => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
       const { error } = await supabase.from("direct_messages").insert({
         content: content.trim(),
-        recipient_id: interpreterId,
         sender_id: user.id,
       });
 
@@ -59,6 +62,8 @@ export const useMessages = () => {
         description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -142,6 +147,7 @@ export const useMessages = () => {
     messages,
     editingMessage,
     editContent,
+    isLoading,
     setEditingMessage,
     setEditContent,
     fetchMessages,
