@@ -100,24 +100,31 @@ export const MentionInput = ({
 
       // If user is admin, fetch language counts
       if (isAdmin) {
-        // Get all unique target languages and count interpreters for each
-        const languageCounts = new Map<string, number>();
+        // Create a map to store target language counts
+        const targetLanguageCounts = new Map<string, number>();
+        
+        // Process each interpreter's languages
         interpreters?.forEach(interpreter => {
-          interpreter.languages.forEach((lang: string) => {
-            const target = lang.split(' → ')[1]?.toLowerCase();
+          interpreter.languages.forEach((langPair: string) => {
+            // Extract only the target language (after the arrow)
+            const target = langPair.split(' → ')[1];
             if (target) {
-              if (!mentionSearch || target.includes(mentionSearch.toLowerCase())) {
-                languageCounts.set(target, (languageCounts.get(target) || 0) + 1);
+              const normalizedTarget = target.toLowerCase();
+              // Only count if it matches the search term (if any)
+              if (!mentionSearch || normalizedTarget.includes(mentionSearch.toLowerCase())) {
+                targetLanguageCounts.set(target, (targetLanguageCounts.get(target) || 0) + 1);
               }
             }
           });
         });
 
-        const languageList = Array.from(languageCounts.entries()).map(([language, count]) => ({
+        // Convert the map to array format
+        const languageList = Array.from(targetLanguageCounts.entries()).map(([language, count]) => ({
           language,
           count
         }));
 
+        console.log('Language counts:', languageList);
         setLanguages(languageList);
       }
     } catch (error) {
