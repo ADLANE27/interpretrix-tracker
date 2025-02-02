@@ -31,9 +31,9 @@ export default {
           channelBorder: "#E5E7EB",
           searchBg: "rgba(255, 255, 255, 0.1)",
           searchText: "#FFFFFF",
-          channelCount: "#D6BCFA", // Updated to light purple for better contrast
-          sidebarText: "#F3F3F3", // Updated to light gray for better visibility
-          sidebarHeading: "#D3E4FD", // Updated to soft blue for better contrast
+          channelCount: "#FFFFFF", // Changed to pure white for maximum contrast
+          sidebarText: "#FFFFFF", // Changed to pure white for maximum contrast
+          sidebarHeading: "#FFFFFF", // Changed to pure white for maximum contrast
         },
         interpreter: {
           navy: "#1a365d",
