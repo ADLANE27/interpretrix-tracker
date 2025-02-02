@@ -29,6 +29,7 @@ export const TeamChat = () => {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [selectedChannelForMember, setSelectedChannelForMember] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export const TeamChat = () => {
 
   const handleAddMemberSuccess = () => {
     setIsAddMemberOpen(false);
+    setSelectedChannelForMember(null);
     fetchChannels();
     toast({
       title: "Succès",
@@ -125,7 +127,7 @@ export const TeamChat = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar - Updated with h-full to ensure full height */}
+      {/* Sidebar */}
       <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
         <div className="p-4">
           <div className="flex items-center justify-between text-white mb-4">
@@ -179,12 +181,19 @@ export const TeamChat = () => {
                     </span>
                   )}
                 </Button>
-                <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+                <Dialog 
+                  open={isAddMemberOpen && selectedChannelForMember === channel.id} 
+                  onOpenChange={(open) => {
+                    setIsAddMemberOpen(open);
+                    if (!open) setSelectedChannelForMember(null);
+                  }}
+                >
                   <DialogTrigger asChild>
                     <Button 
                       variant="ghost" 
                       size="icon"
                       className="text-gray-300 hover:bg-chat-searchBg hover:text-white"
+                      onClick={() => setSelectedChannelForMember(channel.id)}
                     >
                       <UserPlus className="h-4 w-4" />
                     </Button>
@@ -196,7 +205,10 @@ export const TeamChat = () => {
                     <AddChannelMemberForm
                       channelId={channel.id}
                       onSuccess={handleAddMemberSuccess}
-                      onCancel={() => setIsAddMemberOpen(false)}
+                      onCancel={() => {
+                        setIsAddMemberOpen(false);
+                        setSelectedChannelForMember(null);
+                      }}
                     />
                   </DialogContent>
                 </Dialog>
