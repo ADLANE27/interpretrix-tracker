@@ -60,21 +60,35 @@ export const MessagingTab = () => {
         setCurrentUserId(user.id);
         fetchAdmins();
         fetchChatHistory();
-        fetchChannels();
       }
     };
 
     initializeUser();
   }, []);
 
+  // Only fetch channels when we have a valid user ID
+  useEffect(() => {
+    if (currentUserId) {
+      fetchChannels();
+    }
+  }, [currentUserId]);
+
   const fetchChannels = async () => {
     try {
+      if (!currentUserId) {
+        console.log('No user ID available, skipping channel fetch');
+        return;
+      }
+
       const { data: channelMembers, error: memberError } = await supabase
         .from('channel_members')
         .select('channel_id')
         .eq('user_id', currentUserId);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("Error fetching channel members:", memberError);
+        throw memberError;
+      }
 
       if (channelMembers && channelMembers.length > 0) {
         const channelIds = channelMembers.map(cm => cm.channel_id);
@@ -83,8 +97,14 @@ export const MessagingTab = () => {
           .select('*')
           .in('id', channelIds);
 
-        if (channelsError) throw channelsError;
+        if (channelsError) {
+          console.error("Error fetching channels:", channelsError);
+          throw channelsError;
+        }
+        
         setChannels(channelsData || []);
+      } else {
+        setChannels([]);
       }
     } catch (error) {
       console.error("Error fetching channels:", error);
