@@ -119,6 +119,58 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     }
   };
 
+  const sendMessage = async (content: string, file?: File) => {
+    try {
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      let attachment_url = null;
+      let attachment_name = null;
+
+      if (file) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('message_attachments')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('message_attachments')
+          .getPublicUrl(fileName);
+
+        attachment_url = publicUrl;
+        attachment_name = file.name;
+      }
+
+      const { error: insertError } = await supabase
+        .from('messages')
+        .insert({
+          channel_id: channelId,
+          content,
+          sender_id: user.id,
+          attachment_url,
+          attachment_name,
+        });
+
+      if (insertError) throw insertError;
+
+      setNewMessage("");
+      await fetchMessages();
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const deleteMessage = async (messageId: string) => {
     try {
       const { error } = await supabase
@@ -217,6 +269,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
             value={newMessage}
             onChange={setNewMessage}
             onSend={sendMessage}
+            isLoading={isLoading}
           />
         </div>
       </div>
