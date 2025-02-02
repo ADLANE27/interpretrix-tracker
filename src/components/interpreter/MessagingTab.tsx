@@ -107,23 +107,54 @@ export const MessagingTab = () => {
 
       if (messagesError) throw messagesError;
 
-      // Fetch all unique sender profiles
+      // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(msg => msg.sender_id) || [])];
       
-      const { data: profiles, error: profilesError } = await supabase
+      // First try to get interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
         .in('id', senderIds);
 
-      if (profilesError) throw profilesError;
+      if (interpreterError) throw interpreterError;
 
-      // Create a map of sender profiles
-      const profilesMap = profiles?.reduce((acc, profile) => ({
+      // Then check which senders are admins
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin')
+        .in('user_id', senderIds);
+
+      const adminIds = new Set(adminRoles?.map(role => role.user_id) || []);
+
+      // Create initial profiles map from interpreter profiles
+      const profilesMap = interpreterProfiles?.reduce((acc, profile) => ({
         ...acc,
         [profile.id]: profile
       }), {});
 
-      setSenderProfiles(profilesMap || {});
+      // For admin IDs that weren't found in interpreter profiles, fetch their info
+      const adminProfiles = await Promise.all(
+        senderIds
+          .filter(id => !profilesMap?.[id] && adminIds.has(id))
+          .map(async (adminId) => {
+            const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
+              body: { userId: adminId }
+            });
+            return { id: adminId, ...adminInfo };
+          })
+      );
+
+      // Add admin profiles to the map
+      const finalProfilesMap = {
+        ...profilesMap,
+        ...adminProfiles.reduce((acc, profile) => ({
+          ...acc,
+          [profile.id]: profile
+        }), {})
+      };
+
+      setSenderProfiles(finalProfilesMap || {});
       setMessages(messagesData || []);
 
       // Set up realtime subscription for new messages
@@ -140,10 +171,10 @@ export const MessagingTab = () => {
           async (payload) => {
             console.log('Message change received:', payload);
             
-            // If it's a new message, fetch the sender's profile if we don't have it
             if (payload.eventType === 'INSERT') {
               const senderId = payload.new.sender_id;
               if (!senderProfiles[senderId]) {
+                // First check if it's an interpreter
                 const { data: profile } = await supabase
                   .from('interpreter_profiles')
                   .select('id, first_name, last_name')
@@ -155,6 +186,21 @@ export const MessagingTab = () => {
                     ...prev,
                     [senderId]: profile
                   }));
+                } else {
+                  // If not found in interpreter_profiles, check if admin
+                  const { data: adminInfo } = await supabase.functions.invoke('get-user-info', {
+                    body: { userId: senderId }
+                  });
+                  
+                  if (adminInfo) {
+                    setSenderProfiles(prev => ({
+                      ...prev,
+                      [senderId]: {
+                        id: senderId,
+                        ...adminInfo
+                      }
+                    }));
+                  }
                 }
               }
               setMessages(prev => [...prev, payload.new as Message]);
