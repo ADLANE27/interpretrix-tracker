@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageSquare } from "lucide-react";
 import { MessageInput } from "./MessageInput";
 import { ThreadView } from "./ThreadView";
+import { FileAttachment } from "./FileAttachment";
 
 interface Message {
   id: string;
@@ -74,7 +75,9 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           id,
           content,
           sender_id,
-          created_at
+          created_at,
+          attachment_url,
+          attachment_name
         `)
         .eq("channel_id", channelId)
         .is("parent_id", null)
@@ -182,16 +185,10 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                       <div className="text-sm mt-1">
                         {message.content}
                         {message.attachment_url && (
-                          <div className="mt-2">
-                            <a 
-                              href={message.attachment_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-500 hover:underline flex items-center gap-1"
-                            >
-                              📎 {message.attachment_name || 'Attachment'}
-                            </a>
-                          </div>
+                          <FileAttachment 
+                            url={message.attachment_url} 
+                            name={message.attachment_name || 'Attachment'} 
+                          />
                         )}
                       </div>
                     </div>
