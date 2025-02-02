@@ -22,6 +22,7 @@ export const useMessages = () => {
 
   const fetchMessages = async (interpreterId: string) => {
     try {
+      console.log("Fetching messages for interpreter:", interpreterId);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
@@ -31,7 +32,12 @@ export const useMessages = () => {
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching messages:", error);
+        throw error;
+      }
+      
+      console.log("Fetched messages:", data);
       setMessages(data || []);
     } catch (error) {
       console.error("Error fetching messages:", error);

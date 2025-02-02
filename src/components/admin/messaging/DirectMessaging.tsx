@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoreVertical, Search } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 interface Interpreter {
   id: string;
@@ -22,6 +23,7 @@ interface UnreadCount {
 }
 
 export const DirectMessaging = () => {
+  const location = useLocation();
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [filteredInterpreters, setFilteredInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
@@ -44,6 +46,14 @@ export const DirectMessaging = () => {
     deleteMessage,
     deleteAllMessages,
   } = useMessages();
+
+  useEffect(() => {
+    // Check if there's a selected user from the navigation state
+    const state = location.state as { selectedUserId?: string };
+    if (state?.selectedUserId) {
+      setSelectedInterpreter(state.selectedUserId);
+    }
+  }, [location]);
 
   useEffect(() => {
     subscribeToNewMessages();
@@ -125,6 +135,7 @@ export const DirectMessaging = () => {
   };
 
   const subscribeToMessages = (interpreterId: string) => {
+    console.log("Subscribing to messages for interpreter:", interpreterId);
     const channel = supabase
       .channel("messages")
       .on(
@@ -133,8 +144,10 @@ export const DirectMessaging = () => {
           event: "*",
           schema: "public",
           table: "direct_messages",
+          filter: `or(sender_id.eq.${interpreterId},recipient_id.eq.${interpreterId})`
         },
         (payload) => {
+          console.log("Received message update:", payload);
           if (payload.eventType === "INSERT") {
             fetchMessages(interpreterId);
           } else if (payload.eventType === "UPDATE") {
@@ -144,7 +157,9 @@ export const DirectMessaging = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Subscription status:", status);
+      });
 
     return channel;
   };
@@ -209,6 +224,8 @@ export const DirectMessaging = () => {
 
       if (error) throw error;
       setNewMessage("");
+      // Fetch messages immediately after sending
+      fetchMessages(selectedInterpreter);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
