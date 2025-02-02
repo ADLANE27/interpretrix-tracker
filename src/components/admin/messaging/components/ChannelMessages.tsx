@@ -13,7 +13,6 @@ interface Message {
   sender_id: string;
   created_at: string;
   sender_name: string;
-  reply_count: number;
 }
 
 interface ChannelMessagesProps {
@@ -72,7 +71,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Fetch messages
+      // Fetch main messages (no parent_id)
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
@@ -87,23 +86,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get reply counts
-      const { data: replyCounts, error: replyCountsError } = await supabase
-        .from("messages")
-        .select('parent_id, count(*)', { count: 'exact' })
-        .not('parent_id', 'is', null)
-        .eq('channel_id', channelId);
-
-      if (replyCountsError) throw replyCountsError;
-
-      // Create a map of reply counts
-      const replyCountMap = new Map();
-      replyCounts?.forEach(row => {
-        if (row.parent_id) {
-          replyCountMap.set(row.parent_id, parseInt(row.count));
-        }
-      });
-
       // Get interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
@@ -116,11 +98,10 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      // Combine messages with sender names and reply counts
+      // Combine messages with sender names
       const messagesWithDetails = messagesData?.map(message => ({
         ...message,
-        sender_name: interpreterNames.get(message.sender_id) || "Unknown User",
-        reply_count: replyCountMap.get(message.id) || 0
+        sender_name: interpreterNames.get(message.sender_id) || "Unknown User"
       }));
 
       setMessages(messagesWithDetails || []);
@@ -199,10 +180,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                       className="h-6 px-2"
                       onClick={() => setSelectedThread(message)}
                     >
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      {message.reply_count > 0 && (
-                        <span>{message.reply_count}</span>
-                      )}
+                      <MessageSquare className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
