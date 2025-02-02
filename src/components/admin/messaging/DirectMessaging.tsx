@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { InterpreterSelector } from "./components/InterpreterSelector";
-import { MessageList } from "./components/MessageList";
-import { MessageInput } from "./components/MessageInput";
-import { MessageActions } from "./components/MessageActions";
-import { useMessages } from "./hooks/useMessages";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MessageSquare } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useMessages } from "./hooks/useMessages";
 
 interface Interpreter {
   id: string;
@@ -98,6 +94,11 @@ export const DirectMessaging = () => {
       setChatHistory(history);
     } catch (error) {
       console.error("Error fetching chat history:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger l'historique des conversations",
+        variant: "destructive",
+      });
     }
   };
 
@@ -116,7 +117,7 @@ export const DirectMessaging = () => {
         (payload) => {
           console.log("Received message update:", payload);
           fetchMessages(interpreterId);
-          fetchChatHistory(); // Update chat history when new messages arrive
+          fetchChatHistory();
         }
       )
       .subscribe((status) => {
