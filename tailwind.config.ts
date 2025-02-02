@@ -19,6 +19,14 @@ export default {
     },
     extend: {
       colors: {
+        chat: {
+          sidebar: "#1A1F2C",
+          hover: "#F1F0FB",
+          selected: "#9b87f5",
+          messageHover: "rgba(155, 135, 245, 0.1)",
+          divider: "#E5E7EB",
+          timestamp: "#8E9196",
+        },
         interpreter: {
           navy: "#1a365d",
           available: "#10b981",

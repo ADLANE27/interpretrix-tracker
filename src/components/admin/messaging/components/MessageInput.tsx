@@ -36,7 +36,6 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
 
       onSend(publicUrl, file.name);
       
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -52,11 +51,12 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 p-4 bg-white border-t">
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Tapez votre message..."
+        className="flex-1"
         onKeyPress={(e) => {
           if (e.key === "Enter") {
             handleSend();
@@ -70,13 +70,20 @@ export const MessageInput = ({ value, onChange, onSend }: MessageInputProps) => 
         onChange={handleFileChange}
       />
       <Button
-        variant="outline"
+        variant="ghost"
+        size="icon"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
+        className="hover:bg-chat-hover"
       >
         <Paperclip className="h-4 w-4" />
       </Button>
-      <Button onClick={handleSend} disabled={isUploading}>
+      <Button 
+        onClick={handleSend} 
+        disabled={isUploading}
+        size="icon"
+        className="bg-chat-selected hover:bg-chat-selected/90"
+      >
         <Send className="h-4 w-4" />
       </Button>
     </div>
