@@ -37,7 +37,7 @@ export interface InterpreterFormData {
   nationality: string;
   employment_status: "salaried" | "self_employed";
   languages: LanguagePair[];
-  address: Address | Json;
+  address: Address;
   birth_country: string;
   tarif_15min: number;
 }
@@ -48,6 +48,11 @@ export const InterpreterProfileForm = ({
   initialData = {},
   isSubmitting = false,
 }: InterpreterProfileFormProps) => {
+  const defaultAddress: Address = { street: "", postal_code: "", city: "" };
+  const initialAddress = typeof initialData.address === 'string' 
+    ? JSON.parse(initialData.address) as Address 
+    : (initialData.address as Address) || defaultAddress;
+
   const [formData, setFormData] = useState<InterpreterFormData>({
     id: initialData.id,
     email: initialData.email || "",
@@ -58,7 +63,7 @@ export const InterpreterProfileForm = ({
     nationality: initialData.nationality || "",
     employment_status: initialData.employment_status || "salaried",
     languages: initialData.languages || [],
-    address: initialData.address || { street: "", postal_code: "", city: "" },
+    address: initialAddress,
     birth_country: initialData.birth_country || "",
     tarif_15min: initialData.tarif_15min || 0,
   });
@@ -106,7 +111,7 @@ export const InterpreterProfileForm = ({
       ...formData,
       address: JSON.stringify(formData.address),
     };
-    onSubmit(submissionData);
+    onSubmit(submissionData as InterpreterFormData);
   };
 
   return (
