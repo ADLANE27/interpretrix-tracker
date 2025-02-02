@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MissionFilters, FilterOptions } from "./mission/MissionFilters";
 import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 interface Mission {
   id: string;
@@ -499,6 +500,30 @@ export const MissionManagement = () => {
       setIsProcessing(false);
     }
   };
+
+  // Add real-time subscription for missions
+  useRealtimeSubscription({
+    channel: 'admin-missions',
+    event: '*',
+    table: 'interpretation_missions',
+    onEvent: () => {
+      console.log('[MissionManagement] Received mission update, refreshing...');
+      fetchMissions();
+    },
+  });
+
+  // Add real-time subscription for interpreter status changes
+  useRealtimeSubscription({
+    channel: 'interpreter-status',
+    event: 'UPDATE',
+    table: 'interpreter_profiles',
+    onEvent: (payload) => {
+      console.log('[MissionManagement] Interpreter status changed:', payload);
+      if (sourceLanguage && targetLanguage) {
+        findAvailableInterpreters(sourceLanguage, targetLanguage);
+      }
+    },
+  });
 
   return (
     <div className="space-y-6">

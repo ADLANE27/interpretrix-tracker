@@ -13,6 +13,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./components/CreateChannelDialog";
 import { ChannelMessages } from "./components/ChannelMessages";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { usePresence } from "@/hooks/usePresence";
 
 interface Channel {
   id: string;
@@ -111,8 +113,26 @@ export const TeamChat = () => {
     });
   };
 
+  const { data: { user } } = await supabase.auth.getUser();
+  const presenceState = usePresence(user?.id || '', 'team-chat');
+  
+  useRealtimeSubscription({
+    channel: 'team-chat',
+    event: '*',
+    table: 'channels',
+    onEvent: () => {
+      console.log('[TeamChat] Channel update detected, refreshing...');
+      fetchChannels();
+    },
+  });
+
   return (
     <div className="space-y-4">
+      {/* Add online users indicator */}
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <span>{Object.keys(presenceState).length} utilisateurs en ligne</span>
+      </div>
+      
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Chat d'équipe</h2>
         <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
