@@ -3,10 +3,18 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { MessageInput } from "./MessageInput";
 import { ThreadView } from "./ThreadView";
 import { FileAttachment } from "./FileAttachment";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Message {
   id: string;
@@ -28,6 +36,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<Message | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -68,7 +77,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Fetch main messages (no parent_id)
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
@@ -85,19 +93,16 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
-      // Get interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
         .select("id, first_name, last_name");
 
       if (interpreterError) throw interpreterError;
 
-      // Create a map of interpreter names
       const interpreterNames = new Map(
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
-      // Combine messages with sender names
       const messagesWithDetails = messagesData?.map(message => ({
         ...message,
         sender_name: interpreterNames.get(message.sender_id) || "Unknown User"
@@ -114,35 +119,29 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     }
   };
 
-  const sendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
-    if (!newMessage.trim() && !attachmentUrl) return;
-
+  const deleteMessage = async (messageId: string) => {
     try {
-      setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       const { error } = await supabase
         .from("messages")
-        .insert({
-          channel_id: channelId,
-          content: newMessage.trim(),
-          sender_id: user.id,
-          attachment_url: attachmentUrl,
-          attachment_name: attachmentName,
-        });
+        .delete()
+        .eq("id", messageId);
 
       if (error) throw error;
-      setNewMessage("");
-    } catch (error) {
-      console.error("Error sending message:", error);
+
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: "Message supprimé",
+        description: "Le message a été supprimé avec succès",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setMessageToDelete(null);
     }
   };
 
@@ -173,14 +172,25 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                             minute: '2-digit'
                           })}
                         </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => setSelectedThread(message)}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedThread(message)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                          {isCurrentUser && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setMessageToDelete(message.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm mt-1">
                         {message.content}
@@ -219,6 +229,28 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           />
         </div>
       )}
+
+      <Dialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessageToDelete(null)}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => messageToDelete && deleteMessage(messageToDelete)}
+            >
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
