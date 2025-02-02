@@ -141,6 +141,7 @@ export const InterpreterDashboard = () => {
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
         .eq('mentioned_user_id', user.id)
+        .is('read_at', null)  // Add this line to only count unread mentions
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       if (error) {
@@ -152,6 +153,11 @@ export const InterpreterDashboard = () => {
       setUnreadMentions(count || 0);
     } catch (error) {
       console.error("[Mentions] Error in fetchUnreadMentions:", error);
+      toast({
+        title: "Error",
+        description: "Could not fetch unread mentions",
+        variant: "destructive",
+      });
     }
   };
 

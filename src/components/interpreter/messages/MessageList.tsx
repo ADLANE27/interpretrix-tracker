@@ -73,9 +73,11 @@ export const MessageList = ({
 
           if (error) {
             console.error('[MessageList] Error marking mentions as read:', error);
+            throw error;
           }
 
-          // Trigger a refresh of unread mentions count in parent components
+          // Only dispatch event after successful update
+          console.log('[MessageList] Successfully marked mentions as read');
           const event = new CustomEvent('mentionsRead');
           window.dispatchEvent(event);
         } catch (error) {
