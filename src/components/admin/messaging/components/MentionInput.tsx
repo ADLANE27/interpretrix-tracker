@@ -68,22 +68,9 @@ export const MentionInput = ({
     }
   };
 
-  const extractTargetLanguages = (languages: string[]): Map<string, number> => {
-    const targetLanguages = new Map<string, number>();
-    
-    languages.forEach(langPair => {
-      const parts = langPair.split('→');
-      if (parts.length === 2) {
-        const target = parts[1].trim();
-        targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
-      }
-    });
-    
-    return targetLanguages;
-  };
-
   const fetchUsersAndLanguages = async () => {
     try {
+      // Fetch interpreter profiles with their languages
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email, languages');
@@ -117,21 +104,27 @@ export const MentionInput = ({
       setUsers(usersWithRoles);
 
       if (isAdmin) {
-        const targetLanguageCounts = new Map<string, number>();
+        // Extract and count target languages from interpreter profiles
+        const targetLanguages = new Map<string, number>();
         
         interpreters?.forEach(interpreter => {
-          const interpreterTargetLangs = extractTargetLanguages(interpreter.languages);
-          interpreterTargetLangs.forEach((count, lang) => {
-            const normalizedLang = lang.toLowerCase();
-            const normalizedSearch = mentionSearch.toLowerCase();
-            
-            if (!mentionSearch || normalizedLang.includes(normalizedSearch)) {
-              targetLanguageCounts.set(lang, (targetLanguageCounts.get(lang) || 0) + count);
-            }
-          });
+          if (interpreter.languages) {
+            interpreter.languages.forEach(langPair => {
+              const parts = langPair.split('→');
+              if (parts.length === 2) {
+                const target = parts[1].trim();
+                const normalizedTarget = target.toLowerCase();
+                const normalizedSearch = mentionSearch.toLowerCase();
+                
+                if (!mentionSearch || normalizedTarget.includes(normalizedSearch)) {
+                  targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
+                }
+              }
+            });
+          }
         });
 
-        const languageList = Array.from(targetLanguageCounts.entries())
+        const languageList = Array.from(targetLanguages.entries())
           .map(([language, count]) => ({
             language,
             count
