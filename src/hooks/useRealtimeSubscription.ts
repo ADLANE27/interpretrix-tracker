@@ -7,7 +7,7 @@ interface SubscriptionConfig {
   channel: string;
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
   schema?: string;
-  table: string;
+  table: 'interpreter_profiles' | 'interpretation_missions' | 'interpreter_languages' | 'mission_notifications' | 'push_subscriptions' | 'secrets' | 'user_roles';
   filter?: string;
   onEvent: (payload: RealtimePostgresChangesPayload<any>) => void;
 }
@@ -25,7 +25,7 @@ export const useRealtimeSubscription = (config: SubscriptionConfig) => {
       channelRef.current = supabase
         .channel(`${config.channel}-${Date.now()}`)
         .on(
-          'postgres_changes' as const,
+          'postgres_changes',
           {
             event: config.event,
             schema: config.schema || 'public',
