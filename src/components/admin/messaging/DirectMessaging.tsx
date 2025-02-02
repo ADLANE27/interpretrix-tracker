@@ -153,27 +153,41 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Delete all messages where either user is sender or recipient
-      const { error } = await supabase
+      console.log('Deleting chat between users:', user.id, 'and', chatId);
+
+      // Delete all messages between these two specific users
+      const { error, count } = await supabase
         .from('direct_messages')
         .delete()
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .or(`sender_id.eq.${chatId},recipient_id.eq.${chatId}`);
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${chatId}),` +
+          `and(sender_id.eq.${chatId},recipient_id.eq.${user.id})`
+        )
+        .select('count');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting messages:', error);
+        throw error;
+      }
+
+      console.log('Deleted message count:', count);
 
       // Update the chat history by removing the deleted chat
       setChatHistory(prevHistory => prevHistory.filter(chat => chat.id !== chatId));
       
       toast({
         title: "Conversation supprimée",
-        description: "La conversation a été supprimée avec succès",
+        description: `La conversation a été supprimée avec succès (${count} messages)`,
       });
 
       // If the deleted chat was selected, clear the selection
       if (selectedInterpreter === chatId) {
         setSelectedInterpreter(null);
       }
+
+      // Force refresh chat history
+      await fetchChatHistory();
+
     } catch (error) {
       console.error("Error deleting chat:", error);
       toast({
