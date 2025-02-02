@@ -44,6 +44,7 @@ interface ChatHistory {
   name: string;
   lastMessage?: string;
   unreadCount: number;
+  isAdmin?: boolean;
 }
 
 export const MessagingTab = () => {
@@ -115,7 +116,74 @@ export const MessagingTab = () => {
     }
   };
 
-  const fetchDirectMessages = async (interpreterId: string) => {
+  const handleSearch = async (term: string) => {
+    if (term.length < 2) {
+      setInterpreters([]);
+      return;
+    }
+
+    try {
+      // First, search for interpreters
+      const { data: interpreterData, error: interpreterError } = await supabase
+        .from("interpreter_profiles")
+        .select("id, first_name, last_name, email")
+        .or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%`);
+
+      if (interpreterError) throw interpreterError;
+
+      // Then, search for admins
+      const { data: adminData, error: adminError } = await supabase
+        .from("user_roles")
+        .select(`
+          user_id,
+          users:user_id (
+            email
+          )
+        `)
+        .eq('role', 'admin')
+        .textSearch('users.email', term);
+
+      if (adminError) throw adminError;
+
+      // For admins found, get their details from the get-user-info function
+      const adminProfiles = await Promise.all(
+        adminData.map(async (admin) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('get-user-info', {
+              body: { userId: admin.user_id }
+            });
+
+            if (error) throw error;
+
+            return {
+              id: admin.user_id,
+              first_name: data.first_name || 'Admin',
+              last_name: data.last_name || '',
+              email: admin.users.email,
+              isAdmin: true
+            };
+          } catch (error) {
+            console.error('Error fetching admin info:', error);
+            return null;
+          }
+        })
+      );
+
+      // Combine and filter out any null results from failed admin fetches
+      const validAdminProfiles = adminProfiles.filter(profile => profile !== null);
+      setInterpreters([...interpreterData || [], ...validAdminProfiles]);
+
+    } catch (error) {
+      console.error("Error searching users:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rechercher les utilisateurs",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchDirectMessages = async (userId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -123,11 +191,33 @@ export const MessagingTab = () => {
       const { data, error } = await supabase
         .from('direct_messages')
         .select('*')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       setDirectMessages(data || []);
+
+      // Update chat history to include admin status
+      const isAdmin = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .single();
+
+      if (isAdmin.data) {
+        const { data: userInfo } = await supabase.functions.invoke('get-user-info', {
+          body: { userId }
+        });
+
+        const updatedHistory = chatHistory.map(chat => 
+          chat.id === userId 
+            ? { ...chat, isAdmin: true, name: `${userInfo.first_name} ${userInfo.last_name} (Admin)` }
+            : chat
+        );
+        setChatHistory(updatedHistory);
+      }
+
     } catch (error) {
       console.error("Error fetching direct messages:", error);
       toast({
@@ -137,266 +227,6 @@ export const MessagingTab = () => {
       });
     }
   };
-
-  const fetchChannels = async () => {
-    try {
-      console.log('Fetching channels...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: memberChannels, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
-
-      if (memberError) throw memberError;
-
-      const channelIds = memberChannels?.map(m => m.channel_id) || [];
-      console.log('Found channel IDs:', channelIds);
-
-      if (channelIds.length === 0) {
-        setChannels([]);
-        return;
-      }
-
-      const { data: channels, error } = await supabase
-        .from('channels')
-        .select('*')
-        .in('id', channelIds);
-
-      if (error) throw error;
-
-      console.log('Successfully fetched channels:', channels);
-      setChannels(channels || []);
-    } catch (error) {
-      console.error('Error in fetchChannels:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchChannelMessages = async (channelId: string) => {
-    try {
-      console.log('Fetching messages for channel:', channelId);
-      const { data: messages, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-
-      console.log('Successfully fetched channel messages:', messages);
-      
-      // Get unique sender IDs
-      const senderIds = [...new Set((messages || []).map(msg => msg.sender_id))];
-      
-      // Create a map to store all sender profiles
-      const profileMap: Record<string, { first_name: string; last_name: string; id: string; }> = {};
-
-      // First, try to fetch interpreter profiles
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select('id, first_name, last_name')
-        .in('id', senderIds);
-
-      if (interpreterError) {
-        console.error('Error fetching interpreter profiles:', interpreterError);
-      }
-
-      // Add interpreter profiles to the map
-      if (interpreterProfiles) {
-        interpreterProfiles.forEach(profile => {
-          profileMap[profile.id] = {
-            id: profile.id,
-            first_name: profile.first_name,
-            last_name: profile.last_name
-          };
-        });
-      }
-
-      // For senders without interpreter profiles (likely admins), fetch from auth.users
-      const remainingSenderIds = senderIds.filter(id => !profileMap[id]);
-      
-      if (remainingSenderIds.length > 0) {
-        for (const senderId of remainingSenderIds) {
-          try {
-            const { data, error } = await supabase.functions.invoke('get-user-info', {
-              body: { userId: senderId }
-            });
-
-            if (error) {
-              console.error('Error fetching user info:', error);
-              continue;
-            }
-
-            profileMap[senderId] = {
-              id: senderId,
-              first_name: data.first_name || 'Admin',
-              last_name: data.last_name || ''
-            };
-          } catch (error) {
-            console.error('Error fetching admin user info:', error);
-          }
-        }
-      }
-
-      setSenderProfiles(profileMap);
-      setMessages(messages || []);
-    } catch (error) {
-      console.error('Error in fetchChannelMessages:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les messages du canal",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || !selectedChannel) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const { error } = await supabase.from("messages").insert({
-        content: content.trim(),
-        channel_id: selectedChannel,
-        sender_id: user.id,
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendDirectMessage = async (content: string) => {
-    if (!content.trim() || !selectedInterpreter) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const { error } = await supabase.from("direct_messages").insert({
-        content: content.trim(),
-        recipient_id: selectedInterpreter,
-        sender_id: user.id,
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error("Error sending direct message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleFileUpload = async (file: File) => {
-    if (!selectedChannel) return;
-
-    try {
-      setIsUploading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${crypto.randomUUID()}.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('message_attachments')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('message_attachments')
-        .getPublicUrl(filePath);
-
-      const { error: messageError } = await supabase.from("messages").insert({
-        channel_id: selectedChannel,
-        sender_id: user.id,
-        content: "",
-        attachment_url: publicUrl,
-        attachment_name: file.name
-      });
-
-      if (messageError) throw messageError;
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le fichier",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const deleteMessage = async (messageId: string) => {
-    try {
-      const { error } = await supabase
-        .from("messages")
-        .delete()
-        .eq("id", messageId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Message supprimé",
-        description: "Le message a été supprimé avec succès",
-      });
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le message",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (selectedInterpreter) {
-      fetchDirectMessages(selectedInterpreter);
-      
-      const channel = supabase
-        .channel(`direct-messages-${selectedInterpreter}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'direct_messages',
-            filter: `or(and(sender_id.eq.${currentUserId},recipient_id.eq.${selectedInterpreter}),and(sender_id.eq.${selectedInterpreter},recipient_id.eq.${currentUserId}))`,
-          },
-          (payload) => {
-            console.log('Direct message update received:', payload);
-            fetchDirectMessages(selectedInterpreter);
-          }
-        )
-        .subscribe((status) => {
-          console.log('Direct messages subscription status:', status);
-        });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [selectedInterpreter, currentUserId]);
 
   return (
     <Tabs defaultValue="groups" className="h-[calc(100vh-4rem)] flex">
@@ -419,7 +249,10 @@ export const MessagingTab = () => {
               <Input
                 placeholder="Rechercher..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  handleSearch(e.target.value);
+                }}
                 className="pl-8"
               />
             </div>
@@ -438,30 +271,40 @@ export const MessagingTab = () => {
             </TabsContent>
             <TabsContent value="direct" className="m-0">
               <div className="space-y-2">
-                {/* Search Results */}
                 {searchTerm && interpreters.length > 0 && (
                   <div className="space-y-2 mb-4">
                     <h3 className="text-sm font-medium text-gray-400 px-2">Résultats</h3>
-                    {interpreters.map((interpreter) => (
+                    {interpreters.map((user) => (
                       <Button
-                        key={interpreter.id}
+                        key={user.id}
                         variant="ghost"
                         className="w-full justify-start text-left"
                         onClick={() => {
-                          setSelectedInterpreter(interpreter.id);
+                          setSelectedInterpreter(user.id);
                           setSelectedChannel(null);
                           setSearchTerm("");
                           setInterpreters([]);
+                          const newChat = {
+                            id: user.id,
+                            name: `${user.first_name} ${user.last_name}${user.isAdmin ? ' (Admin)' : ''}`,
+                            unreadCount: 0,
+                            isAdmin: user.isAdmin
+                          };
+                          if (!chatHistory.some(chat => chat.id === user.id)) {
+                            setChatHistory(prev => [...prev, newChat]);
+                          }
                         }}
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
-                        {interpreter.first_name} {interpreter.last_name}
+                        <div className="flex flex-col items-start">
+                          <span>{user.first_name} {user.last_name}{user.isAdmin ? ' (Admin)' : ''}</span>
+                          <span className="text-xs text-gray-500">{user.email}</span>
+                        </div>
                       </Button>
                     ))}
                   </div>
                 )}
 
-                {/* Chat History */}
                 {!searchTerm && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
