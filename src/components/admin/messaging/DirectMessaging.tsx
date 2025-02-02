@@ -8,7 +8,8 @@ import { MessageActions } from "./components/MessageActions";
 import { useMessages } from "./hooks/useMessages";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { MoreVertical } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { MoreVertical, Search } from "lucide-react";
 
 interface Interpreter {
   id: string;
@@ -22,6 +23,7 @@ interface UnreadCount {
 
 export const DirectMessaging = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
+  const [filteredInterpreters, setFilteredInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,6 +61,15 @@ export const DirectMessaging = () => {
     }
   }, [selectedInterpreter]);
 
+  useEffect(() => {
+    // Filter interpreters based on search term
+    const filtered = interpreters.filter(interpreter => {
+      const fullName = `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase();
+      return fullName.includes(searchTerm.toLowerCase());
+    });
+    setFilteredInterpreters(filtered);
+  }, [searchTerm, interpreters]);
+
   const fetchInterpreters = async () => {
     try {
       const { data, error } = await supabase
@@ -67,6 +78,7 @@ export const DirectMessaging = () => {
 
       if (error) throw error;
       setInterpreters(data || []);
+      setFilteredInterpreters(data || []);
     } catch (error) {
       console.error("Error fetching interpreters:", error);
       toast({
@@ -217,8 +229,19 @@ export const DirectMessaging = () => {
           <div className="flex items-center justify-between text-white mb-4">
             <h2 className="text-lg font-semibold">Direct Messages</h2>
           </div>
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un interprète..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
           <InterpreterSelector
-            interpreters={interpreters}
+            interpreters={filteredInterpreters}
             selectedInterpreter={selectedInterpreter}
             unreadCounts={unreadCounts}
             onSelectInterpreter={setSelectedInterpreter}
