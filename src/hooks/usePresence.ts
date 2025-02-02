@@ -11,6 +11,7 @@ interface PresenceState {
 interface UserPresence {
   user_id: string;
   online_at: string;
+  presence_ref: string;
 }
 
 export const usePresence = (userId: string, roomId: string) => {
@@ -31,7 +32,8 @@ export const usePresence = (userId: string, roomId: string) => {
           // Transform the presence data to match our PresenceState interface
           const transformedState: Record<string, PresenceState> = {};
           Object.entries(state).forEach(([key, value]) => {
-            const presences = value as UserPresence[];
+            // Cast the value to unknown first, then to UserPresence[]
+            const presences = value as unknown as UserPresence[];
             if (presences.length > 0) {
               transformedState[key] = {
                 online: true,
