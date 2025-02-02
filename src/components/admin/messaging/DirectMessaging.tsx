@@ -153,7 +153,7 @@ export const DirectMessaging = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Delete all messages between the two users
+      // Delete all messages between the two users (both sent and received)
       const { error } = await supabase
         .from('direct_messages')
         .delete()
