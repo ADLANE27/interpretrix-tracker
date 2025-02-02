@@ -141,19 +141,20 @@ export const InterpreterDashboard = () => {
 
       // Extract target languages from language pairs
       const targetLanguages = profile.languages.map(lang => {
-        const [_, target] = lang.split(" → ");
+        const [_, target] = lang.split(' → ');
         return target.trim();
       });
 
-      console.log('[Mentions] Interpreter target languages:', targetLanguages);
+      console.log('[Mentions] Raw languages from profile:', profile.languages);
+      console.log('[Mentions] Extracted target languages:', targetLanguages);
 
-      // Build the query
+      // Build the query with exact language matching
       const { count, error } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
         .is('read_at', null)
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `"${lang}"`).join(',')})`);
+        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`);
 
       if (error) {
         console.error('[Mentions] Error fetching mentions:', error);
@@ -162,6 +163,12 @@ export const InterpreterDashboard = () => {
 
       console.log('[Mentions] Found unread mentions:', count);
       setUnreadMentions(count || 0);
+
+      // Dispatch event to notify other components
+      if (count && count > 0) {
+        const event = new CustomEvent('newMentions', { detail: { count } });
+        window.dispatchEvent(event);
+      }
     } catch (error) {
       console.error("[Mentions] Error in fetchUnreadMentions:", error);
       toast({
