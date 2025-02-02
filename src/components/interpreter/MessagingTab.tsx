@@ -86,6 +86,7 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
 
   const fetchChannelMessages = async (channelId: string) => {
     try {
+      console.log('[MessagingTab] Fetching messages for channel:', channelId);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -97,19 +98,24 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
         .eq('user_id', user.id)
         .single();
 
-      if (membershipError || !membershipData) {
-        console.error("User is not a member of this channel:", membershipError);
+      if (membershipError) {
+        console.error('[MessagingTab] Membership verification error:', membershipError);
         return;
       }
 
       // Fetch messages for the channel
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select('*')
+        .select('*, message_mentions!left(*)')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error('[MessagingTab] Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      console.log('[MessagingTab] Fetched messages with mentions:', messagesData);
 
       // Get all unique sender IDs
       const senderIds = [...new Set(messagesData?.map(msg => msg.sender_id) || [])];
@@ -238,6 +244,7 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
     const initializeUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        console.log('[MessagingTab] Current user:', user.id);
         setCurrentUserId(user.id);
         await fetchChannels();
         await fetchChatHistory();
@@ -249,8 +256,14 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
 
   useEffect(() => {
     if (selectedChannel) {
+      console.log('[MessagingTab] Selected channel changed:', selectedChannel);
       fetchChannelMessages(selectedChannel);
-      onMentionsRead?.();
+      
+      // Call onMentionsRead when switching to Messages tab
+      if (onMentionsRead) {
+        console.log('[MessagingTab] Calling onMentionsRead callback');
+        onMentionsRead();
+      }
     }
   }, [selectedChannel, onMentionsRead]);
 
