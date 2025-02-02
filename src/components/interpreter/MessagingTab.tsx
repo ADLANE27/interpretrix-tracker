@@ -31,6 +31,12 @@ interface Message {
   attachment_name?: string | null;
 }
 
+interface SenderProfile {
+  first_name: string;
+  last_name: string;
+  id: string;
+}
+
 export const MessagingTab = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -38,7 +44,7 @@ export const MessagingTab = () => {
   const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [senderProfiles, setSenderProfiles] = useState<Record<string, { first_name: string; last_name: string }>>({});
+  const [senderProfiles, setSenderProfiles] = useState<Record<string, SenderProfile>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -96,7 +102,7 @@ export const MessagingTab = () => {
   const fetchChannelMessages = async (channelId: string) => {
     try {
       console.log('Fetching messages for channel:', channelId);
-      const { data, error } = await supabase
+      const { data: messages, error } = await supabase
         .from('messages')
         .select('*')
         .eq('channel_id', channelId)
@@ -104,23 +110,66 @@ export const MessagingTab = () => {
 
       if (error) throw error;
 
-      console.log('Successfully fetched channel messages:', data);
+      console.log('Successfully fetched channel messages:', messages);
       
-      const senderIds = [...new Set(data?.map(msg => msg.sender_id) || [])];
-      const { data: profiles, error: profilesError } = await supabase
+      // Get unique sender IDs
+      const senderIds = [...new Set((messages || []).map(msg => msg.sender_id))];
+      
+      // Fetch interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name')
         .in('id', senderIds);
 
-      if (profilesError) throw profilesError;
+      if (interpreterError) {
+        console.error('Error fetching interpreter profiles:', interpreterError);
+      }
 
-      const profileMap = (profiles || []).reduce((acc, profile) => ({
-        ...acc,
-        [profile.id]: profile
-      }), {});
+      // Create a map of sender profiles
+      const profileMap: Record<string, SenderProfile> = {};
+      
+      // Add interpreter profiles to the map
+      if (interpreterProfiles) {
+        interpreterProfiles.forEach(profile => {
+          profileMap[profile.id] = {
+            id: profile.id,
+            first_name: profile.first_name,
+            last_name: profile.last_name
+          };
+        });
+      }
+
+      // For senders without interpreter profiles (likely admins), fetch from auth.users
+      const missingProfileIds = senderIds.filter(id => !profileMap[id]);
+      if (missingProfileIds.length > 0) {
+        // Use the edge function to get user info for admins
+        for (const userId of missingProfileIds) {
+          try {
+            const response = await fetch(`${window.location.origin}/functions/v1/get-user-info`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+              },
+              body: JSON.stringify({ userId })
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              profileMap[userId] = {
+                id: userId,
+                first_name: userData.first_name || 'Admin',
+                last_name: userData.last_name || ''
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching admin user info:', error);
+          }
+        }
+      }
 
       setSenderProfiles(profileMap);
-      setMessages(data || []);
+      setMessages(messages || []);
     } catch (error) {
       console.error('Error in fetchChannelMessages:', error);
       toast({
