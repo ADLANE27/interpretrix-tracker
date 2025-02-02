@@ -25,7 +25,7 @@ interface Message {
   id: string;
   content: string;
   sender_id: string;
-  channel_id: string;
+  channel_id?: string | null;  // Made optional with ?
   recipient_id: string | null;
   created_at: string;
   attachment_url?: string | null;
