@@ -76,6 +76,8 @@ export type Database = {
       }
       direct_messages: {
         Row: {
+          attachment_name: string | null
+          attachment_url: string | null
           content: string
           created_at: string
           id: string
@@ -85,6 +87,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           content: string
           created_at?: string
           id?: string
@@ -94,6 +98,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_url?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -160,6 +166,38 @@ export type Database = {
           {
             foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
             columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interpreter_languages: {
+        Row: {
+          created_at: string
+          id: string
+          interpreter_id: string
+          source_language: string
+          target_language: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interpreter_id: string
+          source_language: string
+          target_language: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interpreter_id?: string
+          source_language?: string
+          target_language?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_languages_interpreter_id_fkey"
+            columns: ["interpreter_id"]
             isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
@@ -237,38 +275,6 @@ export type Database = {
           vat_number?: string | null
         }
         Relationships: []
-      }
-      message_mentions: {
-        Row: {
-          created_at: string
-          id: string
-          mentioned_language: string | null
-          mentioned_user_id: string | null
-          message_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          mentioned_language?: string | null
-          mentioned_user_id?: string | null
-          message_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          mentioned_language?: string | null
-          mentioned_user_id?: string | null
-          message_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_mentions_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "messages"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       messages: {
         Row: {
@@ -485,6 +491,10 @@ export type Database = {
           p_recipient_id: string
           p_sender_id: string
         }
+        Returns: undefined
+      }
+      migrate_interpreter_languages: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
     }
