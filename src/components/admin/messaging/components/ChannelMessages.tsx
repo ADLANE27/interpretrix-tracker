@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { ThreadView } from "./ThreadView";
+import { MessageInput } from "./MessageInput";
 
 interface Message {
   id: string;
@@ -13,6 +13,8 @@ interface Message {
   sender_id: string;
   created_at: string;
   sender_name: string;
+  attachment_url?: string;
+  attachment_name?: string;
 }
 
 interface ChannelMessagesProps {
@@ -116,8 +118,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+  const sendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
+    if (!newMessage.trim() && !attachmentUrl) return;
 
     try {
       setIsLoading(true);
@@ -130,6 +132,8 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           channel_id: channelId,
           content: newMessage.trim(),
           sender_id: user.id,
+          attachment_url: attachmentUrl,
+          attachment_name: attachmentName,
         });
 
       if (error) throw error;
@@ -171,6 +175,18 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                     }`}
                   >
                     {message.content}
+                    {message.attachment_url && (
+                      <div className="mt-2">
+                        <a 
+                          href={message.attachment_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+                        >
+                          📎 {message.attachment_name || 'Attachment'}
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <span>{new Date(message.created_at).toLocaleString()}</span>
@@ -189,21 +205,12 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           </div>
         </ScrollArea>
 
-        <div className="flex gap-2 mt-4">
-          <Input
+        <div className="mt-4">
+          <MessageInput
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            onKeyPress={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
+            onChange={setNewMessage}
+            onSend={sendMessage}
           />
-          <Button onClick={sendMessage} disabled={isLoading}>
-            <Send className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
