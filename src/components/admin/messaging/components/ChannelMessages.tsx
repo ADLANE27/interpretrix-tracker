@@ -258,9 +258,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
                 </div>
               );
             })}
-            <div className="text-xs text-center text-gray-500 py-4">
-              © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-            </div>
           </div>
         </ScrollArea>
 
