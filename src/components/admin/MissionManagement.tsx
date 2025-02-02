@@ -12,8 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Calendar, Clock, Search } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format, differenceInMinutes, addMinutes, isWithinInterval } from "date-fns";
-import { fr } from "date-fns/locale";
+import { format, differenceInMinutes } from "date-fns";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
 
 interface Mission {
@@ -58,6 +57,7 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSelectAllInterpreters = () => {
     if (selectedInterpreters.length === availableInterpreters.length) {
@@ -284,7 +284,19 @@ export const MissionManagement = () => {
     e.preventDefault();
     console.log('[MissionManagement] Starting mission creation process...');
     
+    if (isProcessing) {
+      console.log('[MissionManagement] Already processing a request');
+      toast({
+        title: "Action en cours",
+        description: "Une mission est déjà en cours de création",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      setIsProcessing(true);
+      
       // Validation checks with specific error messages
       if (selectedInterpreters.length === 0) {
         console.log('[MissionManagement] No interpreters selected');
@@ -495,6 +507,8 @@ export const MissionManagement = () => {
         description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la création de la mission",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -764,9 +778,9 @@ export const MissionManagement = () => {
                   
                   {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
                     <p className="text-sm text-gray-600">
-                      Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy", { locale: fr })} 
-                      de {format(new Date(mission.scheduled_start_time), "HH:mm", { locale: fr })} 
-                      à {format(new Date(mission.scheduled_end_time), "HH:mm", { locale: fr })} 
+                      Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy")} 
+                      de {format(new Date(mission.scheduled_start_time), "HH:mm")} 
+                      à {format(new Date(mission.scheduled_end_time), "HH:mm")} 
                       <span className="ml-1">({calculateDuration(mission)})</span>
                     </p>
                   )}
@@ -795,7 +809,7 @@ export const MissionManagement = () => {
                 
                 <div className="flex items-center gap-4">
                   <p className="text-sm text-gray-600">
-                    {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}
+                    {format(new Date(mission.created_at), "d MMMM yyyy")}
                   </p>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
