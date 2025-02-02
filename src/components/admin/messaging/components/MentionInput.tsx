@@ -70,7 +70,7 @@ export const MentionInput = ({
 
   const fetchUsersAndLanguages = async () => {
     try {
-      // Fetch interpreters and their languages
+      // Fetch all interpreter profiles
       const { data: interpreters, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id, first_name, last_name, email, languages');
@@ -105,26 +105,21 @@ export const MentionInput = ({
       setUsers(usersWithRoles);
 
       if (isAdmin) {
-        // Extract target languages from interpreter profiles
-        const targetLanguages = new Map<string, number>();
+        // Process languages from interpreter profiles
+        const languageMap = new Map<string, number>();
         
         interpreters?.forEach(interpreter => {
           if (interpreter.languages) {
-            interpreter.languages.forEach(langPair => {
-              const parts = langPair.split('→').map(s => s.trim());
-              if (parts.length === 2) {
-                const target = parts[1];
-                if (target.toLowerCase().includes(mentionSearch.toLowerCase())) {
-                  targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
-                }
+            interpreter.languages.forEach((langPair: string) => {
+              const [_, target] = langPair.split('→').map(s => s.trim());
+              if (target && target.toLowerCase().includes(mentionSearch.toLowerCase())) {
+                languageMap.set(target, (languageMap.get(target) || 0) + 1);
               }
             });
           }
         });
 
-        console.log('Available target languages:', Array.from(targetLanguages.keys()));
-
-        const languageList = Array.from(targetLanguages.entries())
+        const languageList = Array.from(languageMap.entries())
           .map(([language, count]) => ({
             language,
             count
@@ -171,7 +166,6 @@ export const MentionInput = ({
         onMention(item.id);
       }
     } else {
-      console.log('Handling language mention for:', item.language);
       const newValue = `${beforeMention}@${item.language}${afterMention}`;
       onChange(newValue);
       
