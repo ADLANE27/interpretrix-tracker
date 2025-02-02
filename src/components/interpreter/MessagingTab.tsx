@@ -243,7 +243,6 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
   };
 
   useEffect(() => {
-    fetchProfile();
     fetchChannels();
     fetchChatHistory();
     console.log('[MessagingTab] Setting up realtime subscriptions');
