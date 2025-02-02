@@ -106,6 +106,24 @@ export const MessagingTab = () => {
         .order('created_at', { ascending: true });
 
       if (messagesError) throw messagesError;
+
+      // Fetch all unique sender profiles
+      const senderIds = [...new Set(messagesData?.map(msg => msg.sender_id) || [])];
+      
+      const { data: profiles, error: profilesError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', senderIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of sender profiles
+      const profilesMap = profiles?.reduce((acc, profile) => ({
+        ...acc,
+        [profile.id]: profile
+      }), {});
+
+      setSenderProfiles(profilesMap || {});
       setMessages(messagesData || []);
 
       // Set up realtime subscription for new messages
@@ -119,9 +137,26 @@ export const MessagingTab = () => {
             table: 'messages',
             filter: `channel_id=eq.${channelId}`,
           },
-          (payload) => {
+          async (payload) => {
             console.log('Message change received:', payload);
+            
+            // If it's a new message, fetch the sender's profile if we don't have it
             if (payload.eventType === 'INSERT') {
+              const senderId = payload.new.sender_id;
+              if (!senderProfiles[senderId]) {
+                const { data: profile } = await supabase
+                  .from('interpreter_profiles')
+                  .select('id, first_name, last_name')
+                  .eq('id', senderId)
+                  .single();
+                
+                if (profile) {
+                  setSenderProfiles(prev => ({
+                    ...prev,
+                    [senderId]: profile
+                  }));
+                }
+              }
               setMessages(prev => [...prev, payload.new as Message]);
             } else if (payload.eventType === 'DELETE') {
               setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
