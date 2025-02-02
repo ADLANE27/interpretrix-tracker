@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CountrySelect } from "@/components/CountrySelect";
-import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
+import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { LanguagePair } from "@/types/interpreter";
 
 interface Address {
   street: string;
@@ -58,6 +60,32 @@ export const InterpreterProfileForm = ({
     tarif_15min: initialData.tarif_15min || 0,
   });
 
+  useEffect(() => {
+    if (initialData.id) {
+      fetchInterpreterLanguages(initialData.id);
+    }
+  }, [initialData.id]);
+
+  const fetchInterpreterLanguages = async (interpreterId: string) => {
+    try {
+      const { data: languages, error } = await supabase
+        .from("interpreter_languages")
+        .select("*")
+        .eq("interpreter_id", interpreterId);
+
+      if (error) throw error;
+
+      const languagePairs: LanguagePair[] = languages.map((lang) => ({
+        source: lang.source_language,
+        target: lang.target_language,
+      }));
+
+      setFormData((prev) => ({ ...prev, languages: languagePairs }));
+    } catch (error) {
+      console.error("Error fetching interpreter languages:", error);
+    }
+  };
+
   const handleChange = (field: keyof InterpreterFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -69,7 +97,7 @@ export const InterpreterProfileForm = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
   };
