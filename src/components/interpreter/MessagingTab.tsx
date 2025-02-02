@@ -242,63 +242,6 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
     }
   };
 
-  useEffect(() => {
-    fetchChannels();
-    fetchChatHistory();
-    console.log('[MessagingTab] Setting up realtime subscriptions');
-
-    // Set up realtime subscription for both direct and language mentions
-    const mentionsChannel = supabase
-      .channel('mentions-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'message_mentions'
-        },
-        async (payload) => {
-          console.log('[MessagingTab] New mention:', payload);
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-
-          // Check if it's a direct mention
-          if (payload.new.mentioned_user_id === user.id) {
-            console.log('[MessagingTab] Direct mention detected');
-            fetchUnreadMentions();
-            return;
-          }
-
-          // Check if it's a language mention that matches interpreter's languages
-          const { data: profile } = await supabase
-            .from('interpreter_profiles')
-            .select('languages')
-            .eq('id', user.id)
-            .single();
-
-          if (profile && profile.languages) {
-            const targetLanguages = profile.languages.map(lang => {
-              const [_, target] = lang.split(' → ');
-              return target;
-            });
-
-            if (payload.new.mentioned_language && targetLanguages.includes(payload.new.mentioned_language)) {
-              console.log('[MessagingTab] Language mention matches interpreter target language');
-              fetchUnreadMentions();
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MessagingTab] Mentions subscription status:', status);
-      });
-
-    return () => {
-      console.log('[MessagingTab] Cleaning up subscriptions');
-      supabase.removeChannel(mentionsChannel);
-    };
-  }, []);
-
   const fetchUnreadMentions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -322,10 +265,10 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
       // Extract target languages from language pairs
       const targetLanguages = profile.languages.map(lang => {
         const [_, target] = lang.split(' → ');
-        return target;
+        return target.trim();
       });
 
-      console.log('[MessagingTab] Target languages:', targetLanguages);
+      console.log('[MessagingTab] Interpreter target languages:', targetLanguages);
 
       // Count both direct mentions and language mentions
       const { count, error } = await supabase
@@ -351,6 +294,66 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
       });
     }
   };
+
+  useEffect(() => {
+    fetchChannels();
+    fetchChatHistory();
+    console.log('[MessagingTab] Setting up realtime subscriptions');
+
+    // Set up realtime subscription for both direct and language mentions
+    const mentionsChannel = supabase
+      .channel('mentions-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_mentions'
+        },
+        async (payload) => {
+          console.log('[MessagingTab] New mention received:', payload);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Check if it's a direct mention
+          if (payload.new.mentioned_user_id === user.id) {
+            console.log('[MessagingTab] Direct mention detected');
+            fetchUnreadMentions();
+            return;
+          }
+
+          // Check if it's a language mention that matches interpreter's languages
+          const { data: profile } = await supabase
+            .from('interpreter_profiles')
+            .select('languages')
+            .eq('id', user.id)
+            .single();
+
+          if (profile && profile.languages) {
+            const targetLanguages = profile.languages.map(lang => {
+              const [_, target] = lang.split(' → ');
+              return target.trim();
+            });
+
+            console.log('[MessagingTab] Checking language mention:', payload.new.mentioned_language);
+            console.log('[MessagingTab] Against target languages:', targetLanguages);
+
+            if (payload.new.mentioned_language && targetLanguages.includes(payload.new.mentioned_language)) {
+              console.log('[MessagingTab] Language mention matches interpreter target language');
+              fetchUnreadMentions();
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MessagingTab] Mentions subscription status:', status);
+      });
+
+    return () => {
+      console.log('[MessagingTab] Cleaning up subscriptions');
+      supabase.removeChannel(mentionsChannel);
+    };
+  }, []);
 
   useEffect(() => {
     const initializeUser = async () => {
