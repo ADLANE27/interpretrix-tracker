@@ -10,9 +10,8 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Calendar, Clock, Search } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { format, differenceInMinutes } from "date-fns";
+import { MissionFilters, FilterOptions } from "./mission/MissionFilters";
+import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission, isInterpreterAvailableForImmediateMission } from "@/utils/missionUtils";
 
 interface Mission {
@@ -55,33 +54,22 @@ export const MissionManagement = () => {
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
   const [scheduledStartTime, setScheduledStartTime] = useState("");
   const [scheduledEndTime, setScheduledEndTime] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleSelectAllInterpreters = () => {
-    if (selectedInterpreters.length === availableInterpreters.length) {
-      setSelectedInterpreters([]);
-    } else {
-      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
-    }
-  };
-
-  const calculateDuration = (mission: Mission) => {
-    if (mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time) {
-      const durationInMinutes = differenceInMinutes(
-        new Date(mission.scheduled_end_time),
-        new Date(mission.scheduled_start_time)
-      );
-      return `${durationInMinutes} minutes`;
-    }
-    return `${mission.estimated_duration} minutes`;
-  };
+  const [filters, setFilters] = useState<FilterOptions>({
+    search: "",
+    status: "",
+    missionType: "",
+    dateRange: {
+      start: "",
+      end: "",
+    },
+  });
 
   const fetchMissions = async () => {
     try {
-      console.log('[MissionManagement] Fetching missions...');
-      const { data, error } = await supabase
+      console.log('[MissionManagement] Fetching missions with filters:', filters);
+      let query = supabase
         .from("interpretation_missions")
         .select(`
           *,
@@ -92,8 +80,37 @@ export const MissionManagement = () => {
             profile_picture_url,
             status
           )
-        `)
-        .order("created_at", { ascending: false });
+        `);
+
+      // Apply filters
+      if (filters.search) {
+        query = query.or(`
+          source_language.ilike.%${filters.search}%,
+          target_language.ilike.%${filters.search}%,
+          interpreter_profiles.first_name.ilike.%${filters.search}%,
+          interpreter_profiles.last_name.ilike.%${filters.search}%
+        `);
+      }
+
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      if (filters.missionType) {
+        query = query.eq('mission_type', filters.missionType);
+      }
+
+      if (filters.dateRange.start) {
+        query = query.gte('created_at', filters.dateRange.start);
+      }
+
+      if (filters.dateRange.end) {
+        query = query.lte('created_at', filters.dateRange.end);
+      }
+
+      query = query.order("created_at", { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('[MissionManagement] Error fetching missions:', error);
@@ -114,56 +131,16 @@ export const MissionManagement = () => {
     }
   };
 
-  const setupRealtimeSubscription = () => {
-    console.log('[MissionManagement] Setting up realtime subscription');
-    
-    const channel = supabase
-      .channel('mission-management')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        (payload) => {
-          console.log('[MissionManagement] Mission update received:', payload);
-          fetchMissions();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'mission_notifications'
-        },
-        (payload) => {
-          console.log('[MissionManagement] Notification update received:', payload);
-          fetchMissions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionManagement] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MissionManagement] Successfully subscribed to changes');
-        }
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionManagement] Error subscribing to changes');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
+  useEffect(() => {
+    fetchMissions();
+  }, [filters]);
 
-    return () => {
-      console.log('[MissionManagement] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
+  const handleSelectAllInterpreters = () => {
+    if (selectedInterpreters.length === availableInterpreters.length) {
+      setSelectedInterpreters([]);
+    } else {
+      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+    }
   };
 
   const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
@@ -280,6 +257,18 @@ export const MissionManagement = () => {
     }
   };
 
+  const handleResetFilters = () => {
+    setFilters({
+      search: "",
+      status: "",
+      missionType: "",
+      dateRange: {
+        start: "",
+        end: "",
+      },
+    });
+  };
+
   const createMission = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[MissionManagement] Starting mission creation process...');
@@ -367,9 +356,8 @@ export const MissionManagement = () => {
       // Calculate duration with proper validation
       let calculatedDuration = parseInt(estimatedDuration);
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-        calculatedDuration = differenceInMinutes(
-          new Date(scheduledEndTime),
-          new Date(scheduledStartTime)
+        calculatedDuration = Math.round(
+          (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
         );
         
         if (calculatedDuration <= 0) {
@@ -512,34 +500,9 @@ export const MissionManagement = () => {
     }
   };
 
-  useEffect(() => {
-    fetchMissions();
-    const cleanup = setupRealtimeSubscription();
-    return () => {
-      cleanup();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (sourceLanguage && targetLanguage) {
-      findAvailableInterpreters(sourceLanguage, targetLanguage);
-    }
-  }, [sourceLanguage, targetLanguage]);
-
-  const filteredMissions = missions.filter(mission => {
-    if (!searchQuery) return true;
-    
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      mission.source_language.toLowerCase().includes(searchLower) ||
-      mission.target_language.toLowerCase().includes(searchLower) ||
-      mission.interpreter_profiles?.first_name.toLowerCase().includes(searchLower) ||
-      mission.interpreter_profiles?.last_name.toLowerCase().includes(searchLower)
-    );
-  });
-
   return (
     <div className="space-y-6">
+      {/* Mission Creation Form */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Créer une nouvelle mission</h3>
         <form onSubmit={createMission} className="space-y-4">
@@ -738,107 +701,23 @@ export const MissionManagement = () => {
         </form>
       </Card>
 
+      {/* Mission List */}
       <Card className="p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Liste des missions</h3>
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
         <div className="space-y-4">
-          {filteredMissions.map((mission) => (
-            <Card key={mission.id} className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {mission.mission_type === 'scheduled' ? (
-                      <Calendar className="h-4 w-4 text-blue-500" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-green-500" />
-                    )}
-                    <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
-                      {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
-                    </Badge>
-                    {mission.status === 'awaiting_acceptance' && (
-                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                        En attente d'acceptation
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mt-2">
-                    {mission.source_language} → {mission.target_language}
-                  </p>
-                  
-                  {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
-                    <p className="text-sm text-gray-600">
-                      Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy")} 
-                      de {format(new Date(mission.scheduled_start_time), "HH:mm")} 
-                      à {format(new Date(mission.scheduled_end_time), "HH:mm")} 
-                      <span className="ml-1">({calculateDuration(mission)})</span>
-                    </p>
-                  )}
-                  
-                  {mission.mission_type === 'immediate' && (
-                    <p className="text-sm text-gray-600">
-                      Durée: {calculateDuration(mission)}
-                    </p>
-                  )}
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Liste des missions</h3>
+          </div>
 
-                  {mission.interpreter_profiles && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={mission.interpreter_profiles.profile_picture_url || undefined} />
-                        <AvatarFallback>
-                          {mission.interpreter_profiles.first_name[0]}
-                          {mission.interpreter_profiles.last_name[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-gray-600">
-                        Mission acceptée par {mission.interpreter_profiles.first_name} {mission.interpreter_profiles.last_name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <p className="text-sm text-gray-600">
-                    {format(new Date(mission.created_at), "d MMMM yyyy")}
-                  </p>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer la mission</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Êtes-vous sûr de vouloir supprimer cette mission ? Cette action est irréversible.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={() => handleDeleteMission(mission.id)}
-                          className="bg-red-500 hover:bg-red-600"
-                        >
-                          Supprimer
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            </Card>
-          ))}
+          <MissionFilters
+            filters={filters}
+            onFilterChange={setFilters}
+            onReset={handleResetFilters}
+          />
+
+          <MissionList
+            missions={missions}
+            onDelete={handleDeleteMission}
+          />
         </div>
       </Card>
     </div>
