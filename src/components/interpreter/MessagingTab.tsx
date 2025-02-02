@@ -80,6 +80,75 @@ export const MessagingTab = () => {
     }
   };
 
+  const fetchChannelMessages = async (channelId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // First verify user is a member of the channel
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('channel_id', channelId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (membershipError || !membershipData) {
+        console.error("User is not a member of this channel:", membershipError);
+        return;
+      }
+
+      // Fetch messages for the channel
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true });
+
+      if (messagesError) throw messagesError;
+      setMessages(messagesData || []);
+
+      // Set up realtime subscription for new messages
+      const channel = supabase
+        .channel(`messages-${channelId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'messages',
+            filter: `channel_id=eq.${channelId}`,
+          },
+          (payload) => {
+            console.log('Message change received:', payload);
+            if (payload.eventType === 'INSERT') {
+              setMessages(prev => [...prev, payload.new as Message]);
+            } else if (payload.eventType === 'DELETE') {
+              setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+            } else if (payload.eventType === 'UPDATE') {
+              setMessages(prev => prev.map(msg => 
+                msg.id === payload.new.id ? payload.new as Message : msg
+              ));
+            }
+          }
+        )
+        .subscribe((status) => {
+          console.log('Messages subscription status:', status);
+        });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error("Error fetching channel messages:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les messages du canal",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     const initializeUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -92,6 +161,12 @@ export const MessagingTab = () => {
 
     initializeUser();
   }, []);
+
+  useEffect(() => {
+    if (selectedChannel) {
+      fetchChannelMessages(selectedChannel);
+    }
+  }, [selectedChannel]);
 
   const fetchChatHistory = async () => {
     try {
@@ -291,13 +366,16 @@ export const MessagingTab = () => {
 
   const sendMessage = async (content: string, attachmentUrl?: string, attachmentName?: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
         .from('messages')
         .insert([
           {
             channel_id: selectedChannel,
             content,
-            sender_id: currentUserId,
+            sender_id: user.id,
             attachment_url: attachmentUrl,
             attachment_name: attachmentName
           }
@@ -306,7 +384,9 @@ export const MessagingTab = () => {
         .single();
 
       if (error) throw error;
-      setMessages(prev => [...prev, data]);
+      
+      // No need to manually update messages array as realtime subscription will handle it
+      console.log('Message sent successfully:', data);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
