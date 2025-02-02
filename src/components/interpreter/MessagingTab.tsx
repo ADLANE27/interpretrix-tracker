@@ -66,6 +66,12 @@ interface Channel {
   updated_at: string;
 }
 
+interface SenderInfo {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
 export const MessagingTab = () => {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -81,6 +87,7 @@ export const MessagingTab = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [senderProfiles, setSenderProfiles] = useState<Record<string, SenderInfo>>({});
 
   useEffect(() => {
     const initializeUser = async () => {
@@ -95,7 +102,7 @@ export const MessagingTab = () => {
           setCurrentUserId(user.id);
           fetchAdmins();
           fetchChatHistory();
-          fetchChannels(); // Add this line to fetch channels
+          fetchChannels();
         } else {
           navigate("/login");
         }
@@ -127,7 +134,6 @@ export const MessagingTab = () => {
         return;
       }
 
-      // First get channels where user is a member
       const { data: memberChannels, error: memberError } = await supabase
         .from('channel_members')
         .select('channel_id')
@@ -147,7 +153,6 @@ export const MessagingTab = () => {
         return;
       }
 
-      // Then fetch the actual channels
       const { data: channels, error } = await supabase
         .from('channels')
         .select('*')
@@ -261,6 +266,24 @@ export const MessagingTab = () => {
       }
 
       console.log('Successfully fetched channel messages:', data);
+      
+      const senderIds = [...new Set(data?.map(msg => msg.sender_id) || [])];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('interpreter_profiles')
+        .select('id, first_name, last_name')
+        .in('id', senderIds);
+
+      if (profilesError) {
+        console.error('Error fetching sender profiles:', profilesError);
+        throw profilesError;
+      }
+
+      const profileMap = (profiles || []).reduce((acc, profile) => ({
+        ...acc,
+        [profile.id]: profile
+      }), {});
+
+      setSenderProfiles(profileMap);
       setMessages(data as Message[] || []);
     } catch (error) {
       console.error('Error in fetchChannelMessages:', error);
@@ -535,6 +558,11 @@ export const MessagingTab = () => {
                     className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className="group relative">
+                      {message.sender_id !== currentUserId && (
+                        <div className="text-sm text-gray-500 mb-1">
+                          {senderProfiles[message.sender_id]?.first_name} {senderProfiles[message.sender_id]?.last_name}
+                        </div>
+                      )}
                       <div
                         className={`max-w-[70%] rounded-lg p-3 ${
                           message.sender_id === currentUserId
