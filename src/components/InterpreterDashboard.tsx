@@ -125,6 +125,8 @@ export const InterpreterDashboard = () => {
         return;
       }
 
+      console.log('[Mentions] Fetching mentions for user:', user.id);
+
       // First get interpreter's target languages
       const { data: profile } = await supabase
         .from('interpreter_profiles')
