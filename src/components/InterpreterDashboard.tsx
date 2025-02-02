@@ -141,19 +141,29 @@ export const InterpreterDashboard = () => {
 
       // Extract target languages from language pairs
       const targetLanguages = profile.languages.map(lang => {
-        const [_, target] = lang.split(' → ');
+        const [_, target] = lang.split(" → ");
         return target.trim();
       });
 
       console.log('[Mentions] Interpreter target languages:', targetLanguages);
 
       // Build the query for both direct mentions and language mentions
-      const { count, error } = await supabase
+      let query = supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
-        .or(`mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`)
         .is('read_at', null)
         .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      // Add OR condition for user mentions and language mentions
+      if (targetLanguages.length > 0) {
+        query = query.or(
+          `mentioned_user_id.eq.${user.id},mentioned_language.in.(${targetLanguages.map(lang => `'${lang}'`).join(',')})`
+        );
+      } else {
+        query = query.eq('mentioned_user_id', user.id);
+      }
+
+      const { count, error } = await query;
 
       if (error) {
         console.error('[Mentions] Error fetching mentions:', error);
