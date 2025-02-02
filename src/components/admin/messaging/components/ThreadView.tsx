@@ -9,7 +9,7 @@ interface ThreadViewProps {
   parentMessage: {
     id: string;
     content: string;
-    sender_name?: string; // Made optional to match Message interface
+    sender_name: string;
     created_at: string;
   };
   onClose: () => void;
@@ -36,7 +36,7 @@ export const ThreadView = ({ parentMessage, onClose }: ThreadViewProps) => {
       </div>
 
       <div className="p-4 border-b bg-secondary/20">
-        <div className="text-sm font-medium">{parentMessage.sender_name || "Unknown User"}</div>
+        <div className="text-sm font-medium">{parentMessage.sender_name}</div>
         <div className="mt-1">{parentMessage.content}</div>
         <div className="text-xs text-gray-500 mt-1">
           {new Date(parentMessage.created_at).toLocaleString()}
@@ -47,7 +47,7 @@ export const ThreadView = ({ parentMessage, onClose }: ThreadViewProps) => {
         <div className="space-y-4">
           {replies.map((reply) => (
             <div key={reply.id} className="space-y-1">
-              <div className="text-sm font-medium">{reply.sender_name || "Unknown User"}</div>
+              <div className="text-sm font-medium">{reply.sender_name}</div>
               <div className="p-3 rounded-lg bg-secondary max-w-[80%]">
                 {reply.content}
               </div>

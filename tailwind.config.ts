@@ -19,22 +19,6 @@ export default {
     },
     extend: {
       colors: {
-        chat: {
-          sidebar: "#FFFFFF", // Changed to white
-          hover: "#F1F0FB",
-          selected: "#4A69FF",
-          messageHover: "rgba(74, 105, 255, 0.1)",
-          divider: "#E5E7EB",
-          timestamp: "#6B7280",
-          input: "#F9FAFB",
-          channelHeader: "#FFFFFF",
-          channelBorder: "#E5E7EB",
-          searchBg: "#F3F4F6", // Changed to light gray
-          searchText: "#374151", // Changed to dark gray
-          channelCount: "#4A69FF", // Changed to blue
-          sidebarText: "#374151", // Changed to dark gray
-          sidebarHeading: "#111827", // Changed to darker gray
-        },
         interpreter: {
           navy: "#1a365d",
           available: "#10b981",

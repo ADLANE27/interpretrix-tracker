@@ -12,7 +12,7 @@ export const FileAttachment = ({ url, name }: FileAttachmentProps) => {
       <Button
         variant="outline"
         size="sm"
-        className="text-xs hover:bg-chat-hover transition-colors"
+        className="text-xs"
         onClick={() => window.open(url, '_blank')}
       >
         <Download className="h-4 w-4 mr-2" />

@@ -3,25 +3,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Trash2 } from "lucide-react";
-import { MessageInput } from "./MessageInput";
+import { MessageSquare } from "lucide-react";
 import { ThreadView } from "./ThreadView";
-import { FileAttachment } from "./FileAttachment";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { MessageInput } from "./MessageInput";
 
 interface Message {
   id: string;
   content: string;
   sender_id: string;
   created_at: string;
-  sender_name?: string;
+  sender_name: string;
   attachment_url?: string;
   attachment_name?: string;
 }
@@ -36,7 +27,6 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedThread, setSelectedThread] = useState<Message | null>(null);
-  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -72,20 +62,25 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     };
   }, [channelId]);
 
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Fetch main messages (no parent_id)
       const { data: messagesData, error: messagesError } = await supabase
         .from("messages")
         .select(`
           id,
           content,
           sender_id,
-          created_at,
-          attachment_url,
-          attachment_name
+          created_at
         `)
         .eq("channel_id", channelId)
         .is("parent_id", null)
@@ -93,22 +88,26 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
 
       if (messagesError) throw messagesError;
 
+      // Get interpreter profiles
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
         .select("id, first_name, last_name");
 
       if (interpreterError) throw interpreterError;
 
+      // Create a map of interpreter names
       const interpreterNames = new Map(
         interpreterProfiles?.map(p => [p.id, `${p.first_name} ${p.last_name}`])
       );
 
+      // Combine messages with sender names
       const messagesWithDetails = messagesData?.map(message => ({
         ...message,
         sender_name: interpreterNames.get(message.sender_id) || "Unknown User"
       }));
 
       setMessages(messagesWithDetails || []);
+      setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast({
@@ -119,46 +118,26 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     }
   };
 
-  const sendMessage = async (content: string, file?: File) => {
+  const sendMessage = async (attachmentUrl?: string, attachmentName?: string) => {
+    if (!newMessage.trim() && !attachmentUrl) return;
+
     try {
       setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      let attachment_url = null;
-      let attachment_name = null;
-
-      if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('message_attachments')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('message_attachments')
-          .getPublicUrl(fileName);
-
-        attachment_url = publicUrl;
-        attachment_name = file.name;
-      }
-
-      const { error: insertError } = await supabase
-        .from('messages')
+      const { error } = await supabase
+        .from("messages")
         .insert({
           channel_id: channelId,
-          content,
+          content: newMessage.trim(),
           sender_id: user.id,
-          attachment_url,
-          attachment_name,
+          attachment_url: attachmentUrl,
+          attachment_name: attachmentName,
         });
 
-      if (insertError) throw insertError;
-
+      if (error) throw error;
       setNewMessage("");
-      await fetchMessages();
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -171,89 +150,54 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
     }
   };
 
-  const deleteMessage = async (messageId: string) => {
-    try {
-      const { error } = await supabase
-        .from("messages")
-        .delete()
-        .eq("id", messageId);
-
-      if (error) throw error;
-
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
-      toast({
-        title: "Message supprimé",
-        description: "Le message a été supprimé avec succès",
-      });
-    } catch (error) {
-      console.error("Error deleting message:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le message",
-        variant: "destructive",
-      });
-    } finally {
-      setMessageToDelete(null);
-    }
-  };
-
   return (
-    <div className="flex-1 flex h-full">
-      <div className="flex-1 flex flex-col h-full relative">
-        <ScrollArea className="flex-1">
-          <div className="space-y-4 p-4">
+    <div className="h-[600px] grid grid-cols-3 gap-4">
+      <div className={`col-span-${selectedThread ? '2' : '3'} flex flex-col`}>
+        <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+          <div className="space-y-4">
             {messages.map((message) => {
               const isCurrentUser = message.sender_id === currentUserId;
               return (
                 <div
                   key={message.id}
-                  className="group hover:bg-chat-messageHover rounded-lg p-2 -mx-2"
+                  className={`flex flex-col space-y-1 ${
+                    isCurrentUser ? 'items-end' : 'items-start'
+                  }`}
                 >
-                  <div className="flex items-start space-x-3">
-                    <div className="w-8 h-8 rounded-sm bg-chat-selected text-white flex items-center justify-center text-sm font-medium">
-                      {message.sender_name?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">
-                          {message.sender_name}
-                        </span>
-                        <span className="text-xs text-chat-timestamp">
-                          {new Date(message.created_at).toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit'
-                          })}
-                        </span>
-                        <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelectedThread(message)}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                          {isCurrentUser && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setMessageToDelete(message.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                  <div className="text-sm font-medium">
+                    {message.sender_name}
+                  </div>
+                  <div 
+                    className={`p-3 rounded-lg max-w-[80%] ${
+                      isCurrentUser 
+                        ? 'bg-interpreter-navy text-white' 
+                        : 'bg-secondary'
+                    }`}
+                  >
+                    {message.content}
+                    {message.attachment_url && (
+                      <div className="mt-2">
+                        <a 
+                          href={message.attachment_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+                        >
+                          📎 {message.attachment_name || 'Attachment'}
+                        </a>
                       </div>
-                      <div className="text-sm mt-1">
-                        {message.content}
-                        {message.attachment_url && (
-                          <FileAttachment 
-                            url={message.attachment_url} 
-                            name={message.attachment_name || 'Attachment'} 
-                          />
-                        )}
-                      </div>
-                    </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{new Date(message.created_at).toLocaleString()}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => setSelectedThread(message)}
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -261,46 +205,23 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
           </div>
         </ScrollArea>
 
-        <div className="sticky bottom-0 left-0 right-0 p-4 bg-white border-t border-chat-divider">
+        <div className="mt-4">
           <MessageInput
             value={newMessage}
             onChange={setNewMessage}
             onSend={sendMessage}
-            isLoading={isLoading}
           />
         </div>
       </div>
 
       {selectedThread && (
-        <div className="w-[400px] border-l border-chat-divider h-full">
+        <div className="col-span-1 border-l">
           <ThreadView
             parentMessage={selectedThread}
             onClose={() => setSelectedThread(null)}
           />
         </div>
       )}
-
-      <Dialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmer la suppression</DialogTitle>
-            <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMessageToDelete(null)}>
-              Annuler
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => messageToDelete && deleteMessage(messageToDelete)}
-            >
-              Supprimer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -49,14 +49,14 @@ export const MessageList = ({
 }: MessageListProps) => {
   return (
     <ScrollArea className="h-[400px] w-full pr-4">
-      <div className="space-y-2">
+      <div className="space-y-4">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`group p-2 rounded-lg hover:bg-chat-messageHover transition-colors ${
+            className={`p-3 rounded-lg max-w-[80%] ${
               message.sender_id === selectedInterpreter
-                ? "ml-auto max-w-[80%]"
-                : "mr-auto max-w-[80%]"
+                ? "bg-secondary ml-auto"
+                : "bg-primary text-primary-foreground"
             }`}
           >
             {editingMessage === message.id ? (
@@ -67,18 +67,10 @@ export const MessageList = ({
                   className="bg-white"
                 />
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    onClick={() => onEditSave(message.id)}
-                  >
+                  <Button size="sm" onClick={() => onEditSave(message.id)}>
                     <Check className="h-4 w-4" />
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={onEditCancel}
-                  >
+                  <Button size="sm" variant="outline" onClick={onEditCancel}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -86,30 +78,19 @@ export const MessageList = ({
             ) : (
               <>
                 <div className="flex justify-between items-start gap-2">
-                  <div className={`flex-1 text-sm ${
-                    message.sender_id === selectedInterpreter
-                      ? "bg-chat-selected text-white"
-                      : "bg-chat-hover"
-                  } p-3 rounded-lg`}>
-                    {message.content}
-                  </div>
+                  <div className="flex-1">{message.content}</div>
                   {message.sender_id !== selectedInterpreter && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 w-8 p-0"
                         onClick={() => onEditStart(message.id, message.content)}
                       >
                         <Edit2 className="h-4 w-4" />
                       </Button>
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                          >
+                          <Button size="sm" variant="ghost">
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
@@ -140,10 +121,10 @@ export const MessageList = ({
                     name={message.attachment_name}
                   />
                 )}
-                <div className="text-xs text-chat-timestamp mt-1 flex items-center gap-2">
+                <div className="text-xs opacity-70 mt-1 flex items-center gap-2">
                   {new Date(message.created_at).toLocaleString()}
                   {message.read_at && message.sender_id !== selectedInterpreter && (
-                    <span className="text-chat-selected">Lu</span>
+                    <span className="text-green-500">Lu</span>
                   )}
                 </div>
               </>

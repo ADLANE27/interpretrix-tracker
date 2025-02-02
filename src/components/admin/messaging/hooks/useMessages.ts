@@ -13,13 +13,12 @@ interface Message {
 
 export const useMessages = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
   const { toast } = useToast();
 
   const fetchMessages = async (interpreterId: string) => {
     try {
-      console.log("Fetching messages for interpreter:", interpreterId);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
@@ -29,12 +28,7 @@ export const useMessages = () => {
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${interpreterId}),and(sender_id.eq.${interpreterId},recipient_id.eq.${user.id})`)
         .order("created_at", { ascending: true });
 
-      if (error) {
-        console.error("Error fetching messages:", error);
-        throw error;
-      }
-      
-      console.log("Fetched messages:", data);
+      if (error) throw error;
       setMessages(data || []);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -46,24 +40,18 @@ export const useMessages = () => {
     }
   };
 
-  const sendMessage = async (recipientId: string) => {
-    if (!newMessage.trim()) return;
-
+  const sendMessage = async (interpreterId: string, content: string) => {
     try {
-      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
       const { error } = await supabase.from("direct_messages").insert({
-        content: newMessage.trim(),
-        recipient_id: recipientId,
+        content: content.trim(),
+        recipient_id: interpreterId,
         sender_id: user.id,
       });
 
       if (error) throw error;
-      
-      setNewMessage("");
-      await fetchMessages(recipientId);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -71,17 +59,95 @@ export const useMessages = () => {
         description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const updateMessage = async (messageId: string, content: string) => {
+    try {
+      const { error } = await supabase
+        .from("direct_messages")
+        .update({ content })
+        .eq("id", messageId);
+
+      if (error) throw error;
+      setEditingMessage(null);
+      setEditContent("");
+      toast({
+        title: "Succès",
+        description: "Message modifié avec succès",
+      });
+    } catch (error) {
+      console.error("Error updating message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      toast({
+        title: "Succès",
+        description: "Message supprimé avec succès",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteAllMessages = async (interpreterId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
+      const { error } = await supabase
+        .from("direct_messages")
+        .delete()
+        .or(`sender_id.eq.${user.id},sender_id.eq.${interpreterId},recipient_id.eq.${user.id},recipient_id.eq.${interpreterId}`);
+
+      if (error) throw error;
+
+      setMessages([]);
+      toast({
+        title: "Succès",
+        description: "Historique des messages supprimé",
+      });
+
+      await fetchMessages(interpreterId);
+    } catch (error) {
+      console.error("Error deleting all messages:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'historique des messages",
+        variant: "destructive",
+      });
     }
   };
 
   return {
     messages,
-    newMessage,
-    setNewMessage,
-    isLoading,
+    editingMessage,
+    editContent,
+    setEditingMessage,
+    setEditContent,
     fetchMessages,
     sendMessage,
+    updateMessage,
+    deleteMessage,
+    deleteAllMessages,
   };
 };

@@ -7,7 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -24,15 +23,10 @@ serve(async (req) => {
       throw new Error('adminIds array is required')
     }
 
-    console.log('Fetching admin info for IDs:', adminIds)
-
     const admins = []
     for (const adminId of adminIds) {
       const { data: { user }, error: userError } = await supabaseClient.auth.admin.getUserById(adminId)
-      if (userError) {
-        console.error('Error fetching user:', adminId, userError)
-        continue
-      }
+      if (userError) continue
       if (user) {
         admins.push({
           id: user.id,
@@ -41,8 +35,6 @@ serve(async (req) => {
       }
     }
 
-    console.log('Successfully fetched admin info:', admins)
-
     return new Response(
       JSON.stringify(admins),
       {
@@ -50,7 +42,6 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error in get-admin-emails:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
