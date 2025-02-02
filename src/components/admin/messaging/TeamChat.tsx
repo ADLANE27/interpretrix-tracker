@@ -114,8 +114,8 @@ export const TeamChat = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-chat-sidebar flex flex-col flex-shrink-0">
+      {/* Sidebar - Updated with h-full to ensure full height */}
+      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
         <div className="p-4">
           <div className="flex items-center justify-between text-white mb-4">
             <h2 className="text-lg font-semibold">Channels</h2>
@@ -174,7 +174,7 @@ export const TeamChat = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col bg-white h-full">
         {selectedChannel ? (
           <>
             <div className="h-14 border-b border-chat-channelBorder flex items-center justify-between px-4 bg-chat-channelHeader">
