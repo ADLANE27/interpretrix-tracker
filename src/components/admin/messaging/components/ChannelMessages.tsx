@@ -12,7 +12,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  sender_name: string; // Made required
+  sender_name: string;
   reply_count: number;
 }
 
@@ -93,7 +93,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         .select('parent_id, count')
         .not('parent_id', 'is', null)
         .eq('channel_id', channelId)
-        .groupBy('parent_id');
+        .group_by('parent_id');
 
       if (replyCountsError) throw replyCountsError;
 
