@@ -2,7 +2,9 @@ import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Paperclip, Send, Smile } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import EmojiPicker from 'emoji-picker-react';
+import type { EmojiClickData } from 'emoji-picker-react';
 
 interface MessageInputProps {
   value: string;
@@ -40,6 +42,10 @@ export const MessageInput = ({ value, onChange, onSend, isLoading }: MessageInpu
     }
   };
 
+  const onEmojiClick = (emojiData: EmojiClickData) => {
+    onChange(value + emojiData.emoji);
+  };
+
   return (
     <div className="flex items-center space-x-2">
       <div className="flex-1 relative">
@@ -65,13 +71,20 @@ export const MessageInput = ({ value, onChange, onSend, isLoading }: MessageInpu
           >
             <Paperclip className="h-4 w-4 text-gray-500" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:bg-chat-hover"
-          >
-            <Smile className="h-4 w-4 text-gray-500" />
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:bg-chat-hover"
+              >
+                <Smile className="h-4 w-4 text-gray-500" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="end">
+              <EmojiPicker onEmojiClick={onEmojiClick} />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
       <input
