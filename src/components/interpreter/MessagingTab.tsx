@@ -244,19 +244,32 @@ export const MessagingTab = () => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || (!selectedAdmin && !selectedChannel)) return;
+    if (!newMessage.trim() && !selectedAdmin && !selectedChannel) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const { error } = await supabase.from("direct_messages").insert({
-        content: newMessage.trim(),
-        recipient_id: selectedAdmin || selectedChannel,
-        sender_id: user.id,
-      });
+      if (selectedChannel) {
+        // Send message to channel
+        const { error } = await supabase.from("messages").insert({
+          content: newMessage.trim(),
+          channel_id: selectedChannel,
+          sender_id: user.id,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else if (selectedAdmin) {
+        // Send direct message
+        const { error } = await supabase.from("direct_messages").insert({
+          content: newMessage.trim(),
+          recipient_id: selectedAdmin,
+          sender_id: user.id,
+        });
+
+        if (error) throw error;
+      }
+
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
@@ -274,10 +287,13 @@ export const MessagingTab = () => {
 
     try {
       setIsUploading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${crypto.randomUUID()}.${fileExt}`;
 
-      const { data, error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('message_attachments')
         .upload(filePath, file);
 
@@ -287,15 +303,29 @@ export const MessagingTab = () => {
         .from('message_attachments')
         .getPublicUrl(filePath);
 
-      const { error: messageError } = await supabase.from("direct_messages").insert({
-        content: "",
-        recipient_id: selectedAdmin,
-        sender_id: currentUserId,
-        attachment_url: publicUrl,
-        attachment_name: file.name
-      });
+      if (selectedChannel) {
+        // Upload to channel messages
+        const { error: messageError } = await supabase.from("messages").insert({
+          channel_id: selectedChannel,
+          sender_id: user.id,
+          content: "",
+          attachment_url: publicUrl,
+          attachment_name: file.name
+        });
 
-      if (messageError) throw messageError;
+        if (messageError) throw messageError;
+      } else if (selectedAdmin) {
+        // Upload to direct messages
+        const { error: messageError } = await supabase.from("direct_messages").insert({
+          recipient_id: selectedAdmin,
+          sender_id: user.id,
+          content: "",
+          attachment_url: publicUrl,
+          attachment_name: file.name
+        });
+
+        if (messageError) throw messageError;
+      }
 
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
