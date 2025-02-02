@@ -1,253 +1,231 @@
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, MoreVertical, UserPlus } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { CreateChannelDialog } from "./components/CreateChannelDialog";
-import { ChannelMessages } from "./components/ChannelMessages";
-import { AddChannelMemberForm } from "./AddChannelMemberForm";
+import { MentionInput } from "./components/MentionInput";
+import { MessageList } from "./components/MessageList";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RealtimeChannel } from "@supabase/supabase-js";
+
+interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  sender_id: string;
+  channel_id: string;
+  sender?: {
+    first_name: string;
+    last_name: string;
+  };
+}
 
 interface Channel {
   id: string;
   name: string;
-  description: string | null;
-  members_count: number;
 }
 
 export const TeamChat = () => {
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(null);
-  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [selectedChannelForMember, setSelectedChannelForMember] = useState<string | null>(null);
+  const { channelId } = useParams();
+  const [newMessage, setNewMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
+  const { data: channels } = useQuery({
+    queryKey: ["channels"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("channels")
+        .select("*")
+        .order("name");
+      
+      if (error) throw error;
+      return data as Channel[];
+    },
+  });
+
+  const selectedChannel = channels?.find(c => c.id === channelId);
+
+  const { data: messages, isLoading } = useQuery({
+    queryKey: ["messages", channelId],
+    queryFn: async () => {
+      if (!channelId) return [];
+
+      const { data, error } = await supabase
+        .from("messages")
+        .select(`
+          *,
+          sender:profiles(first_name, last_name)
+        `)
+        .eq("channel_id", channelId)
+        .order("created_at");
+      
+      if (error) throw error;
+      return data as Message[];
+    },
+    enabled: !!channelId,
+  });
 
   useEffect(() => {
-    fetchChannels();
-    
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('channel-changes')
+    if (!channelId) return;
+
+    const newChannel = supabase.channel(`messages:${channelId}`);
+
+    newChannel
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'channels'
+          table: 'messages',
+          filter: `channel_id=eq.${channelId}`,
         },
         () => {
-          console.log('Channel change detected, refreshing channels...');
-          fetchChannels();
+          queryClient.invalidateQueries(["messages", channelId]);
         }
       )
-      .subscribe((status) => {
-        console.log('Channel subscription status:', status);
-      });
+      .subscribe();
+
+    setChannel(newChannel);
 
     return () => {
-      console.log('Cleaning up channel subscription...');
-      supabase.removeChannel(channel);
+      newChannel.unsubscribe();
     };
-  }, []);
+  }, [channelId, queryClient]);
 
-  const fetchChannels = async () => {
-    try {
-      console.log('Fetching channels...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No authenticated user found');
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleMention = async (mentionData: { type: "user" | "language", value: string }) => {
+    if (!selectedChannel) return;
+
+    if (mentionData.type === "language") {
+      const { data: matchingInterpreters, error } = await supabase
+        .from("interpreter_profiles")
+        .select("id, languages")
+        .filter("languages", "cs", `{%→ ${mentionData.value}%}`);
+
+      if (error) {
+        console.error("Error fetching interpreters:", error);
         return;
       }
 
-      // First get channels where user is a member
-      const { data: memberChannels, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
+      const mentionPromises = matchingInterpreters.map(interpreter => 
+        supabase
+          .from("message_mentions")
+          .insert({
+            message_id: messageId,
+            mentioned_user_id: interpreter.id,
+            mentioned_language: mentionData.value
+          })
+      );
 
-      if (memberError) {
-        console.error('Error fetching channel memberships:', memberError);
-        throw memberError;
+      await Promise.all(mentionPromises);
+    } else {
+      const { data: mentionedUser, error: userError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("first_name || ' ' || last_name", mentionData.value)
+        .single();
+
+      if (userError || !mentionedUser) {
+        console.error("Error finding mentioned user:", userError);
+        return;
       }
 
-      const channelIds = memberChannels?.map(m => m.channel_id) || [];
-      console.log('Found channel IDs:', channelIds);
+      const { error: mentionError } = await supabase
+        .from("message_mentions")
+        .insert({
+          message_id: messageId,
+          mentioned_user_id: mentionedUser.id
+        });
 
-      // Then fetch the actual channels
-      const { data: channels, error } = await supabase
-        .from('channels')
-        .select('*')
-        .in('id', channelIds);
-
-      if (error) {
-        console.error('Error fetching channels:', error);
-        throw error;
+      if (mentionError) {
+        console.error("Error creating mention:", mentionError);
       }
-
-      console.log('Successfully fetched channels:', channels);
-      setChannels(channels || []);
-    } catch (error) {
-      console.error('Error in fetchChannels:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux",
-        variant: "destructive",
-      });
     }
   };
 
-  const handleCreateChannelSuccess = () => {
-    setIsCreateChannelOpen(false);
-    fetchChannels();
-    toast({
-      title: "Succès",
-      description: "Canal créé avec succès",
-    });
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !channelId || isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+
+      const { data: message, error } = await supabase
+        .from("messages")
+        .insert({
+          content: newMessage,
+          channel_id: channelId,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setNewMessage("");
+      scrollToBottom();
+
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleAddMemberSuccess = () => {
-    setIsAddMemberOpen(false);
-    setSelectedChannelForMember(null);
-    fetchChannels();
-    toast({
-      title: "Succès",
-      description: "Membre ajouté avec succès",
-    });
-  };
+  if (!channelId) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted-foreground">
+          Sélectionnez un canal pour commencer à discuter
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-chat-sidebar flex flex-col h-full flex-shrink-0">
-        <div className="p-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between text-white">
-              <h2 className="text-lg font-semibold">Channels</h2>
-            </div>
-            
-            <Dialog open={isCreateChannelOpen} onOpenChange={setIsCreateChannelOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  className="w-full bg-primary hover:bg-primary/90 text-white"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Créer un nouveau groupe
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un nouveau groupe</DialogTitle>
-                </DialogHeader>
-                <CreateChannelDialog 
-                  onClose={() => setIsCreateChannelOpen(false)}
-                  onSuccess={handleCreateChannelSuccess}
-                />
-              </DialogContent>
-            </Dialog>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-chat-searchText" />
-              <Input 
-                placeholder="Search channels..."
-                className="w-full bg-chat-searchBg border-0 pl-10 text-white placeholder:text-chat-searchText focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-            </div>
-          </div>
-        </div>
-
-        <ScrollArea className="flex-1">
-          <div className="px-2 space-y-1">
-            {channels.map((channel) => (
-              <div key={channel.id} className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  className={`flex-1 justify-between px-3 py-2 text-sm ${
-                    selectedChannel === channel.id
-                      ? "bg-chat-selected text-white hover:bg-chat-selected"
-                      : "text-gray-300 hover:bg-chat-searchBg hover:text-white"
-                  }`}
-                  onClick={() => setSelectedChannel(channel.id)}
-                >
-                  <span className="flex items-center">
-                    # {channel.name}
-                  </span>
-                  {channel.members_count > 0 && (
-                    <span className="text-xs bg-chat-channelCount/20 text-chat-channelCount px-2 py-1 rounded-full">
-                      {channel.members_count}
-                    </span>
-                  )}
-                </Button>
-                <Dialog 
-                  open={isAddMemberOpen && selectedChannelForMember === channel.id} 
-                  onOpenChange={(open) => {
-                    setIsAddMemberOpen(open);
-                    if (!open) setSelectedChannelForMember(null);
-                  }}
-                >
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="text-gray-300 hover:bg-chat-searchBg hover:text-white"
-                      onClick={() => setSelectedChannelForMember(channel.id)}
-                      title="Ajouter un membre"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Ajouter un membre à {channel.name}</DialogTitle>
-                    </DialogHeader>
-                    <AddChannelMemberForm
-                      channelId={channel.id}
-                      onSuccess={handleAddMemberSuccess}
-                      onCancel={() => {
-                        setIsAddMemberOpen(false);
-                        setSelectedChannelForMember(null);
-                      }}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4">
+        <MessageList messages={messages || []} />
+        <div ref={messagesEndRef} />
       </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-white h-full">
-        {selectedChannel ? (
-          <>
-            <div className="h-14 border-b border-chat-channelBorder flex items-center justify-between px-4 bg-chat-channelHeader">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium">
-                  #{channels.find(c => c.id === selectedChannel)?.name}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {channels.find(c => c.id === selectedChannel)?.members_count} members
-                </span>
-              </div>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-5 w-5 text-gray-500" />
-              </Button>
-            </div>
-            <ChannelMessages channelId={selectedChannel} />
-          </>
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-500">
-            Select a channel to start chatting
-          </div>
-        )}
+      <div className="p-4 border-t">
+        <div className="flex gap-2">
+          <MentionInput
+            value={newMessage}
+            onChange={setNewMessage}
+            onMention={handleMention}
+            placeholder="Écrivez votre message..."
+            className="flex-1"
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={isSubmitting || !newMessage.trim()}
+          >
+            Envoyer
+          </Button>
+        </div>
       </div>
     </div>
   );
