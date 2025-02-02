@@ -12,17 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  recipient_id: string;
-  created_at: string;
-  read_at: string | null;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-}
+import { Message } from "../TeamChat";
 
 interface MessageListProps {
   messages: Message[];

@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
-interface Message {
+export interface Message {
   id: string;
   content: string;
   created_at: string;
