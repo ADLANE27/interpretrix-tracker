@@ -228,19 +228,19 @@ export const MessagingTab = () => {
           
           <ScrollArea className="h-[calc(100vh-8rem)]">
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-gray-400 px-2">Messages récents</h3>
+              <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Messages récents</h3>
               {chatHistory.map((chat) => (
                 <Button
                   key={chat.id}
                   variant={selectedAdmin === chat.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-left"
+                  className="w-full justify-start text-left text-chat-sidebarText"
                   onClick={() => setSelectedAdmin(chat.id)}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
                   <div className="flex flex-col items-start">
                     <span>{chat.name}</span>
                     {chat.lastMessage && (
-                      <span className="text-xs text-gray-500 truncate">
+                      <span className="text-xs text-chat-sidebarHeading truncate">
                         {chat.lastMessage}
                       </span>
                     )}

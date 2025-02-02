@@ -30,9 +30,10 @@ export default {
           channelHeader: "#FFFFFF",
           channelBorder: "#E5E7EB",
           searchBg: "rgba(255, 255, 255, 0.1)",
-          searchText: "#FFFFFF", // Updated to white for better contrast
+          searchText: "#FFFFFF",
           channelCount: "#4A69FF",
-          sidebarText: "#FFFFFF", // Added specific color for sidebar text
+          sidebarText: "#FFFFFF",
+          sidebarHeading: "#9BA2B0", // Added a new, higher contrast color for section headings
         },
         interpreter: {
           navy: "#1a365d",
