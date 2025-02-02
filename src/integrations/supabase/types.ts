@@ -251,6 +251,7 @@ export type Database = {
           mentioned_language: string | null
           mentioned_user_id: string | null
           message_id: string
+          read_at: string | null
         }
         Insert: {
           created_at?: string
@@ -258,6 +259,7 @@ export type Database = {
           mentioned_language?: string | null
           mentioned_user_id?: string | null
           message_id: string
+          read_at?: string | null
         }
         Update: {
           created_at?: string
@@ -265,6 +267,7 @@ export type Database = {
           mentioned_language?: string | null
           mentioned_user_id?: string | null
           message_id?: string
+          read_at?: string | null
         }
         Relationships: [
           {

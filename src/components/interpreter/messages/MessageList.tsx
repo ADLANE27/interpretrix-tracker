@@ -50,12 +50,17 @@ export const MessageList = ({
 
       if (messageIds.length > 0) {
         try {
+          const updates = messageIds.map(messageId => ({
+            message_id: messageId,
+            mentioned_user_id: currentUserId,
+            read_at: new Date().toISOString()
+          }));
+
           const { error } = await supabase
             .from('message_mentions')
-            .update({ read_at: new Date().toISOString() })
-            .in('message_id', messageIds)
-            .eq('mentioned_user_id', currentUserId)
-            .is('read_at', null);
+            .upsert(updates, { 
+              onConflict: 'message_id,mentioned_user_id'
+            });
 
           if (error) throw error;
         } catch (error) {
