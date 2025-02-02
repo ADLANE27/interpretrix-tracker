@@ -34,8 +34,11 @@ interface Channel {
   id: string;
   name: string;
   description: string | null;
-  type: 'internal' | 'external' | 'mixed';
+  type: 'internal' | 'external' | 'mixed' | 'admin_only';
   members_count: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const MessagingTab = () => {
@@ -269,12 +272,12 @@ export const MessagingTab = () => {
           <ScrollArea className="h-[calc(100vh-12rem)]">
             <TabsContent value="direct" className="m-0">
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Messages récents</h3>
+                <h3 className="text-sm font-medium text-foreground px-2">Messages récents</h3>
                 {chatHistory.map((chat) => (
                   <Button
                     key={chat.id}
                     variant={selectedAdmin === chat.id ? "secondary" : "ghost"}
-                    className="w-full justify-start text-left text-chat-sidebarText"
+                    className="w-full justify-start text-left"
                     onClick={() => {
                       setSelectedAdmin(chat.id);
                       setSelectedChannel(null);
@@ -282,9 +285,9 @@ export const MessagingTab = () => {
                   >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     <div className="flex flex-col items-start">
-                      <span>{chat.name}</span>
+                      <span className="text-foreground">{chat.name}</span>
                       {chat.lastMessage && (
-                        <span className="text-xs text-chat-sidebarHeading truncate">
+                        <span className="text-xs text-muted-foreground truncate">
                           {chat.lastMessage}
                         </span>
                       )}
@@ -301,12 +304,12 @@ export const MessagingTab = () => {
 
             <TabsContent value="groups" className="m-0">
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-chat-sidebarHeading px-2">Canaux</h3>
+                <h3 className="text-sm font-medium text-foreground px-2">Canaux</h3>
                 {channels.map((channel) => (
                   <Button
                     key={channel.id}
                     variant={selectedChannel === channel.id ? "secondary" : "ghost"}
-                    className="w-full justify-start text-left text-chat-sidebarText"
+                    className="w-full justify-start text-left"
                     onClick={() => {
                       setSelectedChannel(channel.id);
                       setSelectedAdmin(null);
@@ -314,8 +317,8 @@ export const MessagingTab = () => {
                   >
                     <Users className="h-4 w-4 mr-2" />
                     <div className="flex flex-col items-start">
-                      <span>{channel.name}</span>
-                      <span className="text-xs text-chat-sidebarHeading">
+                      <span className="text-foreground">{channel.name}</span>
+                      <span className="text-xs text-muted-foreground">
                         {channel.members_count} membres
                       </span>
                     </div>
