@@ -33,10 +33,6 @@ export const ChannelMessages = ({ channelId, channelName }: ChannelMessagesProps
     setSelectedThreadId(messageId);
   };
 
-  const handleThreadSelect = (threadId: string) => {
-    setSelectedThreadId(threadId);
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] bg-white">
       <div className="px-6 py-4 border-b">
@@ -52,14 +48,17 @@ export const ChannelMessages = ({ channelId, channelName }: ChannelMessagesProps
                   <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
                 </div>
               ) : messages && messages.length > 0 ? (
-                messages.map((message) => (
-                  <MessageList
-                    key={message.id}
-                    message={message}
-                    onReply={handleReply}
-                    onThreadSelect={handleThreadSelect}
-                  />
-                ))
+                <MessageList
+                  messages={messages}
+                  selectedInterpreter={channelId}
+                  editingMessage={null}
+                  editContent=""
+                  onEditStart={() => {}}
+                  onEditCancel={() => {}}
+                  onEditSave={() => {}}
+                  onEditChange={() => {}}
+                  onDeleteMessage={() => {}}
+                />
               ) : (
                 <div className="text-center text-gray-500 py-4">
                   Aucun message dans ce canal
@@ -69,13 +68,22 @@ export const ChannelMessages = ({ channelId, channelName }: ChannelMessagesProps
           </ScrollArea>
 
           <div className="p-4 border-t bg-chat-input">
-            <MessageInput onSendMessage={handleSendMessage} />
+            <MessageInput
+              value=""
+              onChange={() => {}}
+              onSend={handleSendMessage}
+              isLoading={false}
+            />
           </div>
         </div>
 
         {selectedThreadId && (
           <ThreadView
-            messageId={selectedThreadId}
+            parentMessage={{
+              id: selectedThreadId,
+              content: messages.find(m => m.id === selectedThreadId)?.content || "",
+              created_at: messages.find(m => m.id === selectedThreadId)?.created_at || "",
+            }}
             onClose={() => setSelectedThreadId(null)}
           />
         )}
