@@ -108,12 +108,11 @@ export const MentionInput = ({
         interpreters?.forEach(interpreter => {
           if (interpreter.languages) {
             interpreter.languages.forEach(langPair => {
-              const [_, target] = langPair.split('→').map(s => s.trim());
-              if (target) {
-                const normalizedTarget = target;
-                const normalizedSearch = mentionSearch.toLowerCase();
-                
-                if (!mentionSearch || normalizedTarget.toLowerCase().includes(normalizedSearch)) {
+              // Split on arrow and trim whitespace
+              const parts = langPair.split('→').map(s => s.trim());
+              if (parts.length === 2) {
+                const target = parts[1];
+                if (target.toLowerCase().includes(mentionSearch.toLowerCase())) {
                   targetLanguages.set(target, (targetLanguages.get(target) || 0) + 1);
                 }
               }
