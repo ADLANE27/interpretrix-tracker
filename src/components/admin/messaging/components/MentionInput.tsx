@@ -124,7 +124,7 @@ export const MentionInput = ({
           });
         });
 
-        // Convert the map to array format
+        // Convert the map to array format and sort alphabetically
         const languageList = Array.from(targetLanguageCounts.entries())
           .map(([language, count]) => ({
             language,
@@ -218,7 +218,7 @@ export const MentionInput = ({
               {isAdmin && languages.map((lang) => (
                 <button
                   key={lang.language}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md flex items-center justify-between bg-gray-50"
+                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md flex items-center justify-between"
                   onClick={() => handleMentionClick(lang)}
                 >
                   <span className="flex items-center">
