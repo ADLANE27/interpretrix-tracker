@@ -22,7 +22,7 @@ interface Address {
 
 interface InterpreterProfileFormProps {
   isEditing: boolean;
-  onSubmit: (data: InterpreterFormData & { address: Json }) => void;
+  onSubmit: (data: InterpreterFormData) => void;
   initialData?: Partial<InterpreterFormData>;
   isSubmitting?: boolean;
 }
@@ -37,7 +37,7 @@ export interface InterpreterFormData {
   nationality: string;
   employment_status: "salaried" | "self_employed";
   languages: LanguagePair[];
-  address: Address;
+  address: Address | Json;
   birth_country: string;
   tarif_15min: number;
 }
@@ -102,10 +102,11 @@ export const InterpreterProfileForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    const submissionData = {
       ...formData,
-      address: formData.address as unknown as Json,
-    });
+      address: JSON.stringify(formData.address),
+    };
+    onSubmit(submissionData);
   };
 
   return (
