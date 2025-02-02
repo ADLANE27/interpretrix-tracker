@@ -93,7 +93,7 @@ export const ChannelMessages = ({ channelId }: ChannelMessagesProps) => {
         .select('parent_id, count')
         .not('parent_id', 'is', null)
         .eq('channel_id', channelId)
-        .group_by('parent_id');
+        .groupBy('parent_id');
 
       if (replyCountsError) throw replyCountsError;
 
