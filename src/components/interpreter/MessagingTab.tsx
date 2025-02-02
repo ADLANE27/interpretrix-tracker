@@ -30,6 +30,7 @@ interface Message {
   created_at: string;
   attachment_url?: string | null;
   attachment_name?: string | null;
+  mentions?: { mentioned_user_id: string }[];
 }
 
 interface Interpreter {
@@ -258,14 +259,43 @@ export const MessagingTab = ({ onMentionsRead }: MessagingTabProps) => {
     if (selectedChannel) {
       console.log('[MessagingTab] Selected channel changed:', selectedChannel);
       fetchChannelMessages(selectedChannel);
+      handleMessagesViewed();
+    }
+  }, [selectedChannel]);
+
+  const handleMessagesViewed = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Update all mentions from the last 24 hours to be read
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
-      // Call onMentionsRead when switching to Messages tab
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ read_at: new Date().toISOString() })
+        .eq('mentioned_user_id', user.id)
+        .gt('created_at', oneDayAgo)
+        .is('read_at', null);
+
+      if (error) {
+        console.error('[MessagingTab] Error marking mentions as read:', error);
+        throw error;
+      }
+
+      // Refresh unread mentions count
       if (onMentionsRead) {
-        console.log('[MessagingTab] Calling onMentionsRead callback');
         onMentionsRead();
       }
+    } catch (error) {
+      console.error('[MessagingTab] Error in handleMessagesViewed:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de marquer les mentions comme lues",
+        variant: "destructive",
+      });
     }
-  }, [selectedChannel, onMentionsRead]);
+  };
 
   const fetchChatHistory = async () => {
     try {

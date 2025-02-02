@@ -1,6 +1,8 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -9,6 +11,7 @@ interface Message {
   created_at: string;
   attachment_url?: string | null;
   attachment_name?: string | null;
+  mentions?: { mentioned_user_id: string }[];
 }
 
 interface SenderProfile {
@@ -35,6 +38,34 @@ export const MessageList = ({
     if (!profile) return "Loading...";
     return `${profile.first_name} ${profile.last_name}`.trim();
   };
+
+  useEffect(() => {
+    // When messages are displayed, mark them as read
+    const handleMessagesRead = async () => {
+      if (!currentUserId) return;
+      
+      const messageIds = messages
+        .filter(msg => msg.mentions?.some(mention => mention.mentioned_user_id === currentUserId))
+        .map(msg => msg.id);
+
+      if (messageIds.length > 0) {
+        try {
+          const { error } = await supabase
+            .from('message_mentions')
+            .update({ read_at: new Date().toISOString() })
+            .in('message_id', messageIds)
+            .eq('mentioned_user_id', currentUserId)
+            .is('read_at', null);
+
+          if (error) throw error;
+        } catch (error) {
+          console.error('Error marking messages as read:', error);
+        }
+      }
+    };
+
+    handleMessagesRead();
+  }, [messages, currentUserId]);
 
   return (
     <ScrollArea className="flex-1 p-4">
