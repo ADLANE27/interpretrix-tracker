@@ -33,7 +33,7 @@ export const hasTimeOverlap = (
     const hasOverlap = areIntervalsOverlapping(
       { start: start1, end: end1 },
       { start: start2, end: end2 },
-      { inclusive: false } // Change to false to not consider touching times as overlap
+      { inclusive: false }
     );
 
     console.log('[missionUtils] Overlap result:', hasOverlap);
@@ -74,22 +74,32 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    if (interpreter.status !== 'available') {
-      console.log('[missionUtils] Interpreter is not available, status:', interpreter.status);
-      return false;
-    }
-
     // Validate input dates
     const missionStart = parseISO(startTime);
     const missionEnd = parseISO(endTime);
     const now = new Date();
+
+    // Convert now to UTC for proper comparison
+    const utcNow = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      now.getUTCMinutes(),
+      now.getUTCSeconds()
+    ));
 
     if (isNaN(missionStart.getTime()) || isNaN(missionEnd.getTime())) {
       console.error('[missionUtils] Invalid mission dates');
       return false;
     }
 
-    if (missionStart < now) {
+    console.log('[missionUtils] Comparing dates:', {
+      missionStart: missionStart.toISOString(),
+      utcNow: utcNow.toISOString()
+    });
+
+    if (missionStart < utcNow) {
       console.error('[missionUtils] Mission start time is in the past');
       return false;
     }
@@ -117,8 +127,8 @@ export const isInterpreterAvailableForScheduledMission = async (
         return false;
       }
 
-      const missionEndTime = addMinutes(now, 30); // Assuming immediate missions block 30 minutes
-      return isWithinInterval(missionStart, { start: now, end: missionEndTime });
+      const missionEndTime = addMinutes(utcNow, 30); // Assuming immediate missions block 30 minutes
+      return isWithinInterval(missionStart, { start: utcNow, end: missionEndTime });
     });
 
     if (hasImmediateMissionConflict) {
@@ -131,6 +141,13 @@ export const isInterpreterAvailableForScheduledMission = async (
       if (mission.mission_type !== 'scheduled' || !mission.scheduled_start_time || !mission.scheduled_end_time) {
         return false;
       }
+
+      console.log('[missionUtils] Checking overlap with existing mission:', {
+        existingStart: mission.scheduled_start_time,
+        existingEnd: mission.scheduled_end_time,
+        newStart: startTime,
+        newEnd: endTime
+      });
 
       return hasTimeOverlap(
         mission.scheduled_start_time,
