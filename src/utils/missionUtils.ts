@@ -78,8 +78,12 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    if (missionStart < now) {
-      console.error('[missionUtils] Mission start time is in the past');
+    // Only check if the date part is in the past, not the time
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const missionDate = new Date(missionStart.getFullYear(), missionStart.getMonth(), missionStart.getDate());
+
+    if (missionDate < todayStart) {
+      console.error('[missionUtils] Mission date is in the past');
       return false;
     }
 
