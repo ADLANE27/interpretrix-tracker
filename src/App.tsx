@@ -80,13 +80,13 @@ const App = () => {
                       <div className="flex gap-4">
                         <a 
                           href="/admin/login" 
-                          className="px-6 py-3 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] text-white rounded-lg hover:from-[#2A2F3C] hover:to-[#504E53] transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           Espace Administrateur
                         </a>
                         <a 
                           href="/interpreter/login" 
-                          className="px-6 py-3 bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] text-white rounded-lg hover:from-[#8B76E3] hover:to-[#6D5999] transition-all duration-200 shadow-md hover:shadow-lg"
+                          className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           Espace Interprète
                         </a>
