@@ -13,13 +13,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminList } from "./AdminList";
@@ -37,25 +30,13 @@ interface UserData {
   languages?: string[];
 }
 
-interface AdminFormData {
-  email: string;
-  first_name: string;
-  last_name: string;
-}
-
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<"admin" | "interpreter">("interpreter");
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
-  const [adminFormData, setAdminFormData] = useState<AdminFormData>({
-    email: "",
-    first_name: "",
-    last_name: "",
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -177,61 +158,49 @@ export const UserManagement = () => {
     }
   };
 
-  const handleAddAdmin = async () => {
+  const handleEditUser = async (formData: InterpreterFormData) => {
+    if (!selectedUser) return;
+
     try {
       setIsSubmitting(true);
 
-      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
-        body: {
-          ...adminFormData,
-          role: "admin",
-        },
-      });
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
 
-      if (error) throw error;
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
+      const { error: profileError } = await supabase
+        .from("interpreter_profiles")
+        .update({
+          ...formData,
+          languages: languageStrings,
+          address: addressJson,
+        })
+        .eq("id", selectedUser.id);
+
+      if (profileError) throw profileError;
 
       toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'administrateur",
+        title: "Profil mis à jour",
+        description: "Le profil de l'interprète a été mis à jour avec succès",
       });
 
-      setIsAddUserOpen(false);
-      setAdminFormData({ email: "", first_name: "", last_name: "" });
+      setIsEditUserOpen(false);
       refetch();
     } catch (error: any) {
-      console.error("Error adding admin:", error);
+      console.error("Error updating user:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter l'administrateur: " + error.message,
+        description: "Impossible de mettre à jour le profil: " + error.message,
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ active: !currentStatus })
-        .eq("user_id", userId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Statut mis à jour",
-        description: "Le statut de l'utilisateur a été mis à jour avec succès",
-      });
-
-      refetch();
-    } catch (error: any) {
-      console.error("Error toggling user status:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut: " + error.message,
-        variant: "destructive",
-      });
     }
   };
 
@@ -259,49 +228,19 @@ export const UserManagement = () => {
     }
   };
 
-  const handleEditUser = async (formData: InterpreterFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      if (!selectedUser) return;
-
-      const { error } = await supabase
-        .from("interpreter_profiles")
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedUser.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profil mis à jour",
-        description: "Le profil de l'interprète a été mis à jour avec succès",
-      });
-
-      setIsEditUserOpen(false);
-      refetch();
-    } catch (error: any) {
-      console.error("Error updating interpreter:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleResetPassword = async () => {
     try {
       setIsSubmitting(true);
-
-      if (!selectedUserId || !password) return;
+      
+      if (!selectedUserId || !password) {
+        throw new Error("Missing user ID or password");
+      }
 
       const { error } = await supabase.functions.invoke('reset-user-password', {
-        body: { userId: selectedUserId, newPassword: password },
+        body: { 
+          userId: selectedUserId,
+          newPassword: password,
+        },
       });
 
       if (error) throw error;
@@ -325,6 +264,31 @@ export const UserManagement = () => {
     }
   };
 
+  const toggleUserStatus = async (userId: string, currentActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ active: !currentActive })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: `L'utilisateur a été ${!currentActive ? "activé" : "désactivé"}`,
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error toggling user status:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -336,75 +300,16 @@ export const UserManagement = () => {
           <DialogContent className="max-w-4xl max-h-[90vh]">
             <ScrollArea className="max-h-[85vh]">
               <DialogHeader>
-                <DialogTitle>Ajouter un nouvel utilisateur</DialogTitle>
+                <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
                 <DialogDescription>
-                  Sélectionnez le type d'utilisateur à ajouter
+                  Un email sera envoyé à l'interprète avec les instructions de connexion.
                 </DialogDescription>
               </DialogHeader>
-              
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Type d'utilisateur</Label>
-                  <Select
-                    value={selectedRole}
-                    onValueChange={(value: "admin" | "interpreter") => setSelectedRole(value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionnez un rôle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Administrateur</SelectItem>
-                      <SelectItem value="interpreter">Interprète</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedRole === "admin" ? (
-                  <form onSubmit={(e) => { e.preventDefault(); handleAddAdmin(); }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={adminFormData.email}
-                        onChange={(e) => setAdminFormData(prev => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="first_name">Prénom</Label>
-                      <Input
-                        id="first_name"
-                        value={adminFormData.first_name}
-                        onChange={(e) => setAdminFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last_name">Nom</Label>
-                      <Input
-                        id="last_name"
-                        value={adminFormData.last_name}
-                        onChange={(e) => setAdminFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Envoi en cours..." : "Envoyer l'invitation"}
-                    </Button>
-                  </form>
-                ) : (
-                  <InterpreterProfileForm
-                    isEditing={true}
-                    onSubmit={handleAddUser}
-                    isSubmitting={isSubmitting}
-                  />
-                )}
-              </div>
+              <InterpreterProfileForm
+                isEditing={true}
+                onSubmit={handleAddUser}
+                isSubmitting={isSubmitting}
+              />
             </ScrollArea>
           </DialogContent>
         </Dialog>
