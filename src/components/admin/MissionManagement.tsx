@@ -154,6 +154,7 @@ export const MissionManagement = () => {
           last_name,
           status,
           profile_picture_url,
+          languages,
           interpreter_languages!inner (
             source_language,
             target_language
