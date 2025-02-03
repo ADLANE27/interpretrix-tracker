@@ -225,12 +225,15 @@ export const MissionsTab = () => {
     };
   }, []);
 
-  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null) => {
+  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[]) => {
     if (status === 'accepted') {
       if (assignedInterpreterId === currentUserId) {
         return { label: 'Acceptée par vous', variant: 'default' as const };
       }
-      return { label: 'Acceptée par un autre interprète', variant: 'secondary' as const };
+      if (notifiedInterpreters.includes(currentUserId || '')) {
+        return { label: 'Acceptée par un autre interprète', variant: 'secondary' as const };
+      }
+      return { label: 'Acceptée', variant: 'secondary' as const };
     }
     
     switch (status) {
@@ -253,7 +256,11 @@ export const MissionsTab = () => {
   return (
     <div className="space-y-4">
       {missions.map((mission) => {
-        const statusDisplay = getMissionStatusDisplay(mission.status, mission.assigned_interpreter_id);
+        const statusDisplay = getMissionStatusDisplay(
+          mission.status, 
+          mission.assigned_interpreter_id,
+          mission.notified_interpreters || []
+        );
         
         return (
           <Card key={mission.id} className="p-4">
