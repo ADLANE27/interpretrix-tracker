@@ -13,10 +13,10 @@ export const hasTimeOverlap = (
 
   try {
     // Parse dates and validate them
-    const start1 = parseISO(startTime1);
-    const end1 = parseISO(endTime1);
-    const start2 = parseISO(startTime2);
-    const end2 = parseISO(endTime2);
+    const start1 = new Date(startTime1);
+    const end1 = new Date(endTime1);
+    const start2 = new Date(startTime2);
+    const end2 = new Date(endTime2);
 
     // Additional validation for date objects
     if ([start1, end1, start2, end2].some(date => isNaN(date.getTime()))) {
@@ -57,7 +57,7 @@ export const isInterpreterAvailableForScheduledMission = async (
   });
 
   try {
-    // First check if interpreter exists and is available
+    // First check if interpreter exists
     const { data: interpreter, error: interpreterError } = await supabase
       .from('interpreter_profiles')
       .select('status, first_name, last_name')
@@ -74,20 +74,10 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Validate input dates
-    const missionStart = parseISO(startTime);
-    const missionEnd = parseISO(endTime);
+    // Convert input strings to Date objects in local timezone
+    const missionStart = new Date(startTime);
+    const missionEnd = new Date(endTime);
     const now = new Date();
-
-    // Convert now to UTC for proper comparison
-    const utcNow = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      now.getUTCHours(),
-      now.getUTCMinutes(),
-      now.getUTCSeconds()
-    ));
 
     if (isNaN(missionStart.getTime()) || isNaN(missionEnd.getTime())) {
       console.error('[missionUtils] Invalid mission dates');
@@ -96,10 +86,13 @@ export const isInterpreterAvailableForScheduledMission = async (
 
     console.log('[missionUtils] Comparing dates:', {
       missionStart: missionStart.toISOString(),
-      utcNow: utcNow.toISOString()
+      now: now.toISOString(),
+      localMissionStart: missionStart.toString(),
+      localNow: now.toString()
     });
 
-    if (missionStart < utcNow) {
+    // Compare dates in local timezone
+    if (missionStart < now) {
       console.error('[missionUtils] Mission start time is in the past');
       return false;
     }
@@ -127,8 +120,8 @@ export const isInterpreterAvailableForScheduledMission = async (
         return false;
       }
 
-      const missionEndTime = addMinutes(utcNow, 30); // Assuming immediate missions block 30 minutes
-      return isWithinInterval(missionStart, { start: utcNow, end: missionEndTime });
+      const missionEndTime = addMinutes(now, 30); // Assuming immediate missions block 30 minutes
+      return isWithinInterval(missionStart, { start: now, end: missionEndTime });
     });
 
     if (hasImmediateMissionConflict) {
@@ -197,7 +190,7 @@ export const isInterpreterAvailableForImmediateMission = (
       }
 
       try {
-        const missionStart = parseISO(mission.scheduled_start_time);
+        const missionStart = new Date(mission.scheduled_start_time);
         
         if (isNaN(missionStart.getTime())) {
           console.error('[missionUtils] Invalid mission start time detected');
