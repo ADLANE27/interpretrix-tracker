@@ -37,7 +37,7 @@ export const PersonalInfoSection = ({
           <Input
             id="first_name"
             value={firstName}
-            onChange={(e) => onChange("firstName", e.target.value)}
+            onChange={(e) => onChange("first_name", e.target.value)}
             disabled={!isEditing}
           />
         </div>
@@ -47,7 +47,7 @@ export const PersonalInfoSection = ({
           <Input
             id="last_name"
             value={lastName}
-            onChange={(e) => onChange("lastName", e.target.value)}
+            onChange={(e) => onChange("last_name", e.target.value)}
             disabled={!isEditing}
           />
         </div>
@@ -68,7 +68,7 @@ export const PersonalInfoSection = ({
           <Input
             id="mobile_phone"
             value={mobilePhone || ""}
-            onChange={(e) => onChange("mobilePhone", e.target.value)}
+            onChange={(e) => onChange("phone_number", e.target.value)}
             disabled={!isEditing}
           />
         </div>
@@ -78,7 +78,7 @@ export const PersonalInfoSection = ({
           <Input
             id="landline_phone"
             value={landlinePhone || ""}
-            onChange={(e) => onChange("landlinePhone", e.target.value)}
+            onChange={(e) => onChange("landline_phone", e.target.value)}
             disabled={!isEditing}
           />
         </div>
