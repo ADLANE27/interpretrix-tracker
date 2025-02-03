@@ -21,6 +21,7 @@ interface Mission {
   mission_type: 'immediate' | 'scheduled';
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
+  notified_interpreters: string[] | null;
 }
 
 export const MissionsTab = () => {
@@ -225,15 +226,12 @@ export const MissionsTab = () => {
     };
   }, []);
 
-  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[]) => {
+  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
       if (assignedInterpreterId === currentUserId) {
         return { label: 'Acceptée par vous', variant: 'default' as const };
       }
-      if (notifiedInterpreters.includes(currentUserId || '')) {
-        return { label: 'Acceptée par un autre interprète', variant: 'secondary' as const };
-      }
-      return { label: 'Acceptée', variant: 'secondary' as const };
+      return { label: 'Acceptée par un autre interprète', variant: 'secondary' as const };
     }
     
     switch (status) {
@@ -259,7 +257,7 @@ export const MissionsTab = () => {
         const statusDisplay = getMissionStatusDisplay(
           mission.status, 
           mission.assigned_interpreter_id,
-          mission.notified_interpreters || []
+          mission.notified_interpreters
         );
         
         return (
