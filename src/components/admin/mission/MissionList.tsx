@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,7 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
               
               {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
                 <p className="text-sm text-gray-600">
-                  Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy")} {" "}
+                  Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy", { locale: fr })} {" "}
                   de {format(new Date(mission.scheduled_start_time), "HH:mm")} {" "}
                   à {format(new Date(mission.scheduled_end_time), "HH:mm")} {" "}
                   <span className="ml-1">({calculateDuration(mission)})</span>
@@ -109,7 +110,7 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
             
             <div className="flex items-center gap-4">
               <p className="text-sm text-gray-600">
-                {format(new Date(mission.created_at), "d MMMM yyyy")}
+                {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}
               </p>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
