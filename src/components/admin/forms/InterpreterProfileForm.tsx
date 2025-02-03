@@ -11,6 +11,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LanguagePair {
   source: string;
@@ -29,7 +36,7 @@ export interface InterpreterFormData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status?: "salaried" | "self_employed";
+  employment_status: "salaried" | "self_employed";
   languages: LanguagePair[];
   address?: Address;
   password?: string;
@@ -59,7 +66,7 @@ export const InterpreterProfileForm = ({
       last_name: "",
       active: true,
       tarif_15min: 0,
-      employment_status: undefined,
+      employment_status: "salaried",
       languages: [],
       address: undefined,
       password: "",
@@ -117,6 +124,31 @@ export const InterpreterProfileForm = ({
               <FormControl>
                 <Input placeholder="Dupont" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="employment_status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Statut professionnel</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionnez un statut" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="salaried">Salarié</SelectItem>
+                  <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
