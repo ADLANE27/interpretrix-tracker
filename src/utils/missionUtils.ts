@@ -32,7 +32,8 @@ export const hasTimeOverlap = (
 
     const hasOverlap = areIntervalsOverlapping(
       { start: start1, end: end1 },
-      { start: start2, end: end2 }
+      { start: start2, end: end2 },
+      { inclusive: false } // Change to false to not consider touching times as overlap
     );
 
     console.log('[missionUtils] Overlap result:', hasOverlap);
