@@ -149,7 +149,11 @@ export const MissionManagement = () => {
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select(`
-          *,
+          id,
+          first_name,
+          last_name,
+          status,
+          profile_picture_url,
           interpreter_languages!inner (
             source_language,
             target_language
