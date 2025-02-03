@@ -67,10 +67,14 @@ export const InterpreterLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-lg rounded-xl border-0">
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border-0">
       <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-[#403E43]">Espace Interprète</h2>
-        <p className="text-sm text-[#8E9196]">Connectez-vous à votre espace personnel</p>
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] bg-clip-text text-transparent">
+          Espace Interprète
+        </h2>
+        <p className="text-sm text-[#8E9196]">
+          Connectez-vous à votre espace personnel
+        </p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
@@ -105,7 +109,7 @@ export const InterpreterLoginForm = () => {
         </div>
         <Button 
           type="submit" 
-          className="w-full py-3 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B76E3] hover:to-[#6D5999] rounded-lg shadow-md hover:shadow-lg disabled:opacity-70"
+          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B76E3] hover:to-[#6D5999] rounded-lg shadow-md hover:shadow-lg disabled:opacity-70"
           disabled={isLoading}
         >
           {isLoading ? "Connexion en cours..." : "Se connecter"}
