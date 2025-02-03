@@ -27,6 +27,7 @@ export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchMissions = async () => {
     try {
@@ -36,6 +37,8 @@ export const MissionsTab = () => {
         console.log('[MissionsTab] No user found');
         return;
       }
+
+      setCurrentUserId(user.id);
 
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
@@ -222,10 +225,15 @@ export const MissionsTab = () => {
     };
   }, []);
 
-  const getMissionStatusDisplay = (status: string) => {
+  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null) => {
+    if (status === 'accepted') {
+      if (assignedInterpreterId === currentUserId) {
+        return { label: 'Acceptée par vous', variant: 'default' as const };
+      }
+      return { label: 'Acceptée par un autre interprète', variant: 'secondary' as const };
+    }
+    
     switch (status) {
-      case 'accepted':
-        return { label: 'Acceptée', variant: 'default' as const };
       case 'declined':
         return { label: 'Déclinée', variant: 'secondary' as const };
       case 'awaiting_acceptance':
@@ -245,7 +253,7 @@ export const MissionsTab = () => {
   return (
     <div className="space-y-4">
       {missions.map((mission) => {
-        const statusDisplay = getMissionStatusDisplay(mission.status);
+        const statusDisplay = getMissionStatusDisplay(mission.status, mission.assigned_interpreter_id);
         
         return (
           <Card key={mission.id} className="p-4">
@@ -286,7 +294,7 @@ export const MissionsTab = () => {
                 </div>
                 <Badge 
                   variant={statusDisplay.variant}
-                  className="mt-2"
+                  className={`mt-2 ${mission.status === 'accepted' && mission.assigned_interpreter_id === currentUserId ? 'bg-green-100 text-green-800' : ''}`}
                 >
                   {statusDisplay.label}
                 </Badge>
