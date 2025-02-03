@@ -45,7 +45,12 @@ interface AdminFormData {
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"admin" | "interpreter">("interpreter");
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
   const [adminFormData, setAdminFormData] = useState<AdminFormData>({
     email: "",
     first_name: "",
@@ -198,6 +203,121 @@ export const UserManagement = () => {
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter l'administrateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ active: !currentStatus })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: "Le statut de l'utilisateur a été mis à jour avec succès",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error toggling user status:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Utilisateur supprimé",
+        description: "L'utilisateur a été supprimé avec succès",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditUser = async (formData: InterpreterFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      if (!selectedUser) return;
+
+      const { error } = await supabase
+        .from("interpreter_profiles")
+        .update({
+          ...formData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil de l'interprète a été mis à jour avec succès",
+      });
+
+      setIsEditUserOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error updating interpreter:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      setIsSubmitting(true);
+
+      if (!selectedUserId || !password) return;
+
+      const { error } = await supabase.functions.invoke('reset-user-password', {
+        body: { userId: selectedUserId, newPassword: password },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Le mot de passe a été mis à jour avec succès",
+      });
+
+      setIsResetPasswordOpen(false);
+      setPassword("");
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de réinitialiser le mot de passe: " + error.message,
         variant: "destructive",
       });
     } finally {
