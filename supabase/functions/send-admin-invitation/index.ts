@@ -7,6 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -17,15 +18,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { email, first_name, last_name } = await req.json()
+    const { email, first_name, last_name, password } = await req.json()
 
-    // Generate a random password
-    const password = Math.random().toString(36).slice(-8)
+    console.log('Creating admin user:', { email, first_name, last_name })
+
+    // Create the user with provided password or generate a random one
+    const generatedPassword = password || Math.random().toString(36).slice(-8)
 
     // Create the user
     const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
       email,
-      password,
+      password: generatedPassword,
       email_confirm: true,
       user_metadata: {
         first_name,
@@ -33,7 +36,16 @@ serve(async (req) => {
       },
     })
 
-    if (createUserError) throw createUserError
+    if (createUserError) {
+      console.error('Error creating user:', createUserError)
+      throw createUserError
+    }
+
+    if (!user) {
+      throw new Error('No user returned after creation')
+    }
+
+    console.log('User created successfully:', user.id)
 
     // Create user role as admin
     const { error: roleError } = await supabaseClient
@@ -43,27 +55,37 @@ serve(async (req) => {
         role: 'admin',
       })
 
-    if (roleError) throw roleError
+    if (roleError) {
+      console.error('Error creating user role:', roleError)
+      throw roleError
+    }
+
+    console.log('Admin role assigned successfully')
 
     // Send welcome email with credentials
     const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
       body: {
         email,
-        password,
+        password: generatedPassword,
         first_name,
       },
     })
 
-    if (emailError) throw emailError
+    if (emailError) {
+      console.error('Error sending welcome email:', emailError)
+      // Don't throw here, as the user is already created
+      // Just log the error and continue
+    }
 
     return new Response(
-      JSON.stringify({ message: 'Admin user created successfully' }),
+      JSON.stringify({ message: 'Admin user created successfully', userId: user.id }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     )
   } catch (error) {
+    console.error('Error in send-admin-invitation:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
