@@ -68,13 +68,13 @@ const App = () => {
                     <div className="flex gap-4">
                       <a 
                         href="/admin/login" 
-                        className="px-6 py-3 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors"
+                        className="px-6 py-3 bg-interpreter-navy text-white rounded-lg hover:bg-interpreter-navy/90 transition-colors"
                       >
                         Espace Administration
                       </a>
                       <a 
                         href="/interpreter/login" 
-                        className="px-6 py-3 bg-green-800 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="px-6 py-3 bg-interpreter-available text-white rounded-lg hover:bg-interpreter-available/90 transition-colors"
                       >
                         Espace Interprète
                       </a>
