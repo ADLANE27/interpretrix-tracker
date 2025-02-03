@@ -82,7 +82,7 @@ const App = () => {
                           href="/admin/login" 
                           className="px-6 py-3 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] text-white rounded-lg hover:from-[#2A2F3C] hover:to-[#504E53] transition-all duration-200 shadow-md hover:shadow-lg"
                         >
-                          Espace Administration
+                          Espace Administrateur
                         </a>
                         <a 
                           href="/interpreter/login" 
