@@ -176,7 +176,12 @@ export const MissionManagement = () => {
         return;
       }
 
-      setAvailableInterpreters(interpreters);
+      // Filter out duplicates based on interpreter ID
+      const uniqueInterpreters = interpreters.filter((interpreter, index, self) =>
+        index === self.findIndex((t) => t.id === interpreter.id)
+      );
+
+      setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
