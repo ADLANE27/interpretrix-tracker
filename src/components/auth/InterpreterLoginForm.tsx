@@ -69,7 +69,7 @@ export const InterpreterLoginForm = () => {
   return (
     <Card className="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border-0">
       <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] bg-clip-text text-transparent">
+        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] bg-clip-text text-transparent">
           Espace Interprète
         </h2>
         <p className="text-sm text-[#8E9196]">
@@ -87,7 +87,7 @@ export const InterpreterLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent transition-all duration-200"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#f5a51d] focus:border-transparent transition-all duration-200"
             disabled={isLoading}
             placeholder="interpreter@example.com"
           />
@@ -102,14 +102,14 @@ export const InterpreterLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#9b87f5] focus:border-transparent transition-all duration-200"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#f5a51d] focus:border-transparent transition-all duration-200"
             disabled={isLoading}
             placeholder="••••••••"
           />
         </div>
         <Button 
           type="submit" 
-          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#9b87f5] to-[#7E69AB] hover:from-[#8B76E3] hover:to-[#6D5999] rounded-lg shadow-md hover:shadow-lg disabled:opacity-70"
+          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] hover:from-[#f6b53d] hover:to-[#f7c55d] rounded-lg shadow-md hover:shadow-lg disabled:opacity-70"
           disabled={isLoading}
         >
           {isLoading ? "Connexion en cours..." : "Se connecter"}
