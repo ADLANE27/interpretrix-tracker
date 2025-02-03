@@ -22,7 +22,7 @@ export const LANGUAGES = [
   "Lingala", "Kikongo", "Tshiluba", "Kinyarwanda", "Kirundi", "Wolof", "Bambara",
   "Peul", "Haoussa", "Yoruba", "Igbo", "Soninké", "Dioula", "Malinké", "Moore",
   "Sérère", "Bété", "Baoulé", "Éwé", "Mina", "Fon", "Zoulou", "Xhosa", "Tswana",
-  "Shona", "Ndébélé", "Afrikaans",
+  "Shona", "Ndébélé", "Afrikaans", "Diakhanké", "Soussou",
   
   // Langues berbères
   "Berbère (Kabyle)", "Berbère (Chaoui)", "Berbère (Chleuh)", "Berbère (Rifain)", 
