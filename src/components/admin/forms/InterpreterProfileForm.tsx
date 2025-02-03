@@ -10,6 +10,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+interface LanguagePair {
+  source: string;
+  target: string;
+}
+
+interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
 
 export interface InterpreterFormData {
   email: string;
@@ -18,7 +30,8 @@ export interface InterpreterFormData {
   active: boolean;
   tarif_15min: number;
   employment_status?: "salaried" | "self_employed";
-  languages?: string[];
+  languages: LanguagePair[];
+  address?: Address;
   password?: string;
 }
 
@@ -48,6 +61,7 @@ export const InterpreterProfileForm = ({
       tarif_15min: 0,
       employment_status: undefined,
       languages: [],
+      address: undefined,
       password: "",
     },
   });
