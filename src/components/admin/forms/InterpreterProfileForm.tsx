@@ -154,6 +154,27 @@ export const InterpreterProfileForm = ({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="tarif_15min"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tarif (15 minutes)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  min="0" 
+                  step="0.01"
+                  placeholder="0.00"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {!initialData && (
           <>
             <div className="space-y-2">
