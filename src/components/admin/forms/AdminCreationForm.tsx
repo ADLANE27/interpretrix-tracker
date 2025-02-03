@@ -15,6 +15,7 @@ export interface AdminFormData {
   email: string;
   first_name: string;
   last_name: string;
+  password?: string;
 }
 
 interface AdminCreationFormProps {
@@ -23,17 +24,33 @@ interface AdminCreationFormProps {
 }
 
 export const AdminCreationForm = ({ onSubmit, isSubmitting }: AdminCreationFormProps) => {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
   const form = useForm<AdminFormData>({
     defaultValues: {
       email: "",
       first_name: "",
       last_name: "",
+      password: "",
     },
   });
 
+  const handleSubmit = async (data: AdminFormData) => {
+    if (password && password !== confirmPassword) {
+      setPasswordError("Les mots de passe ne correspondent pas");
+      return;
+    }
+    if (password) {
+      data.password = password;
+    }
+    await onSubmit(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="email"
@@ -75,6 +92,44 @@ export const AdminCreationForm = ({ onSubmit, isSubmitting }: AdminCreationFormP
             </FormItem>
           )}
         />
+
+        <div className="space-y-2">
+          <FormItem>
+            <FormLabel>Mot de passe (optionnel)</FormLabel>
+            <FormControl>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
+                placeholder="Laissez vide pour générer automatiquement"
+              />
+            </FormControl>
+          </FormItem>
+        </div>
+
+        {password && (
+          <div className="space-y-2">
+            <FormItem>
+              <FormLabel>Confirmer le mot de passe</FormLabel>
+              <FormControl>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPasswordError("");
+                  }}
+                />
+              </FormControl>
+              {passwordError && (
+                <p className="text-sm font-medium text-destructive">{passwordError}</p>
+              )}
+            </FormItem>
+          </div>
+        )}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? "Création en cours..." : "Créer l'administrateur"}

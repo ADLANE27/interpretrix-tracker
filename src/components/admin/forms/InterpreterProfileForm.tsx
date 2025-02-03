@@ -1,236 +1,151 @@
 import { useState } from "react";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { CountrySelect } from "@/components/CountrySelect";
-import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
+import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-interface Address {
-  street: string;
-  postal_code: string;
-  city: string;
-}
-
-interface InterpreterProfileFormProps {
-  isEditing: boolean;
-  onSubmit: (data: InterpreterFormData) => void;
-  initialData?: Partial<InterpreterFormData>;
-  isSubmitting?: boolean;
-}
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export interface InterpreterFormData {
   email: string;
   first_name: string;
   last_name: string;
-  phone_number: string;
-  landline_phone: string;
-  nationality: string;
-  employment_status: "salaried" | "self_employed";
-  languages: LanguagePair[];
-  address: Address;
-  birth_country: string;
+  active: boolean;
   tarif_15min: number;
+  employment_status?: "salaried" | "self_employed";
+  languages?: string[];
+  password?: string;
 }
 
-export const InterpreterProfileForm = ({
+interface InterpreterProfileFormProps {
+  isEditing: boolean;
+  onSubmit: (data: InterpreterFormData) => Promise<void>;
+  initialData?: InterpreterFormData;
+  isSubmitting: boolean;
+}
+
+export const InterpreterProfileForm = ({ 
   isEditing,
   onSubmit,
-  initialData = {},
-  isSubmitting = false,
+  initialData,
+  isSubmitting 
 }: InterpreterProfileFormProps) => {
-  const [formData, setFormData] = useState<InterpreterFormData>({
-    email: initialData.email || "",
-    first_name: initialData.first_name || "",
-    last_name: initialData.last_name || "",
-    phone_number: initialData.phone_number || "",
-    landline_phone: initialData.landline_phone || "",
-    nationality: initialData.nationality || "",
-    employment_status: initialData.employment_status || "salaried",
-    languages: initialData.languages || [],
-    address: initialData.address || { street: "", postal_code: "", city: "" },
-    birth_country: initialData.birth_country || "",
-    tarif_15min: initialData.tarif_15min || 0,
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const form = useForm<InterpreterFormData>({
+    defaultValues: initialData || {
+      email: "",
+      first_name: "",
+      last_name: "",
+      active: true,
+      tarif_15min: 0,
+      employment_status: undefined,
+      languages: [],
+      password: "",
+    },
   });
 
-  const handleChange = (field: keyof InterpreterFormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddressChange = (field: keyof Address, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      address: { ...prev.address, [field]: value },
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
+  const handleSubmit = async (data: InterpreterFormData) => {
+    if (password && password !== confirmPassword) {
+      setPasswordError("Les mots de passe ne correspondent pas");
+      return;
+    }
+    if (password) {
+      data.password = password;
+    }
+    await onSubmit(data);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleChange("email", e.target.value)}
-            disabled={!isEditing}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="first_name">Prénom</Label>
-          <Input
-            id="first_name"
-            value={formData.first_name}
-            onChange={(e) => handleChange("first_name", e.target.value)}
-            disabled={!isEditing}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="last_name">Nom</Label>
-          <Input
-            id="last_name"
-            value={formData.last_name}
-            onChange={(e) => handleChange("last_name", e.target.value)}
-            disabled={!isEditing}
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="phone_number">Téléphone mobile</Label>
-          <Input
-            id="phone_number"
-            value={formData.phone_number}
-            onChange={(e) => handleChange("phone_number", e.target.value)}
-            disabled={!isEditing}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="landline_phone">Téléphone fixe</Label>
-          <Input
-            id="landline_phone"
-            value={formData.landline_phone}
-            onChange={(e) => handleChange("landline_phone", e.target.value)}
-            disabled={!isEditing}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="nationality">Nationalité</Label>
-          <CountrySelect
-            value={formData.nationality}
-            onValueChange={(value) => handleChange("nationality", value)}
-            disabled={!isEditing}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="birth_country">Pays de naissance</Label>
-          <CountrySelect
-            value={formData.birth_country}
-            onValueChange={(value) => handleChange("birth_country", value)}
-            disabled={!isEditing}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="employment_status">Statut professionnel</Label>
-          <Select
-            value={formData.employment_status}
-            onValueChange={(value: "salaried" | "self_employed") =>
-              handleChange("employment_status", value)
-            }
-            disabled={!isEditing}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="salaried">Salarié</SelectItem>
-              <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="tarif_15min">Tarif (15 minutes)</Label>
-          <Input
-            id="tarif_15min"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.tarif_15min}
-            onChange={(e) => handleChange("tarif_15min", parseFloat(e.target.value))}
-            disabled={!isEditing}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <Label>Adresse</Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="street">Rue</Label>
-            <Input
-              id="street"
-              value={formData.address.street}
-              onChange={(e) => handleAddressChange("street", e.target.value)}
-              disabled={!isEditing}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="postal_code">Code postal</Label>
-            <Input
-              id="postal_code"
-              value={formData.address.postal_code}
-              onChange={(e) => handleAddressChange("postal_code", e.target.value)}
-              disabled={!isEditing}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="city">Ville</Label>
-            <Input
-              id="city"
-              value={formData.address.city}
-              onChange={(e) => handleAddressChange("city", e.target.value)}
-              disabled={!isEditing}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <Label>Combinaisons de langues</Label>
-        <LanguageSelector
-          languages={formData.languages}
-          onChange={(languages) => handleChange("languages", languages)}
-          isEditing={isEditing}
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="interpreter@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <button
-        type="submit"
-        className="w-full px-4 py-2 text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "Enregistrement..." : "Enregistrer"}
-      </button>
-    </form>
+        <FormField
+          control={form.control}
+          name="first_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Prénom</FormLabel>
+              <FormControl>
+                <Input placeholder="Jean" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="last_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nom</FormLabel>
+              <FormControl>
+                <Input placeholder="Dupont" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {!initialData && (
+          <>
+            <div className="space-y-2">
+              <Label>Mot de passe (optionnel)</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
+                placeholder="Laissez vide pour générer automatiquement"
+              />
+            </div>
+
+            {password && (
+              <div className="space-y-2">
+                <Label>Confirmer le mot de passe</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setPasswordError("");
+                  }}
+                />
+                {passwordError && (
+                  <p className="text-sm font-medium text-destructive">{passwordError}</p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Mise à jour..." : "Mettre à jour l'interprète"}
+        </Button>
+      </form>
+    </Form>
   );
 };

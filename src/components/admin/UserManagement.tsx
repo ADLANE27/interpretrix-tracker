@@ -39,6 +39,8 @@ export const UserManagement = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -267,6 +269,11 @@ export const UserManagement = () => {
         throw new Error("Missing user ID or password");
       }
 
+      if (password !== confirmPassword) {
+        setPasswordError("Les mots de passe ne correspondent pas");
+        return;
+      }
+
       const { error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
@@ -283,6 +290,8 @@ export const UserManagement = () => {
 
       setIsResetPasswordOpen(false);
       setPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
     } catch (error: any) {
       console.error("Error resetting password:", error);
       toast({
@@ -412,7 +421,7 @@ export const UserManagement = () => {
           <DialogHeader>
             <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
             <DialogDescription>
-              Définissez un nouveau mot de passe pour l'interprète
+              Définissez un nouveau mot de passe pour l'utilisateur
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -422,13 +431,31 @@ export const UserManagement = () => {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError("");
+                }}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordError("");
+                }}
+              />
+              {passwordError && (
+                <p className="text-sm font-medium text-destructive">{passwordError}</p>
+              )}
             </div>
             <Button 
               onClick={handleResetPassword}
               className="w-full"
-              disabled={isSubmitting || !password}
+              disabled={isSubmitting || !password || !confirmPassword}
             >
               {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
             </Button>
