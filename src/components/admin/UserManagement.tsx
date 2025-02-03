@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
+import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 
@@ -32,6 +33,7 @@ interface UserData {
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
@@ -113,6 +115,35 @@ export const UserManagement = () => {
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];
   const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
+
+  const handleAddAdmin = async (formData: AdminFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      const { error } = await supabase.functions.invoke('send-admin-invitation', {
+        body: formData,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Invitation envoyée",
+        description: "Un email d'invitation a été envoyé à l'administrateur",
+      });
+
+      setIsAddAdminOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error adding admin:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'administrateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleAddUser = async (formData: InterpreterFormData) => {
     try {
@@ -293,26 +324,46 @@ export const UserManagement = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
-        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-          <DialogTrigger asChild>
-            <Button>Ajouter un utilisateur</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh]">
-            <ScrollArea className="max-h-[85vh]">
+        <div className="flex gap-2">
+          <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Ajouter un administrateur</Button>
+            </DialogTrigger>
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
+                <DialogTitle>Ajouter un nouvel administrateur</DialogTitle>
                 <DialogDescription>
-                  Un email sera envoyé à l'interprète avec les instructions de connexion.
+                  Un email sera envoyé à l'administrateur avec les instructions de connexion.
                 </DialogDescription>
               </DialogHeader>
-              <InterpreterProfileForm
-                isEditing={true}
-                onSubmit={handleAddUser}
+              <AdminCreationForm
+                onSubmit={handleAddAdmin}
                 isSubmitting={isSubmitting}
               />
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogTrigger asChild>
+              <Button>Ajouter un interprète</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh]">
+              <ScrollArea className="max-h-[85vh]">
+                <DialogHeader>
+                  <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
+                  <DialogDescription>
+                    Un email sera envoyé à l'interprète avec les instructions de connexion.
+                  </DialogDescription>
+                </DialogHeader>
+                <InterpreterProfileForm
+                  isEditing={true}
+                  onSubmit={handleAddUser}
+                  isSubmitting={isSubmitting}
+                />
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <AdminList
