@@ -10,7 +10,6 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MissionFilters } from "./mission/MissionFilters";
 import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 
@@ -56,20 +55,11 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "",
-    missionType: "",
-    dateRange: {
-      start: "",
-      end: "",
-    },
-  });
 
   const fetchMissions = async () => {
     try {
-      console.log('[MissionManagement] Fetching missions with filters:', filters);
-      let query = supabase
+      console.log('[MissionManagement] Fetching missions');
+      const { data, error } = await supabase
         .from("interpretation_missions")
         .select(`
           *,
@@ -80,37 +70,8 @@ export const MissionManagement = () => {
             profile_picture_url,
             status
           )
-        `);
-
-      // Apply filters
-      if (filters.search) {
-        query = query.or(`
-          source_language.ilike.%${filters.search}%,
-          target_language.ilike.%${filters.search}%,
-          interpreter_profiles.first_name.ilike.%${filters.search}%,
-          interpreter_profiles.last_name.ilike.%${filters.search}%
-        `);
-      }
-
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.missionType) {
-        query = query.eq('mission_type', filters.missionType);
-      }
-
-      if (filters.dateRange.start) {
-        query = query.gte('created_at', filters.dateRange.start);
-      }
-
-      if (filters.dateRange.end) {
-        query = query.lte('created_at', filters.dateRange.end);
-      }
-
-      query = query.order("created_at", { ascending: false });
-
-      const { data, error } = await query;
+        `)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       
@@ -130,7 +91,7 @@ export const MissionManagement = () => {
 
   useEffect(() => {
     fetchMissions();
-  }, [filters]);
+  }, []);
 
   const handleSelectAllInterpreters = () => {
     if (selectedInterpreters.length === availableInterpreters.length) {
@@ -258,18 +219,6 @@ export const MissionManagement = () => {
         variant: "destructive",
       });
     }
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      search: "",
-      status: "",
-      missionType: "",
-      dateRange: {
-        start: "",
-        end: "",
-      },
-    });
   };
 
   const createMission = async (e: React.FormEvent) => {
@@ -682,12 +631,6 @@ export const MissionManagement = () => {
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Liste des missions</h3>
           </div>
-
-          <MissionFilters
-            filters={filters}
-            onFilterChange={setFilters}
-            onReset={handleResetFilters}
-          />
 
           <MissionList
             missions={missions}
