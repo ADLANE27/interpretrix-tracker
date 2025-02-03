@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
@@ -296,18 +297,20 @@ export const UserManagement = () => {
           <DialogTrigger asChild>
             <Button>Ajouter un utilisateur</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
-              <DialogDescription>
-                Un email sera envoyé à l'interprète avec les instructions de connexion.
-              </DialogDescription>
-            </DialogHeader>
-            <InterpreterProfileForm
-              isEditing={true}
-              onSubmit={handleAddUser}
-              isSubmitting={isSubmitting}
-            />
+          <DialogContent className="max-w-4xl max-h-[90vh]">
+            <ScrollArea className="max-h-[85vh]">
+              <DialogHeader>
+                <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
+                <DialogDescription>
+                  Un email sera envoyé à l'interprète avec les instructions de connexion.
+                </DialogDescription>
+              </DialogHeader>
+              <InterpreterProfileForm
+                isEditing={true}
+                onSubmit={handleAddUser}
+                isSubmitting={isSubmitting}
+              />
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -333,21 +336,23 @@ export const UserManagement = () => {
       />
 
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
-            <DialogDescription>
-              Modifiez les informations de l'interprète.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedUser && (
-            <InterpreterProfileForm
-              isEditing={true}
-              onSubmit={handleEditUser}
-              initialData={selectedUser}
-              isSubmitting={isSubmitting}
-            />
-          )}
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <ScrollArea className="max-h-[85vh]">
+            <DialogHeader>
+              <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
+              <DialogDescription>
+                Modifiez les informations de l'interprète.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedUser && (
+              <InterpreterProfileForm
+                isEditing={true}
+                onSubmit={handleEditUser}
+                initialData={selectedUser}
+                isSubmitting={isSubmitting}
+              />
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
