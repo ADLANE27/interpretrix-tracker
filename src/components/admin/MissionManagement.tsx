@@ -107,7 +107,7 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      const { data: interpreters, error } = await supabase
+      const query = supabase
         .from("interpreter_profiles")
         .select(`
           id,
@@ -117,8 +117,14 @@ export const MissionManagement = () => {
           profile_picture_url,
           languages
         `)
-        .eq('status', 'available')
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
+
+      // Only filter by status for immediate missions
+      if (missionType === 'immediate') {
+        query.eq('status', 'available');
+      }
+
+      const { data: interpreters, error } = await query;
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
@@ -131,7 +137,7 @@ export const MissionManagement = () => {
         console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
         toast({
           title: "Aucun interprète trouvé",
-          description: `Aucun interprète disponible pour la combinaison ${sourceLang} → ${targetLang}`,
+          description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
         });
         setAvailableInterpreters([]);
         return;
