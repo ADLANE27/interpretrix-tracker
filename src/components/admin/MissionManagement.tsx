@@ -283,6 +283,7 @@ export const MissionManagement = () => {
     try {
       setIsProcessing(true);
       
+      // Validation des interprètes
       if (selectedInterpreters.length === 0) {
         toast({
           title: "Erreur de validation",
@@ -292,6 +293,7 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Validation des langues
       if (!sourceLanguage || !targetLanguage) {
         toast({
           title: "Erreur de validation",
@@ -301,7 +303,31 @@ export const MissionManagement = () => {
         return;
       }
 
-      if (missionType === 'scheduled') {
+      let calculatedDuration: number;
+
+      if (missionType === 'immediate') {
+        if (!estimatedDuration || parseInt(estimatedDuration) <= 0) {
+          toast({
+            title: "Erreur de validation",
+            description: "Veuillez spécifier une durée valide pour la mission",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Arrondir à la tranche de 15 minutes supérieure
+        calculatedDuration = Math.ceil(parseInt(estimatedDuration) / 15) * 15;
+
+        // Durée minimale de 15 minutes
+        if (calculatedDuration < 15) {
+          toast({
+            title: "Erreur de validation",
+            description: "La durée minimale d'une mission est de 15 minutes",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
         if (!scheduledStartTime || !scheduledEndTime) {
           toast({
             title: "Erreur de validation",
@@ -332,22 +358,31 @@ export const MissionManagement = () => {
           });
           return;
         }
-      }
 
-      if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
-        toast({
-          title: "Erreur de validation",
-          description: "Veuillez spécifier une durée valide pour la mission",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      let calculatedDuration = parseInt(estimatedDuration);
-      if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        // Calculer la durée en minutes
         calculatedDuration = Math.round(
-          (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
+          (endDate.getTime() - startDate.getTime()) / 1000 / 60
         );
+
+        // Vérifier que la durée est un multiple de 15 minutes
+        if (calculatedDuration % 15 !== 0) {
+          toast({
+            title: "Erreur de validation",
+            description: "La durée de la mission doit être un multiple de 15 minutes",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Durée minimale de 15 minutes
+        if (calculatedDuration < 15) {
+          toast({
+            title: "Erreur de validation",
+            description: "La durée minimale d'une mission est de 15 minutes",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       const notificationExpiry = new Date();
@@ -356,7 +391,7 @@ export const MissionManagement = () => {
       const newMissionData = {
         source_language: sourceLanguage,
         target_language: targetLanguage,
-        estimated_duration: calculatedDuration,
+        estimated_duration: calculatedDuration, // Using the calculated duration
         status: "awaiting_acceptance",
         notification_expiry: notificationExpiry.toISOString(),
         notified_interpreters: selectedInterpreters,
@@ -391,6 +426,7 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Notifications created successfully');
 
+      // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");

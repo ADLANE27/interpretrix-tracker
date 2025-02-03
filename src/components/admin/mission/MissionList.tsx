@@ -37,8 +37,11 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
       const durationInMinutes = Math.round(
         (new Date(mission.scheduled_end_time).getTime() - new Date(mission.scheduled_start_time).getTime()) / 1000 / 60
       );
-      return `${durationInMinutes} minutes`;
+      // Arrondir à la tranche de 15 minutes supérieure
+      const roundedDuration = Math.ceil(durationInMinutes / 15) * 15;
+      return `${roundedDuration} minutes`;
     }
+    // Pour les missions immédiates, la durée est déjà arrondie à 15 minutes
     return `${mission.estimated_duration} minutes`;
   };
 
