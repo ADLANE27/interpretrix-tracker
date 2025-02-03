@@ -1,4 +1,4 @@
-import { format, isWithinInterval, areIntervalsOverlapping, addMinutes, parseISO } from 'date-fns';
+import { format, isWithinInterval, areIntervalsOverlapping, addMinutes } from 'date-fns';
 
 export const hasTimeOverlap = (
   startTime1: string,
@@ -74,7 +74,7 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Convert input strings to Date objects in local timezone
+    // Convert input strings to Date objects
     const missionStart = new Date(startTime);
     const missionEnd = new Date(endTime);
     const now = new Date();
@@ -84,16 +84,18 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
+    // Add buffer time to now to prevent scheduling too close to current time
+    const bufferTime = addMinutes(now, 5);
+
     console.log('[missionUtils] Comparing dates:', {
-      missionStart: missionStart.toISOString(),
-      now: now.toISOString(),
-      localMissionStart: missionStart.toString(),
-      localNow: now.toString()
+      missionStart: format(missionStart, 'yyyy-MM-dd HH:mm:ss'),
+      missionEnd: format(missionEnd, 'yyyy-MM-dd HH:mm:ss'),
+      now: format(now, 'yyyy-MM-dd HH:mm:ss'),
+      bufferTime: format(bufferTime, 'yyyy-MM-dd HH:mm:ss')
     });
 
-    // Compare dates in local timezone
-    if (missionStart < now) {
-      console.error('[missionUtils] Mission start time is in the past');
+    if (missionStart < bufferTime) {
+      console.error('[missionUtils] Mission start time is too close to current time');
       return false;
     }
 
@@ -111,21 +113,6 @@ export const isInterpreterAvailableForScheduledMission = async (
 
     if (missionsError) {
       console.error('[missionUtils] Error checking existing missions:', missionsError);
-      return false;
-    }
-
-    // Check immediate missions that might be in progress
-    const hasImmediateMissionConflict = existingMissions?.some(mission => {
-      if (mission.mission_type !== 'immediate' || mission.status !== 'in_progress') {
-        return false;
-      }
-
-      const missionEndTime = addMinutes(now, 30); // Assuming immediate missions block 30 minutes
-      return isWithinInterval(missionStart, { start: now, end: missionEndTime });
-    });
-
-    if (hasImmediateMissionConflict) {
-      console.log('[missionUtils] Conflict with immediate mission detected');
       return false;
     }
 
