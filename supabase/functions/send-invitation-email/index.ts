@@ -30,15 +30,25 @@ serve(async (req) => {
       birth_country,
       nationality,
       tarif_15min,
+      password,
     } = await req.json()
 
-    // Generate a random password
-    const password = Math.random().toString(36).slice(-8)
+    console.log('Creating interpreter:', { 
+      email, 
+      first_name, 
+      last_name, 
+      role,
+      employment_status,
+      languages: languages?.length 
+    })
+
+    // Generate a random password if not provided
+    const generatedPassword = password || Math.random().toString(36).slice(-8)
 
     // Create the user
     const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
       email,
-      password,
+      password: generatedPassword,
       email_confirm: true,
       user_metadata: {
         first_name,
@@ -46,7 +56,16 @@ serve(async (req) => {
       },
     })
 
-    if (createUserError) throw createUserError
+    if (createUserError) {
+      console.error('Error creating user:', createUserError)
+      throw createUserError
+    }
+
+    if (!user) {
+      throw new Error('No user returned after creation')
+    }
+
+    console.log('User created successfully:', user.id)
 
     // Create user role
     const { error: roleError } = await supabaseClient
@@ -56,7 +75,12 @@ serve(async (req) => {
         role,
       })
 
-    if (roleError) throw roleError
+    if (roleError) {
+      console.error('Error creating user role:', roleError)
+      throw roleError
+    }
+
+    console.log('User role created successfully')
 
     // Create interpreter profile
     const { error: profileError } = await supabaseClient
@@ -67,37 +91,50 @@ serve(async (req) => {
         last_name,
         email,
         employment_status,
-        languages,
+        languages: languages || [],
         phone_number,
         landline_phone,
         address,
         birth_country,
         nationality,
-        tarif_15min,
+        tarif_15min: tarif_15min || 0,
         password_changed: false,
       })
 
-    if (profileError) throw profileError
+    if (profileError) {
+      console.error('Error creating interpreter profile:', profileError)
+      throw profileError
+    }
+
+    console.log('Interpreter profile created successfully')
 
     // Send welcome email with credentials
     const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
       body: {
         email,
-        password,
+        password: generatedPassword,
         first_name,
       },
     })
 
-    if (emailError) throw emailError
+    if (emailError) {
+      console.error('Error sending welcome email:', emailError)
+      // Don't throw here as the user is already created
+      // Just log the error and continue
+    }
 
     return new Response(
-      JSON.stringify({ message: 'User created successfully' }),
+      JSON.stringify({ 
+        message: 'Interpreter created successfully',
+        userId: user.id 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
     )
   } catch (error) {
+    console.error('Error in send-invitation-email:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
