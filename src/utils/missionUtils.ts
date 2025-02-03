@@ -12,19 +12,16 @@ export const hasTimeOverlap = (
   });
 
   try {
-    // Parse dates and validate them
     const start1 = new Date(startTime1);
     const end1 = new Date(endTime1);
     const start2 = new Date(startTime2);
     const end2 = new Date(endTime2);
 
-    // Additional validation for date objects
     if ([start1, end1, start2, end2].some(date => isNaN(date.getTime()))) {
       console.error('[missionUtils] Invalid date detected in overlap check');
-      return true; // Safer to assume overlap if dates are invalid
+      return true;
     }
 
-    // Validate time order
     if (end1 <= start1 || end2 <= start2) {
       console.error('[missionUtils] End time is before or equal to start time');
       return true;
@@ -32,15 +29,14 @@ export const hasTimeOverlap = (
 
     const hasOverlap = areIntervalsOverlapping(
       { start: start1, end: end1 },
-      { start: start2, end: end2 },
-      { inclusive: false }
+      { start: start2, end: end2 }
     );
 
     console.log('[missionUtils] Overlap result:', hasOverlap);
     return hasOverlap;
   } catch (error) {
     console.error('[missionUtils] Error in hasTimeOverlap:', error);
-    return true; // Safer to assume overlap if there's an error
+    return true;
   }
 };
 
@@ -57,7 +53,6 @@ export const isInterpreterAvailableForScheduledMission = async (
   });
 
   try {
-    // First check if interpreter exists
     const { data: interpreter, error: interpreterError } = await supabase
       .from('interpreter_profiles')
       .select('status, first_name, last_name')
@@ -74,7 +69,6 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Convert input strings to Date objects
     const missionStart = new Date(startTime);
     const missionEnd = new Date(endTime);
     const now = new Date();
@@ -84,18 +78,8 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Add buffer time to now to prevent scheduling too close to current time
-    const bufferTime = addMinutes(now, 5);
-
-    console.log('[missionUtils] Comparing dates:', {
-      missionStart: format(missionStart, 'yyyy-MM-dd HH:mm:ss'),
-      missionEnd: format(missionEnd, 'yyyy-MM-dd HH:mm:ss'),
-      now: format(now, 'yyyy-MM-dd HH:mm:ss'),
-      bufferTime: format(bufferTime, 'yyyy-MM-dd HH:mm:ss')
-    });
-
-    if (missionStart < bufferTime) {
-      console.error('[missionUtils] Mission start time is too close to current time');
+    if (missionStart < now) {
+      console.error('[missionUtils] Mission start time is in the past');
       return false;
     }
 
@@ -104,7 +88,6 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Check for existing missions
     const { data: existingMissions, error: missionsError } = await supabase
       .from('interpretation_missions')
       .select('scheduled_start_time, scheduled_end_time, mission_type, status')
@@ -116,18 +99,10 @@ export const isInterpreterAvailableForScheduledMission = async (
       return false;
     }
 
-    // Check scheduled missions
     const hasScheduledMissionConflict = existingMissions?.some(mission => {
       if (mission.mission_type !== 'scheduled' || !mission.scheduled_start_time || !mission.scheduled_end_time) {
         return false;
       }
-
-      console.log('[missionUtils] Checking overlap with existing mission:', {
-        existingStart: mission.scheduled_start_time,
-        existingEnd: mission.scheduled_end_time,
-        newStart: startTime,
-        newEnd: endTime
-      });
 
       return hasTimeOverlap(
         mission.scheduled_start_time,
@@ -170,7 +145,6 @@ export const isInterpreterAvailableForImmediateMission = (
     const now = new Date();
     const thirtyMinutesFromNow = addMinutes(now, 30);
 
-    // Check if interpreter has any scheduled missions starting soon
     const hasUpcomingMission = scheduledMissions.some(mission => {
       if (!mission?.scheduled_start_time) {
         return false;
@@ -181,7 +155,7 @@ export const isInterpreterAvailableForImmediateMission = (
         
         if (isNaN(missionStart.getTime())) {
           console.error('[missionUtils] Invalid mission start time detected');
-          return true; // Safer to assume conflict if date is invalid
+          return true;
         }
 
         const isConflicting = isWithinInterval(missionStart, {
@@ -196,7 +170,7 @@ export const isInterpreterAvailableForImmediateMission = (
         return isConflicting;
       } catch (error) {
         console.error('[missionUtils] Error processing mission:', error);
-        return true; // Safer to assume conflict if there's an error
+        return true;
       }
     });
 
