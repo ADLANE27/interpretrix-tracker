@@ -80,7 +80,7 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                 <p className="text-sm text-gray-600">
                   Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy")} 
                   de {format(new Date(mission.scheduled_start_time), "HH:mm")} 
-                  à {' '}{format(new Date(mission.scheduled_end_time), "HH:mm")} 
+                  à {format(new Date(mission.scheduled_end_time), "HH:mm")} 
                   <span className="ml-1">({calculateDuration(mission)})</span>
                 </p>
               )}
