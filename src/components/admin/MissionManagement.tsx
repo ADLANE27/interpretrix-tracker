@@ -146,32 +146,38 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      const languagePair = `${sourceLang} → ${targetLang}`;
-      console.log('[MissionManagement] Looking for language pair:', languagePair);
-      
+      // Fetch all available interpreters first
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
-        .eq("status", "available")
-        .filter('languages', 'cs', `{${languagePair}}`);
+        .eq("status", "available");
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
         throw error;
       }
 
-      console.log('[MissionManagement] Found interpreters:', interpreters);
+      // Filter interpreters based on language combination
+      const languagePair = `${sourceLang} → ${targetLang}`;
+      console.log('[MissionManagement] Looking for language pair:', languagePair);
       
-      if (!interpreters || interpreters.length === 0) {
+      const filteredInterpreters = interpreters?.filter(interpreter => 
+        interpreter.languages.includes(languagePair)
+      );
+
+      console.log('[MissionManagement] Found interpreters:', filteredInterpreters);
+      
+      if (!filteredInterpreters || filteredInterpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for language pair:', languagePair);
         toast({
           title: "Aucun interprète trouvé",
           description: `Aucun interprète disponible pour la combinaison ${sourceLang} → ${targetLang}`,
         });
+        setAvailableInterpreters([]);
         return;
       }
 
-      setAvailableInterpreters(interpreters);
+      setAvailableInterpreters(filteredInterpreters);
       setSelectedInterpreters([]);
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
@@ -180,6 +186,7 @@ export const MissionManagement = () => {
         description: "Impossible de trouver les interprètes disponibles",
         variant: "destructive",
       });
+      setAvailableInterpreters([]);
     }
   };
 
