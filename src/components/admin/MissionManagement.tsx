@@ -154,15 +154,10 @@ export const MissionManagement = () => {
           last_name,
           status,
           profile_picture_url,
-          languages,
-          interpreter_languages!inner (
-            source_language,
-            target_language
-          )
+          languages
         `)
         .eq('status', 'available')
-        .eq('interpreter_languages.source_language', sourceLang)
-        .eq('interpreter_languages.target_language', targetLang);
+        .contains('languages', [`${sourceLang} → ${targetLang}`]);
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
