@@ -53,30 +53,56 @@ export const ChannelMembersDialog = ({
   const { data: users = [] } = useQuery({
     queryKey: ["users", searchQuery],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get all users with their roles
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select(`
           user_id,
-          role,
-          auth:user_id (
-            id,
-            interpreter_profiles!id (
-              email,
-              first_name,
-              last_name
-            )
-          )
+          role
         `);
 
-      if (error) throw error;
+      if (rolesError) throw rolesError;
 
-      return data.map(ur => ({
-        id: ur.user_id,
-        email: ur.auth.interpreter_profiles.email,
-        first_name: ur.auth.interpreter_profiles.first_name,
-        last_name: ur.auth.interpreter_profiles.last_name,
-        role: ur.role,
-      }));
+      // Then get interpreter profiles for those who have them
+      const { data: profiles, error: profilesError } = await supabase
+        .from('interpreter_profiles')
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name
+        `);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of profiles for easy lookup
+      const profilesMap = new Map(
+        profiles?.map(profile => [profile.id, profile]) || []
+      );
+
+      // For each user role, combine with profile info if it exists
+      return userRoles.map(userRole => {
+        const profile = profilesMap.get(userRole.user_id);
+        
+        if (!profile) {
+          // For users without interpreter profiles (like admins), fetch basic info
+          return {
+            id: userRole.user_id,
+            email: "", // This will be populated via the edge function
+            first_name: "", // This will be populated via the edge function
+            last_name: "", // This will be populated via the edge function
+            role: userRole.role,
+          };
+        }
+
+        return {
+          id: userRole.user_id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          role: userRole.role,
+        };
+      });
     },
   });
 
@@ -176,7 +202,7 @@ export const ChannelMembersDialog = ({
                               {user.first_name} {user.last_name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {user.email}
+                              {user.email} ({user.role})
                             </p>
                           </div>
                           <Button
@@ -206,7 +232,7 @@ export const ChannelMembersDialog = ({
                             {user.first_name} {user.last_name}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {user.email}
+                            {user.email} ({user.role})
                           </p>
                         </div>
                         <Button
