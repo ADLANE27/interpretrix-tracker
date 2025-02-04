@@ -53,23 +53,22 @@ export const ChannelMembersDialog = ({
   const { data: users = [] } = useQuery({
     queryKey: ["users", searchQuery],
     queryFn: async () => {
-      const { data: userRoles, error: rolesError } = await supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select(`
           user_id,
           role,
-          interpreter_profiles!inner (
+          interpreter_profiles (
             id,
             email,
             first_name,
             last_name
           )
-        `)
-        .ilike("interpreter_profiles.email", `%${searchQuery}%`);
+        `);
 
-      if (rolesError) throw rolesError;
+      if (error) throw error;
 
-      return userRoles.map(ur => ({
+      return data.map(ur => ({
         id: ur.user_id,
         email: ur.interpreter_profiles.email,
         first_name: ur.interpreter_profiles.first_name,
