@@ -49,7 +49,7 @@ export const ChannelMembersDialog = ({
     },
   });
 
-  // Fetch available users
+  // Fetch available users with their roles and profiles
   const { data: users = [] } = useQuery({
     queryKey: ["users", searchQuery],
     queryFn: async () => {
