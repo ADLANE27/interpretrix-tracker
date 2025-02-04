@@ -46,7 +46,7 @@ export const useChat = (channelId: string) => {
           content,
           created_at,
           sender_id,
-          interpreter_profiles!chat_messages_sender_id_fkey (
+          interpreter_profiles!inner (
             first_name,
             last_name,
             profile_picture_url
