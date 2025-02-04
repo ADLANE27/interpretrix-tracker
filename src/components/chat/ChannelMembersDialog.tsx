@@ -58,7 +58,7 @@ export const ChannelMembersDialog = ({
         .select(`
           user_id,
           role,
-          users!user_id (
+          auth:user_id (
             id,
             interpreter_profiles!id (
               email,
@@ -72,9 +72,9 @@ export const ChannelMembersDialog = ({
 
       return data.map(ur => ({
         id: ur.user_id,
-        email: ur.users.interpreter_profiles.email,
-        first_name: ur.users.interpreter_profiles.first_name,
-        last_name: ur.users.interpreter_profiles.last_name,
+        email: ur.auth.interpreter_profiles.email,
+        first_name: ur.auth.interpreter_profiles.first_name,
+        last_name: ur.auth.interpreter_profiles.last_name,
         role: ur.role,
       }));
     },
