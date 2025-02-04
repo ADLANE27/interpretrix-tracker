@@ -14,6 +14,7 @@ import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { MessagesTab } from "./chat/MessagesTab";
 
 interface Profile {
   id: string;
@@ -368,6 +369,12 @@ export const InterpreterDashboard = () => {
                     Calendrier
                   </TabsTrigger>
                   <TabsTrigger 
+                    value="messages"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                  >
+                    Messages
+                  </TabsTrigger>
+                  <TabsTrigger 
                     value="profile"
                     className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
@@ -385,6 +392,10 @@ export const InterpreterDashboard = () => {
                   <MissionsCalendar 
                     missions={scheduledMissions}
                   />
+                </TabsContent>
+
+                <TabsContent value="messages" className="m-0 h-full">
+                  <MessagesTab />
                 </TabsContent>
                 
                 <TabsContent value="profile" className="m-0 h-full">

@@ -14,6 +14,7 @@ import { UserManagement } from "./UserManagement";
 import { AdminGuideContent } from "./AdminGuideContent";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { MessagesTab } from "../chat/MessagesTab";
 
 const LANGUAGES = [
   // Langues européennes
@@ -226,6 +227,7 @@ export const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
             <TabsTrigger value="missions">Missions</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="guide">
               Guide d'utilisation
@@ -353,6 +355,10 @@ export const AdminDashboard = () => {
 
         <TabsContent value="missions">
           <MissionManagement />
+        </TabsContent>
+
+        <TabsContent value="messages">
+          <MessagesTab />
         </TabsContent>
 
         <TabsContent value="users">
