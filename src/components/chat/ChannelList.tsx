@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { ChannelMembersDialog } from "./ChannelMembersDialog";
 
 interface Channel {
   id: string;
@@ -17,6 +18,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,15 +80,28 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold">Canaux de discussion</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau canal
-        </Button>
+        <div className="flex gap-2">
+          {selectedChannelId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMembersDialogOpen(true)}
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Membres
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau canal
+          </Button>
+        </div>
       </div>
       
       <ScrollArea className="flex-1">
@@ -116,6 +131,14 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
       />
+
+      {selectedChannelId && (
+        <ChannelMembersDialog
+          isOpen={isMembersDialogOpen}
+          onClose={() => setIsMembersDialogOpen(false)}
+          channelId={selectedChannelId}
+        />
+      )}
     </div>
   );
 };
