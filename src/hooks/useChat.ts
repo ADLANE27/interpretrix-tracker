@@ -63,7 +63,7 @@ export const useChat = (channelId: string) => {
         sender: {
           id: message.sender_id,
           name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`,
-          avatarUrl: message.interpreter_profiles.profile_picture_url,
+          avatarUrl: message.interpreter_profiles.profile_picture_url || undefined,
         },
         timestamp: new Date(message.created_at),
       }));
