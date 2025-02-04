@@ -31,30 +31,49 @@ export const useChat = (channelId: string) => {
           id,
           content,
           created_at,
-          sender_id,
-          interpreter_profiles:interpreter_profiles!sender_id (
-            first_name,
-            last_name,
-            profile_picture_url
-          )
+          sender_id
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      const formattedMessages = data.map((message): Message => ({
-        id: message.id,
-        content: message.content,
-        sender: {
-          id: message.sender_id,
-          name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`,
-          avatarUrl: message.interpreter_profiles.profile_picture_url,
-        },
-        timestamp: new Date(message.created_at),
-      }));
+      // Fetch sender information for each message
+      const messagesWithSenders = await Promise.all(
+        data.map(async (message) => {
+          const { data: senderData, error: senderError } = await supabase
+            .from('interpreter_profiles')
+            .select('first_name, last_name, profile_picture_url')
+            .eq('id', message.sender_id)
+            .single();
 
-      setMessages(formattedMessages);
+          if (senderError) {
+            console.error('Error fetching sender info:', senderError);
+            return {
+              id: message.id,
+              content: message.content,
+              sender: {
+                id: message.sender_id,
+                name: 'Unknown User',
+              },
+              timestamp: new Date(message.created_at),
+            };
+          }
+
+          return {
+            id: message.id,
+            content: message.content,
+            sender: {
+              id: message.sender_id,
+              name: `${senderData.first_name} ${senderData.last_name}`,
+              avatarUrl: senderData.profile_picture_url,
+            },
+            timestamp: new Date(message.created_at),
+          };
+        })
+      );
+
+      setMessages(messagesWithSenders);
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast({
