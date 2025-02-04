@@ -46,10 +46,12 @@ export const useChat = (channelId: string) => {
           content,
           created_at,
           sender_id,
-          interpreter_profiles!chat_messages_sender_id_fkey (
-            first_name,
-            last_name,
-            profile_picture_url
+          users:sender_id (
+            interpreter_profiles!id (
+              first_name,
+              last_name,
+              profile_picture_url
+            )
           )
         `)
         .eq('channel_id', channelId)
@@ -62,8 +64,8 @@ export const useChat = (channelId: string) => {
         content: message.content,
         sender: {
           id: message.sender_id,
-          name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`,
-          avatarUrl: message.interpreter_profiles.profile_picture_url || undefined,
+          name: `${message.users.interpreter_profiles.first_name} ${message.users.interpreter_profiles.last_name}`,
+          avatarUrl: message.users.interpreter_profiles.profile_picture_url || undefined,
         },
         timestamp: new Date(message.created_at),
       }));
