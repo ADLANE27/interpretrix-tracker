@@ -46,12 +46,10 @@ export const useChat = (channelId: string) => {
           content,
           created_at,
           sender_id,
-          users:sender_id (
-            interpreter_profiles!id (
-              first_name,
-              last_name,
-              profile_picture_url
-            )
+          interpreter_profiles!sender_id (
+            first_name,
+            last_name,
+            profile_picture_url
           )
         `)
         .eq('channel_id', channelId)
@@ -64,8 +62,8 @@ export const useChat = (channelId: string) => {
         content: message.content,
         sender: {
           id: message.sender_id,
-          name: `${message.users.interpreter_profiles.first_name} ${message.users.interpreter_profiles.last_name}`,
-          avatarUrl: message.users.interpreter_profiles.profile_picture_url || undefined,
+          name: `${message.interpreter_profiles.first_name} ${message.interpreter_profiles.last_name}`,
+          avatarUrl: message.interpreter_profiles.profile_picture_url || undefined,
         },
         timestamp: new Date(message.created_at),
       }));
@@ -129,10 +127,34 @@ export const useChat = (channelId: string) => {
     }
   };
 
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Message supprimé",
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     messages,
     isLoading,
     sendMessage,
+    deleteMessage,
     currentUserId,
   };
 };

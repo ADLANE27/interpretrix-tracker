@@ -1,4 +1,6 @@
+import { Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
@@ -10,9 +12,16 @@ interface ChatMessageProps {
   };
   timestamp: Date;
   isCurrentUser: boolean;
+  onDelete?: () => void;
 }
 
-export const ChatMessage = ({ content, sender, timestamp, isCurrentUser }: ChatMessageProps) => {
+export const ChatMessage = ({ 
+  content, 
+  sender, 
+  timestamp, 
+  isCurrentUser,
+  onDelete 
+}: ChatMessageProps) => {
   return (
     <div className={cn(
       "flex gap-3 mb-4",
@@ -27,10 +36,20 @@ export const ChatMessage = ({ content, sender, timestamp, isCurrentUser }: ChatM
         isCurrentUser ? "items-end" : "items-start"
       )}>
         <div className={cn(
-          "rounded-lg px-4 py-2",
+          "rounded-lg px-4 py-2 group relative",
           isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted"
         )}>
           <p className="text-sm">{content}</p>
+          {isCurrentUser && onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={onDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <span className="text-xs text-muted-foreground mt-1">
           {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

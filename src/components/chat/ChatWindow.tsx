@@ -27,7 +27,7 @@ export const ChatWindow = ({
   isLoading 
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { currentUserId } = useChat('');  // We only need currentUserId here
+  const { currentUserId, deleteMessage } = useChat('');  // We only need currentUserId and deleteMessage here
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -45,6 +45,7 @@ export const ChatWindow = ({
             sender={message.sender}
             timestamp={message.timestamp}
             isCurrentUser={message.sender.id === currentUserId}
+            onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
           />
         ))}
       </ScrollArea>
