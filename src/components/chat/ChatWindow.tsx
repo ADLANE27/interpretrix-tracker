@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useChat } from "@/hooks/useChat";
 
 interface Message {
   id: string;
@@ -16,18 +17,17 @@ interface Message {
 
 interface ChatWindowProps {
   messages: Message[];
-  currentUserId: string;
   onSendMessage: (content: string) => void;
   isLoading?: boolean;
 }
 
 export const ChatWindow = ({ 
   messages, 
-  currentUserId, 
   onSendMessage,
   isLoading 
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { currentUserId } = useChat('');  // We only need currentUserId here
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -36,7 +36,7 @@ export const ChatWindow = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[600px] bg-background border rounded-lg">
+    <div className="flex flex-col h-full bg-background border rounded-lg">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {messages.map((message) => (
           <ChatMessage
