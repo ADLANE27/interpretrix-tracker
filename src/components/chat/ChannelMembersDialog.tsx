@@ -54,11 +54,11 @@ export const ChannelMembersDialog = ({
     queryKey: ["users", searchQuery],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("user_roles")
+        .from('user_roles')
         .select(`
           user_id,
           role,
-          users:user_id (
+          users!user_id (
             id,
             interpreter_profiles!id (
               email,
