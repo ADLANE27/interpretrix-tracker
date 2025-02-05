@@ -52,9 +52,6 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           onCancelReply={() => setReplyTo(null)}
         />
       </div>
-      <div className="py-2 px-4 text-center text-sm text-gray-500 border-t bg-background">
-        © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-      </div>
     </div>
   );
 };
