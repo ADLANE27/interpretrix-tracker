@@ -73,45 +73,32 @@ export const ChannelMemberManagement = ({
     queryFn: async () => {
       if (!searchQuery) return [];
 
-      // First get interpreter profiles that match the search
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
         .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles!inner (
-            role
+          user_id,
+          role,
+          interpreter_profiles:interpreter_profiles (
+            email,
+            first_name,
+            last_name
           )
         `)
-        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
-        .not('id', 'in', members.map(m => m.user_id));
+        .or(`interpreter_profiles.first_name.ilike.%${searchQuery}%,interpreter_profiles.last_name.ilike.%${searchQuery}%,interpreter_profiles.email.ilike.%${searchQuery}%`)
+        .not('user_id', 'in', members.map(m => m.user_id));
 
-      if (interpreterError) throw interpreterError;
+      if (rolesError) throw rolesError;
 
-      // Then get admin users from user_roles that match the search
-      const { data: adminUsers, error: adminError } = await supabase.functions.invoke('search-admin-users', {
-        body: { searchQuery }
-      });
+      // Transform the data into the expected format
+      const users: AvailableUser[] = (userRoles || []).map(role => ({
+        id: role.user_id,
+        email: role.interpreter_profiles?.email || '',
+        first_name: role.interpreter_profiles?.first_name || '',
+        last_name: role.interpreter_profiles?.last_name || '',
+        role: role.role as 'admin' | 'interpreter'
+      })).filter(user => user.email && user.first_name && user.last_name);
 
-      if (adminError) throw adminError;
-
-      // Filter out admins who are already members
-      const filteredAdmins = (adminUsers || []).filter(
-        admin => !members.some(member => member.user_id === admin.id)
-      );
-
-      // Combine and format the results
-      const interpreters = (interpreterProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        role: profile.user_roles[0].role as 'interpreter'
-      }));
-
-      return [...interpreters, ...filteredAdmins] as AvailableUser[];
+      return users;
     },
     enabled: isOpen && searchQuery.length > 0,
   });
