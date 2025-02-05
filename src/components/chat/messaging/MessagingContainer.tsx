@@ -29,35 +29,44 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   };
 
   // Transform messages to ensure they match the required Message type
-  const validMessages = messages?.map(msg => {
-    // Create a properly typed message object with all required fields
-    const validMessage: Message = {
-      id: msg.id || crypto.randomUUID(), // Ensure ID is always present
-      content: msg.content || '',
-      sender: {
-        id: msg.sender?.id || crypto.randomUUID(),
-        name: msg.sender?.name || 'Unknown User',
-        avatarUrl: msg.sender?.avatarUrl
-      },
-      timestamp: msg.timestamp || new Date(),
-      parent_message_id: msg.parent_message_id,
-      reactions: msg.reactions || {},
-      attachments: Array.isArray(msg.attachments) ? msg.attachments.map(att => ({
-        url: att.url || '',
-        filename: att.filename || '',
-        type: att.type || '',
-        size: att.size || 0
-      })) : []
-    };
+  const validMessages = (messages || []).reduce<Message[]>((acc, msg) => {
+    if (!msg || !msg.sender) {
+      console.error('Invalid message or missing sender:', msg);
+      return acc;
+    }
 
     try {
-      // Validate the message against the schema
-      return MessageSchema.parse(validMessage);
+      // First create a complete object with all required fields
+      const completeMessage = {
+        id: msg.id || crypto.randomUUID(),
+        content: msg.content || '',
+        sender: {
+          id: msg.sender.id || crypto.randomUUID(),
+          name: msg.sender.name || 'Unknown User',
+          avatarUrl: msg.sender.avatarUrl
+        },
+        timestamp: msg.timestamp || new Date(),
+        parent_message_id: msg.parent_message_id,
+        reactions: msg.reactions || {},
+        attachments: Array.isArray(msg.attachments) 
+          ? msg.attachments.map(att => ({
+              url: att?.url || '',
+              filename: att?.filename || '',
+              type: att?.type || '',
+              size: att?.size || 0
+            }))
+          : []
+      };
+
+      // Validate with Zod schema
+      const validatedMessage = MessageSchema.parse(completeMessage);
+      acc.push(validatedMessage);
+      return acc;
     } catch (error) {
-      console.error('Invalid message format:', error);
-      return null;
+      console.error('Message validation failed:', error, msg);
+      return acc;
     }
-  }).filter((msg): msg is Message => msg !== null) || [];
+  }, []);
 
   return (
     <ChatWindow
@@ -69,4 +78,3 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     />
   );
 };
-
