@@ -5,7 +5,7 @@ import { Plus, Users, Settings, Trash2, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
-import { ChannelMemberManagement } from "@/components/admin/ChannelMemberManagement";
+import { ChannelMemberManagement } from "./ChannelMemberManagement";
 import {
   AlertDialog,
   AlertDialogAction,

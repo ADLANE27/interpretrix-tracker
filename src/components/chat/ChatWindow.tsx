@@ -75,8 +75,6 @@ export const ChatWindow = ({
           return (
             <ChatMessage
               key={message.id}
-              messageId={message.id}
-              channelId={channelId}
               content={message.content}
               sender={message.sender}
               timestamp={message.timestamp}
@@ -97,7 +95,7 @@ export const ChatWindow = ({
         replyTo={replyTo || undefined}
         onCancelReply={() => setReplyTo(null)}
         channelId={channelId}
-        currentUserId={currentUserId}
+        currentUserId={currentUserId} // Add this prop
       />
     </div>
   );

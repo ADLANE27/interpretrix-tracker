@@ -76,7 +76,6 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
             onDeleteMessage={deleteMessage}
             onReplyMessage={handleReply}
             onReactToMessage={reactToMessage}
-            channelId={channelId}
           />
           <div ref={messagesEndRef} />
         </div>
@@ -88,7 +87,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           replyTo={replyTo || undefined}
           onCancelReply={() => setReplyTo(null)}
           channelId={channelId}
-          currentUserId={currentUserId}
+          currentUserId={currentUserId} // Add currentUserId prop
         />
       </div>
     </div>

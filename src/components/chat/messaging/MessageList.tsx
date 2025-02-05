@@ -6,16 +6,13 @@ export const MessageList = ({
   currentUserId,
   onDeleteMessage,
   onReplyMessage,
-  onReactToMessage,
-  channelId
+  onReactToMessage
 }: MessageListProps) => {
   return (
     <div className="flex flex-col gap-4 p-4">
       {messages.map((message) => (
         <ChatMessage
           key={message.id}
-          messageId={message.id}
-          channelId={channelId}
           content={message.content}
           sender={message.sender}
           timestamp={message.timestamp}

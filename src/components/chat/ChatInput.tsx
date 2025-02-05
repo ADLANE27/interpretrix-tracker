@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>; // Updated return type
+  onSendMessage: (content: string, parentMessageId?: string) => void;
   isLoading?: boolean;
   replyTo?: {
     id: string;
@@ -20,6 +20,15 @@ interface ChatInputProps {
   onCancelReply?: () => void;
   channelId: string;
   currentUserId: string | null;
+}
+
+interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: "admin" | "interpreter";
+  joined_at: string;
 }
 
 export const ChatInput = ({
@@ -36,7 +45,7 @@ export const ChatInput = ({
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: channelMembers = [] } = useQuery({
+  const { data: channelMembers = [] } = useQuery<ChannelMember[]>({
     queryKey: ['channelMembers', channelId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_channel_members', {
@@ -71,60 +80,36 @@ export const ChatInput = ({
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition + 1);
+    const afterMention = message.slice(cursorPosition + 1); // Skip the @ symbol
     const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
     setIsMentioning(false);
     textareaRef.current.focus();
+
+    // Create mention record
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .insert({
+          channel_id: channelId,
+          mentioned_user_id: member.user_id,
+          mentioning_user_id: currentUserId,
+          status: 'unread'
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error creating mention:', error);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || isLoading) return;
 
-    try {
-      // Send the message and get the message ID
-      const messageId = await onSendMessage(message, replyTo?.id);
-
-      // Only proceed with mentions if we have a message ID
-      if (messageId) {
-        const mentionRegex = /@(\w+\s\w+)/g;
-        const mentions = message.match(mentionRegex);
-
-        if (mentions && currentUserId) {
-          const { data: channelMembers } = await supabase.rpc('get_channel_members', {
-            channel_id: channelId
-          });
-
-          for (const mention of mentions) {
-            const memberName = mention.slice(1);
-            const mentionedMember = channelMembers?.find(
-              member => `${member.first_name} ${member.last_name}` === memberName
-            );
-
-            if (mentionedMember) {
-              await supabase
-                .from('message_mentions')
-                .insert({
-                  message_id: messageId,
-                  channel_id: channelId,
-                  mentioned_user_id: mentionedMember.user_id,
-                  mentioning_user_id: currentUserId,
-                  status: 'unread'
-                });
-            }
-          }
-        }
-      }
-
-      setMessage("");
-      if (replyTo && onCancelReply) {
-        onCancelReply();
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
+    onSendMessage(message, replyTo?.id);
+    setMessage("");
   };
 
   return (
