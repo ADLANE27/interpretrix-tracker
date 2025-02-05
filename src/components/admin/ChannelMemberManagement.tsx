@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Search, UserPlus, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -39,7 +40,7 @@ interface Member {
 }
 
 interface AvailableUser {
-  id: string;
+  user_id: string;
   email: string;
   first_name: string;
   last_name: string;
@@ -69,34 +70,17 @@ export const ChannelMemberManagement = ({
   });
 
   const { data: availableUsers = [] } = useQuery({
-    queryKey: ["available-users", searchQuery],
+    queryKey: ["available-users", channelId, searchQuery],
     queryFn: async () => {
       if (!searchQuery) return [];
 
-      const { data: users, error } = await supabase.rpc('get_channel_members', {
-        channel_id: channelId
+      const { data, error } = await supabase.rpc('get_available_channel_users', {
+        channel_id: channelId,
+        search_query: searchQuery
       });
 
       if (error) throw error;
-
-      // Get all user IDs that are already members
-      const memberIds = members.map(m => m.user_id);
-
-      // Filter users based on search query and exclude existing members
-      return (users || [])
-        .filter(user => 
-          !memberIds.includes(user.user_id) &&
-          (user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           user.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           user.email.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-        .map(user => ({
-          id: user.user_id,
-          email: user.email,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          role: user.role
-        })) as AvailableUser[];
+      return data as AvailableUser[];
     },
     enabled: isOpen && searchQuery.length > 0,
   });
@@ -118,6 +102,7 @@ export const ChannelMemberManagement = ({
       });
 
       refetchMembers();
+      setSearchQuery(""); // Clear search after adding
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
@@ -182,7 +167,7 @@ export const ChannelMemberManagement = ({
                     <div className="space-y-2">
                       {availableUsers.map(user => (
                         <div
-                          key={user.id}
+                          key={user.user_id}
                           className="flex items-center justify-between p-2 rounded-lg border"
                         >
                           <div>
@@ -196,7 +181,7 @@ export const ChannelMemberManagement = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => addMember(user.id)}
+                            onClick={() => addMember(user.user_id)}
                             className="gap-2"
                           >
                             <UserPlus className="h-4 w-4" />

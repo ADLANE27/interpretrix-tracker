@@ -437,6 +437,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_available_channel_users: {
+        Args: {
+          channel_id: string
+          search_query: string
+        }
+        Returns: {
+          user_id: string
+          email: string
+          first_name: string
+          last_name: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
       get_channel_members: {
         Args: {
           channel_id: string
