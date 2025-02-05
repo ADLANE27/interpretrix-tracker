@@ -1,13 +1,19 @@
-import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
+import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Attachment {
   url: string;
   filename: string;
   type: string;
   size: number;
+}
+
+interface Reaction {
+  emoji: string;
+  users: string[];
 }
 
 interface ChatMessageProps {
@@ -26,7 +32,16 @@ interface ChatMessageProps {
     name: string;
   };
   attachments?: Attachment[];
+  reactions?: Record<string, string[]>;
+  onReact?: (emoji: string) => void;
 }
+
+const REACTIONS = [
+  { emoji: '👍', icon: ThumbsUp },
+  { emoji: '👎', icon: ThumbsDown },
+  { emoji: '❤️', icon: Heart },
+  { emoji: '😊', icon: Smile },
+];
 
 export const ChatMessage = ({ 
   content, 
@@ -37,7 +52,9 @@ export const ChatMessage = ({
   onReply,
   isReply,
   parentSender,
-  attachments = []
+  attachments = [],
+  reactions = {},
+  onReact
 }: ChatMessageProps) => {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -136,9 +153,48 @@ export const ChatMessage = ({
             )}
           </div>
         </div>
-        <span className="text-xs text-muted-foreground mt-1">
-          {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-xs text-muted-foreground">
+            {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          <div className="flex items-center gap-1">
+            {Object.entries(reactions).map(([emoji, users]) => (
+              users.length > 0 && (
+                <Button
+                  key={emoji}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => onReact?.(emoji)}
+                >
+                  {emoji} {users.length}
+                </Button>
+              )
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Smile className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2">
+                <div className="flex gap-1">
+                  {REACTIONS.map(({ emoji, icon: Icon }) => (
+                    <Button
+                      key={emoji}
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => onReact?.(emoji)}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
       </div>
     </div>
   );

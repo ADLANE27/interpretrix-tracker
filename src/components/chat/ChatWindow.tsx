@@ -14,6 +14,7 @@ interface Message {
   };
   timestamp: Date;
   parent_message_id?: string;
+  reactions?: Record<string, string[]>;
 }
 
 interface ChatWindowProps {
@@ -28,7 +29,7 @@ export const ChatWindow = ({
   isLoading 
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { currentUserId, deleteMessage } = useChat('');
+  const { currentUserId, deleteMessage, reactToMessage } = useChat('');
   const [replyTo, setReplyTo] = useState<{
     id: string;
     content: string;
@@ -56,7 +57,6 @@ export const ChatWindow = ({
     }
   };
 
-  // Create a map of parent messages for quick lookup
   const messageMap = new Map(messages.map(message => [message.id, message]));
 
   return (
@@ -78,6 +78,8 @@ export const ChatWindow = ({
               onReply={() => handleReply(message.id)}
               isReply={!!message.parent_message_id}
               parentSender={parentMessage?.sender}
+              reactions={message.reactions}
+              onReact={(emoji) => reactToMessage(message.id, emoji)}
             />
           );
         })}

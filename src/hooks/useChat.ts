@@ -13,6 +13,7 @@ interface Message {
   timestamp: Date;
   parent_message_id?: string;
   attachments?: any[];
+  reactions: Record<string, string[]>;
 }
 
 export const useChat = (channelId: string) => {
@@ -42,28 +43,26 @@ export const useChat = (channelId: string) => {
     
     setIsLoading(true);
     try {
-      // First get all messages with sender IDs
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select(`
           id,
           content,
           created_at,
-          sender_id
+          sender_id,
+          reactions
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
       if (messagesError) throw messagesError;
 
-      // Get all user roles to identify admins
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
-      // Get interpreter profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('interpreter_profiles')
         .select(`
@@ -75,7 +74,6 @@ export const useChat = (channelId: string) => {
 
       if (profilesError) throw profilesError;
 
-      // Create maps for easy lookup
       const profilesMap = new Map(
         profiles?.map(profile => [profile.id, profile]) || []
       );
@@ -83,13 +81,11 @@ export const useChat = (channelId: string) => {
         userRoles?.map(ur => [ur.user_id, ur.role]) || []
       );
 
-      // Format messages with sender information
       const formattedMessages: Message[] = await Promise.all(
         messagesData.map(async (message) => {
           const profile = profilesMap.get(message.sender_id);
           const role = rolesMap.get(message.sender_id);
           
-          // If it's an admin without interpreter profile, fetch from auth function
           if (!profile && role === 'admin') {
             try {
               const response = await supabase.functions.invoke('get-user-info', {
@@ -107,10 +103,10 @@ export const useChat = (channelId: string) => {
                   name: `${userData.first_name} ${userData.last_name} (Admin)`,
                 },
                 timestamp: new Date(message.created_at),
+                reactions: message.reactions || {},
               };
             } catch (error) {
               console.error('Error fetching admin info:', error);
-              // Fallback display for admin
               return {
                 id: message.id,
                 content: message.content,
@@ -119,11 +115,11 @@ export const useChat = (channelId: string) => {
                   name: 'Admin',
                 },
                 timestamp: new Date(message.created_at),
+                reactions: message.reactions || {},
               };
             }
           }
 
-          // For interpreters with profiles
           return {
             id: message.id,
             content: message.content,
@@ -133,6 +129,7 @@ export const useChat = (channelId: string) => {
               avatarUrl: profile?.profile_picture_url,
             },
             timestamp: new Date(message.created_at),
+            reactions: message.reactions || {},
           };
         })
       );
@@ -184,7 +181,8 @@ export const useChat = (channelId: string) => {
           sender_id: currentUserId,
           content,
           parent_message_id: parentMessageId,
-          attachments
+          attachments,
+          reactions: {}
         });
 
       if (error) throw error;
@@ -223,11 +221,57 @@ export const useChat = (channelId: string) => {
     }
   };
 
+  const reactToMessage = async (messageId: string, emoji: string) => {
+    if (!currentUserId) return;
+
+    try {
+      const message = messages.find(m => m.id === messageId);
+      if (!message) return;
+
+      const currentReactions = message.reactions || {};
+      const currentUsers = currentReactions[emoji] || [];
+      
+      let updatedUsers;
+      if (currentUsers.includes(currentUserId)) {
+        // Remove reaction
+        updatedUsers = currentUsers.filter(id => id !== currentUserId);
+      } else {
+        // Add reaction
+        updatedUsers = [...currentUsers, currentUserId];
+      }
+
+      const updatedReactions = {
+        ...currentReactions,
+        [emoji]: updatedUsers
+      };
+
+      // Remove emoji key if no users have reacted
+      if (updatedUsers.length === 0) {
+        delete updatedReactions[emoji];
+      }
+
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ reactions: updatedReactions })
+        .eq('id', messageId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating reaction:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la réaction",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     messages,
     isLoading,
     sendMessage,
     deleteMessage,
     currentUserId,
+    reactToMessage,
   };
 };
