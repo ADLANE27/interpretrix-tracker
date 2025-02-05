@@ -33,52 +33,6 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const handleSubscriptionError = () => {
-    if (retryCount < MAX_RETRIES) {
-      const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-        setupSubscription();
-      }, timeout);
-    } else {
-      toast({
-        title: "Erreur de connexion",
-        description: "Impossible de se connecter au chat. Veuillez rafraîchir la page.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (!channelId) return;
-    
-    let channel: RealtimeChannel;
-    
-    const setupSubscription = async () => {
-      if (isSubscribed) return;
-      
-      try {
-        await fetchMessages();
-        channel = subscribeToMessages();
-        setIsSubscribed(true);
-        setRetryCount(0); // Reset retry count on successful subscription
-      } catch (error) {
-        console.error('[Chat] Error setting up subscription:', error);
-        handleSubscriptionError();
-      }
-    };
-
-    setupSubscription();
-
-    return () => {
-      if (channel) {
-        console.log('[Chat] Cleaning up subscription');
-        supabase.removeChannel(channel);
-        setIsSubscribed(false);
-      }
-    };
-  }, [channelId, retryCount]);
-
   const fetchMessages = async () => {
     if (!channelId) return;
     
@@ -243,6 +197,52 @@ export const useChat = (channelId: string) => {
 
     return channel;
   };
+
+  const setupSubscription = async () => {
+    if (isSubscribed) return;
+    
+    try {
+      await fetchMessages();
+      const channel = subscribeToMessages();
+      setIsSubscribed(true);
+      setRetryCount(0); // Reset retry count on successful subscription
+    } catch (error) {
+      console.error('[Chat] Error setting up subscription:', error);
+      handleSubscriptionError();
+    }
+  };
+
+  const handleSubscriptionError = () => {
+    if (retryCount < MAX_RETRIES) {
+      const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
+      setTimeout(() => {
+        setRetryCount(prev => prev + 1);
+        setupSubscription();
+      }, timeout);
+    } else {
+      toast({
+        title: "Erreur de connexion",
+        description: "Impossible de se connecter au chat. Veuillez rafraîchir la page.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!channelId) return;
+    
+    let channel: RealtimeChannel;
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        console.log('[Chat] Cleaning up subscription');
+        supabase.removeChannel(channel);
+        setIsSubscribed(false);
+      }
+    };
+  }, [channelId, retryCount]);
 
   const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []) => {
     if (!channelId || !currentUserId) return;
