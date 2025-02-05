@@ -73,32 +73,30 @@ export const ChannelMemberManagement = ({
     queryFn: async () => {
       if (!searchQuery) return [];
 
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          profiles:interpreter_profiles!user_roles_user_id_fkey(
-            email,
-            first_name,
-            last_name
-          )
-        `)
-        .or(`profiles.first_name.ilike.%${searchQuery}%,profiles.last_name.ilike.%${searchQuery}%,profiles.email.ilike.%${searchQuery}%`)
-        .not('user_id', 'in', members.map(m => m.user_id));
+      const { data: users, error } = await supabase.rpc('get_channel_members', {
+        channel_id: channelId
+      });
 
-      if (rolesError) throw rolesError;
+      if (error) throw error;
 
-      // Transform the data into the expected format
-      const users: AvailableUser[] = (userRoles || []).map(role => ({
-        id: role.user_id,
-        email: role.profiles?.email || '',
-        first_name: role.profiles?.first_name || '',
-        last_name: role.profiles?.last_name || '',
-        role: role.role as 'admin' | 'interpreter'
-      })).filter(user => user.email && user.first_name && user.last_name);
+      // Get all user IDs that are already members
+      const memberIds = members.map(m => m.user_id);
 
-      return users;
+      // Filter users based on search query and exclude existing members
+      return (users || [])
+        .filter(user => 
+          !memberIds.includes(user.user_id) &&
+          (user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           user.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .map(user => ({
+          id: user.user_id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          role: user.role
+        })) as AvailableUser[];
     },
     enabled: isOpen && searchQuery.length > 0,
   });

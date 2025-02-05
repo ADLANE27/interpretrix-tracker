@@ -174,7 +174,17 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   </div>
                 )}
               </button>
-              <div className="flex items-center px-2">
+              <div className="flex items-center gap-2 px-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedChannelId(channel.id);
+                    setIsMembersDialogOpen(true);
+                  }}
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -182,13 +192,6 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      setSelectedChannelId(channel.id);
-                      setIsMembersDialogOpen(true);
-                    }}>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Ajouter un membre
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       setSelectedChannelId(channel.id);
                       setIsMembersDialogOpen(true);
