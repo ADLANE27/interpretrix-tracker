@@ -1,4 +1,3 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "../ChatMessage";
 import { MessageListProps } from "@/types/messaging";
 
@@ -10,7 +9,7 @@ export const MessageList = ({
   onReactToMessage
 }: MessageListProps) => {
   return (
-    <ScrollArea className="flex-1 p-4">
+    <div className="flex flex-col gap-4 p-4">
       {messages.map((message) => (
         <ChatMessage
           key={message.id}
@@ -26,6 +25,6 @@ export const MessageList = ({
           attachments={message.attachments}
         />
       ))}
-    </ScrollArea>
+    </div>
   );
 };

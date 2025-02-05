@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 import { useChat } from "@/hooks/useChat";
@@ -19,6 +19,15 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   } = useChat(channelId);
   
   const [replyTo, setReplyTo] = useState<ReplyToMessage | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleReply = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
@@ -35,14 +44,17 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-background to-muted/30 border rounded-lg shadow-lg">
-      <div className="flex-1 overflow-hidden min-h-0">
-        <MessageList
-          messages={messages}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReplyMessage={handleReply}
-          onReactToMessage={reactToMessage}
-        />
+      <div className="flex-1 overflow-hidden min-h-0 relative">
+        <div className="absolute inset-0 overflow-y-auto">
+          <MessageList
+            messages={messages}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReplyMessage={handleReply}
+            onReactToMessage={reactToMessage}
+          />
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       <div className="mt-auto border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <MessageComposer
