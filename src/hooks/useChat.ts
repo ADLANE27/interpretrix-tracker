@@ -2,7 +2,35 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Message } from '@/types/messaging';
+import { Message, Attachment } from '@/types/messaging';
+
+interface MessageData {
+  id: string;
+  content: string;
+  sender_id: string;
+  channel_id: string;
+  created_at: string;
+  parent_message_id: string | null;
+  reactions: Record<string, string[]>;
+  attachments?: Array<{
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  }>;
+}
+
+interface SenderProfile {
+  id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture_url?: string;
+  raw_user_meta_data?: {
+    first_name?: string;
+    last_name?: string;
+  };
+}
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -21,7 +49,7 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const formatMessage = (messageData: any): Message | null => {
+  const formatMessage = (messageData: MessageData): Message | null => {
     try {
       if (!messageData?.id || !messageData?.sender_id) {
         console.error('Missing required message data:', messageData);
@@ -37,7 +65,7 @@ export const useChat = (channelId: string) => {
         });
       }
 
-      const attachments = messageData.attachments?.map((att: any) => ({
+      const attachments: Attachment[] = messageData.attachments?.map(att => ({
         url: String(att.url || ''),
         filename: String(att.filename || ''),
         type: String(att.type || ''),
@@ -49,11 +77,11 @@ export const useChat = (channelId: string) => {
         content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: messageData.sender?.name || 'Unknown User',
-          avatarUrl: messageData.sender?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+          name: 'Unknown User', // Will be updated with actual name
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
-        parent_message_id: messageData.parent_message_id || null,
+        parent_message_id: messageData.parent_message_id,
         reactions,
         attachments
       };
@@ -82,12 +110,7 @@ export const useChat = (channelId: string) => {
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
-      if (messagesError) {
-        console.error('[Chat] Error fetching messages:', messagesError);
-        throw messagesError;
-      }
-
-      console.log('Raw messages data:', messagesData);
+      if (messagesError) throw messagesError;
 
       const formattedMessages: Message[] = [];
 
@@ -97,7 +120,7 @@ export const useChat = (channelId: string) => {
             .from('user_roles')
             .select('role')
             .eq('user_id', message.sender_id)
-            .single();
+            .maybeSingle();
 
           let senderName = 'Unknown User';
           let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.sender_id}`;
@@ -129,27 +152,23 @@ export const useChat = (channelId: string) => {
             }
           }
 
-          const formattedMessage: Message = {
-            id: message.id,
-            content: message.content,
+          const formattedMessage = formatMessage({
+            ...message,
             sender: {
               id: message.sender_id,
               name: senderName,
               avatarUrl: avatarUrl,
-            },
-            timestamp: new Date(message.created_at),
-            parent_message_id: message.parent_message_id,
-            reactions: message.reactions || {},
-            attachments: message.attachments || [],
-          };
+            }
+          });
 
-          formattedMessages.push(formattedMessage);
+          if (formattedMessage) {
+            formattedMessages.push(formattedMessage);
+          }
         } catch (error) {
           console.error('[Chat] Error formatting message:', error, message);
         }
       }
 
-      console.log('Formatted messages:', formattedMessages);
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
@@ -259,7 +278,11 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []): Promise<string> => {
+  const sendMessage = async (
+    content: string,
+    parentMessageId?: string,
+    attachments: Attachment[] = []
+  ): Promise<string> => {
     if (!channelId || !currentUserId) throw new Error("Missing required data");
     if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
     
@@ -281,9 +304,6 @@ export const useChat = (channelId: string) => {
       if (error) throw error;
       if (!data) throw new Error("No data returned from insert");
 
-      const newMessage = formatMessage(data);
-      if (!newMessage) throw new Error("Invalid message format");
-      
       await fetchMessages();
       return data.id;
 
@@ -310,14 +330,14 @@ export const useChat = (channelId: string) => {
       if (error) throw error;
 
       toast({
-        title: "Succès",
-        description: "Message supprimé",
+        title: "Success",
+        description: "Message deleted",
       });
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le message",
+        title: "Error",
+        description: "Failed to delete message",
         variant: "destructive",
       });
     }
@@ -367,8 +387,8 @@ export const useChat = (channelId: string) => {
       console.error('[Chat] Error updating reaction:', error);
       await fetchMessages();
       toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour la réaction",
+        title: "Error",
+        description: "Failed to update reaction",
         variant: "destructive",
       });
     }
