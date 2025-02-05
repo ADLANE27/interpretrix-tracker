@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ChannelMember } from "@/types/messaging";
 
 interface ChatInputProps {
   onSendMessage: (content: string, parentMessageId?: string, attachments?: Array<{

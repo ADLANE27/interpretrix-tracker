@@ -28,9 +28,29 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     return messageId;
   };
 
+  // Ensure messages match the required Message type
+  const validMessages: Message[] = messages?.map(msg => ({
+    id: msg.id || '',
+    content: msg.content || '',
+    sender: {
+      id: msg.sender?.id || '',
+      name: msg.sender?.name || '',
+      avatarUrl: msg.sender?.avatarUrl
+    },
+    timestamp: msg.timestamp || new Date(),
+    parent_message_id: msg.parent_message_id,
+    reactions: msg.reactions || {},
+    attachments: msg.attachments?.map(att => ({
+      url: att.url || '',
+      filename: att.filename || '',
+      type: att.type || '',
+      size: att.size || 0
+    }))
+  })) || [];
+
   return (
     <ChatWindow
-      messages={messages as Message[]}
+      messages={validMessages}
       onSendMessage={handleSendMessage}
       isLoading={isLoading}
       channelId={channelId}
