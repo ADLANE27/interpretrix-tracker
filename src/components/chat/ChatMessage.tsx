@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2, MessageCircleReply } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ interface ChatMessageProps {
   timestamp: Date;
   isCurrentUser: boolean;
   onDelete?: () => void;
+  onReply?: () => void;
 }
 
 export const ChatMessage = ({ 
@@ -20,7 +21,8 @@ export const ChatMessage = ({
   sender, 
   timestamp, 
   isCurrentUser,
-  onDelete 
+  onDelete,
+  onReply
 }: ChatMessageProps) => {
   return (
     <div className={cn(
@@ -40,16 +42,36 @@ export const ChatMessage = ({
           isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted"
         )}>
           <p className="text-sm">{content}</p>
-          {isCurrentUser && onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            {isCurrentUser && onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2",
+                  isCurrentUser ? "-right-8" : "-left-8"
+                )}
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            {onReply && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "absolute top-1/2 -translate-y-1/2",
+                  isCurrentUser ? 
+                    onDelete ? "-right-16" : "-right-8" : 
+                    "-left-8"
+                )}
+                onClick={onReply}
+              >
+                <MessageCircleReply className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <span className="text-xs text-muted-foreground mt-1">
           {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

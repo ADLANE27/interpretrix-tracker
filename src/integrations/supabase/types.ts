@@ -77,6 +77,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          parent_message_id: string | null
           sender_id: string
           updated_at: string
         }
@@ -85,6 +86,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          parent_message_id?: string | null
           sender_id: string
           updated_at?: string
         }
@@ -93,6 +95,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          parent_message_id?: string | null
           sender_id?: string
           updated_at?: string
         }
@@ -102,6 +105,20 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_parent_message"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
             referencedColumns: ["id"]
           },
         ]

@@ -17,7 +17,7 @@ interface Message {
 
 interface ChatWindowProps {
   messages: Message[];
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, parentMessageId?: string) => void;
   isLoading?: boolean;
 }
 
@@ -35,6 +35,11 @@ export const ChatWindow = ({
     }
   }, [messages]);
 
+  const handleReply = (messageId: string) => {
+    // For now, we'll just log the reply action
+    console.log('Replying to message:', messageId);
+  };
+
   return (
     <div className="flex flex-col h-full bg-background border rounded-lg">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
@@ -46,6 +51,7 @@ export const ChatWindow = ({
             timestamp={message.timestamp}
             isCurrentUser={message.sender.id === currentUserId}
             onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
+            onReply={() => handleReply(message.id)}
           />
         ))}
       </ScrollArea>
