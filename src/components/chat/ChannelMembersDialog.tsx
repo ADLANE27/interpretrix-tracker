@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, UserMinus, UserPlus } from "lucide-react";
+import { Search, UserPlus, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -43,9 +43,7 @@ interface AvailableUser {
   email: string;
   first_name: string;
   last_name: string;
-  user_roles: {
-    role: 'admin' | 'interpreter';
-  };
+  role: 'admin' | 'interpreter';
 }
 
 export const ChannelMembersDialog = ({
@@ -73,29 +71,68 @@ export const ChannelMembersDialog = ({
   const { data: availableUsers = [] } = useQuery({
     queryKey: ["available-users", searchQuery],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, get all user roles
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*")
+        .ilike("email", `%${searchQuery}%`);
+
+      if (rolesError) throw rolesError;
+
+      // Then, get interpreter profiles
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles!inner (
-            role
-          )
-        `)
-        .ilike("email", `%${searchQuery}%`)
-        .limit(10);
+        .select("*");
 
-      if (error) throw error;
+      if (interpreterError) throw interpreterError;
 
-      return (data as AvailableUser[]).map(user => ({
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.user_roles.role,
-      }));
+      // Create a map of interpreter profiles
+      const profilesMap = new Map(
+        interpreterProfiles.map(profile => [profile.id, profile])
+      );
+
+      // Combine the data
+      const users: AvailableUser[] = await Promise.all(
+        userRoles.map(async (userRole) => {
+          const profile = profilesMap.get(userRole.user_id);
+          
+          if (!profile) {
+            const response = await supabase.functions.invoke('get-user-info', {
+              body: { userId: userRole.user_id }
+            });
+            
+            if (response.error) {
+              console.error('Error fetching user info:', response.error);
+              return {
+                id: userRole.user_id,
+                email: "",
+                role: userRole.role,
+                first_name: "",
+                last_name: "",
+              };
+            }
+
+            const userData = response.data;
+            return {
+              id: userRole.user_id,
+              email: userData.email || "",
+              role: userRole.role,
+              first_name: userData.first_name || "",
+              last_name: userData.last_name || "",
+            };
+          }
+
+          return {
+            id: userRole.user_id,
+            email: profile.email,
+            role: userRole.role,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+          };
+        })
+      );
+
+      return users;
     },
     enabled: isOpen && searchQuery.length > 0,
   });
@@ -267,4 +304,4 @@ export const ChannelMembersDialog = ({
       </AlertDialog>
     </>
   );
-};
+});
