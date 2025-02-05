@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Settings } from "lucide-react";
+import { Plus, Users, Settings, Trash2, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
-import { ChannelMembersDialog } from "./ChannelMembersDialog";
+import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,11 +29,18 @@ interface Channel {
   description: string | null;
 }
 
-export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
+interface ChannelListProps {
+  onChannelSelect: (channelId: string) => void;
+  showCreateChannel?: boolean;
+}
+
+export const ChannelList = ({ onChannelSelect, showCreateChannel = true }: ChannelListProps) => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -81,12 +98,19 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     onChannelSelect(channelId);
   };
 
-  const handleDeleteChannel = async (channelId: string) => {
+  const handleDeleteChannel = async (channel: Channel) => {
+    setChannelToDelete(channel);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteChannel = async () => {
+    if (!channelToDelete) return;
+
     try {
       const { error } = await supabase
         .from('chat_channels')
         .delete()
-        .eq('id', channelId);
+        .eq('id', channelToDelete.id);
 
       if (error) throw error;
 
@@ -96,8 +120,8 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       });
 
       // Select another channel if the deleted one was selected
-      if (selectedChannelId === channelId) {
-        const remainingChannels = channels.filter(c => c.id !== channelId);
+      if (selectedChannelId === channelToDelete.id) {
+        const remainingChannels = channels.filter(c => c.id !== channelToDelete.id);
         if (remainingChannels.length > 0) {
           handleChannelSelect(remainingChannels[0].id);
         } else {
@@ -111,6 +135,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         description: "Impossible de supprimer le canal",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setChannelToDelete(null);
     }
   };
 
@@ -118,15 +145,17 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold">Canaux de discussion</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau canal
-        </Button>
+        {showCreateChannel && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nouveau canal
+          </Button>
+        )}
       </div>
       
       <ScrollArea className="flex-1">
@@ -151,7 +180,18 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   </div>
                 )}
               </button>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity px-2">
+              <div className="flex items-center gap-2 px-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedChannelId(channel.id);
+                    setIsMembersDialogOpen(true);
+                  }}
+                  title="Ajouter des membres"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -165,6 +205,13 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     }}>
                       <Users className="h-4 w-4 mr-2" />
                       Gérer les membres
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeleteChannel(channel)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Supprimer le canal
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -180,12 +227,35 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       />
 
       {selectedChannelId && (
-        <ChannelMembersDialog
+        <ChannelMemberManagement
           isOpen={isMembersDialogOpen}
           onClose={() => setIsMembersDialogOpen(false)}
           channelId={selectedChannelId}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Cela supprimera définitivement le canal
+              "{channelToDelete?.name}" et tous ses messages.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteChannel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

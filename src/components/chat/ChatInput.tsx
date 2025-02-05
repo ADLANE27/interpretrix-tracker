@@ -76,16 +76,32 @@ export const ChatInput = ({
     );
   });
 
-  const handleMentionSelect = (member: ChannelMember) => {
+  const handleMentionSelect = async (member: ChannelMember) => {
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition + 1); // Add +1 to skip the @ symbol
+    const afterMention = message.slice(cursorPosition + 1); // Skip the @ symbol
     const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
     setIsMentioning(false);
     textareaRef.current.focus();
+
+    // Create mention record
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .insert({
+          channel_id: channelId,
+          mentioned_user_id: member.user_id,
+          mentioning_user_id: currentUserId,
+          status: 'unread'
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error creating mention:', error);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
