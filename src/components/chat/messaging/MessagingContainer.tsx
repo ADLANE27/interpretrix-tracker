@@ -34,7 +34,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border rounded-lg">
+    <div className="flex flex-col h-full bg-gradient-to-br from-background to-muted/30 border rounded-lg shadow-lg">
       <div className="flex-1 overflow-hidden min-h-0">
         <MessageList
           messages={messages}
@@ -44,7 +44,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           onReactToMessage={reactToMessage}
         />
       </div>
-      <div className="mt-auto border-t">
+      <div className="mt-auto border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <MessageComposer
           onSendMessage={sendMessage}
           isLoading={isLoading}

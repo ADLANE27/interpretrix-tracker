@@ -117,34 +117,37 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="border-t bg-background">
+    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {replyTo && (
-        <div className="px-4 py-2 bg-muted/50 flex items-center justify-between">
+        <div className="px-4 py-2 bg-muted/30 backdrop-blur-sm border-b flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
               Replying to {replyTo.sender.name}
             </span>
-            <span className="text-sm truncate">{replyTo.content}</span>
+            <span className="text-sm truncate max-w-[300px]">{replyTo.content}</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onCancelReply}
-            className="h-6 w-6"
+            className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 bg-muted/30 flex flex-wrap gap-2">
+        <div className="px-4 py-2 bg-muted/20 backdrop-blur-sm flex flex-wrap gap-2 border-b">
           {attachments.map((attachment, index) => (
-            <div key={index} className="flex items-center gap-2 bg-background rounded-md px-2 py-1 text-sm">
+            <div 
+              key={index} 
+              className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-md px-2 py-1 text-sm border shadow-sm"
+            >
               <span className="truncate max-w-[200px]">{attachment.filename}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-4 w-4"
+                className="h-4 w-4 hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
               >
                 <X className="h-3 w-3" />
@@ -168,7 +171,7 @@ export const ChatInput = ({
               variant="ghost"
               size="icon"
               onClick={handleFileSelect}
-              className="h-9 w-9 flex-shrink-0"
+              className="h-9 w-9 flex-shrink-0 hover:bg-muted/50"
               disabled={uploadingFiles}
             >
               {uploadingFiles ? (
@@ -183,7 +186,7 @@ export const ChatInput = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 flex-shrink-0"
+                  className="h-9 w-9 flex-shrink-0 hover:bg-muted/50"
                 >
                   <Smile className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -194,7 +197,7 @@ export const ChatInput = ({
                     <Button
                       key={emoji}
                       variant="ghost"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 hover:bg-muted"
                       onClick={() => insertEmoji(emoji)}
                     >
                       {emoji}
@@ -208,9 +211,9 @@ export const ChatInput = ({
             ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Écrivez votre message..."
+            placeholder="Write your message..."
             className={cn(
-              "min-h-[44px] max-h-[200px] resize-none",
+              "min-h-[44px] max-h-[200px] resize-none bg-muted/30 focus:bg-background transition-colors",
               replyTo && "rounded-t-none"
             )}
             onKeyDown={(e) => {
@@ -225,6 +228,7 @@ export const ChatInput = ({
           type="submit" 
           disabled={(!message.trim() && attachments.length === 0) || isLoading || uploadingFiles}
           className="px-4 h-9 flex-shrink-0"
+          variant={message.trim() || attachments.length > 0 ? "default" : "secondary"}
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
