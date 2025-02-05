@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X, Paperclip, Smile, Loader2 } from "lucide-react";
+import { MessageSquare, X, Paperclip, Smile, Loader2, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
 
 interface ChatInputProps {
   onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
@@ -18,6 +19,15 @@ interface ChatInputProps {
     };
   };
   onCancelReply?: () => void;
+  channelId: string;
+}
+
+interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
 }
 
 const EMOJI_LIST = ["😊", "😂", "😍", "👍", "❤️", "😎", "🎉", "✨", "🔥", "👋", "😅", "🙌", "👏", "🤔", "😮", "🎈", "🌟", "💪", "🤝", "👌"];
@@ -26,14 +36,95 @@ export const ChatInput = ({
   onSendMessage, 
   isLoading = false,
   replyTo,
-  onCancelReply
+  onCancelReply,
+  channelId
 }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [channelMembers, setChannelMembers] = useState<ChannelMember[]>([]);
+  const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const fetchChannelMembers = async () => {
+      const { data, error } = await supabase
+        .rpc('get_channel_members', { channel_id: channelId });
+      
+      if (error) {
+        console.error('Error fetching channel members:', error);
+        return;
+      }
+      
+      setChannelMembers(data);
+    };
+
+    fetchChannelMembers();
+  }, [channelId]);
+
+  const handleMentionSelect = (member: ChannelMember) => {
+    if (mentionStartIndex === null) return;
+
+    const beforeMention = message.substring(0, mentionStartIndex);
+    const afterMention = message.substring(cursorPosition);
+    const memberName = `${member.first_name} ${member.last_name}`;
+    const newMessage = `${beforeMention}@${memberName}${afterMention}`;
+    
+    setMessage(newMessage);
+    setShowMentions(false);
+    setMentionStartIndex(null);
+    
+    if (textareaRef.current) {
+      const newCursorPos = mentionStartIndex + memberName.length + 1;
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+      return;
+    }
+
+    if (showMentions) {
+      if (e.key === 'Escape') {
+        setShowMentions(false);
+        return;
+      }
+    }
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    setCursorPosition(cursorPos);
+
+    // Check for @ symbol
+    const lastAtSymbol = newValue.lastIndexOf('@', cursorPos);
+    if (lastAtSymbol !== -1) {
+      const textAfterAt = newValue.slice(lastAtSymbol + 1, cursorPos);
+      const hasSpaceAfterAt = /\s/.test(textAfterAt);
+      
+      if (!hasSpaceAfterAt) {
+        setMentionStartIndex(lastAtSymbol);
+        setMentionSearch(textAfterAt);
+        setShowMentions(true);
+      } else {
+        setShowMentions(false);
+      }
+    } else {
+      setShowMentions(false);
+    }
+
+    setMessage(newValue);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +206,11 @@ export const ChatInput = ({
       }
     }
   };
+
+  const filteredMembers = channelMembers.filter(member => {
+    const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+    return fullName.includes(mentionSearch.toLowerCase());
+  });
 
   return (
     <div className="border-t bg-gradient-to-b from-background/95 to-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-200">
@@ -207,22 +303,37 @@ export const ChatInput = ({
               </PopoverContent>
             </Popover>
           </div>
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Write your message..."
-            className={cn(
-              "min-h-[44px] max-h-[200px] resize-none bg-muted/30 focus:bg-background transition-colors duration-200 rounded-xl",
-              replyTo && "rounded-t-none"
+          <div className="relative flex-1">
+            <Textarea
+              ref={textareaRef}
+              value={message}
+              onChange={handleInput}
+              onKeyDown={handleKeyDown}
+              placeholder="Write your message... Use @ to mention someone"
+              className={cn(
+                "min-h-[44px] max-h-[200px] resize-none bg-muted/30 focus:bg-background transition-colors duration-200 rounded-xl",
+                replyTo && "rounded-t-none"
+              )}
+            />
+            {showMentions && filteredMembers.length > 0 && (
+              <div className="absolute bottom-full mb-1 w-64 bg-popover text-popover-foreground shadow-md rounded-lg border overflow-hidden">
+                <Command className="max-h-[200px] overflow-y-auto">
+                  <CommandGroup heading="Mentions">
+                    {filteredMembers.map((member) => (
+                      <CommandItem
+                        key={member.user_id}
+                        onSelect={() => handleMentionSelect(member)}
+                        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-muted/50"
+                      >
+                        <AtSign className="h-4 w-4 text-muted-foreground" />
+                        <span>{member.first_name} {member.last_name}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </div>
             )}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
+          </div>
         </div>
         <Button 
           type="submit" 
