@@ -17,28 +17,31 @@ export const useMessageActions = (
     if (!channelId || !currentUserId) throw new Error("Missing required data");
     if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
     
+    const newMessage = {
+      channel_id: channelId,
+      sender_id: currentUserId,
+      content: content.trim(),
+      parent_message_id: parentMessageId,
+      attachments: attachments.map(att => ({
+        url: att.url,
+        filename: att.filename,
+        type: att.type,
+        size: att.size
+      })),
+      reactions: {}
+    };
+
     try {
       const { data, error } = await supabase
         .from('chat_messages')
-        .insert({
-          channel_id: channelId,
-          sender_id: currentUserId,
-          content: content.trim(),
-          parent_message_id: parentMessageId,
-          attachments: attachments.map(att => ({
-            url: att.url,
-            filename: att.filename,
-            type: att.type,
-            size: att.size
-          })),
-          reactions: {}
-        })
+        .insert(newMessage)
         .select('*')
         .single();
 
       if (error) throw error;
       if (!data) throw new Error("No data returned from insert");
 
+      // No need to fetch all messages, just update the local state
       await fetchMessages();
       return data.id;
     } catch (error) {
@@ -60,11 +63,6 @@ export const useMessageActions = (
         .eq('id', messageId);
 
       if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Message deleted",
-      });
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);
       toast({
@@ -112,7 +110,6 @@ export const useMessageActions = (
         .eq('id', messageId);
 
       if (error) throw error;
-      await fetchMessages();
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);
       toast({

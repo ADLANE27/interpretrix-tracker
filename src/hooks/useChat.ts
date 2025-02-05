@@ -25,12 +25,13 @@ export const useChat = (channelId: string) => {
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(50); // Limit the number of messages for faster loading
 
       if (messagesError) throw messagesError;
 
       const formattedMessages: Message[] = [];
-      for (const message of messagesData || []) {
+      const senderDetailsPromises = messagesData?.map(async (message) => {
         try {
           const { data: senderData, error: senderError } = await supabase
             .rpc('get_message_sender_details', {
@@ -39,7 +40,7 @@ export const useChat = (channelId: string) => {
 
           if (senderError) {
             console.error('[Chat] Error fetching sender details:', senderError);
-            continue;
+            return null;
           }
 
           const sender = senderData?.[0] || {
@@ -48,25 +49,20 @@ export const useChat = (channelId: string) => {
             avatar_url: ''
           };
 
-          let parsedReactions: Record<string, string[]> = {};
+          let parsedReactions = {};
           try {
             if (typeof message.reactions === 'string') {
               parsedReactions = JSON.parse(message.reactions);
             } else if (message.reactions && typeof message.reactions === 'object') {
-              Object.entries(message.reactions).forEach(([emoji, users]) => {
-                if (Array.isArray(users)) {
-                  parsedReactions[emoji] = users.map(String);
-                }
-              });
+              parsedReactions = message.reactions;
             }
           } catch (e) {
             console.error('[Chat] Error parsing reactions:', e);
-            parsedReactions = {};
           }
 
           const parsedAttachments: Attachment[] = [];
           if (Array.isArray(message.attachments)) {
-            for (const att of message.attachments) {
+            message.attachments.forEach(att => {
               if (typeof att === 'object' && att !== null) {
                 const attachment = {
                   url: String(att['url'] || ''),
@@ -78,10 +74,10 @@ export const useChat = (channelId: string) => {
                   parsedAttachments.push(attachment);
                 }
               }
-            }
+            });
           }
 
-          const formattedMessage: Message = {
+          return {
             id: message.id,
             content: message.content,
             sender: {
@@ -93,12 +89,14 @@ export const useChat = (channelId: string) => {
             reactions: parsedReactions,
             attachments: parsedAttachments
           };
-
-          formattedMessages.push(formattedMessage);
         } catch (error) {
           console.error('[Chat] Error formatting message:', error, message);
+          return null;
         }
-      }
+      }) || [];
+
+      const formattedMessagesResults = await Promise.all(senderDetailsPromises);
+      formattedMessages.push(...formattedMessagesResults.filter((msg): msg is Message => msg !== null));
 
       setMessages(formattedMessages);
     } catch (error) {
@@ -118,14 +116,19 @@ export const useChat = (channelId: string) => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
+      // Optimistic update
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+
       const { error } = await supabase
         .from('chat_messages')
         .delete()
         .eq('id', messageId);
 
-      if (error) throw error;
-
-      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+      if (error) {
+        // Revert on error
+        await fetchMessages();
+        throw error;
+      }
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);
     }
