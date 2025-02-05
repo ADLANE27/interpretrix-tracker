@@ -82,6 +82,19 @@ export const ChatInput = ({
     }
   };
 
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setMessage(newValue);
+    
+    if (isMentioning) {
+      const lastAtSymbol = newValue.lastIndexOf('@', cursorPosition);
+      if (lastAtSymbol >= 0) {
+        const query = newValue.slice(lastAtSymbol + 1, e.target.selectionStart).trim();
+        setMentionQuery(query);
+      }
+    }
+  };
+
   const filteredMembers = channelMembers.filter(member => {
     const searchTerm = mentionQuery.toLowerCase();
     return (
@@ -209,11 +222,33 @@ export const ChatInput = ({
         <Textarea
           ref={textareaRef}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={handleInput}
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
           className="min-h-[100px] max-h-[150px] resize-none pr-10 overflow-y-auto"
         />
+        
+        {isMentioning && (
+          <div className="absolute bottom-full left-0 w-full mb-1 bg-background border rounded-md shadow-lg">
+            <Command>
+              <CommandList>
+                <CommandInput placeholder="Search members..." />
+                <CommandEmpty>No members found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredMembers.map((member) => (
+                    <CommandItem
+                      key={member.user_id}
+                      onSelect={() => handleMentionSelect(member)}
+                      className="cursor-pointer"
+                    >
+                      {member.first_name} {member.last_name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
+        )}
         
         <input
           type="file"
@@ -254,4 +289,3 @@ export const ChatInput = ({
     </form>
   );
 };
-
