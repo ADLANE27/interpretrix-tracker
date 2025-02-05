@@ -185,29 +185,15 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
-                      setSelectedChannelId(channel.id);
-                      setIsMembersDialogOpen(true);
-                    }}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Gérer les membres
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => handleDeleteChannel(channel)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Supprimer le canal
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteChannel(channel)}
+                  className="text-destructive hover:text-destructive"
+                  title="Supprimer le canal"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
