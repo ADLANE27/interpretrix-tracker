@@ -154,7 +154,7 @@ export const ChatInput = ({
           ))}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="flex gap-2 p-4">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 p-4 pb-6">
         <div className="flex-1 flex gap-2">
           <input
             type="file"
@@ -163,53 +163,57 @@ export const ChatInput = ({
             className="hidden"
             multiple
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleFileSelect}
-            className="flex-shrink-0"
-            disabled={uploadingFiles}
-          >
-            {uploadingFiles ? (
-              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-            ) : (
-              <Paperclip className="h-5 w-5 text-muted-foreground" />
-            )}
-          </Button>
-          <Popover>
-            <PopoverTrigger asChild>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="flex-shrink-0"
+                onClick={handleFileSelect}
+                className="h-9 w-9 flex-shrink-0 hover:bg-muted"
+                disabled={uploadingFiles}
               >
-                <Smile className="h-5 w-5 text-muted-foreground" />
+                {uploadingFiles ? (
+                  <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+                ) : (
+                  <Paperclip className="h-5 w-5 text-muted-foreground" />
+                )}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-2">
-              <div className="grid grid-cols-10 gap-1">
-                {EMOJI_LIST.map((emoji) => (
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button
-                    key={emoji}
+                    type="button"
                     variant="ghost"
-                    className="h-8 w-8 p-0"
-                    onClick={() => insertEmoji(emoji)}
+                    size="icon"
+                    className="h-9 w-9 flex-shrink-0 hover:bg-muted"
                   >
-                    {emoji}
+                    <Smile className="h-5 w-5 text-muted-foreground" />
                   </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-2">
+                  <div className="grid grid-cols-10 gap-1">
+                    {EMOJI_LIST.map((emoji) => (
+                      <Button
+                        key={emoji}
+                        variant="ghost"
+                        className="h-8 w-8 p-0"
+                        onClick={() => insertEmoji(emoji)}
+                      >
+                        {emoji}
+                      </Button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
           <Textarea
             ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Écrivez votre message..."
             className={cn(
-              "min-h-[44px] max-h-[200px]",
+              "min-h-[44px] max-h-[200px] resize-none",
               replyTo && "rounded-t-none"
             )}
             onKeyDown={(e) => {
@@ -223,7 +227,7 @@ export const ChatInput = ({
         <Button 
           type="submit" 
           disabled={(!message.trim() && attachments.length === 0) || isLoading || uploadingFiles}
-          className="px-4 flex-shrink-0"
+          className="px-4 h-9 flex-shrink-0"
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
