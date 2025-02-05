@@ -504,6 +504,16 @@ export type Database = {
           joined_at: string
         }[]
       }
+      get_message_sender_details: {
+        Args: {
+          sender_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+          avatar_url: string
+        }[]
+      }
       handle_mission_acceptance: {
         Args: {
           p_mission_id: string
