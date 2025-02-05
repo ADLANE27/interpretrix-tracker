@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Settings } from "lucide-react";
+import { Plus, Users, Settings, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +35,8 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +94,49 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     onChannelSelect(channelId);
   };
 
+  const handleDeleteChannel = async (channel: Channel) => {
+    setChannelToDelete(channel);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteChannel = async () => {
+    if (!channelToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_channels')
+        .delete()
+        .eq('id', channelToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Canal supprimé",
+        description: "Le canal a été supprimé avec succès",
+      });
+
+      // Select another channel if the deleted one was selected
+      if (selectedChannelId === channelToDelete.id) {
+        const remainingChannels = channels.filter(c => c.id !== channelToDelete.id);
+        if (remainingChannels.length > 0) {
+          handleChannelSelect(remainingChannels[0].id);
+        } else {
+          setSelectedChannelId(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting channel:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le canal",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setChannelToDelete(null);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
@@ -134,6 +189,13 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                       <Users className="h-4 w-4 mr-2" />
                       Gérer les membres
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDeleteChannel(channel)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Supprimer le canal
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -154,6 +216,27 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           channelId={selectedChannelId}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Cela supprimera définitivement le canal
+              "{channelToDelete?.name}" et tous ses messages.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteChannel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
