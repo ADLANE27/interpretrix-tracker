@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserPlus, UserMinus, Search, Users } from "lucide-react";
+import { UserPlus, UserMinus, Search, Users, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -147,6 +148,10 @@ export const ChannelMemberManagement = ({
               <Users className="h-5 w-5" />
               Gérer les membres du canal
             </DialogTitle>
+            <DialogDescription className="flex items-center gap-2 text-muted-foreground">
+              <Info className="h-4 w-4" />
+              Recherchez des utilisateurs par nom ou email pour les ajouter au canal
+            </DialogDescription>
           </DialogHeader>
 
           <div className="relative">
@@ -161,42 +166,42 @@ export const ChannelMemberManagement = ({
 
           <ScrollArea className="h-[50vh] rounded-md border">
             <div className="p-4 space-y-6">
-              {members.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    Membres actuels ({members.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {members.map(member => (
-                      <div
-                        key={member.user_id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {member.first_name} {member.last_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {member.email} • {member.role}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setUserToRemove(member)}
-                          className="hover:bg-destructive/10 hover:text-destructive transition-colors gap-2"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                          Retirer
-                        </Button>
+              {/* Current Members Section */}
+              <div>
+                <h3 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  Membres actuels ({members.length})
+                </h3>
+                <div className="space-y-2">
+                  {members.map(member => (
+                    <div
+                      key={member.user_id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {member.first_name} {member.last_name}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {member.email} • {member.role === 'admin' ? 'Administrateur' : 'Interprète'}
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setUserToRemove(member)}
+                        className="hover:bg-destructive/10 hover:text-destructive transition-colors gap-2"
+                      >
+                        <UserMinus className="h-4 w-4" />
+                        Retirer
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {searchQuery && nonMembers.length > 0 && (
+              {/* Available Users Section */}
+              {searchQuery && (
                 <div>
                   <h3 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
                     <UserPlus className="h-4 w-4" />
@@ -213,27 +218,26 @@ export const ChannelMemberManagement = ({
                             {user.first_name} {user.last_name}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {user.email} • {user.role}
+                            {user.email} • {user.role === 'admin' ? 'Administrateur' : 'Interprète'}
                           </p>
                         </div>
                         <Button
-                          variant="ghost"
+                          variant="default"
                           size="sm"
                           onClick={() => addMember(user.user_id)}
-                          className="hover:bg-primary/10 hover:text-primary transition-colors gap-2"
+                          className="gap-2"
                         >
                           <UserPlus className="h-4 w-4" />
-                          Ajouter
+                          Ajouter au canal
                         </Button>
                       </div>
                     ))}
+                    {nonMembers.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Aucun utilisateur trouvé pour "{searchQuery}"
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-
-              {searchQuery && nonMembers.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Aucun utilisateur trouvé pour "{searchQuery}"
                 </div>
               )}
 
