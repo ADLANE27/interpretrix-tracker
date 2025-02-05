@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X, Paperclip, Loader2 } from "lucide-react";
+import { MessageSquare, X, Paperclip, Smile, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ChatInputProps {
   onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
@@ -19,6 +20,8 @@ interface ChatInputProps {
   onCancelReply?: () => void;
 }
 
+const EMOJI_LIST = ["😊", "😂", "😍", "👍", "❤️", "😎", "🎉", "✨", "🔥", "👋", "😅", "🙌", "👏", "🤔", "😮", "🎈", "🌟", "💪", "🤝", "👌"];
+
 export const ChatInput = ({ 
   onSendMessage, 
   isLoading = false,
@@ -30,6 +33,7 @@ export const ChatInput = ({
   const [attachments, setAttachments] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +46,24 @@ export const ChatInput = ({
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newMessage = message.substring(0, start) + emoji + message.substring(end);
+      setMessage(newMessage);
+      
+      // Set cursor position after the inserted emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+        textarea.focus();
+      }, 0);
+    } else {
+      setMessage(message + emoji);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,7 +177,34 @@ export const ChatInput = ({
               <Paperclip className="h-5 w-5 text-muted-foreground" />
             )}
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="flex-shrink-0"
+              >
+                <Smile className="h-5 w-5 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[280px] p-2">
+              <div className="grid grid-cols-10 gap-1">
+                {EMOJI_LIST.map((emoji) => (
+                  <Button
+                    key={emoji}
+                    variant="ghost"
+                    className="h-8 w-8 p-0"
+                    onClick={() => insertEmoji(emoji)}
+                  >
+                    {emoji}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Écrivez votre message..."
