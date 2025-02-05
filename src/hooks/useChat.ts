@@ -12,7 +12,6 @@ interface Message {
   };
   timestamp: Date;
   parent_message_id?: string;
-  attachments?: any[];
   reactions: Record<string, string[]>;
 }
 
@@ -103,7 +102,7 @@ export const useChat = (channelId: string) => {
                   name: `${userData.first_name} ${userData.last_name} (Admin)`,
                 },
                 timestamp: new Date(message.created_at),
-                reactions: message.reactions || {},
+                reactions: message.reactions as Record<string, string[]> || {},
               };
             } catch (error) {
               console.error('Error fetching admin info:', error);
@@ -115,7 +114,7 @@ export const useChat = (channelId: string) => {
                   name: 'Admin',
                 },
                 timestamp: new Date(message.created_at),
-                reactions: message.reactions || {},
+                reactions: message.reactions as Record<string, string[]> || {},
               };
             }
           }
@@ -129,7 +128,7 @@ export const useChat = (channelId: string) => {
               avatarUrl: profile?.profile_picture_url,
             },
             timestamp: new Date(message.created_at),
-            reactions: message.reactions || {},
+            reactions: message.reactions as Record<string, string[]> || {},
           };
         })
       );
