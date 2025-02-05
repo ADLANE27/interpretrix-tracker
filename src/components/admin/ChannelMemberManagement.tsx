@@ -78,13 +78,13 @@ export const ChannelMemberManagement = ({
         .select(`
           user_id,
           role,
-          interpreter_profiles:interpreter_profiles (
+          profiles:interpreter_profiles!user_roles_user_id_fkey(
             email,
             first_name,
             last_name
           )
         `)
-        .or(`interpreter_profiles.first_name.ilike.%${searchQuery}%,interpreter_profiles.last_name.ilike.%${searchQuery}%,interpreter_profiles.email.ilike.%${searchQuery}%`)
+        .or(`profiles.first_name.ilike.%${searchQuery}%,profiles.last_name.ilike.%${searchQuery}%,profiles.email.ilike.%${searchQuery}%`)
         .not('user_id', 'in', members.map(m => m.user_id));
 
       if (rolesError) throw rolesError;
@@ -92,9 +92,9 @@ export const ChannelMemberManagement = ({
       // Transform the data into the expected format
       const users: AvailableUser[] = (userRoles || []).map(role => ({
         id: role.user_id,
-        email: role.interpreter_profiles?.email || '',
-        first_name: role.interpreter_profiles?.first_name || '',
-        last_name: role.interpreter_profiles?.last_name || '',
+        email: role.profiles?.email || '',
+        first_name: role.profiles?.first_name || '',
+        last_name: role.profiles?.last_name || '',
         role: role.role as 'admin' | 'interpreter'
       })).filter(user => user.email && user.first_name && user.last_name);
 
