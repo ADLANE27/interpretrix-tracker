@@ -30,22 +30,22 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
 
   // Transform messages to ensure they match the required Message type
   const validMessages: Message[] = messages?.map(msg => ({
-    id: msg.id || crypto.randomUUID(),
+    id: msg.id ? msg.id : crypto.randomUUID(), // Ensure id is never undefined
     content: msg.content || '',
     sender: {
-      id: msg.sender?.id || '',
-      name: msg.sender?.name || '',
-      avatarUrl: msg.sender?.avatarUrl
+      id: msg.sender?.id || crypto.randomUUID(), // Ensure sender.id is never undefined
+      name: msg.sender?.name || 'Unknown User', // Ensure name is never undefined
+      avatarUrl: msg.sender?.avatarUrl // Optional, can remain undefined
     },
-    timestamp: msg.timestamp || new Date(),
-    parent_message_id: msg.parent_message_id,
-    reactions: msg.reactions || {},
-    attachments: msg.attachments?.map(att => ({
+    timestamp: msg.timestamp || new Date(), // Ensure timestamp is never undefined
+    parent_message_id: msg.parent_message_id, // Optional, can remain undefined
+    reactions: msg.reactions || {}, // Ensure reactions is never undefined
+    attachments: (msg.attachments || []).map(att => ({
       url: att.url || '',
       filename: att.filename || '',
       type: att.type || '',
       size: att.size || 0
-    })) || []
+    }))
   })) || [];
 
   return (
