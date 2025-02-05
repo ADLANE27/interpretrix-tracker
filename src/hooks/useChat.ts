@@ -2,19 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-
-interface Message {
-  id: string;
-  content: string;
-  sender: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-  timestamp: Date;
-  parent_message_id?: string;
-  reactions: Record<string, string[]>;
-}
+import { Message, MessageSchema, AttachmentSchema } from '@/types/messaging';
+import { z } from 'zod';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -33,6 +22,30 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
+  const validateAndFormatMessage = (messageData: any): Message | null => {
+    try {
+      const parsedMessage = MessageSchema.parse({
+        id: messageData.id,
+        content: messageData.content,
+        sender: {
+          id: messageData.sender_id,
+          name: messageData.sender?.name || 'Unknown User',
+          avatarUrl: messageData.sender?.avatarUrl
+        },
+        timestamp: new Date(messageData.created_at),
+        parent_message_id: messageData.parent_message_id,
+        reactions: messageData.reactions || {},
+        attachments: messageData.attachments ? messageData.attachments.map((att: any) => 
+          AttachmentSchema.parse(att)
+        ) : []
+      });
+      return parsedMessage;
+    } catch (error) {
+      console.error('Message validation error:', error);
+      return null;
+    }
+  };
+
   const fetchMessages = async () => {
     if (!channelId) return;
     
@@ -47,7 +60,8 @@ export const useChat = (channelId: string) => {
           created_at,
           sender_id,
           reactions,
-          parent_message_id
+          parent_message_id,
+          attachments
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
@@ -78,7 +92,7 @@ export const useChat = (channelId: string) => {
         userRoles?.map(ur => [ur.user_id, ur.role]) || []
       );
 
-      const formattedMessages = await Promise.all(
+      const formattedMessages = (await Promise.all(
         messagesData.map(async (message) => {
           const profile = profilesMap.get(message.sender_id);
           const role = rolesMap.get(message.sender_id);
@@ -131,15 +145,21 @@ export const useChat = (channelId: string) => {
             parent_message_id: message.parent_message_id,
             reactions: message.reactions as Record<string, string[]> || {},
           };
+          const formattedMessage = validateAndFormatMessage(message);
+          if (!formattedMessage) {
+            console.error('Invalid message format:', message);
+            return null;
+          }
+          return formattedMessage;
         })
-      );
+      )).filter((msg): msg is Message => msg !== null);
 
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les messages",
+        title: "Error",
+        description: "Failed to load messages. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -271,17 +291,23 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []): Promise<string> => {
+  const sendMessage = async (content: string, parentMessageId?: string, attachments: z.infer<typeof AttachmentSchema>[] = []): Promise<string> => {
     if (!channelId || !currentUserId) throw new Error("Missing required data");
+    if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
     
     setIsLoading(true);
     try {
+      // Validate attachments
+      attachments.forEach(att => {
+        AttachmentSchema.parse(att);
+      });
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           channel_id: channelId,
           sender_id: currentUserId,
-          content,
+          content: content.trim(),
           parent_message_id: parentMessageId,
           attachments,
           reactions: {}
@@ -290,20 +316,10 @@ export const useChat = (channelId: string) => {
         .single();
 
       if (error) throw error;
-
       if (!data) throw new Error("No data returned from insert");
 
-      const newMessage: Message = {
-        id: data.id,
-        content: data.content,
-        sender: {
-          id: currentUserId,
-          name: 'Admin',
-        },
-        timestamp: new Date(data.created_at),
-        parent_message_id: data.parent_message_id,
-        reactions: {},
-      };
+      const newMessage = validateAndFormatMessage(data);
+      if (!newMessage) throw new Error("Invalid message format");
       
       setMessages(prev => [...prev, newMessage]);
       return data.id;
@@ -311,8 +327,8 @@ export const useChat = (channelId: string) => {
     } catch (error) {
       console.error('[Chat] Error sending message:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send message",
         variant: "destructive",
       });
       throw error;
