@@ -23,14 +23,6 @@ interface ChatInputProps {
   currentUserId: string | null;
 }
 
-interface User {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-}
-
 interface ChannelMember {
   user_id: string;
   email: string;
@@ -62,7 +54,7 @@ export const ChatInput = ({
       });
       
       if (error) throw error;
-      console.log('Channel members:', data); // Debug log
+      console.log('Channel members:', data);
       return data;
     },
     enabled: !!channelId
@@ -133,41 +125,32 @@ export const ChatInput = ({
         />
         
         {isMentioning && (
-          <Popover open={true} onOpenChange={setIsMentioning}>
-            <PopoverTrigger asChild>
-              <div />
-            </PopoverTrigger>
-            <PopoverContent 
-              className="p-0 w-[200px]" 
-              align="start"
-              side="top"
-            >
-              <Command>
-                <CommandInput 
-                  placeholder="Search members..." 
-                  value={mentionQuery}
-                  onValueChange={setMentionQuery}
-                />
-                <CommandList>
-                  {filteredMembers.length === 0 ? (
-                    <CommandEmpty>No members found.</CommandEmpty>
-                  ) : (
-                    <CommandGroup>
-                      {filteredMembers.map((member) => (
-                        <CommandItem
-                          key={member.user_id}
-                          value={`${member.first_name} ${member.last_name}`}
-                          onSelect={() => handleMentionSelect(member)}
-                        >
-                          {member.first_name} {member.last_name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  )}
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+          <div className="absolute bottom-full left-0 w-[200px] mb-2">
+            <Command>
+              <CommandInput 
+                placeholder="Search members..." 
+                value={mentionQuery}
+                onValueChange={setMentionQuery}
+              />
+              <CommandList>
+                {filteredMembers.length === 0 ? (
+                  <CommandEmpty>No members found.</CommandEmpty>
+                ) : (
+                  <CommandGroup>
+                    {filteredMembers.map((member) => (
+                      <CommandItem
+                        key={member.user_id}
+                        value={`${member.first_name} ${member.last_name}`}
+                        onSelect={() => handleMentionSelect(member)}
+                      >
+                        {member.first_name} {member.last_name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
+          </div>
         )}
       </div>
 
