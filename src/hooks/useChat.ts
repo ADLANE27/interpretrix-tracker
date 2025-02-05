@@ -24,13 +24,14 @@ export const useChat = (channelId: string) => {
 
   const validateAndFormatMessage = (messageData: any): Message | null => {
     try {
+      console.log('Raw message data:', messageData);
       const parsedMessage = MessageSchema.parse({
         id: messageData.id,
-        content: messageData.content,
+        content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: messageData.sender?.name || 'Unknown User',
-          avatarUrl: messageData.sender?.avatarUrl
+          name: 'Unknown User', // We'll update this later
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
@@ -55,82 +56,46 @@ export const useChat = (channelId: string) => {
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select(`
-          id,
-          content,
-          created_at,
-          sender_id,
-          reactions,
-          parent_message_id,
-          attachments
+          *,
+          sender:sender_id (
+            id,
+            email,
+            raw_user_meta_data
+          )
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
       if (messagesError) throw messagesError;
 
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('interpreter_profiles')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          profile_picture_url
-        `);
-
-      if (profilesError) throw profilesError;
-
-      const profilesMap = new Map(
-        profiles?.map(profile => [profile.id, profile]) || []
-      );
-      const rolesMap = new Map(
-        userRoles?.map(ur => [ur.user_id, ur.role]) || []
-      );
+      console.log('Raw messages data:', messagesData);
 
       const formattedMessages = (await Promise.all(
         messagesData.map(async (message) => {
-          const profile = profilesMap.get(message.sender_id);
-          const role = rolesMap.get(message.sender_id);
-          
-          if (!profile && role === 'admin') {
-            try {
-              const response = await supabase.functions.invoke('get-user-info', {
-                body: { userId: message.sender_id }
-              });
-              
-              if (response.error) throw response.error;
-              
-              const userData = response.data;
-              return {
-                id: message.id,
-                content: message.content,
-                sender: {
-                  id: message.sender_id,
-                  name: `${userData.first_name} ${userData.last_name} (Admin)`,
-                },
-                timestamp: new Date(message.created_at),
-                parent_message_id: message.parent_message_id,
-                reactions: message.reactions as Record<string, string[]> || {},
-              };
-            } catch (error) {
-              console.error('[Chat] Error fetching admin info:', error);
-              return {
-                id: message.id,
-                content: message.content,
-                sender: {
-                  id: message.sender_id,
-                  name: 'Admin',
-                },
-                timestamp: new Date(message.created_at),
-                parent_message_id: message.parent_message_id,
-                reactions: message.reactions as Record<string, string[]> || {},
-              };
+          const { data: userRole } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', message.sender_id)
+            .single();
+
+          let senderName = 'Unknown User';
+          let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.sender_id}`;
+
+          if (userRole?.role === 'interpreter') {
+            const { data: profile } = await supabase
+              .from('interpreter_profiles')
+              .select('first_name, last_name, profile_picture_url')
+              .eq('id', message.sender_id)
+              .single();
+
+            if (profile) {
+              senderName = `${profile.first_name} ${profile.last_name}`;
+              avatarUrl = profile.profile_picture_url || avatarUrl;
             }
+          } else {
+            // For admin users
+            const userData = message.sender?.raw_user_meta_data || {};
+            senderName = `${userData.first_name || ''} ${userData.last_name || ''} (Admin)`.trim();
           }
 
           return {
@@ -138,22 +103,18 @@ export const useChat = (channelId: string) => {
             content: message.content,
             sender: {
               id: message.sender_id,
-              name: profile ? `${profile.first_name} ${profile.last_name} (Interpreter)` : 'Unknown User',
-              avatarUrl: profile?.profile_picture_url,
+              name: senderName,
+              avatarUrl: avatarUrl,
             },
             timestamp: new Date(message.created_at),
             parent_message_id: message.parent_message_id,
-            reactions: message.reactions as Record<string, string[]> || {},
+            reactions: message.reactions || {},
+            attachments: message.attachments || [],
           };
-          const formattedMessage = validateAndFormatMessage(message);
-          if (!formattedMessage) {
-            console.error('Invalid message format:', message);
-            return null;
-          }
-          return formattedMessage;
         })
       )).filter((msg): msg is Message => msg !== null);
 
+      console.log('Formatted messages:', formattedMessages);
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
@@ -248,34 +209,6 @@ export const useChat = (channelId: string) => {
     return channel;
   };
 
-  useEffect(() => {
-    if (!channelId) return;
-    
-    let mentionsChannel: RealtimeChannel;
-
-    const setupSubscriptions = async () => {
-      try {
-        await fetchMessages();
-        const channel = subscribeToMessages();
-        mentionsChannel = subscribeToMentions();
-        setIsSubscribed(true);
-        setRetryCount(0);
-      } catch (error) {
-        console.error('[Chat] Error setting up subscriptions:', error);
-        handleSubscriptionError();
-      }
-    };
-
-    setupSubscriptions();
-
-    return () => {
-      if (mentionsChannel) {
-        console.log('[Chat] Cleaning up mentions subscription');
-        supabase.removeChannel(mentionsChannel);
-      }
-    };
-  }, [channelId, retryCount]);
-
   const handleSubscriptionError = () => {
     if (retryCount < MAX_RETRIES) {
       const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
@@ -321,7 +254,7 @@ export const useChat = (channelId: string) => {
       const newMessage = validateAndFormatMessage(data);
       if (!newMessage) throw new Error("Invalid message format");
       
-      setMessages(prev => [...prev, newMessage]);
+      await fetchMessages(); // Refresh messages after sending
       return data.id;
 
     } catch (error) {
@@ -415,6 +348,34 @@ export const useChat = (channelId: string) => {
       });
     }
   };
+
+  useEffect(() => {
+    if (!channelId) return;
+    
+    let mentionsChannel: RealtimeChannel;
+
+    const setupSubscriptions = async () => {
+      try {
+        await fetchMessages();
+        const channel = subscribeToMessages();
+        mentionsChannel = subscribeToMentions();
+        setIsSubscribed(true);
+        setRetryCount(0);
+      } catch (error) {
+        console.error('[Chat] Error setting up subscriptions:', error);
+        handleSubscriptionError();
+      }
+    };
+
+    setupSubscriptions();
+
+    return () => {
+      if (mentionsChannel) {
+        console.log('[Chat] Cleaning up mentions subscription');
+        supabase.removeChannel(mentionsChannel);
+      }
+    };
+  }, [channelId]);
 
   return {
     messages,
