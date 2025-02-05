@@ -1,4 +1,4 @@
-import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
+import { Trash2, MessageCircleReply, ChevronRight, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
