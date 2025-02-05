@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, UserMinus, UserPlus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ChannelMembersDialogProps {
   isOpen: boolean;
@@ -27,12 +37,18 @@ interface User {
   role: string;
 }
 
+interface Member extends User {
+  joined_at: string;
+}
+
 export const ChannelMembersDialog = ({
   isOpen,
   onClose,
   channelId,
 }: ChannelMembersDialogProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
   // Fetch current channel members
@@ -41,78 +57,79 @@ export const ChannelMembersDialog = ({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("channel_members")
-        .select("user_id")
+        .select(`
+          user_id,
+          joined_at,
+          interpreter_profiles!inner (
+            id,
+            email,
+            first_name,
+            last_name
+          ),
+          user_roles!inner (
+            role
+          )
+        `)
         .eq("channel_id", channelId);
 
       if (error) throw error;
-      return data.map(member => member.user_id);
+
+      return data.map(member => ({
+        id: member.user_id,
+        email: member.interpreter_profiles.email,
+        first_name: member.interpreter_profiles.first_name,
+        last_name: member.interpreter_profiles.last_name,
+        role: member.user_roles.role,
+        joined_at: member.joined_at,
+      }));
     },
+    enabled: isOpen,
   });
 
-  // Fetch available users with their roles and profiles
-  const { data: users = [] } = useQuery({
-    queryKey: ["users", searchQuery],
+  // Fetch available users
+  const { data: availableUsers = [] } = useQuery({
+    queryKey: ["available-users", searchQuery],
     queryFn: async () => {
-      // First get all users with their roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select(`
-          user_id,
-          role
-        `);
-
-      if (rolesError) throw rolesError;
-
-      // Then get interpreter profiles for those who have them
-      const { data: profiles, error: profilesError } = await supabase
-        .from('interpreter_profiles')
+      const { data: users, error } = await supabase
+        .from("interpreter_profiles")
         .select(`
           id,
           email,
           first_name,
-          last_name
-        `);
+          last_name,
+          user_roles!inner (
+            role
+          )
+        `)
+        .ilike("email", `%${searchQuery}%`)
+        .limit(10);
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      // Create a map of profiles for easy lookup
-      const profilesMap = new Map(
-        profiles?.map(profile => [profile.id, profile]) || []
-      );
-
-      // For each user role, combine with profile info if it exists
-      return userRoles.map(userRole => {
-        const profile = profilesMap.get(userRole.user_id);
-        
-        if (!profile) {
-          // For users without interpreter profiles (like admins), fetch basic info
-          return {
-            id: userRole.user_id,
-            email: "", // This will be populated via the edge function
-            first_name: "", // This will be populated via the edge function
-            last_name: "", // This will be populated via the edge function
-            role: userRole.role,
-          };
-        }
-
-        return {
-          id: userRole.user_id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          role: userRole.role,
-        };
-      });
+      return users.map(user => ({
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.user_roles.role,
+      }));
     },
+    enabled: isOpen && searchQuery.length > 0,
   });
 
-  const addMember = async (userId: string) => {
+  useEffect(() => {
+    if (currentMembers) {
+      setMembers(currentMembers);
+    }
+  }, [currentMembers]);
+
+  const addMember = async (user: User) => {
     try {
       const { error } = await supabase
         .from("channel_members")
         .insert({
           channel_id: channelId,
-          user_id: userId,
+          user_id: user.id,
         });
 
       if (error) throw error;
@@ -133,13 +150,13 @@ export const ChannelMembersDialog = ({
     }
   };
 
-  const removeMember = async (userId: string) => {
+  const removeMember = async (member: Member) => {
     try {
       const { error } = await supabase
         .from("channel_members")
         .delete()
         .eq("channel_id", channelId)
-        .eq("user_id", userId);
+        .eq("user_id", member.id);
 
       if (error) throw error;
 
@@ -148,6 +165,7 @@ export const ChannelMembersDialog = ({
         description: "L'utilisateur a été retiré du canal avec succès",
       });
 
+      setUserToRemove(null);
       refetchMembers();
     } catch (error) {
       console.error("Error removing member:", error);
@@ -159,40 +177,66 @@ export const ChannelMembersDialog = ({
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    !currentMembers.includes(user.id) &&
-    (user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredUsers = availableUsers.filter(
+    user => !members.some(member => member.id === user.id)
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle>Gérer les membres du canal</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Gérer les membres du canal</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un utilisateur..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
-          </div>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un utilisateur..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
 
-          <ScrollArea className="h-[50vh]">
-            <div className="space-y-4">
-              {currentMembers.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Membres actuels</h3>
-                  <div className="space-y-2">
-                    {users
-                      .filter(user => currentMembers.includes(user.id))
-                      .map(user => (
+            <ScrollArea className="h-[50vh]">
+              <div className="space-y-4">
+                {members.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2">Membres actuels</h3>
+                    <div className="space-y-2">
+                      {members.map(member => (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-2 rounded-lg border"
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {member.first_name} {member.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {member.email} ({member.role})
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setUserToRemove(member)}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {searchQuery && filteredUsers.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
+                    <div className="space-y-2">
+                      {filteredUsers.map(user => (
                         <div
                           key={user.id}
                           className="flex items-center justify-between p-2 rounded-lg border"
@@ -206,51 +250,44 @@ export const ChannelMembersDialog = ({
                             </p>
                           </div>
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
-                            onClick={() => removeMember(user.id)}
+                            onClick={() => addMember(user)}
                           >
-                            Retirer
+                            <UserPlus className="h-4 w-4" />
                           </Button>
                         </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              {filteredUsers.length > 0 && (
-                <div>
-                  <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
-                  <div className="space-y-2">
-                    {filteredUsers.map(user => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-2 rounded-lg border"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {user.first_name} {user.last_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {user.email} ({user.role})
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addMember(user.id)}
-                        >
-                          Ajouter
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <AlertDialog open={!!userToRemove} onOpenChange={() => setUserToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer le retrait du membre</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir retirer {userToRemove?.first_name} {userToRemove?.last_name} du canal ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToRemove(null)}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => userToRemove && removeMember(userToRemove)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Retirer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
