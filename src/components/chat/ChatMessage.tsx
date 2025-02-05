@@ -11,11 +11,6 @@ interface Attachment {
   size: number;
 }
 
-interface Reaction {
-  emoji: string;
-  users: string[];
-}
-
 interface ChatMessageProps {
   content: string;
   sender: {
@@ -73,7 +68,7 @@ export const ChatMessage = ({
 
   return (
     <div className={cn(
-      "flex gap-3 mb-4",
+      "flex gap-3 mb-4 group animate-fade-in",
       isCurrentUser ? "flex-row-reverse" : "flex-row",
       isReply && "ml-8"
     )}>
@@ -83,17 +78,19 @@ export const ChatMessage = ({
           <span>Reply to {parentSender?.name}</span>
         </div>
       )}
-      <Avatar className="h-8 w-8">
+      <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
         {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
         <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className={cn(
-        "flex flex-col max-w-[70%]",
+        "flex flex-col max-w-[70%] gap-1",
         isCurrentUser ? "items-end" : "items-start"
       )}>
         <div className={cn(
-          "rounded-lg px-4 py-2 group relative",
-          isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted"
+          "rounded-2xl px-4 py-2 group relative transition-all duration-200",
+          isCurrentUser ? 
+            "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground shadow-md" : 
+            "bg-gradient-to-br from-muted/80 to-muted/95 shadow-sm"
         )}>
           <p className="text-sm">{content}</p>
           {attachments.length > 0 && (
@@ -105,8 +102,10 @@ export const ChatMessage = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(
-                    "flex items-center gap-2 p-2 rounded-md transition-colors",
-                    isCurrentUser ? "bg-primary-foreground/10 hover:bg-primary-foreground/20" : "bg-background/50 hover:bg-background"
+                    "flex items-center gap-2 p-2 rounded-xl transition-colors duration-200",
+                    isCurrentUser ? 
+                      "bg-primary-foreground/10 hover:bg-primary-foreground/20" : 
+                      "bg-background/50 hover:bg-background backdrop-blur-sm"
                   )}
                 >
                   {getFileIcon(attachment.type)}
@@ -128,7 +127,7 @@ export const ChatMessage = ({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "absolute top-1/2 -translate-y-1/2",
+                  "absolute top-1/2 -translate-y-1/2 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200",
                   isCurrentUser ? "-right-8" : "-left-8"
                 )}
                 onClick={onDelete}
@@ -141,7 +140,7 @@ export const ChatMessage = ({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "absolute top-1/2 -translate-y-1/2",
+                  "absolute top-1/2 -translate-y-1/2 hover:bg-primary/10 hover:text-primary transition-colors duration-200",
                   isCurrentUser ? 
                     onDelete ? "-right-16" : "-right-8" : 
                     "-left-8"
@@ -153,7 +152,7 @@ export const ChatMessage = ({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 px-1">
           <span className="text-xs text-muted-foreground">
             {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
@@ -164,7 +163,7 @@ export const ChatMessage = ({
                   key={emoji}
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs"
+                  className="h-6 px-2 text-xs hover:bg-muted/50 transition-colors duration-200"
                   onClick={() => onReact?.(emoji)}
                 >
                   {emoji} {users.length}
@@ -173,7 +172,11 @@ export const ChatMessage = ({
             ))}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 hover:bg-muted/50 transition-colors duration-200"
+                >
                   <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -184,7 +187,7 @@ export const ChatMessage = ({
                       key={emoji}
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors duration-200"
                       onClick={() => onReact?.(emoji)}
                     >
                       <Icon className="h-4 w-4" />

@@ -117,9 +117,9 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="border-t bg-gradient-to-b from-background/95 to-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-200">
       {replyTo && (
-        <div className="px-4 py-2 bg-muted/30 backdrop-blur-sm border-b flex items-center justify-between">
+        <div className="px-4 py-2 bg-muted/30 backdrop-blur-sm border-b flex items-center justify-between animate-fade-in">
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
               Replying to {replyTo.sender.name}
@@ -130,24 +130,24 @@ export const ChatInput = ({
             variant="ghost"
             size="icon"
             onClick={onCancelReply}
-            className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+            className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       )}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 bg-muted/20 backdrop-blur-sm flex flex-wrap gap-2 border-b">
+        <div className="px-4 py-2 bg-muted/20 backdrop-blur-sm flex flex-wrap gap-2 border-b animate-fade-in">
           {attachments.map((attachment, index) => (
             <div 
               key={index} 
-              className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-md px-2 py-1 text-sm border shadow-sm"
+              className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-lg px-3 py-1.5 text-sm border shadow-sm transition-all duration-200 hover:shadow-md"
             >
               <span className="truncate max-w-[200px]">{attachment.filename}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-4 w-4 hover:bg-destructive/10 hover:text-destructive"
+                className="h-4 w-4 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
                 onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
               >
                 <X className="h-3 w-3" />
@@ -171,7 +171,7 @@ export const ChatInput = ({
               variant="ghost"
               size="icon"
               onClick={handleFileSelect}
-              className="h-9 w-9 flex-shrink-0 hover:bg-muted/50"
+              className="h-9 w-9 flex-shrink-0 hover:bg-muted/50 transition-colors duration-200"
               disabled={uploadingFiles}
             >
               {uploadingFiles ? (
@@ -186,7 +186,7 @@ export const ChatInput = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 flex-shrink-0 hover:bg-muted/50"
+                  className="h-9 w-9 flex-shrink-0 hover:bg-muted/50 transition-colors duration-200"
                 >
                   <Smile className="h-5 w-5 text-muted-foreground" />
                 </Button>
@@ -197,7 +197,7 @@ export const ChatInput = ({
                     <Button
                       key={emoji}
                       variant="ghost"
-                      className="h-8 w-8 p-0 hover:bg-muted"
+                      className="h-8 w-8 p-0 hover:bg-muted transition-colors duration-200"
                       onClick={() => insertEmoji(emoji)}
                     >
                       {emoji}
@@ -213,7 +213,7 @@ export const ChatInput = ({
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Write your message..."
             className={cn(
-              "min-h-[44px] max-h-[200px] resize-none bg-muted/30 focus:bg-background transition-colors",
+              "min-h-[44px] max-h-[200px] resize-none bg-muted/30 focus:bg-background transition-colors duration-200 rounded-xl",
               replyTo && "rounded-t-none"
             )}
             onKeyDown={(e) => {
@@ -227,8 +227,12 @@ export const ChatInput = ({
         <Button 
           type="submit" 
           disabled={(!message.trim() && attachments.length === 0) || isLoading || uploadingFiles}
-          className="px-4 h-9 flex-shrink-0"
-          variant={message.trim() || attachments.length > 0 ? "default" : "secondary"}
+          className={cn(
+            "px-4 h-9 flex-shrink-0 rounded-xl transition-all duration-200",
+            message.trim() || attachments.length > 0 ? 
+              "bg-primary hover:bg-primary/90" : 
+              "bg-secondary hover:bg-secondary/90"
+          )}
         >
           <MessageSquare className="h-4 w-4" />
         </Button>

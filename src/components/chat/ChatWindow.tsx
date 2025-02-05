@@ -60,8 +60,11 @@ export const ChatWindow = ({
   const messageMap = new Map(messages.map(message => [message.id, message]));
 
   return (
-    <div className="flex flex-col h-full bg-background border rounded-lg">
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+    <div className="flex flex-col h-full bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
+      <ScrollArea 
+        className="flex-1 p-4 space-y-4 overflow-hidden" 
+        ref={scrollRef}
+      >
         {messages.map((message) => {
           const parentMessage = message.parent_message_id 
             ? messageMap.get(message.parent_message_id) 
