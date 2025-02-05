@@ -1,109 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
+import { Message } from '@/types/messaging';
+import { useMessageFormatter } from './chat/useMessageFormatter';
+import { useSubscriptions } from './chat/useSubscriptions';
+import { useMessageActions } from './chat/useMessageActions';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 3;
 
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
-
-  const formatMessage = async (messageData: MessageData): Promise<Message | null> => {
-    if (!messageData?.id || !messageData?.sender_id) {
-      console.error('Missing required message data:', messageData);
-      return null;
-    }
-
-    try {
-      const { data: senderDetails, error: senderError } = await supabase
-        .rpc('get_message_sender_details', {
-          sender_id: messageData.sender_id
-        })
-        .single();
-
-      if (senderError) {
-        console.error('Error fetching sender details:', senderError);
-        return null;
-      }
-
-      // Parse and validate reactions
-      let parsedReactions: Record<string, string[]> = {};
-      try {
-        if (typeof messageData.reactions === 'string') {
-          parsedReactions = JSON.parse(messageData.reactions);
-        } else if (messageData.reactions && typeof messageData.reactions === 'object') {
-          parsedReactions = messageData.reactions as Record<string, string[]>;
-        }
-        
-        // Validate reactions structure
-        Object.entries(parsedReactions).forEach(([emoji, users]) => {
-          if (!Array.isArray(users)) {
-            console.error('Invalid reactions structure:', emoji, users);
-            parsedReactions[emoji] = [];
-          }
-        });
-      } catch (e) {
-        console.error('Error parsing reactions:', e);
-        parsedReactions = {};
-      }
-
-      // Parse and validate attachments using type guard
-      const parsedAttachments: Attachment[] = [];
-      if (Array.isArray(messageData.attachments)) {
-        for (const att of messageData.attachments) {
-          if (isAttachment(att)) {
-            parsedAttachments.push(att);
-          } else if (typeof att === 'object' && att !== null) {
-            // Attempt to construct a valid attachment from the object
-            const constructedAttachment = {
-              url: String(att['url'] || ''),
-              filename: String(att['filename'] || ''),
-              type: String(att['type'] || ''),
-              size: Number(att['size'] || 0)
-            };
-            if (isAttachment(constructedAttachment)) {
-              parsedAttachments.push(constructedAttachment);
-            }
-          }
-        }
-      }
-
-      // Ensure sender details are properly constructed
-      const sender = {
-        id: messageData.sender_id,
-        name: senderDetails?.name || 'Unknown User',
-        avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
-      };
-
-      const formatted: Message = {
-        id: messageData.id,
-        content: messageData.content || '',
-        sender,
-        timestamp: new Date(messageData.created_at),
-        parent_message_id: messageData.parent_message_id || undefined,
-        reactions: parsedReactions,
-        attachments: parsedAttachments
-      };
-
-      return formatted;
-    } catch (error) {
-      console.error('Error formatting message:', error);
-      return null;
-    }
-  };
+  const { formatMessage } = useMessageFormatter();
 
   const fetchMessages = async () => {
     if (!channelId) return;
@@ -142,248 +51,47 @@ export const useChat = (channelId: string) => {
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const subscribeToMessages = () => {
-    console.log('[Chat] Setting up real-time subscription for channel:', channelId);
-    
-    const channel = supabase
-      .channel(`messages:${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        async (payload) => {
-          console.log('[Chat] Received real-time update:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            setMessages(prevMessages => 
-              prevMessages.map(msg => 
-                msg.id === payload.new.id 
-                  ? {
-                      ...msg,
-                      reactions: payload.new.reactions || {}
-                    }
-                  : msg
-              )
-            );
-          } else {
-            await fetchMessages();
-          }
-          
-          if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
-            toast({
-              title: "Nouveau message",
-              description: "Un nouveau message a été reçu",
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[Chat] Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          setIsSubscribed(true);
-        } else if (status === 'CHANNEL_ERROR') {
-          handleSubscriptionError();
-        }
-      });
+  const { subscribeToMessages, subscribeToMentions } = useSubscriptions(
+    channelId,
+    currentUserId,
+    retryCount,
+    setRetryCount,
+    fetchMessages
+  );
 
-    return channel;
-  };
+  const { sendMessage, deleteMessage, reactToMessage } = useMessageActions(
+    channelId,
+    currentUserId,
+    fetchMessages
+  );
 
-  const subscribeToMentions = () => {
-    console.log('[Chat] Setting up mentions subscription');
-    
-    const channel = supabase
-      .channel(`mentions:${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'message_mentions',
-          filter: `channel_id=eq.${channelId}`,
-        },
-        async (payload) => {
-          console.log('[Chat] Received mention update:', payload);
-          if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
-            toast({
-              title: "New Mention",
-              description: "You were mentioned in a message",
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[Chat] Mentions subscription status:', status);
-      });
-
-    return channel;
-  };
-
-  const handleSubscriptionError = () => {
-    if (retryCount < MAX_RETRIES) {
-      const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-      }, timeout);
-    } else {
-      toast({
-        title: "Erreur de connexion",
-        description: "Impossible de se connecter au chat. Veuillez rafraîchir la page.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendMessage = async (
-    content: string,
-    parentMessageId?: string,
-    attachments: Attachment[] = []
-  ): Promise<string> => {
-    if (!channelId || !currentUserId) throw new Error("Missing required data");
-    if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
-    
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert({
-          channel_id: channelId,
-          sender_id: currentUserId,
-          content: content.trim(),
-          parent_message_id: parentMessageId,
-          attachments: attachments.map(att => ({
-            url: att.url,
-            filename: att.filename,
-            type: att.type,
-            size: att.size
-          })),
-          reactions: {}
-        })
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      if (!data) throw new Error("No data returned from insert");
-
-      await fetchMessages();
-      return data.id;
-
-    } catch (error) {
-      console.error('[Chat] Error sending message:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send message",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deleteMessage = async (messageId: string) => {
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('id', messageId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Message deleted",
-      });
-    } catch (error) {
-      console.error('[Chat] Error deleting message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete message",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const reactToMessage = async (messageId: string, emoji: string) => {
-    if (!currentUserId) return;
-
-    try {
-      const message = messages.find(m => m.id === messageId);
-      if (!message) return;
-
-      const currentReactions = message.reactions || {};
-      const currentUsers = currentReactions[emoji] || [];
-      
-      let updatedUsers;
-      if (currentUsers.includes(currentUserId)) {
-        updatedUsers = currentUsers.filter(id => id !== currentUserId);
-      } else {
-        updatedUsers = [...currentUsers, currentUserId];
-      }
-
-      const updatedReactions = {
-        ...currentReactions,
-        [emoji]: updatedUsers
-      };
-
-      if (updatedUsers.length === 0) {
-        delete updatedReactions[emoji];
-      }
-
-      setMessages(prevMessages =>
-        prevMessages.map(msg =>
-          msg.id === messageId
-            ? { ...msg, reactions: updatedReactions }
-            : msg
-        )
-      );
-
-      const { error } = await supabase
-        .from('chat_messages')
-        .update({ reactions: updatedReactions })
-        .eq('id', messageId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('[Chat] Error updating reaction:', error);
-      await fetchMessages();
-      toast({
-        title: "Error",
-        description: "Failed to update reaction",
-        variant: "destructive",
-      });
-    }
-  };
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     if (!channelId) return;
     
-    let mentionsChannel: RealtimeChannel;
+    let mentionsChannel;
 
     const setupSubscriptions = async () => {
       try {
         await fetchMessages();
-        const channel = subscribeToMessages();
+        subscribeToMessages();
         mentionsChannel = subscribeToMentions();
         setIsSubscribed(true);
         setRetryCount(0);
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
-        handleSubscriptionError();
       }
     };
 
