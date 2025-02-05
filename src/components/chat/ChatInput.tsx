@@ -54,7 +54,7 @@ export const ChatInput = ({
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: channelMembers = [], isLoading: isLoadingMembers } = useQuery({
+  const { data: channelMembers = [] } = useQuery<ChannelMember[]>({
     queryKey: ['channelMembers', channelId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_channel_members', {
@@ -62,15 +62,8 @@ export const ChatInput = ({
       });
       
       if (error) throw error;
-      
-      // Map the channel members to match the User interface
-      return (data as ChannelMember[]).map(member => ({
-        id: member.user_id,
-        email: member.email,
-        first_name: member.first_name,
-        last_name: member.last_name,
-        role: member.role
-      }));
+      console.log('Channel members:', data); // Debug log
+      return data;
     },
     enabled: !!channelId
   });
@@ -79,7 +72,7 @@ export const ChatInput = ({
     if (e.key === '@') {
       setIsMentioning(true);
       setCursorPosition(e.currentTarget.selectionStart || 0);
-      setMentionQuery(''); // Reset mention query when @ is typed
+      setMentionQuery('');
     }
   };
 
@@ -92,12 +85,12 @@ export const ChatInput = ({
     );
   });
 
-  const handleMentionSelect = (user: User) => {
+  const handleMentionSelect = (member: ChannelMember) => {
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
     const afterMention = message.slice(cursorPosition);
-    const mentionText = `@${user.first_name} ${user.last_name}`;
+    const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
     setIsMentioning(false);
@@ -162,7 +155,7 @@ export const ChatInput = ({
                     <CommandGroup>
                       {filteredMembers.map((member) => (
                         <CommandItem
-                          key={member.id}
+                          key={member.user_id}
                           value={`${member.first_name} ${member.last_name}`}
                           onSelect={() => handleMentionSelect(member)}
                         >
