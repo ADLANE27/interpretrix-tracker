@@ -56,7 +56,6 @@ export const ChatInput = ({
       const newMessage = message.substring(0, start) + emoji + message.substring(end);
       setMessage(newMessage);
       
-      // Set cursor position after the inserted emoji
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
         textarea.focus();
@@ -118,7 +117,7 @@ export const ChatInput = ({
   };
 
   return (
-    <div className="border-t">
+    <div className="border-t bg-background">
       {replyTo && (
         <div className="px-4 py-2 bg-muted/50 flex items-center justify-between">
           <div className="flex flex-col">
@@ -154,7 +153,7 @@ export const ChatInput = ({
           ))}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="flex items-end gap-2 p-4 pb-6">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2 p-4">
         <div className="flex-1 flex gap-2">
           <input
             type="file"
@@ -163,49 +162,47 @@ export const ChatInput = ({
             className="hidden"
             multiple
           />
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={handleFileSelect}
-                className="h-9 w-9 flex-shrink-0 hover:bg-muted"
-                disabled={uploadingFiles}
-              >
-                {uploadingFiles ? (
-                  <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
-                ) : (
-                  <Paperclip className="h-5 w-5 text-muted-foreground" />
-                )}
-              </Button>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 flex-shrink-0 hover:bg-muted"
-                  >
-                    <Smile className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-2">
-                  <div className="grid grid-cols-10 gap-1">
-                    {EMOJI_LIST.map((emoji) => (
-                      <Button
-                        key={emoji}
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={() => insertEmoji(emoji)}
-                      >
-                        {emoji}
-                      </Button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleFileSelect}
+              className="h-9 w-9 flex-shrink-0"
+              disabled={uploadingFiles}
+            >
+              {uploadingFiles ? (
+                <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+              ) : (
+                <Paperclip className="h-5 w-5 text-muted-foreground" />
+              )}
+            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 flex-shrink-0"
+                >
+                  <Smile className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px] p-2">
+                <div className="grid grid-cols-10 gap-1">
+                  {EMOJI_LIST.map((emoji) => (
+                    <Button
+                      key={emoji}
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => insertEmoji(emoji)}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <Textarea
             ref={textareaRef}
