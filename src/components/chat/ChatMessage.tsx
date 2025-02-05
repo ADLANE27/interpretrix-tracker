@@ -1,7 +1,14 @@
-import { Trash2, MessageCircleReply, ChevronRight } from 'lucide-react';
+import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface Attachment {
+  url: string;
+  filename: string;
+  type: string;
+  size: number;
+}
 
 interface ChatMessageProps {
   content: string;
@@ -18,6 +25,7 @@ interface ChatMessageProps {
   parentSender?: {
     name: string;
   };
+  attachments?: Attachment[];
 }
 
 export const ChatMessage = ({ 
@@ -28,8 +36,24 @@ export const ChatMessage = ({
   onDelete,
   onReply,
   isReply,
-  parentSender
+  parentSender,
+  attachments = []
 }: ChatMessageProps) => {
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith('image/')) {
+      return <ImageIcon className="h-4 w-4" />;
+    }
+    return <FileText className="h-4 w-4" />;
+  };
+
   return (
     <div className={cn(
       "flex gap-3 mb-4",
@@ -55,6 +79,32 @@ export const ChatMessage = ({
           isCurrentUser ? "bg-primary text-primary-foreground" : "bg-muted"
         )}>
           <p className="text-sm">{content}</p>
+          {attachments.length > 0 && (
+            <div className="mt-2 space-y-2">
+              {attachments.map((attachment, index) => (
+                <a
+                  key={index}
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-md transition-colors",
+                    isCurrentUser ? "bg-primary-foreground/10 hover:bg-primary-foreground/20" : "bg-background/50 hover:bg-background"
+                  )}
+                >
+                  {getFileIcon(attachment.type)}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate max-w-[200px]">
+                      {attachment.filename}
+                    </span>
+                    <span className="text-xs opacity-70">
+                      {formatFileSize(attachment.size)}
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
           <div className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
             {isCurrentUser && onDelete && (
               <Button
