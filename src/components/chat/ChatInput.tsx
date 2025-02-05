@@ -31,6 +31,15 @@ interface User {
   role: string;
 }
 
+interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: "admin" | "interpreter";
+  joined_at: string;
+}
+
 export const ChatInput = ({
   onSendMessage,
   isLoading,
@@ -53,7 +62,15 @@ export const ChatInput = ({
       });
       
       if (error) throw error;
-      return data as User[];
+      
+      // Map the channel members to match the User interface
+      return (data as ChannelMember[]).map(member => ({
+        id: member.user_id,
+        email: member.email,
+        first_name: member.first_name,
+        last_name: member.last_name,
+        role: member.role
+      }));
     },
     enabled: !!channelId
   });
