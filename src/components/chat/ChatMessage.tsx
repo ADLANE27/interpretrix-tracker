@@ -121,36 +121,6 @@ export const ChatMessage = ({
               ))}
             </div>
           )}
-          <div className="absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            {isCurrentUser && onDelete && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "absolute top-1/2 -translate-y-1/2 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200",
-                  isCurrentUser ? "-right-8" : "-left-8"
-                )}
-                onClick={onDelete}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-            {onReply && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "absolute top-1/2 -translate-y-1/2 hover:bg-primary/10 hover:text-primary transition-colors duration-200",
-                  isCurrentUser ? 
-                    onDelete ? "-right-16" : "-right-8" : 
-                    "-left-8"
-                )}
-                onClick={onReply}
-              >
-                <MessageCircleReply className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
         </div>
         <div className="flex items-center gap-2 px-1">
           <span className="text-xs text-muted-foreground">
@@ -170,6 +140,26 @@ export const ChatMessage = ({
                 </Button>
               )
             ))}
+            {isCurrentUser && onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            {onReply && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary transition-colors duration-200"
+                onClick={onReply}
+              >
+                <MessageCircleReply className="h-4 w-4" />
+              </Button>
+            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button 
