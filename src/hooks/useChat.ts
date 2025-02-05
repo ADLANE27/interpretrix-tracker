@@ -77,7 +77,7 @@ export const useChat = (channelId: string) => {
         content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: 'Unknown User', // Will be updated with actual name
+          name: 'Unknown User',
           avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
