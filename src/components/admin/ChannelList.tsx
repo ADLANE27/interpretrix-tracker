@@ -187,7 +187,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                       setIsMembersDialogOpen(true);
                     }}>
                       <UserPlus className="h-4 w-4 mr-2" />
-                      Ajouter des membres
+                      Ajouter un membre
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       setSelectedChannelId(channel.id);
