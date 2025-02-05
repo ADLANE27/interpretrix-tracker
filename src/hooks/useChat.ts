@@ -11,6 +11,8 @@ interface Message {
     avatarUrl?: string;
   };
   timestamp: Date;
+  parent_message_id?: string;
+  attachments?: any[];
 }
 
 export const useChat = (channelId: string) => {
@@ -170,7 +172,7 @@ export const useChat = (channelId: string) => {
     };
   };
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []) => {
     if (!channelId || !currentUserId) return;
     
     setIsLoading(true);
@@ -181,6 +183,8 @@ export const useChat = (channelId: string) => {
           channel_id: channelId,
           sender_id: currentUserId,
           content,
+          parent_message_id: parentMessageId,
+          attachments
         });
 
       if (error) throw error;
