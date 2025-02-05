@@ -30,6 +30,28 @@ export const useChat = (channelId: string) => {
         return null;
       }
 
+      // Ensure reactions is a valid Record<string, string[]>
+      const reactions: Record<string, string[]> = {};
+      if (messageData.reactions && typeof messageData.reactions === 'object') {
+        Object.entries(messageData.reactions).forEach(([emoji, users]) => {
+          if (Array.isArray(users)) {
+            reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
+          }
+        });
+      }
+
+      // Ensure attachments match the schema
+      const attachments = messageData.attachments && Array.isArray(messageData.attachments) 
+        ? messageData.attachments
+            .filter(att => att && typeof att === 'object')
+            .map(att => ({
+              url: String(att.url || ''),
+              filename: String(att.filename || ''),
+              type: String(att.type || ''),
+              size: Number(att.size || 0)
+            }))
+        : [];
+
       const parsedMessage = MessageSchema.parse({
         id: messageData.id,
         content: messageData.content || '',
@@ -40,10 +62,8 @@ export const useChat = (channelId: string) => {
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || null,
-        reactions: messageData.reactions || {},
-        attachments: messageData.attachments ? messageData.attachments.map((att: any) => 
-          AttachmentSchema.parse(att)
-        ) : []
+        reactions: reactions,
+        attachments: attachments
       });
       return parsedMessage;
     } catch (error) {
@@ -265,7 +285,7 @@ export const useChat = (channelId: string) => {
           sender_id: currentUserId,
           content: content.trim(),
           parent_message_id: parentMessageId,
-          attachments,
+          attachments: attachments,
           reactions: {}
         })
         .select('*')
