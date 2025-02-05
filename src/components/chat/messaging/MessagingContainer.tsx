@@ -44,6 +44,28 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     }
   };
 
+  const handleSendMessage = async (content: string, parentMessageId?: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          channel_id: channelId,
+          content,
+          sender_id: currentUserId,
+          parent_message_id: parentMessageId,
+          reactions: {}
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-full bg-gradient-to-br from-background to-muted/30 border rounded-lg shadow-lg items-center justify-center">
@@ -82,7 +104,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
       </div>
       <div className="mt-auto border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <MessageComposer
-          onSendMessage={sendMessage}
+          onSendMessage={handleSendMessage}
           isLoading={isLoading}
           replyTo={replyTo || undefined}
           onCancelReply={() => setReplyTo(null)}

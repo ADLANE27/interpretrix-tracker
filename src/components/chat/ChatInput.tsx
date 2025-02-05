@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, parentMessageId?: string) => void;
+  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
   isLoading?: boolean;
   replyTo?: {
     id: string;
@@ -88,12 +88,49 @@ export const ChatInput = ({
     textareaRef.current.focus();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || isLoading) return;
+    if (!message.trim() || isLoading || !currentUserId) return;
 
-    onSendMessage(message, replyTo?.id);
-    setMessage("");
+    try {
+      // Send the message and get its ID
+      const messageId = await onSendMessage(message, replyTo?.id);
+
+      // Extract mentions from the message
+      const mentionRegex = /@([A-Za-z\s]+)/g;
+      const mentions = message.match(mentionRegex);
+
+      if (mentions && messageId) {
+        // Find mentioned users and create mention records
+        const mentionPromises = mentions.map(async (mention) => {
+          const userName = mention.slice(1); // Remove @ symbol
+          const matchingMember = channelMembers.find(member => 
+            `${member.first_name} ${member.last_name}` === userName
+          );
+
+          if (matchingMember) {
+            return supabase
+              .from('message_mentions')
+              .insert({
+                message_id: messageId,
+                channel_id: channelId,
+                mentioned_user_id: matchingMember.user_id,
+                mentioning_user_id: currentUserId,
+                status: 'unread'
+              });
+          }
+        });
+
+        await Promise.all(mentionPromises);
+      }
+
+      setMessage("");
+      if (replyTo && onCancelReply) {
+        onCancelReply();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   return (
