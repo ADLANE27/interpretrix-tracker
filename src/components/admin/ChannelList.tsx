@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Settings, Trash2 } from "lucide-react";
+import { Plus, Users, Settings, Trash2, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
@@ -174,10 +174,26 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   </div>
                 )}
               </button>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity px-2">
+              <div className="flex items-center gap-2 px-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedChannelId(channel.id);
+                    setIsMembersDialogOpen(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Ajouter des membres"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
