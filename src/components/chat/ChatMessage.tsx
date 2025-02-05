@@ -68,7 +68,7 @@ export const ChatMessage = ({
       {isReply && (
         <div className="absolute left-2 flex items-center text-muted-foreground text-xs gap-1">
           <ChevronRight className="h-3 w-3" />
-          <span>Reply to {parentSender?.name}</span>
+          <span>{parentSender?.name}</span>
         </div>
       )}
       <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
