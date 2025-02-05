@@ -20,6 +20,7 @@ interface ChatInputProps {
   };
   onCancelReply?: () => void;
   channelId: string;
+  currentUserId: string | null; // Add this prop
 }
 
 interface ChannelMember {
@@ -37,7 +38,8 @@ export const ChatInput = ({
   isLoading = false,
   replyTo,
   onCancelReply,
-  channelId
+  channelId,
+  currentUserId // Add this to destructuring
 }: ChatInputProps) => {
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);

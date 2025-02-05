@@ -261,7 +261,8 @@ export const useChat = (channelId: string) => {
       const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
-        setupSubscription();
+        // Remove this line since setupSubscription doesn't exist
+        // setupSubscription();
       }, timeout);
     } else {
       toast({

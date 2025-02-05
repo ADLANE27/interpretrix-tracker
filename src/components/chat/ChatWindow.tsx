@@ -28,7 +28,7 @@ export const ChatWindow = ({
   messages, 
   onSendMessage,
   isLoading,
-  channelId // Destructure channelId
+  channelId
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { currentUserId, deleteMessage, reactToMessage } = useChat('');
@@ -94,7 +94,8 @@ export const ChatWindow = ({
         isLoading={isLoading}
         replyTo={replyTo || undefined}
         onCancelReply={() => setReplyTo(null)}
-        channelId={channelId} // Pass channelId to ChatInput
+        channelId={channelId}
+        currentUserId={currentUserId} // Add this prop
       />
     </div>
   );
