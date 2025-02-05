@@ -1,5 +1,4 @@
 
-import { useState } from "react";
 import { UserPlus, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,7 +50,6 @@ export const ChannelMemberManagement = ({
   onClose,
   channelId,
 }: ChannelMemberManagementProps) => {
-  const [showAddMembers, setShowAddMembers] = useState(false);
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
@@ -68,12 +66,12 @@ export const ChannelMemberManagement = ({
     enabled: isOpen,
   });
 
-  const { data: availableUsers = [], refetch: refetchAvailableUsers } = useQuery({
-    queryKey: ["available-users", channelId],
+  const { data: nonMembers = [], refetch: refetchNonMembers } = useQuery({
+    queryKey: ["non-channel-members", channelId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_available_channel_users', {
         channel_id: channelId,
-        search_query: '' // Empty search to get all users
+        search_query: '' // Empty search since we want all users
       });
 
       if (error) throw error;
@@ -99,8 +97,7 @@ export const ChannelMemberManagement = ({
       });
 
       refetchMembers();
-      refetchAvailableUsers();
-      setShowAddMembers(false);
+      refetchNonMembers();
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
@@ -128,7 +125,7 @@ export const ChannelMemberManagement = ({
 
       setUserToRemove(null);
       refetchMembers();
-      refetchAvailableUsers();
+      refetchNonMembers();
     } catch (error: any) {
       console.error("Error removing member:", error);
       toast({
@@ -149,21 +146,11 @@ export const ChannelMemberManagement = ({
 
           <ScrollArea className="h-[50vh]">
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => setShowAddMembers(!showAddMembers)}
-                  className="gap-2"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Ajouter un membre
-                </Button>
-              </div>
-
-              {showAddMembers && (
+              {nonMembers.length > 0 && (
                 <div>
-                  <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
+                  <h3 className="font-medium mb-2">Utilisateurs non membres</h3>
                   <div className="space-y-2">
-                    {availableUsers.map(user => (
+                    {nonMembers.map(user => (
                       <div
                         key={user.user_id}
                         className="flex items-center justify-between p-2 rounded-lg border"
