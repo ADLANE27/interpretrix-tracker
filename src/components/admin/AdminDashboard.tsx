@@ -22,7 +22,6 @@ const LANGUAGES = [
   "Néerlandais", "Grec", "Russe", "Ukrainien", "Polonais", "Roumain", "Bulgare", "Hongrois",
   "Tchèque", "Slovaque", "Croate", "Serbe", "Albanais", "Macédonien", "Lituanien", "Letton",
   "Estonien", "Finnois", "Suédois", "Norvégien", "Danois", "Islandais",
-  "Estonien", "Finnois", "Suédois", "Norvégien", "Danois", "Islandais",
   
   // Langues d'Afrique
   "Zaghawa", "Four", "Amharique", "Tigrigna", "Oromo", "Somali", "Swahili",
