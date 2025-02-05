@@ -33,27 +33,18 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Fetch available users with their roles
   const { data: users = [] } = useQuery({
     queryKey: ["users", searchQuery],
     queryFn: async () => {
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role
-        `);
+        .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
       const { data: profiles, error: profilesError } = await supabase
         .from('interpreter_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name
-        `);
+        .select('id, email, first_name, last_name');
 
       if (profilesError) throw profilesError;
 
@@ -61,35 +52,56 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
         profiles?.map(profile => [profile.id, profile]) || []
       );
 
-      return userRoles.map(userRole => {
-        const profile = profilesMap.get(userRole.user_id);
-        
-        if (!profile) {
-          return {
-            id: userRole.user_id,
-            email: "",
-            first_name: "",
-            last_name: "",
-            role: userRole.role,
-          };
-        }
+      const usersData = await Promise.all(
+        userRoles.map(async (userRole) => {
+          const profile = profilesMap.get(userRole.user_id);
 
-        return {
-          id: userRole.user_id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          role: userRole.role,
-        };
-      });
+          if (!profile && userRole.role === 'admin') {
+            try {
+              const response = await supabase.functions.invoke('get-user-info', {
+                body: { userId: userRole.user_id }
+              });
+
+              if (response.error) throw response.error;
+
+              const userData = response.data;
+              console.log('Admin user data:', userData);
+
+              return {
+                id: userRole.user_id,
+                email: userData.email || "",
+                first_name: userData.first_name || "",
+                last_name: userData.last_name || "",
+                role: userRole.role,
+              };
+            } catch (error) {
+              console.error('Error fetching admin info:', error);
+              return null;
+            }
+          }
+
+          if (profile) {
+            return {
+              id: userRole.user_id,
+              email: profile.email,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              role: userRole.role,
+            };
+          }
+
+          return null;
+        })
+      );
+
+      return usersData.filter((user): user is User => 
+        user !== null && 
+        (user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+         user.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
     },
   });
-
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.last_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,6 +179,13 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
     );
   };
 
+  const formatUserName = (user: User) => {
+    if (!user.first_name && !user.last_name) {
+      return `${user.email} (${user.role === 'admin' ? 'Admin' : 'Interpreter'})`;
+    }
+    return `${user.first_name} ${user.last_name} (${user.role === 'admin' ? 'Admin' : 'Interpreter'})`;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
@@ -224,17 +243,17 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
             </div>
             <ScrollArea className="h-[200px] border rounded-md">
               <div className="p-4 space-y-2">
-                {filteredUsers.map(user => (
+                {users.map(user => (
                   <div
                     key={user.id}
                     className="flex items-center justify-between p-2 rounded-lg border"
                   >
                     <div>
                       <p className="font-medium">
-                        {user.first_name} {user.last_name}
+                        {formatUserName(user)}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {user.email} ({user.role})
+                        {user.email}
                       </p>
                     </div>
                     <Button
