@@ -38,6 +38,7 @@ export const useChat = (channelId: string) => {
   const fetchMessages = async () => {
     if (!channelId) return;
     
+    setIsLoading(true);
     try {
       // First get all messages with sender IDs
       const { data: messagesData, error: messagesError } = await supabase
@@ -53,14 +54,14 @@ export const useChat = (channelId: string) => {
 
       if (messagesError) throw messagesError;
 
-      // Then get all user roles to identify user types
+      // Get all user roles to identify admins
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
-      // Get interpreter profiles for those who have them
+      // Get interpreter profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('interpreter_profiles')
         .select(`
@@ -85,33 +86,49 @@ export const useChat = (channelId: string) => {
         messagesData.map(async (message) => {
           const profile = profilesMap.get(message.sender_id);
           const role = rolesMap.get(message.sender_id);
-
-          if (!profile) {
-            // For users without interpreter profiles (like admins), fetch basic info
-            const response = await supabase.functions.invoke('get-user-info', {
-              body: { userId: message.sender_id }
-            });
-            
-            const userData = response.data;
-            
-            return {
-              id: message.id,
-              content: message.content,
-              sender: {
-                id: message.sender_id,
-                name: `${userData.first_name} ${userData.last_name} (${role})`,
-              },
-              timestamp: new Date(message.created_at),
-            };
+          
+          // If it's an admin without interpreter profile, fetch from auth function
+          if (!profile && role === 'admin') {
+            try {
+              const response = await supabase.functions.invoke('get-user-info', {
+                body: { userId: message.sender_id }
+              });
+              
+              if (response.error) throw response.error;
+              
+              const userData = response.data;
+              return {
+                id: message.id,
+                content: message.content,
+                sender: {
+                  id: message.sender_id,
+                  name: `${userData.first_name} ${userData.last_name} (Admin)`,
+                },
+                timestamp: new Date(message.created_at),
+              };
+            } catch (error) {
+              console.error('Error fetching admin info:', error);
+              // Fallback display for admin
+              return {
+                id: message.id,
+                content: message.content,
+                sender: {
+                  id: message.sender_id,
+                  name: 'Admin',
+                },
+                timestamp: new Date(message.created_at),
+              };
+            }
           }
 
+          // For interpreters with profiles
           return {
             id: message.id,
             content: message.content,
             sender: {
               id: message.sender_id,
-              name: `${profile.first_name} ${profile.last_name} (${role})`,
-              avatarUrl: profile.profile_picture_url,
+              name: profile ? `${profile.first_name} ${profile.last_name} (Interpreter)` : 'Unknown User',
+              avatarUrl: profile?.profile_picture_url,
             },
             timestamp: new Date(message.created_at),
           };
@@ -126,6 +143,8 @@ export const useChat = (channelId: string) => {
         description: "Impossible de charger les messages",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
