@@ -30,42 +30,37 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
 
   // Transform messages to ensure they match the required Message type
   const validMessages = (messages || []).reduce<Message[]>((acc, msg) => {
-    if (!msg || !msg.sender) {
-      console.error('Invalid message or missing sender:', msg);
+    if (!msg?.id || !msg?.sender?.id) {
+      console.error('Invalid message or missing required fields:', msg);
       return acc;
     }
+
+    const messageToValidate = {
+      id: msg.id,
+      content: msg.content || '',
+      sender: {
+        id: msg.sender.id,
+        name: msg.sender.name || 'Unknown User',
+        avatarUrl: msg.sender.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender.id}`
+      },
+      timestamp: msg.timestamp || new Date(),
+      parent_message_id: msg.parent_message_id,
+      reactions: msg.reactions || {},
+      attachments: msg.attachments?.map(att => ({
+        url: att.url,
+        filename: att.filename,
+        type: att.type,
+        size: att.size
+      })) || []
+    };
 
     try {
-      // First create a complete object with all required fields
-      const completeMessage = {
-        id: msg.id || crypto.randomUUID(),
-        content: msg.content || '',
-        sender: {
-          id: msg.sender.id || crypto.randomUUID(),
-          name: msg.sender.name || 'Unknown User',
-          avatarUrl: msg.sender.avatarUrl
-        },
-        timestamp: msg.timestamp || new Date(),
-        parent_message_id: msg.parent_message_id,
-        reactions: msg.reactions || {},
-        attachments: Array.isArray(msg.attachments) 
-          ? msg.attachments.map(att => ({
-              url: att?.url || '',
-              filename: att?.filename || '',
-              type: att?.type || '',
-              size: att?.size || 0
-            }))
-          : []
-      };
-
-      // Validate with Zod schema
-      const validatedMessage = MessageSchema.parse(completeMessage);
+      const validatedMessage = MessageSchema.parse(messageToValidate);
       acc.push(validatedMessage);
-      return acc;
     } catch (error) {
       console.error('Message validation failed:', error, msg);
-      return acc;
     }
+    return acc;
   }, []);
 
   return (
