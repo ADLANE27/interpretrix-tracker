@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,7 +89,7 @@ export const ChatInput = ({
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition + 1); // Add +1 to skip the @ symbol
+    const afterMention = message.slice(cursorPosition + 1);
     const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
@@ -203,15 +204,9 @@ export const ChatInput = ({
           ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === '@') {
-              setIsMentioning(true);
-              setCursorPosition(e.currentTarget.selectionStart || 0);
-              setMentionQuery('');
-            }
-          }}
+          onKeyDown={handleKeyDown}
           placeholder="Type your message..."
-          className="min-h-[100px] resize-none pr-10"
+          className="min-h-[100px] max-h-[150px] resize-none pr-10 overflow-y-auto"
         />
         
         <input
