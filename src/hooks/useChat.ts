@@ -20,16 +20,10 @@ interface MessageData {
   }>;
 }
 
-interface SenderProfile {
+interface SenderDetails {
   id: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  profile_picture_url?: string;
-  raw_user_meta_data?: {
-    first_name?: string;
-    last_name?: string;
-  };
+  name: string;
+  avatar_url: string;
 }
 
 export const useChat = (channelId: string) => {
@@ -49,53 +43,53 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const formatMessage = async (messageData: MessageData): Promise<Message | null> => {
-    try {
-      if (!messageData?.id || !messageData?.sender_id) {
-        console.error('Missing required message data:', messageData);
-        return null;
-      }
-
-      // Get sender details from the database
-      const { data: senderDetails } = await supabase
-        .rpc('get_message_sender_details', {
-          sender_id: messageData.sender_id
-        })
-        .single();
-
-      const reactions: Record<string, string[]> = {};
-      if (messageData.reactions && typeof messageData.reactions === 'object') {
-        Object.entries(messageData.reactions).forEach(([emoji, users]) => {
-          if (Array.isArray(users)) {
-            reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
-          }
-        });
-      }
-
-      const attachments: Attachment[] = messageData.attachments?.map(att => ({
-        url: String(att.url || ''),
-        filename: String(att.filename || ''),
-        type: String(att.type || ''),
-        size: Number(att.size || 0)
-      })) || [];
-
-      return {
-        id: messageData.id,
-        content: messageData.content || '',
-        sender: {
-          id: messageData.sender_id,
-          name: senderDetails?.name || 'Unknown User',
-          avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
-        },
-        timestamp: new Date(messageData.created_at),
-        parent_message_id: messageData.parent_message_id,
-        reactions,
-        attachments
-      };
-    } catch (error) {
-      console.error('Message formatting error:', error);
-      return null;
+  const formatMessage = async (messageData: MessageData): Promise<Message> => {
+    if (!messageData?.id || !messageData?.sender_id) {
+      console.error('Missing required message data:', messageData);
+      throw new Error('Invalid message data');
     }
+
+    // Get sender details from the database
+    const { data: senderDetails, error: senderError } = await supabase
+      .rpc('get_message_sender_details', {
+        sender_id: messageData.sender_id
+      })
+      .single();
+
+    if (senderError) {
+      console.error('Error fetching sender details:', senderError);
+      throw senderError;
+    }
+
+    const reactions: Record<string, string[]> = {};
+    if (messageData.reactions && typeof messageData.reactions === 'object') {
+      Object.entries(messageData.reactions).forEach(([emoji, users]) => {
+        if (Array.isArray(users)) {
+          reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
+        }
+      });
+    }
+
+    const attachments: Attachment[] = messageData.attachments?.map(att => ({
+      url: String(att.url || ''),
+      filename: String(att.filename || ''),
+      type: String(att.type || ''),
+      size: Number(att.size || 0)
+    })) || [];
+
+    return {
+      id: messageData.id,
+      content: messageData.content || '',
+      sender: {
+        id: messageData.sender_id,
+        name: senderDetails?.name || 'Unknown User',
+        avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+      },
+      timestamp: new Date(messageData.created_at),
+      parent_message_id: messageData.parent_message_id,
+      reactions,
+      attachments
+    };
   };
 
   const fetchMessages = async () => {
