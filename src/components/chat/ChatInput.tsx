@@ -242,7 +242,7 @@ export const ChatInput = ({
             (isLoading || uploadingFiles) && "opacity-50 cursor-not-allowed"
           )}
         >
-          {isLoading || uploadingFiles ? "Sending..." : "Send"}
+          {isLoading || uploadingFiles ? "Envoi..." : "Envoyer"}
         </Button>
       </div>
     </form>
