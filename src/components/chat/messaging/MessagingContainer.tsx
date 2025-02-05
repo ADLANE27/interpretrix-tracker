@@ -28,14 +28,15 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     return messageId;
   };
 
-  // Transform messages to ensure they match the required Message type
-  const validMessages = (messages || []).reduce<Message[]>((acc, msg) => {
+  const validMessages = messages?.reduce<Message[]>((acc, msg) => {
+    // Early return if essential data is missing
     if (!msg?.id || !msg?.sender?.id) {
       console.error('Invalid message or missing required fields:', msg);
       return acc;
     }
 
-    const messageToValidate = {
+    // Create a complete message object with all required fields
+    const messageData: Message = {
       id: msg.id,
       content: msg.content || '',
       sender: {
@@ -55,13 +56,14 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     };
 
     try {
-      const validatedMessage = MessageSchema.parse(messageToValidate);
+      // Validate the message using Zod schema
+      const validatedMessage = MessageSchema.parse(messageData);
       acc.push(validatedMessage);
     } catch (error) {
       console.error('Message validation failed:', error, msg);
     }
     return acc;
-  }, []);
+  }, []) || [];
 
   return (
     <ChatWindow
