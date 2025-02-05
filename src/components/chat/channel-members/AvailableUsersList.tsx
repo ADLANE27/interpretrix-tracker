@@ -3,7 +3,7 @@ import { UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface AvailableUser {
-  id: string;
+  user_id: string;  // Changed from 'id' to 'user_id' to match DB
   email: string;
   first_name: string;
   last_name: string;
@@ -24,7 +24,7 @@ export const AvailableUsersList = ({ users, onAddUser }: AvailableUsersListProps
       <div className="space-y-2">
         {users.map(user => (
           <div
-            key={user.id}
+            key={user.user_id}
             className="flex items-center justify-between p-2 rounded-lg border"
           >
             <div>
@@ -38,7 +38,7 @@ export const AvailableUsersList = ({ users, onAddUser }: AvailableUsersListProps
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onAddUser(user.id)}
+              onClick={() => onAddUser(user.user_id)}
             >
               <UserPlus className="h-4 w-4" />
             </Button>

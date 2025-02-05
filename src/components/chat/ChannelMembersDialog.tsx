@@ -120,10 +120,6 @@ export const ChannelMembersDialog = ({
     }
   };
 
-  const filteredUsers = availableUsers.filter(
-    user => !members.some(member => member.user_id === user.id)
-  );
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -142,7 +138,7 @@ export const ChannelMembersDialog = ({
                 />
                 {searchQuery && (
                   <AvailableUsersList 
-                    users={filteredUsers}
+                    users={availableUsers}
                     onAddUser={addMember}
                   />
                 )}
