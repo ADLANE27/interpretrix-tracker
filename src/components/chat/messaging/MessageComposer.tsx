@@ -10,7 +10,9 @@ export const MessageComposer = ({
   currentUserId
 }: MessageComposerProps) => {
   const handleSendMessage = async (content: string, parentMessageId?: string): Promise<string> => {
-    return await onSendMessage(content, parentMessageId);
+    const messageId = await onSendMessage(content, parentMessageId);
+    if (!messageId) throw new Error("Failed to send message");
+    return messageId;
   };
 
   return (

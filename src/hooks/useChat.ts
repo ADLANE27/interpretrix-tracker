@@ -261,8 +261,6 @@ export const useChat = (channelId: string) => {
       const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
       setTimeout(() => {
         setRetryCount(prev => prev + 1);
-        // Remove this line since setupSubscription doesn't exist
-        // setupSubscription();
       }, timeout);
     } else {
       toast({
@@ -273,8 +271,8 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []) => {
-    if (!channelId || !currentUserId) return;
+  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []): Promise<string> => {
+    if (!channelId || !currentUserId) throw new Error("Missing required data");
     
     setIsLoading(true);
     try {
@@ -293,22 +291,22 @@ export const useChat = (channelId: string) => {
 
       if (error) throw error;
 
-      // Immediately add the new message to the messages list
-      if (data) {
-        const newMessage: Message = {
-          id: data.id,
-          content: data.content,
-          sender: {
-            id: currentUserId,
-            name: 'Admin', // This will be updated by the real-time subscription
-          },
-          timestamp: new Date(data.created_at),
-          parent_message_id: data.parent_message_id,
-          reactions: {},
-        };
-        
-        setMessages(prev => [...prev, newMessage]);
-      }
+      if (!data) throw new Error("No data returned from insert");
+
+      const newMessage: Message = {
+        id: data.id,
+        content: data.content,
+        sender: {
+          id: currentUserId,
+          name: 'Admin',
+        },
+        timestamp: new Date(data.created_at),
+        parent_message_id: data.parent_message_id,
+        reactions: {},
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      return data.id;
 
     } catch (error) {
       console.error('[Chat] Error sending message:', error);
@@ -317,6 +315,7 @@ export const useChat = (channelId: string) => {
         description: "Impossible d'envoyer le message",
         variant: "destructive",
       });
+      throw error;
     } finally {
       setIsLoading(false);
     }
