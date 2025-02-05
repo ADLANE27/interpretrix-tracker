@@ -58,7 +58,7 @@ export const ChatMessage = ({
     )}>
       <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
         {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
-        <AvatarFallback>{sender.name}</AvatarFallback>
+        <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className={cn(
         "flex flex-col max-w-[70%] gap-1",
