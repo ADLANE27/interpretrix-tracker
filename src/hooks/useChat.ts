@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -18,8 +19,11 @@ interface Message {
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -32,10 +36,48 @@ export const useChat = (channelId: string) => {
   useEffect(() => {
     if (!channelId) return;
     
-    fetchMessages();
-    const cleanup = subscribeToMessages();
-    return cleanup;
-  }, [channelId]);
+    let channel: RealtimeChannel;
+    
+    const setupSubscription = async () => {
+      if (isSubscribed) return;
+      
+      try {
+        await fetchMessages();
+        channel = subscribeToMessages();
+        setIsSubscribed(true);
+        setRetryCount(0); // Reset retry count on successful subscription
+      } catch (error) {
+        console.error('[Chat] Error setting up subscription:', error);
+        handleSubscriptionError();
+      }
+    };
+
+    const handleSubscriptionError = () => {
+      if (retryCount < MAX_RETRIES) {
+        const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          setupSubscription();
+        }, timeout);
+      } else {
+        toast({
+          title: "Erreur de connexion",
+          description: "Impossible de se connecter au chat. Veuillez rafraîchir la page.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (channel) {
+        console.log('[Chat] Cleaning up subscription');
+        supabase.removeChannel(channel);
+        setIsSubscribed(false);
+      }
+    };
+  }, [channelId, retryCount]);
 
   const fetchMessages = async () => {
     if (!channelId) return;
@@ -168,7 +210,6 @@ export const useChat = (channelId: string) => {
           console.log('[Chat] Received real-time update:', payload);
           
           if (payload.eventType === 'UPDATE') {
-            // Instantly update the message in the state
             setMessages(prevMessages => 
               prevMessages.map(msg => 
                 msg.id === payload.new.id 
@@ -180,7 +221,6 @@ export const useChat = (channelId: string) => {
               )
             );
           } else {
-            // For other events (INSERT, DELETE), fetch all messages
             await fetchMessages();
           }
           
@@ -194,12 +234,14 @@ export const useChat = (channelId: string) => {
       )
       .subscribe((status) => {
         console.log('[Chat] Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setIsSubscribed(true);
+        } else if (status === 'CHANNEL_ERROR') {
+          handleSubscriptionError();
+        }
       });
 
-    return () => {
-      console.log('[Chat] Cleaning up real-time subscription');
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
   const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []) => {
@@ -333,6 +375,7 @@ export const useChat = (channelId: string) => {
   return {
     messages,
     isLoading,
+    isSubscribed,
     sendMessage,
     deleteMessage,
     currentUserId,
