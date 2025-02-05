@@ -21,7 +21,7 @@ interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: "admin" | "interpreter";
 }
 
 export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProps) => {
@@ -72,7 +72,7 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
                 email: userData.email || "",
                 first_name: userData.first_name || "",
                 last_name: userData.last_name || "",
-                role: userRole.role,
+                role: userRole.role as "admin",
               };
             } catch (error) {
               console.error('Error fetching admin info:', error);
@@ -86,7 +86,7 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
               email: profile.email,
               first_name: profile.first_name,
               last_name: profile.last_name,
-              role: userRole.role,
+              role: userRole.role as "admin" | "interpreter",
             };
           }
 
