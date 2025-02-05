@@ -10,7 +10,10 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     fetchUnreadMentions();
-    subscribeToMentions();
+    const cleanup = subscribeToMentions();
+    return () => {
+      cleanup();
+    };
   }, []);
 
   const fetchUnreadMentions = async () => {
@@ -32,6 +35,9 @@ export const MessagesTab = () => {
   };
 
   const subscribeToMentions = () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return () => {};
+
     const channel = supabase.channel('interpreter-mentions')
       .on(
         'postgres_changes',
@@ -39,7 +45,7 @@ export const MessagesTab = () => {
           event: '*',
           schema: 'public',
           table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${supabase.auth.user()?.id}`
+          filter: `mentioned_user_id=eq.${user.id}`
         },
         () => {
           fetchUnreadMentions();
@@ -55,7 +61,6 @@ export const MessagesTab = () => {
   const handleChannelSelect = async (channelId: string) => {
     setSelectedChannelId(channelId);
     
-    // Mark mentions as read when channel is selected
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
