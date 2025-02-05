@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
@@ -33,6 +33,11 @@ export const ChatInput = ({
     }
   };
 
+  const handleFileSelect = () => {
+    // This will be implemented in the next step
+    console.log("File selection will be implemented in the next step");
+  };
+
   return (
     <div className="border-t">
       {replyTo && (
@@ -54,25 +59,36 @@ export const ChatInput = ({
         </div>
       )}
       <form onSubmit={handleSubmit} className="flex gap-2 p-4">
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Écrivez votre message..."
-          className={cn(
-            "min-h-[44px] max-h-[200px]",
-            replyTo && "rounded-t-none"
-          )}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-        />
+        <div className="flex-1 flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleFileSelect}
+            className="flex-shrink-0"
+          >
+            <Paperclip className="h-5 w-5 text-muted-foreground" />
+          </Button>
+          <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Écrivez votre message..."
+            className={cn(
+              "min-h-[44px] max-h-[200px]",
+              replyTo && "rounded-t-none"
+            )}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+          />
+        </div>
         <Button 
           type="submit" 
           disabled={!message.trim() || isLoading}
-          className="px-4"
+          className="px-4 flex-shrink-0"
         >
           <MessageSquare className="h-4 w-4" />
         </Button>
