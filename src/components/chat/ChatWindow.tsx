@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -70,7 +69,6 @@ export const ChatWindow = ({
               ? messageMap.get(message.parent_message_id) 
               : undefined;
 
-            // Ensure all required properties are present
             const sender = {
               id: message.sender.id,
               name: message.sender.name,
@@ -81,7 +79,6 @@ export const ChatWindow = ({
               name: parentMessage.sender.name
             } : undefined;
 
-            // Ensure all attachment properties are present
             const attachments = message.attachments?.map(att => ({
               url: att.url,
               filename: att.filename,

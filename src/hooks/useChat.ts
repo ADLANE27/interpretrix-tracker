@@ -28,18 +28,34 @@ export const useChat = (channelId: string) => {
         return null;
       }
 
+      const reactions: Record<string, string[]> = {};
+      if (messageData.reactions && typeof messageData.reactions === 'object') {
+        Object.entries(messageData.reactions).forEach(([emoji, users]) => {
+          if (Array.isArray(users)) {
+            reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
+          }
+        });
+      }
+
+      const attachments = messageData.attachments?.map((att: any) => ({
+        url: String(att.url || ''),
+        filename: String(att.filename || ''),
+        type: String(att.type || ''),
+        size: Number(att.size || 0)
+      })) || [];
+
       return {
         id: messageData.id,
         content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: 'Unknown User',
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+          name: messageData.sender?.name || 'Unknown User',
+          avatarUrl: messageData.sender?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || null,
-        reactions: messageData.reactions || {},
-        attachments: messageData.attachments || []
+        reactions,
+        attachments
       };
     } catch (error) {
       console.error('Message formatting error:', error);
@@ -256,7 +272,7 @@ export const useChat = (channelId: string) => {
           sender_id: currentUserId,
           content: content.trim(),
           parent_message_id: parentMessageId,
-          attachments: attachments,
+          attachments,
           reactions: {}
         })
         .select('*')
