@@ -39,7 +39,17 @@ export const useChat = (channelId: string) => {
 
       for (const message of messagesData || []) {
         try {
-          const formattedMessage = await formatMessage(message);
+          // Ensure sender data is properly structured before formatting
+          const messageWithValidSender = {
+            ...message,
+            sender: message.sender && !('error' in message.sender) ? message.sender : {
+              id: message.sender_id,
+              email: undefined,
+              raw_user_meta_data: {}
+            }
+          };
+          
+          const formattedMessage = await formatMessage(messageWithValidSender);
           if (formattedMessage) {
             formattedMessages.push(formattedMessage);
           }

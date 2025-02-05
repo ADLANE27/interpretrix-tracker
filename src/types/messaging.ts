@@ -54,7 +54,7 @@ export interface MessageData {
     id: string;
     email?: string;
     raw_user_meta_data?: Record<string, any>;
-  };
+  } | null;
 }
 
 export interface ReplyToMessage {
