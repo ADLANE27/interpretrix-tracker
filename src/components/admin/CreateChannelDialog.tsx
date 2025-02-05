@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +15,6 @@ interface CreateChannelDialogProps {
 export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProps) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<"admin_only" | "internal" | "external" | "mixed">("mixed");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -33,7 +31,6 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
         .insert({
           name,
           description,
-          type,
           created_by: user.id,
         });
 
@@ -47,7 +44,6 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
       onClose();
       setName("");
       setDescription("");
-      setType("mixed");
     } catch (error) {
       console.error('Error creating channel:', error);
       toast({
@@ -87,21 +83,6 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description du canal (optionnel)"
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="type">Type de canal</Label>
-            <Select value={type} onValueChange={(value: typeof type) => setType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin_only">Administrateurs uniquement</SelectItem>
-                <SelectItem value="internal">Interne</SelectItem>
-                <SelectItem value="external">Externe</SelectItem>
-                <SelectItem value="mixed">Mixte</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="flex justify-end gap-2">

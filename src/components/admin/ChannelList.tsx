@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ interface Channel {
   id: string;
   name: string;
   description: string | null;
-  type: 'admin_only' | 'internal' | 'external' | 'mixed';
 }
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {

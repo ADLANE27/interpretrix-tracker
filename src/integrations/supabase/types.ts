@@ -48,7 +48,6 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          type: Database["public"]["Enums"]["channel_type"]
           updated_at: string
         }
         Insert: {
@@ -57,7 +56,6 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          type?: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
         }
         Update: {
@@ -66,7 +64,6 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          type?: Database["public"]["Enums"]["channel_type"]
           updated_at?: string
         }
         Relationships: []
@@ -476,7 +473,6 @@ export type Database = {
       }
     }
     Enums: {
-      channel_type: "admin_only" | "internal" | "external" | "mixed"
       employment_status: "salaried" | "self_employed"
       interpreter_specialization:
         | "medical"
