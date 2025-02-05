@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Search, UserMinus, UserPlus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,15 +29,12 @@ interface ChannelMembersDialogProps {
   channelId: string;
 }
 
-interface User {
-  id: string;
+interface Member {
+  user_id: string;
   email: string;
   first_name: string;
   last_name: string;
   role: string;
-}
-
-interface Member extends User {
   joined_at: string;
 }
 
@@ -47,41 +44,19 @@ export const ChannelMembersDialog = ({
   channelId,
 }: ChannelMembersDialogProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [members, setMembers] = useState<Member[]>([]);
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
-  // Fetch current channel members
-  const { data: currentMembers = [], refetch: refetchMembers } = useQuery({
+  // Fetch current channel members using the RPC function
+  const { data: members = [], refetch: refetchMembers } = useQuery({
     queryKey: ["channel-members", channelId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("channel_members")
-        .select(`
-          user_id,
-          joined_at,
-          interpreter_profiles!inner (
-            id,
-            email,
-            first_name,
-            last_name
-          ),
-          user_roles!inner (
-            role
-          )
-        `)
-        .eq("channel_id", channelId);
+      const { data, error } = await supabase.rpc('get_channel_members', {
+        channel_id: channelId
+      });
 
       if (error) throw error;
-
-      return data.map(member => ({
-        id: member.user_id,
-        email: member.interpreter_profiles.email,
-        first_name: member.interpreter_profiles.first_name,
-        last_name: member.interpreter_profiles.last_name,
-        role: member.user_roles.role,
-        joined_at: member.joined_at,
-      }));
+      return data as Member[];
     },
     enabled: isOpen,
   });
@@ -117,13 +92,7 @@ export const ChannelMembersDialog = ({
     enabled: isOpen && searchQuery.length > 0,
   });
 
-  useEffect(() => {
-    if (currentMembers) {
-      setMembers(currentMembers);
-    }
-  }, [currentMembers]);
-
-  const addMember = async (user: User) => {
+  const addMember = async (user: { id: string }) => {
     try {
       const { error } = await supabase
         .from("channel_members")
@@ -156,7 +125,7 @@ export const ChannelMembersDialog = ({
         .from("channel_members")
         .delete()
         .eq("channel_id", channelId)
-        .eq("user_id", member.id);
+        .eq("user_id", member.user_id);
 
       if (error) throw error;
 
@@ -178,7 +147,7 @@ export const ChannelMembersDialog = ({
   };
 
   const filteredUsers = availableUsers.filter(
-    user => !members.some(member => member.id === user.id)
+    user => !members.some(member => member.user_id === user.id)
   );
 
   return (
@@ -208,7 +177,7 @@ export const ChannelMembersDialog = ({
                     <div className="space-y-2">
                       {members.map(member => (
                         <div
-                          key={member.id}
+                          key={member.user_id}
                           className="flex items-center justify-between p-2 rounded-lg border"
                         >
                           <div>
