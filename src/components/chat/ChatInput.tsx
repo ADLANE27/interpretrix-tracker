@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -81,7 +80,7 @@ export const ChatInput = ({
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition);
+    const afterMention = message.slice(cursorPosition + 1); // Add +1 to skip the @ symbol
     const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
