@@ -17,16 +17,18 @@ export interface Message {
   }>;
 }
 
+export interface ReplyToMessage {
+  id: string;
+  content: string;
+  sender: {
+    name: string;
+  };
+}
+
 export interface MessageComposerProps {
   onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
   isLoading?: boolean;
-  replyTo?: {
-    id: string;
-    content: string;
-    sender: {
-      name: string;
-    };
-  };
+  replyTo?: ReplyToMessage;
   onCancelReply?: () => void;
 }
 

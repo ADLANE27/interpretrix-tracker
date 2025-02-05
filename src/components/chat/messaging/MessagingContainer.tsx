@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 import { useChat } from "@/hooks/useChat";
-import { Message } from "@/types/messaging";
+import { Message, ReplyToMessage } from "@/types/messaging";
 
 interface MessagingContainerProps {
   channelId: string;
@@ -18,7 +18,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     isLoading 
   } = useChat(channelId);
   
-  const [replyTo, setReplyTo] = useState<Message["replyTo"] | null>(null);
+  const [replyTo, setReplyTo] = useState<ReplyToMessage | null>(null);
 
   const handleReply = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);
