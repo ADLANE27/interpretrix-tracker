@@ -181,7 +181,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
-                  title="Ajouter des membres"
+                  title="Gérer les membres"
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
