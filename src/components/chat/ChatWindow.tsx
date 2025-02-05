@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +29,13 @@ export const ChatWindow = ({
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { currentUserId, deleteMessage } = useChat('');
+  const [replyTo, setReplyTo] = useState<{
+    id: string;
+    content: string;
+    sender: {
+      name: string;
+    };
+  } | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -37,8 +44,16 @@ export const ChatWindow = ({
   }, [messages]);
 
   const handleReply = (messageId: string) => {
-    // For now, we'll just log the reply action
-    console.log('Replying to message:', messageId);
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      setReplyTo({
+        id: message.id,
+        content: message.content,
+        sender: {
+          name: message.sender.name
+        }
+      });
+    }
   };
 
   // Create a map of parent messages for quick lookup
@@ -67,7 +82,12 @@ export const ChatWindow = ({
           );
         })}
       </ScrollArea>
-      <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
+      <ChatInput 
+        onSendMessage={onSendMessage} 
+        isLoading={isLoading}
+        replyTo={replyTo || undefined}
+        onCancelReply={() => setReplyTo(null)}
+      />
     </div>
   );
 };
