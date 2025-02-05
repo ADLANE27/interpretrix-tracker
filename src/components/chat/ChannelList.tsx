@@ -17,7 +17,6 @@ interface Channel {
   id: string;
   name: string;
   description: string | null;
-  type: 'admin_only' | 'internal' | 'external' | 'mixed';
 }
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
