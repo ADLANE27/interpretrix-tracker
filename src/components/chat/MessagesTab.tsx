@@ -10,9 +10,16 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     fetchUnreadMentions();
-    const cleanup = subscribeToMentions();
+    let cleanup: (() => void) | undefined;
+    
+    const initSubscription = async () => {
+      cleanup = await subscribeToMentions();
+    };
+
+    initSubscription();
+
     return () => {
-      cleanup();
+      if (cleanup) cleanup();
     };
   }, []);
 
@@ -34,7 +41,7 @@ export const MessagesTab = () => {
     }
   };
 
-  const subscribeToMentions = () => {
+  const subscribeToMentions = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return () => {};
 
