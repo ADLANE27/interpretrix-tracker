@@ -9,6 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      channel_members: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_channels: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          type: Database["public"]["Enums"]["channel_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          type?: Database["public"]["Enums"]["channel_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          attachments: Json[] | null
+          channel_id: string
+          content: string
+          created_at: string
+          id: string
+          parent_message_id: string | null
+          reactions: Json
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachments?: Json[] | null
+          channel_id: string
+          content: string
+          created_at?: string
+          id?: string
+          parent_message_id?: string | null
+          reactions?: Json
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachments?: Json[] | null
+          channel_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          parent_message_id?: string | null
+          reactions?: Json
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_parent_message_id_fkey"
+            columns: ["parent_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interpretation_missions: {
         Row: {
           assigned_interpreter_id: string | null
@@ -363,6 +476,7 @@ export type Database = {
       }
     }
     Enums: {
+      channel_type: "admin_only" | "internal" | "external" | "mixed"
       employment_status: "salaried" | "self_employed"
       interpreter_specialization:
         | "medical"
