@@ -166,7 +166,23 @@ export const useChat = (channelId: string) => {
         },
         async (payload) => {
           console.log('[Chat] Received real-time update:', payload);
-          await fetchMessages();
+          
+          if (payload.eventType === 'UPDATE') {
+            // Instantly update the message in the state
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === payload.new.id 
+                  ? {
+                      ...msg,
+                      reactions: payload.new.reactions || {}
+                    }
+                  : msg
+              )
+            );
+          } else {
+            // For other events (INSERT, DELETE), fetch all messages
+            await fetchMessages();
+          }
           
           if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
             toast({
@@ -287,6 +303,15 @@ export const useChat = (channelId: string) => {
         delete updatedReactions[emoji];
       }
 
+      // Optimistically update the UI
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.id === messageId
+            ? { ...msg, reactions: updatedReactions }
+            : msg
+        )
+      );
+
       const { error } = await supabase
         .from('chat_messages')
         .update({ reactions: updatedReactions })
@@ -295,6 +320,8 @@ export const useChat = (channelId: string) => {
       if (error) throw error;
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);
+      // Revert optimistic update on error
+      await fetchMessages();
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la réaction",
