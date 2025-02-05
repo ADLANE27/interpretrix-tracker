@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -24,17 +25,21 @@ export const useChat = (channelId: string) => {
 
   const validateAndFormatMessage = (messageData: any): Message | null => {
     try {
-      console.log('Raw message data:', messageData);
+      if (!messageData?.id || !messageData?.sender_id) {
+        console.error('Missing required message data:', messageData);
+        return null;
+      }
+
       const parsedMessage = MessageSchema.parse({
         id: messageData.id,
         content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: 'Unknown User', // We'll update this later
+          name: 'Unknown User',
           avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
-        parent_message_id: messageData.parent_message_id,
+        parent_message_id: messageData.parent_message_id || null,
         reactions: messageData.reactions || {},
         attachments: messageData.attachments ? messageData.attachments.map((att: any) => 
           AttachmentSchema.parse(att)
@@ -57,7 +62,7 @@ export const useChat = (channelId: string) => {
         .from('chat_messages')
         .select(`
           *,
-          sender:sender_id (
+          sender:profiles!inner(
             id,
             email,
             raw_user_meta_data
@@ -66,12 +71,17 @@ export const useChat = (channelId: string) => {
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error('[Chat] Error fetching messages:', messagesError);
+        throw messagesError;
+      }
 
       console.log('Raw messages data:', messagesData);
 
-      const formattedMessages = (await Promise.all(
-        messagesData.map(async (message) => {
+      const formattedMessages: Message[] = [];
+
+      for (const message of messagesData || []) {
+        try {
           const { data: userRole } = await supabase
             .from('user_roles')
             .select('role')
@@ -86,19 +96,29 @@ export const useChat = (channelId: string) => {
               .from('interpreter_profiles')
               .select('first_name, last_name, profile_picture_url')
               .eq('id', message.sender_id)
-              .single();
+              .maybeSingle();
 
             if (profile) {
               senderName = `${profile.first_name} ${profile.last_name}`;
               avatarUrl = profile.profile_picture_url || avatarUrl;
             }
           } else {
-            // For admin users
-            const userData = message.sender?.raw_user_meta_data || {};
-            senderName = `${userData.first_name || ''} ${userData.last_name || ''} (Admin)`.trim();
+            const { data: adminProfile } = await supabase
+              .from('user_roles')
+              .select('user_id')
+              .eq('user_id', message.sender_id)
+              .eq('role', 'admin')
+              .maybeSingle();
+
+            if (adminProfile) {
+              const { data: { user } } = await supabase.auth.admin.getUserById(message.sender_id);
+              if (user?.user_metadata) {
+                senderName = `${user.user_metadata.first_name || ''} ${user.user_metadata.last_name || ''} (Admin)`.trim();
+              }
+            }
           }
 
-          return {
+          const formattedMessage: Message = {
             id: message.id,
             content: message.content,
             sender: {
@@ -111,8 +131,12 @@ export const useChat = (channelId: string) => {
             reactions: message.reactions || {},
             attachments: message.attachments || [],
           };
-        })
-      )).filter((msg): msg is Message => msg !== null);
+
+          formattedMessages.push(formattedMessage);
+        } catch (error) {
+          console.error('[Chat] Error formatting message:', error, message);
+        }
+      }
 
       console.log('Formatted messages:', formattedMessages);
       setMessages(formattedMessages);
@@ -230,7 +254,6 @@ export const useChat = (channelId: string) => {
     
     setIsLoading(true);
     try {
-      // Validate attachments
       attachments.forEach(att => {
         AttachmentSchema.parse(att);
       });
@@ -254,7 +277,7 @@ export const useChat = (channelId: string) => {
       const newMessage = validateAndFormatMessage(data);
       if (!newMessage) throw new Error("Invalid message format");
       
-      await fetchMessages(); // Refresh messages after sending
+      await fetchMessages();
       return data.id;
 
     } catch (error) {
