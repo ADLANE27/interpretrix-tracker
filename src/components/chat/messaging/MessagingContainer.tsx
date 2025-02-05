@@ -28,39 +28,34 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     return messageId;
   };
 
-  const validMessages = messages?.reduce<Message[]>((acc, msg) => {
-    // Early return if essential data is missing
-    if (!msg?.id || !msg?.sender?.id) {
-      console.error('Invalid message or missing required fields:', msg);
-      return acc;
-    }
-
-    // Create a complete message object with all required fields
-    const messageData: Message = {
-      id: msg.id,
-      content: msg.content || '',
-      sender: {
-        id: msg.sender.id,
-        name: msg.sender.name || 'Unknown User',
-        avatarUrl: msg.sender.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender.id}`
-      },
-      timestamp: msg.timestamp || new Date(),
-      parent_message_id: msg.parent_message_id,
-      reactions: msg.reactions || {},
-      attachments: msg.attachments?.map(att => ({
-        url: att.url,
-        filename: att.filename,
-        type: att.type,
-        size: att.size
-      })) || []
-    };
-
+  const validMessages = messages?.reduce<Message[]>((acc, rawMsg) => {
     try {
-      // Validate the message using Zod schema
+      if (!rawMsg) return acc;
+
+      const messageData = {
+        id: rawMsg.id,
+        content: rawMsg.content || '',
+        sender: {
+          id: rawMsg.sender.id,
+          name: rawMsg.sender.name || 'Unknown User',
+          avatarUrl: rawMsg.sender.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${rawMsg.sender.id}`
+        },
+        timestamp: rawMsg.timestamp || new Date(),
+        parent_message_id: rawMsg.parent_message_id,
+        reactions: rawMsg.reactions || {},
+        attachments: rawMsg.attachments?.map(att => ({
+          url: att.url,
+          filename: att.filename,
+          type: att.type,
+          size: att.size
+        })) || []
+      } satisfies Message;
+
+      // Validate with Zod schema
       const validatedMessage = MessageSchema.parse(messageData);
       acc.push(validatedMessage);
     } catch (error) {
-      console.error('Message validation failed:', error, msg);
+      console.error('Message validation failed:', error, rawMsg);
     }
     return acc;
   }, []) || [];
