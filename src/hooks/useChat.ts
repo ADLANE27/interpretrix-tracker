@@ -51,7 +51,35 @@ export const useChat = (channelId: string) => {
             avatar_url: ''
           };
 
-          const formattedMessage = {
+          // Parse and validate reactions
+          let parsedReactions: Record<string, string[]> = {};
+          try {
+            if (typeof message.reactions === 'string') {
+              parsedReactions = JSON.parse(message.reactions);
+            } else if (message.reactions && typeof message.reactions === 'object') {
+              // Ensure each value is an array of strings
+              Object.entries(message.reactions).forEach(([emoji, users]) => {
+                if (Array.isArray(users)) {
+                  parsedReactions[emoji] = users.map(String);
+                }
+              });
+            }
+          } catch (e) {
+            console.error('[Chat] Error parsing reactions:', e);
+            parsedReactions = {};
+          }
+
+          // Parse and validate attachments
+          const parsedAttachments = Array.isArray(message.attachments) 
+            ? message.attachments.map(att => ({
+                url: String(att.url || ''),
+                filename: String(att.filename || ''),
+                type: String(att.type || ''),
+                size: Number(att.size || 0)
+              }))
+            : [];
+
+          const formattedMessage: Message = {
             id: message.id,
             content: message.content,
             sender: {
@@ -61,8 +89,8 @@ export const useChat = (channelId: string) => {
             },
             timestamp: new Date(message.created_at),
             parent_message_id: message.parent_message_id,
-            reactions: message.reactions || {},
-            attachments: message.attachments || []
+            reactions: parsedReactions,
+            attachments: parsedAttachments
           };
 
           formattedMessages.push(formattedMessage);
