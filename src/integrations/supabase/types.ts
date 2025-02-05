@@ -437,6 +437,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_channel_members: {
+        Args: {
+          channel_id: string
+        }
+        Returns: {
+          user_id: string
+          email: string
+          first_name: string
+          last_name: string
+          role: Database["public"]["Enums"]["user_role"]
+          joined_at: string
+        }[]
+      }
       handle_mission_acceptance: {
         Args: {
           p_mission_id: string
