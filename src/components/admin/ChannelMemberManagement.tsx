@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserPlus, UserMinus, Search, Users, Info } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -55,10 +55,40 @@ export const ChannelMemberManagement = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Setup realtime subscription for member changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const channel = supabase
+      .channel('member-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channel_members',
+          filter: `channel_id=eq.${channelId}`
+        },
+        () => {
+          console.log('Channel members changed, refreshing data...');
+          queryClient.invalidateQueries({ queryKey: ["channel-members", channelId] });
+          queryClient.invalidateQueries({ queryKey: ["non-channel-members", channelId, searchQuery] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Cleaning up member changes subscription');
+      supabase.removeChannel(channel);
+    };
+  }, [channelId, isOpen, queryClient, searchQuery]);
 
   const { data: members = [], refetch: refetchMembers } = useQuery({
     queryKey: ["channel-members", channelId],
     queryFn: async () => {
+      console.log('Fetching channel members...');
       const { data, error } = await supabase.rpc('get_channel_members', {
         channel_id: channelId
       });
@@ -72,6 +102,7 @@ export const ChannelMemberManagement = ({
   const { data: nonMembers = [], refetch: refetchNonMembers } = useQuery({
     queryKey: ["non-channel-members", channelId, searchQuery],
     queryFn: async () => {
+      console.log('Fetching available users...');
       const { data, error } = await supabase.rpc('get_available_channel_users', {
         channel_id: channelId,
         search_query: searchQuery
@@ -85,7 +116,6 @@ export const ChannelMemberManagement = ({
 
   const addMember = async (userId: string) => {
     try {
-      // First check if the user is already a member
       const { data: existingMember, error: checkError } = await supabase
         .from("channel_members")
         .select("user_id")
@@ -120,8 +150,14 @@ export const ChannelMemberManagement = ({
         description: "L'utilisateur a été ajouté au canal avec succès",
       });
 
-      refetchMembers();
-      refetchNonMembers();
+      // Refresh data after adding member
+      await Promise.all([
+        refetchMembers(),
+        refetchNonMembers(),
+        queryClient.invalidateQueries({ queryKey: ["channel-members"] }),
+        queryClient.invalidateQueries({ queryKey: ["non-channel-members"] })
+      ]);
+
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
@@ -148,8 +184,15 @@ export const ChannelMemberManagement = ({
       });
 
       setUserToRemove(null);
-      refetchMembers();
-      refetchNonMembers();
+      
+      // Refresh data after removing member
+      await Promise.all([
+        refetchMembers(),
+        refetchNonMembers(),
+        queryClient.invalidateQueries({ queryKey: ["channel-members"] }),
+        queryClient.invalidateQueries({ queryKey: ["non-channel-members"] })
+      ]);
+
     } catch (error: any) {
       console.error("Error removing member:", error);
       toast({
