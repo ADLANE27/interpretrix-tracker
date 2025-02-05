@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search, UserPlus, UserMinus } from "lucide-react";
+import { UserPlus, UserMinus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -52,7 +51,6 @@ export const ChannelMemberManagement = ({
   onClose,
   channelId,
 }: ChannelMemberManagementProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
@@ -69,20 +67,18 @@ export const ChannelMemberManagement = ({
     enabled: isOpen,
   });
 
-  const { data: availableUsers = [] } = useQuery({
-    queryKey: ["available-users", channelId, searchQuery],
+  const { data: availableUsers = [], refetch: refetchAvailableUsers } = useQuery({
+    queryKey: ["available-users", channelId],
     queryFn: async () => {
-      if (!searchQuery) return [];
-
       const { data, error } = await supabase.rpc('get_available_channel_users', {
         channel_id: channelId,
-        search_query: searchQuery
+        search_query: '' // Empty search to get all users
       });
 
       if (error) throw error;
       return data as AvailableUser[];
     },
-    enabled: isOpen && searchQuery.length > 0,
+    enabled: isOpen,
   });
 
   const addMember = async (userId: string) => {
@@ -102,7 +98,7 @@ export const ChannelMemberManagement = ({
       });
 
       refetchMembers();
-      setSearchQuery(""); // Clear search after adding
+      refetchAvailableUsers();
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
@@ -130,6 +126,7 @@ export const ChannelMemberManagement = ({
 
       setUserToRemove(null);
       refetchMembers();
+      refetchAvailableUsers();
     } catch (error: any) {
       console.error("Error removing member:", error);
       toast({
@@ -148,85 +145,73 @@ export const ChannelMemberManagement = ({
             <DialogTitle>Gérer les membres du canal</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un utilisateur à ajouter..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
+          <ScrollArea className="h-[50vh]">
+            <div className="space-y-4">
+              {availableUsers.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
+                  <div className="space-y-2">
+                    {availableUsers.map(user => (
+                      <div
+                        key={user.user_id}
+                        className="flex items-center justify-between p-2 rounded-lg border"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {user.first_name} {user.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {user.email} ({user.role})
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addMember(user.user_id)}
+                          className="gap-2"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          Ajouter
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {members.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-2">Membres actuels</h3>
+                  <div className="space-y-2">
+                    {members.map(member => (
+                      <div
+                        key={member.user_id}
+                        className="flex items-center justify-between p-2 rounded-lg border"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {member.first_name} {member.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {member.email} ({member.role})
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setUserToRemove(member)}
+                          className="gap-2"
+                        >
+                          <UserMinus className="h-4 w-4" />
+                          Retirer
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-
-            <ScrollArea className="h-[50vh]">
-              <div className="space-y-4">
-                {searchQuery && availableUsers.length > 0 && (
-                  <div>
-                    <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
-                    <div className="space-y-2">
-                      {availableUsers.map(user => (
-                        <div
-                          key={user.user_id}
-                          className="flex items-center justify-between p-2 rounded-lg border"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              {user.first_name} {user.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {user.email} ({user.role})
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addMember(user.user_id)}
-                            className="gap-2"
-                          >
-                            <UserPlus className="h-4 w-4" />
-                            Ajouter
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {members.length > 0 && (
-                  <div>
-                    <h3 className="font-medium mb-2">Membres actuels</h3>
-                    <div className="space-y-2">
-                      {members.map(member => (
-                        <div
-                          key={member.user_id}
-                          className="flex items-center justify-between p-2 rounded-lg border"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              {member.first_name} {member.last_name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {member.email} ({member.role})
-                            </p>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setUserToRemove(member)}
-                            className="gap-2"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                            Retirer
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
