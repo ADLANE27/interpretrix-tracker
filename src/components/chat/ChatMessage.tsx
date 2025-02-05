@@ -1,4 +1,4 @@
-import { Trash2, MessageCircleReply } from 'lucide-react';
+import { Trash2, MessageCircleReply, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,10 @@ interface ChatMessageProps {
   isCurrentUser: boolean;
   onDelete?: () => void;
   onReply?: () => void;
+  isReply?: boolean;
+  parentSender?: {
+    name: string;
+  };
 }
 
 export const ChatMessage = ({ 
@@ -22,13 +26,22 @@ export const ChatMessage = ({
   timestamp, 
   isCurrentUser,
   onDelete,
-  onReply
+  onReply,
+  isReply,
+  parentSender
 }: ChatMessageProps) => {
   return (
     <div className={cn(
       "flex gap-3 mb-4",
-      isCurrentUser ? "flex-row-reverse" : "flex-row"
+      isCurrentUser ? "flex-row-reverse" : "flex-row",
+      isReply && "ml-8"
     )}>
+      {isReply && (
+        <div className="absolute left-2 flex items-center text-muted-foreground text-xs gap-1">
+          <ChevronRight className="h-3 w-3" />
+          <span>Reply to {parentSender?.name}</span>
+        </div>
+      )}
       <Avatar className="h-8 w-8">
         {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
         <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>

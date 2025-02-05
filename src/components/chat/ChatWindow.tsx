@@ -13,6 +13,7 @@ interface Message {
     avatarUrl?: string;
   };
   timestamp: Date;
+  parent_message_id?: string;
 }
 
 interface ChatWindowProps {
@@ -27,7 +28,7 @@ export const ChatWindow = ({
   isLoading 
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { currentUserId, deleteMessage } = useChat('');  // We only need currentUserId and deleteMessage here
+  const { currentUserId, deleteMessage } = useChat('');
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -40,20 +41,31 @@ export const ChatWindow = ({
     console.log('Replying to message:', messageId);
   };
 
+  // Create a map of parent messages for quick lookup
+  const messageMap = new Map(messages.map(message => [message.id, message]));
+
   return (
     <div className="flex flex-col h-full bg-background border rounded-lg">
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        {messages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            content={message.content}
-            sender={message.sender}
-            timestamp={message.timestamp}
-            isCurrentUser={message.sender.id === currentUserId}
-            onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
-            onReply={() => handleReply(message.id)}
-          />
-        ))}
+        {messages.map((message) => {
+          const parentMessage = message.parent_message_id 
+            ? messageMap.get(message.parent_message_id) 
+            : undefined;
+
+          return (
+            <ChatMessage
+              key={message.id}
+              content={message.content}
+              sender={message.sender}
+              timestamp={message.timestamp}
+              isCurrentUser={message.sender.id === currentUserId}
+              onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
+              onReply={() => handleReply(message.id)}
+              isReply={!!message.parent_message_id}
+              parentSender={parentMessage?.sender}
+            />
+          );
+        })}
       </ScrollArea>
       <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
     </div>
