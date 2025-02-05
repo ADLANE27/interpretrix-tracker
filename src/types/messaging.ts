@@ -54,21 +54,6 @@ export interface MessageData {
   } | null;
 }
 
-export interface ChannelMember {
-  user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: 'admin' | 'interpreter';
-}
-
-export interface MessageComposerProps {
-  onSendMessage: (content: string) => Promise<string>;
-  isLoading?: boolean;
-  channelId: string;
-  currentUserId: string | null;
-}
-
 export interface MessageListProps {
   messages: Message[];
   currentUserId: string | null;

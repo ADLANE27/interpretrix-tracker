@@ -20,7 +20,6 @@ export const useMessageFormatter = () => {
         return null;
       }
 
-      // Parse and validate reactions
       let parsedReactions: Record<string, string[]> = {};
       try {
         if (typeof messageData.reactions === 'string') {
@@ -33,38 +32,32 @@ export const useMessageFormatter = () => {
         parsedReactions = {};
       }
 
-      // Parse and validate attachments
       const parsedAttachments: Attachment[] = [];
       if (Array.isArray(messageData.attachments)) {
         for (const att of messageData.attachments) {
-          if (isAttachment(att)) {
-            parsedAttachments.push(att);
-          } else if (typeof att === 'object' && att !== null) {
-            const constructedAttachment = {
+          if (typeof att === 'object' && att !== null) {
+            const attachment = {
               url: String(att['url'] || ''),
               filename: String(att['filename'] || ''),
               type: String(att['type'] || ''),
               size: Number(att['size'] || 0)
             };
-            if (isAttachment(constructedAttachment)) {
-              parsedAttachments.push(constructedAttachment);
+            if (isAttachment(attachment)) {
+              parsedAttachments.push(attachment);
             }
           }
         }
       }
 
-      const sender = {
-        id: messageData.sender_id,
-        name: senderDetails?.name || 'Unknown User',
-        avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
-      };
-
       return {
         id: messageData.id,
-        content: messageData.content || '',
-        sender,
+        content: messageData.content,
+        sender: {
+          id: senderDetails.id,
+          name: senderDetails.name,
+          avatarUrl: senderDetails.avatar_url
+        },
         timestamp: new Date(messageData.created_at),
-        parent_message_id: messageData.parent_message_id || undefined,
         reactions: parsedReactions,
         attachments: parsedAttachments
       };

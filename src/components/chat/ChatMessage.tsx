@@ -1,4 +1,4 @@
-import { Trash2, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
+import { Trash, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -125,7 +125,7 @@ export const ChatMessage = ({
                 className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors duration-200"
                 onClick={onDelete}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash className="h-4 w-4" />
               </Button>
             )}
             <Popover>
