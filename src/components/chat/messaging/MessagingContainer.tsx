@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ChatWindow } from "../ChatWindow";
 import { useChat } from "@/hooks/useChat";
 import { supabase } from "@/integrations/supabase/client";
-import { Message } from "@/types/messaging";
+import { Message, MessageSchema } from "@/types/messaging";
 
 interface MessagingContainerProps {
   channelId: string;
@@ -29,24 +29,35 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   };
 
   // Transform messages to ensure they match the required Message type
-  const validMessages: Message[] = messages?.map(msg => ({
-    id: msg.id ? msg.id : crypto.randomUUID(), // Ensure id is never undefined
-    content: msg.content || '',
-    sender: {
-      id: msg.sender?.id || crypto.randomUUID(), // Ensure sender.id is never undefined
-      name: msg.sender?.name || 'Unknown User', // Ensure name is never undefined
-      avatarUrl: msg.sender?.avatarUrl // Optional, can remain undefined
-    },
-    timestamp: msg.timestamp || new Date(), // Ensure timestamp is never undefined
-    parent_message_id: msg.parent_message_id, // Optional, can remain undefined
-    reactions: msg.reactions || {}, // Ensure reactions is never undefined
-    attachments: (msg.attachments || []).map(att => ({
-      url: att.url || '',
-      filename: att.filename || '',
-      type: att.type || '',
-      size: att.size || 0
-    }))
-  })) || [];
+  const validMessages = (messages?.map(msg => {
+    // Create a properly typed message object with all required fields
+    const validMessage: Message = {
+      id: msg.id || crypto.randomUUID(),
+      content: msg.content || '',
+      sender: {
+        id: msg.sender?.id || crypto.randomUUID(),
+        name: msg.sender?.name || 'Unknown User',
+        avatarUrl: msg.sender?.avatarUrl
+      },
+      timestamp: msg.timestamp || new Date(),
+      parent_message_id: msg.parent_message_id,
+      reactions: msg.reactions || {},
+      attachments: (msg.attachments || []).map(att => ({
+        url: att.url || '',
+        filename: att.filename || '',
+        type: att.type || '',
+        size: att.size || 0
+      }))
+    };
+
+    // Validate the message against the schema
+    try {
+      return MessageSchema.parse(validMessage);
+    } catch (error) {
+      console.error('Invalid message format:', error);
+      return null;
+    }
+  }).filter((msg): msg is Message => msg !== null)) || [];
 
   return (
     <ChatWindow
