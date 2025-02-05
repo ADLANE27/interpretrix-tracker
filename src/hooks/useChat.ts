@@ -77,7 +77,7 @@ export const useChat = (channelId: string) => {
       size: Number(att.size || 0)
     })) || [];
 
-    return {
+    const formattedMessage: Message = {
       id: messageData.id,
       content: messageData.content || '',
       sender: {
@@ -90,6 +90,8 @@ export const useChat = (channelId: string) => {
       reactions,
       attachments
     };
+
+    return formattedMessage;
   };
 
   const fetchMessages = async () => {
