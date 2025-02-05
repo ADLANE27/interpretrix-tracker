@@ -67,6 +67,49 @@ export const ChatInput = ({
     fetchChannelMembers();
   }, [channelId]);
 
+  const extractMentions = (content: string) => {
+    const mentionRegex = /@([A-Za-z\s]+)/g;
+    const matches = [...content.matchAll(mentionRegex)];
+    return matches.map(match => match[1].trim());
+  };
+
+  const createMentions = async (messageId: string, content: string) => {
+    const mentionedNames = extractMentions(content);
+    
+    if (mentionedNames.length === 0) return;
+
+    const mentionedUsers = channelMembers.filter(member => 
+      mentionedNames.some(name => 
+        `${member.first_name} ${member.last_name}` === name
+      )
+    );
+
+    for (const user of mentionedUsers) {
+      try {
+        const { error } = await supabase
+          .from('message_mentions')
+          .insert({
+            message_id: messageId,
+            mentioned_user_id: user.user_id,
+            mentioning_user_id: currentUserId,
+            channel_id: channelId,
+            status: 'unread'
+          });
+
+        if (error) {
+          console.error('Error creating mention:', error);
+          toast({
+            title: "Error",
+            description: "Failed to create mention",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error creating mention:', error);
+      }
+    }
+  };
+
   const handleMentionSelect = (member: ChannelMember) => {
     if (mentionStartIndex === null) return;
 
@@ -129,9 +172,34 @@ export const ChatInput = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() || attachments.length > 0) {
-      onSendMessage(message.trim(), replyTo?.id, attachments);
-      setMessage("");
-      setAttachments([]);
+      const { data: messageData, error: messageError } = await supabase
+        .from('chat_messages')
+        .insert({
+          channel_id: channelId,
+          content: message.trim(),
+          parent_message_id: replyTo?.id,
+          sender_id: currentUserId,
+          attachments
+        })
+        .select()
+        .single();
+
+      if (messageError) {
+        console.error('Error sending message:', messageError);
+        toast({
+          title: "Error",
+          description: "Failed to send message",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (messageData) {
+        await createMentions(messageData.id, message);
+        onSendMessage(message.trim(), replyTo?.id, attachments);
+        setMessage("");
+        setAttachments([]);
+      }
     }
   };
 

@@ -198,19 +198,63 @@ export const useChat = (channelId: string) => {
     return channel;
   };
 
-  const setupSubscription = async () => {
-    if (isSubscribed) return;
+  const subscribeToMentions = () => {
+    console.log('[Chat] Setting up mentions subscription');
     
-    try {
-      await fetchMessages();
-      const channel = subscribeToMessages();
-      setIsSubscribed(true);
-      setRetryCount(0); // Reset retry count on successful subscription
-    } catch (error) {
-      console.error('[Chat] Error setting up subscription:', error);
-      handleSubscriptionError();
-    }
+    const channel = supabase
+      .channel(`mentions:${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        async (payload) => {
+          console.log('[Chat] Received mention update:', payload);
+          if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
+            toast({
+              title: "New Mention",
+              description: "You were mentioned in a message",
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Chat] Mentions subscription status:', status);
+      });
+
+    return channel;
   };
+
+  useEffect(() => {
+    if (!channelId) return;
+    
+    let mentionsChannel: RealtimeChannel;
+
+    const setupSubscriptions = async () => {
+      try {
+        await fetchMessages();
+        const channel = subscribeToMessages();
+        mentionsChannel = subscribeToMentions();
+        setIsSubscribed(true);
+        setRetryCount(0);
+      } catch (error) {
+        console.error('[Chat] Error setting up subscriptions:', error);
+        handleSubscriptionError();
+      }
+    };
+
+    setupSubscriptions();
+
+    return () => {
+      if (mentionsChannel) {
+        console.log('[Chat] Cleaning up mentions subscription');
+        supabase.removeChannel(mentionsChannel);
+      }
+    };
+  }, [channelId, retryCount]);
 
   const handleSubscriptionError = () => {
     if (retryCount < MAX_RETRIES) {
@@ -227,22 +271,6 @@ export const useChat = (channelId: string) => {
       });
     }
   };
-
-  useEffect(() => {
-    if (!channelId) return;
-    
-    let channel: RealtimeChannel;
-
-    setupSubscription();
-
-    return () => {
-      if (channel) {
-        console.log('[Chat] Cleaning up subscription');
-        supabase.removeChannel(channel);
-        setIsSubscribed(false);
-      }
-    };
-  }, [channelId, retryCount]);
 
   const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []) => {
     if (!channelId || !currentUserId) return;
