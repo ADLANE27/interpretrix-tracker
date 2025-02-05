@@ -20,39 +20,52 @@ export const useChat = (channelId: string) => {
     setIsLoading(true);
     try {
       console.log('[Chat] Fetching messages for channel:', channelId);
+      
+      // First, get the messages
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
-        .select(`
-          *,
-          sender:profiles!inner(
-            id,
-            email,
-            raw_user_meta_data
-          )
-        `)
+        .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
 
       if (messagesError) throw messagesError;
 
+      // Format messages with proper sender details
       const formattedMessages: Message[] = [];
-
       for (const message of messagesData || []) {
         try {
-          // Ensure sender data is properly structured before formatting
-          const messageWithValidSender = {
-            ...message,
-            sender: message.sender && !('error' in message.sender) ? message.sender : {
-              id: message.sender_id,
-              email: undefined,
-              raw_user_meta_data: {}
-            }
-          };
-          
-          const formattedMessage = await formatMessage(messageWithValidSender);
-          if (formattedMessage) {
-            formattedMessages.push(formattedMessage);
+          // Get sender details using the dedicated function
+          const { data: senderData, error: senderError } = await supabase
+            .rpc('get_message_sender_details', {
+              sender_id: message.sender_id
+            });
+
+          if (senderError) {
+            console.error('[Chat] Error fetching sender details:', senderError);
+            continue;
           }
+
+          const sender = senderData?.[0] || {
+            id: message.sender_id,
+            name: 'Unknown User',
+            avatar_url: ''
+          };
+
+          const formattedMessage = {
+            id: message.id,
+            content: message.content,
+            sender: {
+              id: sender.id,
+              name: sender.name,
+              avatarUrl: sender.avatar_url
+            },
+            timestamp: new Date(message.created_at),
+            parent_message_id: message.parent_message_id,
+            reactions: message.reactions || {},
+            attachments: message.attachments || []
+          };
+
+          formattedMessages.push(formattedMessage);
         } catch (error) {
           console.error('[Chat] Error formatting message:', error, message);
         }
