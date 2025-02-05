@@ -304,4 +304,4 @@ export const ChannelMemberManagement = ({
       </AlertDialog>
     </>
   );
-});
+};

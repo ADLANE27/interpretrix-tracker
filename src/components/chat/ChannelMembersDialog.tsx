@@ -137,13 +137,13 @@ export const ChannelMembersDialog = ({
     enabled: isOpen && searchQuery.length > 0,
   });
 
-  const addMember = async (user: { id: string }) => {
+  const addMember = async (userId: string) => {
     try {
       const { error } = await supabase
         .from("channel_members")
         .insert({
           channel_id: channelId,
-          user_id: user.id,
+          user_id: userId,
         });
 
       if (error) throw error;
@@ -154,7 +154,7 @@ export const ChannelMembersDialog = ({
       });
 
       refetchMembers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
         title: "Erreur",
@@ -181,7 +181,7 @@ export const ChannelMembersDialog = ({
 
       setUserToRemove(null);
       refetchMembers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error removing member:", error);
       toast({
         title: "Erreur",
@@ -266,7 +266,7 @@ export const ChannelMembersDialog = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => addMember(user)}
+                            onClick={() => addMember(user.id)}
                           >
                             <UserPlus className="h-4 w-4" />
                           </Button>
@@ -304,4 +304,4 @@ export const ChannelMembersDialog = ({
       </AlertDialog>
     </>
   );
-});
+};
