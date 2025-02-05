@@ -26,16 +26,15 @@ export const MessagesTab = () => {
     }
   });
 
-  // Fetch unread mentions count
   useEffect(() => {
     const fetchUnreadMentions = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
       const { count, error } = await supabase
         .from('message_mentions')
         .select('*', { count: 'exact', head: true })
-        .eq('mentioned_user_id', user.id)
+        .eq('mentioned_user_id', session.user.id)
         .eq('status', 'unread');
 
       if (!error && count !== null) {
@@ -54,7 +53,7 @@ export const MessagesTab = () => {
           event: '*',
           schema: 'public',
           table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${supabase.auth.user()?.id}`
+          filter: `mentioned_user_id=eq.${supabase.auth.session()?.user?.id}`
         },
         () => {
           fetchUnreadMentions();

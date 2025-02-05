@@ -80,36 +80,61 @@ export const ChatInput = ({
     if (!textareaRef.current) return;
 
     const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition + 1); // Skip the @ symbol
+    const afterMention = message.slice(cursorPosition + 1);
     const mentionText = `@${member.first_name} ${member.last_name}`;
     
     setMessage(`${beforeMention}${mentionText} ${afterMention}`);
     setIsMentioning(false);
     textareaRef.current.focus();
 
-    // Create mention record
-    try {
-      const { error } = await supabase
-        .from('message_mentions')
-        .insert({
-          channel_id: channelId,
-          mentioned_user_id: member.user_id,
-          mentioning_user_id: currentUserId,
-          status: 'unread'
-        });
-
-      if (error) throw error;
-    } catch (error) {
-      console.error('Error creating mention:', error);
-    }
+    // We'll create the mention record after the message is sent
+    // This ensures we have a message_id to associate with the mention
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() || isLoading) return;
 
-    onSendMessage(message, replyTo?.id);
-    setMessage("");
+    try {
+      // First send the message
+      const messageId = await onSendMessage(message, replyTo?.id);
+
+      // Then create mention records for any @mentions in the message
+      const mentionRegex = /@(\w+\s\w+)/g;
+      const mentions = message.match(mentionRegex);
+
+      if (mentions && messageId) {
+        const { data: channelMembers } = await supabase.rpc('get_channel_members', {
+          channel_id: channelId
+        });
+
+        for (const mention of mentions) {
+          const memberName = mention.slice(1); // Remove @ symbol
+          const mentionedMember = channelMembers?.find(
+            member => `${member.first_name} ${member.last_name}` === memberName
+          );
+
+          if (mentionedMember) {
+            await supabase
+              .from('message_mentions')
+              .insert({
+                message_id: messageId,
+                channel_id: channelId,
+                mentioned_user_id: mentionedMember.user_id,
+                mentioning_user_id: currentUserId,
+                status: 'unread'
+              });
+          }
+        }
+      }
+
+      setMessage("");
+      if (replyTo && onCancelReply) {
+        onCancelReply();
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   return (
