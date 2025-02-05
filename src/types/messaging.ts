@@ -17,9 +17,9 @@ export const MessageSchema = z.object({
     avatarUrl: z.string().url().optional()
   }),
   timestamp: z.date(),
-  parent_message_id: z.string().uuid().optional(),
-  reactions: z.record(z.string(), z.array(z.string())).optional(),
-  attachments: z.array(AttachmentSchema).optional()
+  parent_message_id: z.string().uuid().optional().nullable(),
+  reactions: z.record(z.string(), z.array(z.string())).optional().default({}),
+  attachments: z.array(AttachmentSchema).optional().default([])
 });
 
 export type Message = z.infer<typeof MessageSchema>;

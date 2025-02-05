@@ -40,18 +40,17 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           name: rawMsg.sender.name || 'Unknown User',
           avatarUrl: rawMsg.sender.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${rawMsg.sender.id}`
         },
-        timestamp: rawMsg.timestamp || new Date(),
-        parent_message_id: rawMsg.parent_message_id,
+        timestamp: rawMsg.timestamp instanceof Date ? rawMsg.timestamp : new Date(rawMsg.timestamp),
+        parent_message_id: rawMsg.parent_message_id || null,
         reactions: rawMsg.reactions || {},
-        attachments: rawMsg.attachments?.map(att => ({
+        attachments: (rawMsg.attachments || []).map(att => ({
           url: att.url,
           filename: att.filename,
           type: att.type,
           size: att.size
-        })) || []
-      } satisfies Message;
+        }))
+      };
 
-      // Validate with Zod schema
       const validatedMessage = MessageSchema.parse(messageData);
       acc.push(validatedMessage);
     } catch (error) {
