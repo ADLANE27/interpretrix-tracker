@@ -125,29 +125,49 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
 
       if (channelError) throw channelError;
 
-      // Add selected members to the channel
+      // Add selected members to the channel, checking for existing memberships
       if (selectedUsers.length > 0) {
         const memberInserts = selectedUsers.map(userId => ({
           channel_id: channel.id,
           user_id: userId,
         }));
 
-        const { error: membersError } = await supabase
+        // Check for existing memberships
+        const { data: existingMembers, error: existingMembersError } = await supabase
           .from('channel_members')
-          .insert(memberInserts);
+          .select('user_id')
+          .eq('channel_id', channel.id)
+          .in('user_id', selectedUsers);
 
-        if (membersError) throw membersError;
+        if (existingMembersError) throw existingMembersError;
+
+        // Filter out users who are already members
+        const existingMemberIds = new Set(existingMembers?.map(member => member.user_id));
+        const newMembers = memberInserts.filter(member => !existingMemberIds.has(member.user_id));
+
+        if (newMembers.length > 0) {
+          const { error: membersError } = await supabase
+            .from('channel_members')
+            .insert(newMembers);
+
+          if (membersError) throw membersError;
+        }
       }
 
-      // Add the creator as a member
+      // Add the creator as a member if they're not already added
       const { error: creatorMemberError } = await supabase
         .from('channel_members')
         .insert({
           channel_id: channel.id,
           user_id: user.id,
-        });
+        })
+        .select()
+        .single();
 
-      if (creatorMemberError) throw creatorMemberError;
+      // Ignore duplicate key error for creator
+      if (creatorMemberError && !creatorMemberError.message.includes('duplicate key')) {
+        throw creatorMemberError;
+      }
 
       toast({
         title: "Canal créé",
