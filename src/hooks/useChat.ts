@@ -2,29 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Message, Attachment } from '@/types/messaging';
-
-interface MessageData {
-  id: string;
-  content: string;
-  sender_id: string;
-  channel_id: string;
-  created_at: string;
-  parent_message_id: string | null;
-  reactions: Record<string, string[]>;
-  attachments?: Array<{
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  }>;
-}
-
-interface SenderDetails {
-  id: string;
-  name: string;
-  avatar_url: string;
-}
+import { Message, MessageData, Attachment } from '@/types/messaging';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -43,55 +21,48 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const formatMessage = async (messageData: MessageData): Promise<Message> => {
+  const formatMessage = async (messageData: MessageData): Promise<Message | null> => {
     if (!messageData?.id || !messageData?.sender_id) {
       console.error('Missing required message data:', messageData);
-      throw new Error('Invalid message data');
+      return null;
     }
 
-    // Get sender details from the database
-    const { data: senderDetails, error: senderError } = await supabase
-      .rpc('get_message_sender_details', {
-        sender_id: messageData.sender_id
-      })
-      .single();
+    try {
+      const { data: senderDetails, error: senderError } = await supabase
+        .rpc('get_message_sender_details', {
+          sender_id: messageData.sender_id
+        })
+        .single();
 
-    if (senderError) {
-      console.error('Error fetching sender details:', senderError);
-      throw senderError;
+      if (senderError) {
+        console.error('Error fetching sender details:', senderError);
+        return null;
+      }
+
+      const formatted: Message = {
+        id: messageData.id,
+        content: messageData.content || '',
+        sender: {
+          id: messageData.sender_id,
+          name: senderDetails?.name || 'Unknown User',
+          avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+        },
+        timestamp: new Date(messageData.created_at),
+        parent_message_id: messageData.parent_message_id || undefined,
+        reactions: messageData.reactions || {},
+        attachments: messageData.attachments?.map(att => ({
+          url: String(att.url || ''),
+          filename: String(att.filename || ''),
+          type: String(att.type || ''),
+          size: Number(att.size || 0)
+        })) || []
+      };
+
+      return formatted;
+    } catch (error) {
+      console.error('Error formatting message:', error);
+      return null;
     }
-
-    const reactions: Record<string, string[]> = {};
-    if (messageData.reactions && typeof messageData.reactions === 'object') {
-      Object.entries(messageData.reactions).forEach(([emoji, users]) => {
-        if (Array.isArray(users)) {
-          reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
-        }
-      });
-    }
-
-    const attachments: Attachment[] = messageData.attachments?.map(att => ({
-      url: String(att.url || ''),
-      filename: String(att.filename || ''),
-      type: String(att.type || ''),
-      size: Number(att.size || 0)
-    })) || [];
-
-    const formattedMessage: Message = {
-      id: messageData.id,
-      content: messageData.content || '',
-      sender: {
-        id: messageData.sender_id,
-        name: senderDetails?.name || 'Unknown User',
-        avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
-      },
-      timestamp: new Date(messageData.created_at),
-      parent_message_id: messageData.parent_message_id,
-      reactions,
-      attachments
-    };
-
-    return formattedMessage;
   };
 
   const fetchMessages = async () => {
@@ -119,51 +90,7 @@ export const useChat = (channelId: string) => {
 
       for (const message of messagesData || []) {
         try {
-          const { data: userRole } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', message.sender_id)
-            .maybeSingle();
-
-          let senderName = 'Unknown User';
-          let avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.sender_id}`;
-
-          if (userRole?.role === 'interpreter') {
-            const { data: profile } = await supabase
-              .from('interpreter_profiles')
-              .select('first_name, last_name, profile_picture_url')
-              .eq('id', message.sender_id)
-              .maybeSingle();
-
-            if (profile) {
-              senderName = `${profile.first_name} ${profile.last_name}`;
-              avatarUrl = profile.profile_picture_url || avatarUrl;
-            }
-          } else {
-            const { data: adminProfile } = await supabase
-              .from('user_roles')
-              .select('user_id')
-              .eq('user_id', message.sender_id)
-              .eq('role', 'admin')
-              .maybeSingle();
-
-            if (adminProfile) {
-              const { data: { user } } = await supabase.auth.admin.getUserById(message.sender_id);
-              if (user?.user_metadata) {
-                senderName = `${user.user_metadata.first_name || ''} ${user.user_metadata.last_name || ''} (Admin)`.trim();
-              }
-            }
-          }
-
-          const formattedMessage = formatMessage({
-            ...message,
-            sender: {
-              id: message.sender_id,
-              name: senderName,
-              avatarUrl: avatarUrl,
-            }
-          });
-
+          const formattedMessage = await formatMessage(message);
           if (formattedMessage) {
             formattedMessages.push(formattedMessage);
           }
