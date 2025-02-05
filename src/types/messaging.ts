@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 export const AttachmentSchema = z.object({
@@ -21,6 +20,27 @@ export const MessageSchema = z.object({
   reactions: z.record(z.string(), z.array(z.string())).optional().default({}),
   attachments: z.array(AttachmentSchema).optional().default([])
 });
+
+export interface MessageData {
+  id: string;
+  content: string;
+  sender_id: string;
+  channel_id: string;
+  created_at: string;
+  parent_message_id: string | null;
+  reactions: Record<string, string[]>;
+  attachments?: Array<{
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  }>;
+  sender?: {
+    id: string;
+    email?: string;
+    raw_user_meta_data?: Record<string, any>;
+  };
+}
 
 export type Message = z.infer<typeof MessageSchema>;
 export type Attachment = z.infer<typeof AttachmentSchema>;
