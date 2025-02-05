@@ -33,6 +33,14 @@ export interface ReplyToMessage {
   };
 }
 
+export interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'admin' | 'interpreter';
+}
+
 export interface MessageComposerProps {
   onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
   isLoading?: boolean;
@@ -48,12 +56,4 @@ export interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onReplyMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
-}
-
-export interface ChannelMember {
-  user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: 'admin' | 'interpreter';
 }

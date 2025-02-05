@@ -1,7 +1,9 @@
+
 import { useEffect, useState } from "react";
 import { ChatWindow } from "../ChatWindow";
 import { useChat } from "@/hooks/useChat";
 import { supabase } from "@/integrations/supabase/client";
+import { Message } from "@/types/messaging";
 
 interface MessagingContainerProps {
   channelId: string;
@@ -28,10 +30,11 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
 
   return (
     <ChatWindow
-      messages={messages}
+      messages={messages as Message[]}
       onSendMessage={handleSendMessage}
       isLoading={isLoading}
       channelId={channelId}
+      currentUserId={currentUserId}
     />
   );
 };
