@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -182,6 +183,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
+                  title="Ajouter des membres"
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
@@ -237,7 +239,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+              Annuler
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteChannel}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
