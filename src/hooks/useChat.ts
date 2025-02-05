@@ -26,7 +26,7 @@ export const useChat = (channelId: string) => {
         .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
-        .limit(50); // Limit the number of messages for faster loading
+        .limit(50);
 
       if (messagesError) throw messagesError;
 
@@ -43,11 +43,11 @@ export const useChat = (channelId: string) => {
             return null;
           }
 
-          const sender = senderData?.[0] || {
-            id: message.sender_id,
-            name: 'Unknown User',
-            avatar_url: ''
-          };
+          const sender = senderData?.[0];
+          if (!sender?.id || !sender?.name) {
+            console.error('[Chat] Invalid sender data:', sender);
+            return null;
+          }
 
           let parsedReactions = {};
           try {
@@ -77,18 +77,20 @@ export const useChat = (channelId: string) => {
             });
           }
 
-          return {
+          const formattedMessage: Message = {
             id: message.id,
             content: message.content,
             sender: {
               id: sender.id,
               name: sender.name,
-              avatarUrl: sender.avatar_url
+              avatarUrl: sender.avatar_url || ''
             },
             timestamp: new Date(message.created_at),
             reactions: parsedReactions,
             attachments: parsedAttachments
           };
+
+          return formattedMessage;
         } catch (error) {
           console.error('[Chat] Error formatting message:', error, message);
           return null;
@@ -96,8 +98,18 @@ export const useChat = (channelId: string) => {
       }) || [];
 
       const formattedMessagesResults = await Promise.all(senderDetailsPromises);
-      formattedMessages.push(...formattedMessagesResults.filter((msg): msg is Message => msg !== null));
-
+      const validMessages = formattedMessagesResults.filter((msg): msg is Message => 
+        msg !== null && 
+        typeof msg === 'object' &&
+        typeof msg.id === 'string' &&
+        typeof msg.content === 'string' &&
+        typeof msg.sender === 'object' &&
+        typeof msg.sender.id === 'string' &&
+        typeof msg.sender.name === 'string' &&
+        msg.timestamp instanceof Date
+      );
+      
+      formattedMessages.push(...validMessages);
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
