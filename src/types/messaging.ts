@@ -26,7 +26,7 @@ export interface ReplyToMessage {
 }
 
 export interface MessageComposerProps {
-  onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
+  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
   isLoading?: boolean;
   replyTo?: ReplyToMessage;
   onCancelReply?: () => void;
@@ -40,5 +40,12 @@ export interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onReplyMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
-  channelId: string; // Added this property
+  channelId: string;
+}
+
+export interface ChannelMember {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
 }

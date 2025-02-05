@@ -53,7 +53,10 @@ export const MessagesTab = () => {
           event: '*',
           schema: 'public',
           table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${supabase.auth.getUser()?.data?.user?.id}`
+          filter: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            return `mentioned_user_id=eq.${user?.id}`;
+          }
         },
         () => {
           fetchUnreadMentions();
