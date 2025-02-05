@@ -112,7 +112,10 @@ export const ChannelMemberManagement = ({
               };
             }
 
+            // Properly extract user data from the response
             const userData = response.data;
+            console.log('Admin user data:', userData); // Debug log
+            
             return {
               id: userRole.user_id,
               email: userData.email || "",
@@ -132,7 +135,7 @@ export const ChannelMemberManagement = ({
         })
       );
 
-      return users;
+      return users.filter(user => user.email && user.first_name && user.last_name);
     },
     enabled: isOpen && searchQuery.length > 0,
   });

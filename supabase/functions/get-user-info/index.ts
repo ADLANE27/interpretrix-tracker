@@ -27,17 +27,25 @@ serve(async (req) => {
     
     if (userError) throw userError
 
+    console.log('User metadata:', user?.user_metadata) // Debug log
+
+    // Make sure we extract all necessary user data
+    const userData = {
+      email: user?.email || '',
+      first_name: user?.user_metadata?.first_name || user?.user_metadata?.firstName || '',
+      last_name: user?.user_metadata?.last_name || user?.user_metadata?.lastName || '',
+    }
+
+    console.log('Returning user data:', userData) // Debug log
+
     return new Response(
-      JSON.stringify({
-        email: user?.email || '',
-        first_name: user?.user_metadata?.first_name || '',
-        last_name: user?.user_metadata?.last_name || '',
-      }),
+      JSON.stringify(userData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
   } catch (error) {
+    console.error('Error in get-user-info:', error) // Debug log
     return new Response(
       JSON.stringify({ error: error.message }),
       {
