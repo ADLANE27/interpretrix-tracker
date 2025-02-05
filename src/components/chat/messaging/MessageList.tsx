@@ -1,14 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "../ChatMessage";
-import { Message } from "@/types/chat";
-
-interface MessageListProps {
-  messages: Message[];
-  currentUserId: string | null;
-  onDeleteMessage?: (messageId: string) => void;
-  onReplyMessage?: (messageId: string) => void;
-  onReactToMessage?: (messageId: string, emoji: string) => void;
-}
+import { MessageListProps } from "@/types/messaging";
 
 export const MessageList = ({
   messages,

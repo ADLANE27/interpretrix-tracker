@@ -2,21 +2,23 @@ import { useState } from "react";
 import { MessageList } from "./MessageList";
 import { MessageComposer } from "./MessageComposer";
 import { useChat } from "@/hooks/useChat";
-import { Message } from "@/types/chat";
+import { Message } from "@/types/messaging";
 
 interface MessagingContainerProps {
   channelId: string;
 }
 
 export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
-  const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, isLoading } = useChat(channelId);
-  const [replyTo, setReplyTo] = useState<{
-    id: string;
-    content: string;
-    sender: {
-      name: string;
-    };
-  } | null>(null);
+  const { 
+    messages, 
+    sendMessage, 
+    deleteMessage, 
+    currentUserId, 
+    reactToMessage, 
+    isLoading 
+  } = useChat(channelId);
+  
+  const [replyTo, setReplyTo] = useState<Message["replyTo"] | null>(null);
 
   const handleReply = (messageId: string) => {
     const message = messages.find(m => m.id === messageId);

@@ -1,18 +1,5 @@
-import { useState, useRef } from "react";
 import { ChatInput } from "../ChatInput";
-
-interface MessageComposerProps {
-  onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
-  isLoading?: boolean;
-  replyTo?: {
-    id: string;
-    content: string;
-    sender: {
-      name: string;
-    };
-  };
-  onCancelReply?: () => void;
-}
+import { MessageComposerProps } from "@/types/messaging";
 
 export const MessageComposer = ({
   onSendMessage,
