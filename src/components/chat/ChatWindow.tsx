@@ -70,20 +70,39 @@ export const ChatWindow = ({
               ? messageMap.get(message.parent_message_id) 
               : undefined;
 
+            // Ensure all required properties are present
+            const sender = {
+              id: message.sender.id,
+              name: message.sender.name,
+              avatarUrl: message.sender.avatarUrl
+            };
+
+            const parentSender = parentMessage ? {
+              name: parentMessage.sender.name
+            } : undefined;
+
+            // Ensure all attachment properties are present
+            const attachments = message.attachments?.map(att => ({
+              url: att.url,
+              filename: att.filename,
+              type: att.type,
+              size: att.size
+            })) || [];
+
             return (
               <ChatMessage
                 key={message.id}
                 content={message.content}
-                sender={message.sender}
+                sender={sender}
                 timestamp={message.timestamp}
                 isCurrentUser={message.sender.id === currentUserId}
                 onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
                 onReply={() => handleReply(message.id)}
                 isReply={!!message.parent_message_id}
-                parentSender={parentMessage?.sender}
+                parentSender={parentSender}
                 reactions={message.reactions}
                 onReact={(emoji) => reactToMessage(message.id, emoji)}
-                attachments={message.attachments}
+                attachments={attachments}
               />
             );
           })}
