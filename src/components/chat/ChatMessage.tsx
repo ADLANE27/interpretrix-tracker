@@ -56,10 +56,15 @@ export const ChatMessage = ({
       "flex gap-3 mb-4 group animate-fade-in",
       isCurrentUser ? "flex-row-reverse" : "flex-row"
     )}>
-      <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
-        {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
-        <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <div className="flex flex-col items-center gap-1">
+        <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
+          {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
+          <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          {sender.name}
+        </span>
+      </div>
       <div className={cn(
         "flex flex-col max-w-[70%] gap-1",
         isCurrentUser ? "items-end" : "items-start"
