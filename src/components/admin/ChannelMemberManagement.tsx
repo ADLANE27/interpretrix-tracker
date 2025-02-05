@@ -114,7 +114,7 @@ export const ChannelMemberManagement = ({
 
             // Properly extract user data from the response
             const userData = response.data;
-            console.log('Admin user data:', userData); // Debug log
+            console.log('Admin user data:', userData);
             
             return {
               id: userRole.user_id,
@@ -198,6 +198,10 @@ export const ChannelMemberManagement = ({
     user => !members.some(member => member.user_id === user.id)
   );
 
+  const formatUserName = (member: Member) => {
+    return `${member.first_name} ${member.last_name}${member.role === 'admin' ? ' (Admin)' : ' (Interpreter)'}`;
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -230,10 +234,10 @@ export const ChannelMemberManagement = ({
                         >
                           <div>
                             <p className="font-medium">
-                              {member.first_name} {member.last_name}
+                              {formatUserName(member)}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {member.email} ({member.role})
+                              {member.email}
                             </p>
                           </div>
                           <Button
@@ -260,10 +264,10 @@ export const ChannelMemberManagement = ({
                         >
                           <div>
                             <p className="font-medium">
-                              {user.first_name} {user.last_name}
+                              {user.first_name} {user.last_name} ({user.role === 'admin' ? 'Admin' : 'Interpreter'})
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {user.email} ({user.role})
+                              {user.email}
                             </p>
                           </div>
                           <Button
