@@ -2,13 +2,19 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { X } from "lucide-react";
+import { X, Paperclip, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
+  onSendMessage: (content: string, parentMessageId?: string, attachments?: Array<{
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  }>) => Promise<string>;
   isLoading?: boolean;
   replyTo?: {
     id: string;
@@ -20,15 +26,6 @@ interface ChatInputProps {
   onCancelReply?: () => void;
   channelId: string;
   currentUserId: string | null;
-}
-
-interface ChannelMember {
-  user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: "admin" | "interpreter";
-  joined_at: string;
 }
 
 export const ChatInput = ({
@@ -43,7 +40,17 @@ export const ChatInput = ({
   const [mentionQuery, setMentionQuery] = useState("");
   const [isMentioning, setIsMentioning] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [attachments, setAttachments] = useState<Array<{
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  }>>([]);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: channelMembers = [] } = useQuery<ChannelMember[]>({
     queryKey: ['channelMembers', channelId],
@@ -88,48 +95,69 @@ export const ChatInput = ({
     textareaRef.current.focus();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || isLoading || !currentUserId) return;
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    try {
-      // Send the message and get its ID
-      const messageId = await onSendMessage(message, replyTo?.id);
+    setUploadingFiles(true);
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Extract mentions from the message
-      const mentionRegex = /@([A-Za-z\s]+)/g;
-      const mentions = message.match(mentionRegex);
-
-      if (mentions && messageId) {
-        // Find mentioned users and create mention records
-        const mentionPromises = mentions.map(async (mention) => {
-          const userName = mention.slice(1); // Remove @ symbol
-          const matchingMember = channelMembers.find(member => 
-            `${member.first_name} ${member.last_name}` === userName
-          );
-
-          if (matchingMember) {
-            return supabase
-              .from('message_mentions')
-              .insert({
-                message_id: messageId,
-                channel_id: channelId,
-                mentioned_user_id: matchingMember.user_id,
-                mentioning_user_id: currentUserId,
-                status: 'unread'
-              });
-          }
+      try {
+        const response = await supabase.functions.invoke('upload-chat-attachment', {
+          body: formData,
         });
 
-        await Promise.all(mentionPromises);
+        if (response.error) throw response.error;
+        return response.data;
+      } catch (error) {
+        console.error('File upload error:', error);
+        toast({
+          title: "Upload Error",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+        return null;
       }
+    });
 
+    try {
+      const results = await Promise.all(uploadPromises);
+      const validAttachments = results.filter(Boolean);
+      setAttachments(prev => [...prev, ...validAttachments]);
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      setUploadingFiles(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!message.trim() && attachments.length === 0) || isLoading || uploadingFiles || !currentUserId) return;
+
+    try {
+      await onSendMessage(message, replyTo?.id, attachments);
       setMessage("");
+      setAttachments([]);
       if (replyTo && onCancelReply) {
         onCancelReply();
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
     }
   };
 
@@ -150,15 +178,63 @@ export const ChatInput = ({
         </div>
       )}
       
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((file, index) => (
+            <div key={index} className="flex items-center gap-2 bg-muted/50 p-2 rounded-md">
+              <span className="text-sm truncate max-w-[200px]">{file.filename}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4"
+                onClick={() => removeAttachment(index)}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="relative">
         <Textarea
           ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === '@') {
+              setIsMentioning(true);
+              setCursorPosition(e.currentTarget.selectionStart || 0);
+              setMentionQuery('');
+            }
+          }}
           placeholder="Type your message..."
-          className="min-h-[100px] resize-none"
+          className="min-h-[100px] resize-none pr-10"
         />
+        
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          className="hidden"
+          multiple
+        />
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-2 bottom-2"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingFiles}
+        >
+          {uploadingFiles ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Paperclip className="h-4 w-4" />
+          )}
+        </Button>
         
         {isMentioning && (
           <div className="absolute bottom-full left-0 w-[200px] mb-2">
@@ -193,13 +269,13 @@ export const ChatInput = ({
       <div className="flex justify-end">
         <Button 
           type="submit" 
-          disabled={!message.trim() || isLoading}
+          disabled={(!message.trim() && attachments.length === 0) || isLoading || uploadingFiles}
           className={cn(
             "transition-all",
-            isLoading && "opacity-50 cursor-not-allowed"
+            (isLoading || uploadingFiles) && "opacity-50 cursor-not-allowed"
           )}
         >
-          Send
+          {isLoading || uploadingFiles ? "Sending..." : "Send"}
         </Button>
       </div>
     </form>

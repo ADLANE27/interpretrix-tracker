@@ -1,4 +1,4 @@
-import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile } from 'lucide-react';
+import { Trash2, MessageCircleReply, ChevronRight, Paperclip, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -59,13 +59,6 @@ export const ChatMessage = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) {
-      return <ImageIcon className="h-4 w-4" />;
-    }
-    return <FileText className="h-4 w-4" />;
-  };
-
   return (
     <div className={cn(
       "flex gap-3 mb-4 group animate-fade-in",
@@ -93,7 +86,7 @@ export const ChatMessage = ({
             "bg-gradient-to-br from-muted/80 to-muted/95 shadow-sm"
         )}>
           <p className="text-sm">{content}</p>
-          {attachments.length > 0 && (
+          {attachments && attachments.length > 0 && (
             <div className="mt-2 space-y-2">
               {attachments.map((attachment, index) => (
                 <a
@@ -108,15 +101,28 @@ export const ChatMessage = ({
                       "bg-background/50 hover:bg-background backdrop-blur-sm"
                   )}
                 >
-                  {getFileIcon(attachment.type)}
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium truncate max-w-[200px]">
-                      {attachment.filename}
-                    </span>
-                    <span className="text-xs opacity-70">
-                      {formatFileSize(attachment.size)}
-                    </span>
-                  </div>
+                  {attachment.type.startsWith('image/') ? (
+                    <div className="relative w-[200px] h-[150px] rounded-lg overflow-hidden">
+                      <img 
+                        src={attachment.url} 
+                        alt={attachment.filename}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium truncate max-w-[200px]">
+                          {attachment.filename}
+                        </span>
+                        <span className="text-xs opacity-70">
+                          {formatFileSize(attachment.size)}
+                        </span>
+                      </div>
+                      <Download className="h-4 w-4 ml-auto" />
+                    </>
+                  )}
                 </a>
               ))}
             </div>
