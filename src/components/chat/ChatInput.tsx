@@ -54,7 +54,7 @@ export const ChatInput = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const { data: channelMembers = [] } = useQuery<ChannelMember[]>({
+  const { data: channelMembers = [] } = useQuery({
     queryKey: ['channelMembers', channelId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_channel_members', {
@@ -68,11 +68,17 @@ export const ChatInput = ({
     enabled: !!channelId
   });
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === '@') {
       setIsMentioning(true);
       setCursorPosition(e.currentTarget.selectionStart || 0);
       setMentionQuery('');
+    }
+    
+    // Handle Enter key (without shift) to send message
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      await handleSubmit(e);
     }
   };
 
@@ -231,35 +237,6 @@ export const ChatInput = ({
             <Paperclip className="h-4 w-4" />
           )}
         </Button>
-        
-        {isMentioning && (
-          <div className="absolute bottom-full left-0 w-[200px] mb-2">
-            <Command>
-              <CommandInput 
-                placeholder="Search members..." 
-                value={mentionQuery}
-                onValueChange={setMentionQuery}
-              />
-              <CommandList>
-                {filteredMembers.length === 0 ? (
-                  <CommandEmpty>No members found.</CommandEmpty>
-                ) : (
-                  <CommandGroup>
-                    {filteredMembers.map((member) => (
-                      <CommandItem
-                        key={member.user_id}
-                        value={`${member.first_name} ${member.last_name}`}
-                        onSelect={() => handleMentionSelect(member)}
-                      >
-                        {member.first_name} {member.last_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </div>
-        )}
       </div>
 
       <div className="flex justify-end">
@@ -271,9 +248,10 @@ export const ChatInput = ({
             (isLoading || uploadingFiles) && "opacity-50 cursor-not-allowed"
           )}
         >
-          {isLoading || uploadingFiles ? "Sending..." : "Send"}
+          {isLoading || uploadingFiles ? "Sending..." : "Envoyer"}
         </Button>
       </div>
     </form>
   );
 };
+
