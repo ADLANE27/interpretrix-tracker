@@ -21,12 +21,14 @@ interface ChatWindowProps {
   messages: Message[];
   onSendMessage: (content: string, parentMessageId?: string) => void;
   isLoading?: boolean;
+  channelId: string; // Add channelId prop
 }
 
 export const ChatWindow = ({ 
   messages, 
   onSendMessage,
-  isLoading 
+  isLoading,
+  channelId // Destructure channelId
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { currentUserId, deleteMessage, reactToMessage } = useChat('');
@@ -92,6 +94,7 @@ export const ChatWindow = ({
         isLoading={isLoading}
         replyTo={replyTo || undefined}
         onCancelReply={() => setReplyTo(null)}
+        channelId={channelId} // Pass channelId to ChatInput
       />
     </div>
   );

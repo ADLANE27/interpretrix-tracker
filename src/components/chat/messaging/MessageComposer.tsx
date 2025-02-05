@@ -5,7 +5,8 @@ export const MessageComposer = ({
   onSendMessage,
   isLoading,
   replyTo,
-  onCancelReply
+  onCancelReply,
+  channelId // Add channelId prop
 }: MessageComposerProps) => {
   return (
     <ChatInput
@@ -13,6 +14,7 @@ export const MessageComposer = ({
       isLoading={isLoading}
       replyTo={replyTo}
       onCancelReply={onCancelReply}
+      channelId={channelId} // Pass channelId to ChatInput
     />
   );
 };

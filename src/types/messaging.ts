@@ -30,6 +30,7 @@ export interface MessageComposerProps {
   isLoading?: boolean;
   replyTo?: ReplyToMessage;
   onCancelReply?: () => void;
+  channelId: string; // Add channelId prop
 }
 
 export interface MessageListProps {
