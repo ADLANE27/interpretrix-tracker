@@ -221,159 +221,161 @@ export const AdminDashboard = () => {
   });
 
   return (
-    <div className="container mx-auto py-6">
-      <Tabs defaultValue="interpreters" className="space-y-6">
-        <div className="flex justify-between items-center mb-4">
-          <TabsList>
-            <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-            <TabsTrigger value="missions">Missions</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-            <TabsTrigger value="guide">
-              Guide d'utilisation
-            </TabsTrigger>
-          </TabsList>
-          <Button 
-            variant="outline" 
-            onClick={handleLogout}
-            className="gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Se déconnecter
-          </Button>
-        </div>
+    <>
+      <div className="container mx-auto py-6">
+        <Tabs defaultValue="interpreters" className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+            <TabsList>
+              <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+              <TabsTrigger value="missions">Missions</TabsTrigger>
+              <TabsTrigger value="messages">Messages</TabsTrigger>
+              <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+              <TabsTrigger value="guide">
+                Guide d'utilisation
+              </TabsTrigger>
+            </TabsList>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Se déconnecter
+            </Button>
+          </div>
 
-        <TabsContent value="interpreters">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name-search">Nom</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <TabsContent value="interpreters">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name-search">Nom</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="name-search"
+                      placeholder="Rechercher par nom..."
+                      className="pl-10"
+                      value={nameFilter}
+                      onChange={(e) => setNameFilter(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="source-language">Langue source</Label>
+                  <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
+                    <SelectTrigger id="source-language">
+                      <SelectValue placeholder="Sélectionner une langue source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les langues</SelectItem>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="target-language">Langue cible</Label>
+                  <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
+                    <SelectTrigger id="target-language">
+                      <SelectValue placeholder="Sélectionner une langue cible" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les langues</SelectItem>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone-search">Numéro de téléphone</Label>
                   <Input
-                    id="name-search"
-                    placeholder="Rechercher par nom..."
-                    className="pl-10"
-                    value={nameFilter}
-                    onChange={(e) => setNameFilter(e.target.value)}
+                    id="phone-search"
+                    placeholder="Rechercher par téléphone..."
+                    value={phoneFilter}
+                    onChange={(e) => setPhoneFilter(e.target.value)}
                   />
+                </div>
+
+                <CountrySelect
+                  value={birthCountryFilter}
+                  onValueChange={setBirthCountryFilter}
+                  label="Pays de naissance"
+                  placeholder="Sélectionner un pays"
+                />
+
+                <div className="space-y-2">
+                  <Label htmlFor="employment-status">Statut professionnel</Label>
+                  <Select
+                    value={employmentStatusFilter}
+                    onValueChange={setEmploymentStatusFilter}
+                  >
+                    <SelectTrigger id="employment-status">
+                      <SelectValue placeholder="Tous les statuts" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="salaried">Salarié</SelectItem>
+                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="source-language">Langue source</Label>
-                <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
-                  <SelectTrigger id="source-language">
-                    <SelectValue placeholder="Sélectionner une langue source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les langues</SelectItem>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="target-language">Langue cible</Label>
-                <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
-                  <SelectTrigger id="target-language">
-                    <SelectValue placeholder="Sélectionner une langue cible" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les langues</SelectItem>
-                    {LANGUAGES.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone-search">Numéro de téléphone</Label>
-                <Input
-                  id="phone-search"
-                  placeholder="Rechercher par téléphone..."
-                  value={phoneFilter}
-                  onChange={(e) => setPhoneFilter(e.target.value)}
-                />
-              </div>
-
-              <CountrySelect
-                value={birthCountryFilter}
-                onValueChange={setBirthCountryFilter}
-                label="Pays de naissance"
-                placeholder="Sélectionner un pays"
+              <StatusFilter
+                selectedStatus={selectedStatus}
+                onStatusChange={setSelectedStatus}
               />
 
-              <div className="space-y-2">
-                <Label htmlFor="employment-status">Statut professionnel</Label>
-                <Select
-                  value={employmentStatusFilter}
-                  onValueChange={setEmploymentStatusFilter}
-                >
-                  <SelectTrigger id="employment-status">
-                    <SelectValue placeholder="Tous les statuts" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="salaried">Salarié</SelectItem>
-                    <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInterpreters.map((interpreter) => (
+                  <InterpreterCard
+                    key={interpreter.id}
+                    interpreter={{
+                      id: interpreter.id,
+                      name: `${interpreter.first_name} ${interpreter.last_name}`,
+                      status: interpreter.status,
+                      type: interpreter.employment_status === "salaried" ? "internal" : "external",
+                      languages: interpreter.languages,
+                      hourlyRate: interpreter.phone_interpretation_rate,
+                      phone_number: interpreter.phone_number,
+                    }}
+                  />
+                ))}
               </div>
             </div>
+          </TabsContent>
 
-            <StatusFilter
-              selectedStatus={selectedStatus}
-              onStatusChange={setSelectedStatus}
-            />
+          <TabsContent value="missions">
+            <MissionManagement />
+          </TabsContent>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredInterpreters.map((interpreter) => (
-                <InterpreterCard
-                  key={interpreter.id}
-                  interpreter={{
-                    id: interpreter.id,
-                    name: `${interpreter.first_name} ${interpreter.last_name}`,
-                    status: interpreter.status,
-                    type: interpreter.employment_status === "salaried" ? "internal" : "external",
-                    languages: interpreter.languages,
-                    hourlyRate: interpreter.phone_interpretation_rate,
-                    phone_number: interpreter.phone_number,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab />
+          </TabsContent>
 
-        <TabsContent value="missions">
-          <MissionManagement />
-        </TabsContent>
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
 
-        <TabsContent value="messages">
-          <MessagesTab />
-        </TabsContent>
-
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
-
-        <TabsContent value="guide">
-          <AdminGuideContent />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="guide">
+            <AdminGuideContent />
+          </TabsContent>
+        </Tabs>
+      </div>
       
-      {/* Copyright notice */}
-      <footer className="mt-8 pt-4 border-t text-center text-sm text-gray-500">
+      {/* Footer moved outside the container */}
+      <footer className="w-full py-4 mt-8 text-center text-sm text-gray-500 border-t">
         © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
       </footer>
-    </div>
+    </>
   );
 };
