@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Message, MessageData, Attachment } from '@/types/messaging';
+import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,29 +60,38 @@ export const useChat = (channelId: string) => {
         parsedReactions = {};
       }
 
-      // Parse and validate attachments
+      // Parse and validate attachments using type guard
       const parsedAttachments: Attachment[] = [];
       if (Array.isArray(messageData.attachments)) {
         for (const att of messageData.attachments) {
-          if (typeof att === 'object' && att !== null) {
-            parsedAttachments.push({
-              url: String(att.url || ''),
-              filename: String(att.filename || ''),
-              type: String(att.type || ''),
-              size: Number(att.size || 0)
-            });
+          if (isAttachment(att)) {
+            parsedAttachments.push(att);
+          } else if (typeof att === 'object' && att !== null) {
+            // Attempt to construct a valid attachment from the object
+            const constructedAttachment = {
+              url: String(att['url'] || ''),
+              filename: String(att['filename'] || ''),
+              type: String(att['type'] || ''),
+              size: Number(att['size'] || 0)
+            };
+            if (isAttachment(constructedAttachment)) {
+              parsedAttachments.push(constructedAttachment);
+            }
           }
         }
       }
 
+      // Ensure sender details are properly constructed
+      const sender = {
+        id: messageData.sender_id,
+        name: senderDetails?.name || 'Unknown User',
+        avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+      };
+
       const formatted: Message = {
         id: messageData.id,
         content: messageData.content || '',
-        sender: {
-          id: messageData.sender_id,
-          name: senderDetails?.name || 'Unknown User',
-          avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
-        },
+        sender,
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || undefined,
         reactions: parsedReactions,

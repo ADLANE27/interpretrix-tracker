@@ -7,6 +7,8 @@ export const AttachmentSchema = z.object({
   size: z.number()
 });
 
+export type Attachment = z.infer<typeof AttachmentSchema>;
+
 export const MessageSchema = z.object({
   id: z.string().uuid(),
   content: z.string(),
@@ -17,12 +19,27 @@ export const MessageSchema = z.object({
   }),
   timestamp: z.date(),
   parent_message_id: z.string().uuid().optional().nullable(),
-  reactions: z.record(z.array(z.string())).optional().default({}),
-  attachments: z.array(AttachmentSchema).optional().default([])
+  reactions: z.record(z.array(z.string())).default({}),
+  attachments: z.array(AttachmentSchema).default([])
 });
 
 export type Message = z.infer<typeof MessageSchema>;
-export type Attachment = z.infer<typeof AttachmentSchema>;
+
+// Type guard for attachments
+export const isAttachment = (value: unknown): value is Attachment => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'filename' in value &&
+    'type' in value &&
+    'size' in value &&
+    typeof (value as any).url === 'string' &&
+    typeof (value as any).filename === 'string' &&
+    typeof (value as any).type === 'string' &&
+    typeof (value as any).size === 'number'
+  );
+};
 
 export interface MessageData {
   id: string;
