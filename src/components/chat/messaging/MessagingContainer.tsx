@@ -4,6 +4,7 @@ import { MessageComposer } from "./MessageComposer";
 import { useChat } from "@/hooks/useChat";
 import { Message, ReplyToMessage } from "@/types/messaging";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MessagingContainerProps {
   channelId: string;
@@ -44,7 +45,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     }
   };
 
-  const handleSendMessage = async (content: string, parentMessageId?: string) => {
+  const handleSendMessage = async (content: string, parentMessageId?: string): Promise<string> => {
     try {
       const { data, error } = await supabase
         .from('chat_messages')
@@ -109,7 +110,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           replyTo={replyTo || undefined}
           onCancelReply={() => setReplyTo(null)}
           channelId={channelId}
-          currentUserId={currentUserId} // Add currentUserId prop
+          currentUserId={currentUserId}
         />
       </div>
     </div>

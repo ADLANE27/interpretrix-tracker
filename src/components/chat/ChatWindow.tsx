@@ -19,9 +19,9 @@ interface Message {
 
 interface ChatWindowProps {
   messages: Message[];
-  onSendMessage: (content: string, parentMessageId?: string) => void;
+  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
   isLoading?: boolean;
-  channelId: string; // Add channelId prop
+  channelId: string;
 }
 
 export const ChatWindow = ({ 
@@ -61,6 +61,14 @@ export const ChatWindow = ({
 
   const messageMap = new Map(messages.map(message => [message.id, message]));
 
+  const handleSendMessage = async (content: string, parentMessageId?: string): Promise<string> => {
+    const messageId = await onSendMessage(content, parentMessageId);
+    if (replyTo) {
+      setReplyTo(null);
+    }
+    return messageId;
+  };
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
       <ScrollArea 
@@ -90,12 +98,12 @@ export const ChatWindow = ({
         })}
       </ScrollArea>
       <ChatInput 
-        onSendMessage={onSendMessage} 
+        onSendMessage={handleSendMessage}
         isLoading={isLoading}
         replyTo={replyTo || undefined}
         onCancelReply={() => setReplyTo(null)}
         channelId={channelId}
-        currentUserId={currentUserId} // Add this prop
+        currentUserId={currentUserId}
       />
     </div>
   );

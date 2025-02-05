@@ -7,7 +7,7 @@ export const MessageComposer = ({
   replyTo,
   onCancelReply,
   channelId,
-  currentUserId // Add currentUserId to destructuring
+  currentUserId
 }: MessageComposerProps) => {
   return (
     <ChatInput
@@ -16,7 +16,7 @@ export const MessageComposer = ({
       replyTo={replyTo}
       onCancelReply={onCancelReply}
       channelId={channelId}
-      currentUserId={currentUserId} // Pass currentUserId to ChatInput
+      currentUserId={currentUserId}
     />
   );
 };
