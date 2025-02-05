@@ -5,6 +5,7 @@ import { MessageSquare, X, Paperclip, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 interface ChatInputProps {
   onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
@@ -28,6 +29,7 @@ export const ChatInput = ({
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -37,6 +39,7 @@ export const ChatInput = ({
       onSendMessage(message.trim(), replyTo?.id, attachments);
       setMessage("");
       setAttachments([]);
+      setUploadProgress({});
     }
   };
 
@@ -57,9 +60,23 @@ export const ChatInput = ({
         const fileName = `${crypto.randomUUID()}.${fileExt}`;
         const filePath = `${fileName}`;
 
+        // Initialize progress for this file
+        setUploadProgress(prev => ({
+          ...prev,
+          [fileName]: 0
+        }));
+
         const { data, error } = await supabase.storage
           .from('message_attachments')
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            onUploadProgress: (progress) => {
+              const percent = (progress.loaded / progress.total) * 100;
+              setUploadProgress(prev => ({
+                ...prev,
+                [fileName]: percent
+              }));
+            }
+          });
 
         if (error) throw error;
 
@@ -89,6 +106,7 @@ export const ChatInput = ({
       });
     } finally {
       setUploadingFiles(false);
+      setUploadProgress({});
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -128,6 +146,19 @@ export const ChatInput = ({
               >
                 <X className="h-3 w-3" />
               </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      {Object.keys(uploadProgress).length > 0 && (
+        <div className="px-4 py-2 space-y-2">
+          {Object.entries(uploadProgress).map(([fileName, progress]) => (
+            <div key={fileName} className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className="truncate">{fileName}</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} className="h-1" />
             </div>
           ))}
         </div>
