@@ -79,8 +79,18 @@ export const ChatInput = ({
     if (e.key === '@') {
       setIsMentioning(true);
       setCursorPosition(e.currentTarget.selectionStart || 0);
+      setMentionQuery(''); // Reset mention query when @ is typed
     }
   };
+
+  const filteredMembers = channelMembers.filter(member => {
+    const searchTerm = mentionQuery.toLowerCase();
+    return (
+      member.first_name.toLowerCase().includes(searchTerm) ||
+      member.last_name.toLowerCase().includes(searchTerm) ||
+      member.email.toLowerCase().includes(searchTerm)
+    );
+  });
 
   const handleMentionSelect = (user: User) => {
     if (!textareaRef.current) return;
@@ -146,18 +156,21 @@ export const ChatInput = ({
                   onValueChange={setMentionQuery}
                 />
                 <CommandList>
-                  <CommandEmpty>No members found.</CommandEmpty>
-                  <CommandGroup>
-                    {channelMembers.map((member) => (
-                      <CommandItem
-                        key={member.id}
-                        value={`${member.first_name} ${member.last_name}`}
-                        onSelect={() => handleMentionSelect(member)}
-                      >
-                        {member.first_name} {member.last_name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  {filteredMembers.length === 0 ? (
+                    <CommandEmpty>No members found.</CommandEmpty>
+                  ) : (
+                    <CommandGroup>
+                      {filteredMembers.map((member) => (
+                        <CommandItem
+                          key={member.id}
+                          value={`${member.first_name} ${member.last_name}`}
+                          onSelect={() => handleMentionSelect(member)}
+                        >
+                          {member.first_name} {member.last_name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
                 </CommandList>
               </Command>
             </PopoverContent>
