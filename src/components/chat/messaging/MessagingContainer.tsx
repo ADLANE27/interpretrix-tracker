@@ -86,6 +86,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           isLoading={isLoading}
           replyTo={replyTo || undefined}
           onCancelReply={() => setReplyTo(null)}
+          channelId={channelId}
         />
       </div>
     </div>
