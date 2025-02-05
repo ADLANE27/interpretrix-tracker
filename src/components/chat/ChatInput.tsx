@@ -174,7 +174,7 @@ export const ChatInput = ({
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
       {replyTo && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-          <span>Replying to {replyTo.sender.name}</span>
+          <span className="truncate">{replyTo.content}</span>
           <Button
             type="button"
             variant="ghost"
