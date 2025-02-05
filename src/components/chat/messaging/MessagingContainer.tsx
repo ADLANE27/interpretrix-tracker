@@ -34,8 +34,8 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border rounded-lg relative">
-      <div className="flex-1 overflow-hidden">
+    <div className="flex flex-col h-full bg-background border rounded-lg">
+      <div className="flex-1 overflow-hidden min-h-0">
         <MessageList
           messages={messages}
           currentUserId={currentUserId}
@@ -52,7 +52,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
           onCancelReply={() => setReplyTo(null)}
         />
       </div>
-      <div className="absolute bottom-0 left-0 right-0 text-center text-sm text-gray-500 py-2 border-t bg-background">
+      <div className="py-2 px-4 text-center text-sm text-gray-500 border-t bg-background">
         © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
       </div>
     </div>
