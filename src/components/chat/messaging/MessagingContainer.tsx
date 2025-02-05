@@ -29,10 +29,10 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   };
 
   // Transform messages to ensure they match the required Message type
-  const validMessages = (messages?.map(msg => {
+  const validMessages = messages?.map(msg => {
     // Create a properly typed message object with all required fields
     const validMessage: Message = {
-      id: msg.id || crypto.randomUUID(),
+      id: msg.id || crypto.randomUUID(), // Ensure ID is always present
       content: msg.content || '',
       sender: {
         id: msg.sender?.id || crypto.randomUUID(),
@@ -42,22 +42,22 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
       timestamp: msg.timestamp || new Date(),
       parent_message_id: msg.parent_message_id,
       reactions: msg.reactions || {},
-      attachments: (msg.attachments || []).map(att => ({
+      attachments: Array.isArray(msg.attachments) ? msg.attachments.map(att => ({
         url: att.url || '',
         filename: att.filename || '',
         type: att.type || '',
         size: att.size || 0
-      }))
+      })) : []
     };
 
-    // Validate the message against the schema
     try {
+      // Validate the message against the schema
       return MessageSchema.parse(validMessage);
     } catch (error) {
       console.error('Invalid message format:', error);
       return null;
     }
-  }).filter((msg): msg is Message => msg !== null)) || [];
+  }).filter((msg): msg is Message => msg !== null) || [];
 
   return (
     <ChatWindow
@@ -69,3 +69,4 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     />
   );
 };
+
