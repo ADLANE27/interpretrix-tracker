@@ -2,12 +2,13 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Paperclip, Loader2, Trash } from "lucide-react";
+import { Paperclip, Loader2, Trash, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ChannelMember, Attachment } from "@/types/messaging";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ChatInputProps {
   onSendMessage: (content: string) => Promise<string>;
@@ -15,6 +16,8 @@ interface ChatInputProps {
   channelId: string;
   currentUserId: string | null;
 }
+
+const EMOJI_LIST = ['😊', '😂', '❤️', '👍', '👋', '🎉', '🔥', '✨', '🙏', '💪'];
 
 export const ChatInput = ({
   onSendMessage,
@@ -156,6 +159,22 @@ export const ChatInput = ({
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    if (!textareaRef.current) return;
+    
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const newMessage = message.slice(0, start) + emoji + message.slice(end);
+    
+    setMessage(newMessage);
+    
+    // Set cursor position after the inserted emoji
+    setTimeout(() => {
+      textareaRef.current?.setSelectionRange(start + emoji.length, start + emoji.length);
+      textareaRef.current?.focus();
+    }, 0);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
       {attachments.length > 0 && (
@@ -184,7 +203,7 @@ export const ChatInput = ({
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
-          className="min-h-[100px] max-h-[150px] resize-none pr-10 overflow-y-auto"
+          className="min-h-[100px] max-h-[150px] resize-none pr-24 overflow-y-auto"
         />
         
         {isMentioning && (
@@ -217,20 +236,49 @@ export const ChatInput = ({
           multiple
         />
         
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 bottom-2"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploadingFiles}
-        >
-          {uploadingFiles ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Paperclip className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="absolute right-2 bottom-2 flex gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <Smile className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" side="top">
+              <div className="flex flex-wrap gap-1 max-w-[200px]">
+                {EMOJI_LIST.map((emoji) => (
+                  <Button
+                    key={emoji}
+                    variant="ghost"
+                    className="h-8 w-8 p-0 hover:bg-muted/50"
+                    onClick={() => handleEmojiSelect(emoji)}
+                  >
+                    {emoji}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingFiles}
+          >
+            {uploadingFiles ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="flex justify-end">
