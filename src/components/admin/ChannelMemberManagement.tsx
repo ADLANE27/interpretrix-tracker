@@ -51,7 +51,7 @@ export const ChannelMemberManagement = ({
   onClose,
   channelId,
 }: ChannelMemberManagementProps) => {
-  const [showAvailableUsers, setShowAvailableUsers] = useState(false);
+  const [showAddMembers, setShowAddMembers] = useState(false);
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
@@ -100,7 +100,7 @@ export const ChannelMemberManagement = ({
 
       refetchMembers();
       refetchAvailableUsers();
-      setShowAvailableUsers(false);
+      setShowAddMembers(false);
     } catch (error: any) {
       console.error("Error adding member:", error);
       toast({
@@ -151,7 +151,7 @@ export const ChannelMemberManagement = ({
             <div className="space-y-4">
               <div className="flex justify-end">
                 <Button
-                  onClick={() => setShowAvailableUsers(!showAvailableUsers)}
+                  onClick={() => setShowAddMembers(!showAddMembers)}
                   className="gap-2"
                 >
                   <UserPlus className="h-4 w-4" />
@@ -159,7 +159,7 @@ export const ChannelMemberManagement = ({
                 </Button>
               </div>
 
-              {showAvailableUsers && availableUsers.length > 0 && (
+              {showAddMembers && (
                 <div>
                   <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
                   <div className="space-y-2">
