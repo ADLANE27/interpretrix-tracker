@@ -15,6 +15,7 @@ import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./chat/MessagesTab";
+import { Badge } from "@/components/ui/badge";
 
 interface Profile {
   id: string;
@@ -43,6 +44,7 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [unreadMentions, setUnreadMentions] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -50,8 +52,26 @@ export const InterpreterDashboard = () => {
   useEffect(() => {
     fetchProfile();
     fetchScheduledMissions();
+    fetchUnreadMentions();
 
-    // Set up realtime subscriptions
+    // Set up realtime subscriptions for mentions
+    const mentionsChannel = supabase
+      .channel('interpreter-mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `mentioned_user_id=eq.${profile?.id}`,
+        },
+        (payload) => {
+          console.log('Mentions update received:', payload);
+          fetchUnreadMentions();
+        }
+      )
+      .subscribe();
+
     const profileChannel = supabase
       .channel('interpreter-profile-updates')
       .on(
@@ -91,10 +111,29 @@ export const InterpreterDashboard = () => {
       });
 
     return () => {
+      supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(missionsChannel);
     };
   }, [profile?.id]);
+
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: mentions, error } = await supabase
+        .from('message_mentions')
+        .select('*')
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (error) throw error;
+      setUnreadMentions(mentions?.length || 0);
+    } catch (error) {
+      console.error('Error fetching unread mentions:', error);
+    }
+  };
 
   const fetchScheduledMissions = async () => {
     try {
@@ -370,9 +409,17 @@ export const InterpreterDashboard = () => {
                   </TabsTrigger>
                   <TabsTrigger 
                     value="messages"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="relative data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
                     Messages
+                    {unreadMentions > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 min-w-[20px] h-5 flex items-center justify-center"
+                      >
+                        {unreadMentions}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="profile"
