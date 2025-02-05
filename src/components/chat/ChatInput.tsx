@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { X, Paperclip, Loader2 } from "lucide-react";
+import { Paperclip, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,16 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ChannelMember, Attachment } from "@/types/messaging";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, parentMessageId?: string, attachments?: Attachment[]) => Promise<string>;
+  onSendMessage: (content: string) => Promise<string>;
   isLoading?: boolean;
-  replyTo?: {
-    id: string;
-    content: string;
-    sender: {
-      name: string;
-    };
-  };
-  onCancelReply?: () => void;
   channelId: string;
   currentUserId: string | null;
 }
@@ -27,8 +19,6 @@ interface ChatInputProps {
 export const ChatInput = ({
   onSendMessage,
   isLoading,
-  replyTo,
-  onCancelReply,
   channelId,
   currentUserId
 }: ChatInputProps) => {
@@ -51,7 +41,6 @@ export const ChatInput = ({
       });
       
       if (error) throw error;
-      console.log('Channel members:', data);
       return data;
     },
     enabled: !!channelId
@@ -154,12 +143,9 @@ export const ChatInput = ({
     if ((!message.trim() && attachments.length === 0) || isLoading || uploadingFiles || !currentUserId) return;
 
     try {
-      await onSendMessage(message, replyTo?.id, attachments);
+      await onSendMessage(message);
       setMessage("");
       setAttachments([]);
-      if (replyTo && onCancelReply) {
-        onCancelReply();
-      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -172,21 +158,6 @@ export const ChatInput = ({
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
-      {replyTo && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
-          <span className="truncate">{replyTo.content}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4"
-            onClick={onCancelReply}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
-      
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((file, index) => (
@@ -199,7 +170,7 @@ export const ChatInput = ({
                 className="h-4 w-4"
                 onClick={() => removeAttachment(index)}
               >
-                <X className="h-3 w-3" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             </div>
           ))}
@@ -271,7 +242,7 @@ export const ChatInput = ({
             (isLoading || uploadingFiles) && "opacity-50 cursor-not-allowed"
           )}
         >
-          {isLoading || uploadingFiles ? "Sending..." : "Envoyer"}
+          {isLoading || uploadingFiles ? "Sending..." : "Send"}
         </Button>
       </div>
     </form>

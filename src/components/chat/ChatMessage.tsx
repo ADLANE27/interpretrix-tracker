@@ -1,4 +1,4 @@
-import { Trash2, MessageCircleReply, ChevronRight, FileText, Image as ImageIcon, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
+import { Trash2, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,11 +21,6 @@ interface ChatMessageProps {
   timestamp: Date;
   isCurrentUser: boolean;
   onDelete?: () => void;
-  onReply?: () => void;
-  isReply?: boolean;
-  parentSender?: {
-    name: string;
-  };
   attachments?: Attachment[];
   reactions?: Record<string, string[]>;
   onReact?: (emoji: string) => void;
@@ -44,9 +39,6 @@ export const ChatMessage = ({
   timestamp, 
   isCurrentUser,
   onDelete,
-  onReply,
-  isReply,
-  parentSender,
   attachments = [],
   reactions = {},
   onReact
@@ -62,15 +54,8 @@ export const ChatMessage = ({
   return (
     <div className={cn(
       "flex gap-3 mb-4 group animate-fade-in",
-      isCurrentUser ? "flex-row-reverse" : "flex-row",
-      isReply && "ml-8"
+      isCurrentUser ? "flex-row-reverse" : "flex-row"
     )}>
-      {isReply && (
-        <div className="absolute left-2 flex items-center text-muted-foreground text-xs gap-1">
-          <ChevronRight className="h-3 w-3" />
-          <span>Reply to {parentSender?.name}</span>
-        </div>
-      )}
       <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
         {sender.avatarUrl && <AvatarImage src={sender.avatarUrl} alt={sender.name} />}
         <AvatarFallback>{sender.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -101,28 +86,15 @@ export const ChatMessage = ({
                       "bg-background/50 hover:bg-background backdrop-blur-sm"
                   )}
                 >
-                  {attachment.type.startsWith('image/') ? (
-                    <div className="relative w-[200px] h-[150px] rounded-lg overflow-hidden">
-                      <img 
-                        src={attachment.url} 
-                        alt={attachment.filename}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4" />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium truncate max-w-[200px]">
-                          {attachment.filename}
-                        </span>
-                        <span className="text-xs opacity-70">
-                          {formatFileSize(attachment.size)}
-                        </span>
-                      </div>
-                      <Download className="h-4 w-4 ml-auto" />
-                    </>
-                  )}
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate max-w-[200px]">
+                      {attachment.filename}
+                    </span>
+                    <span className="text-xs opacity-70">
+                      {formatFileSize(attachment.size)}
+                    </span>
+                  </div>
+                  <Download className="h-4 w-4 ml-auto" />
                 </a>
               ))}
             </div>
@@ -154,16 +126,6 @@ export const ChatMessage = ({
                 onClick={onDelete}
               >
                 <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-            {onReply && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-primary/10 hover:text-primary transition-colors duration-200"
-                onClick={onReply}
-              >
-                <MessageCircleReply className="h-4 w-4" />
               </Button>
             )}
             <Popover>
