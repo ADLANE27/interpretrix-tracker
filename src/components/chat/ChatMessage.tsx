@@ -3,8 +3,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Attachment {
   url: string;
@@ -31,8 +29,6 @@ interface ChatMessageProps {
   attachments?: Attachment[];
   reactions?: Record<string, string[]>;
   onReact?: (emoji: string) => void;
-  messageId: string; // Add this prop
-  channelId: string; // Add this prop
 }
 
 const REACTIONS = [
@@ -53,31 +49,8 @@ export const ChatMessage = ({
   parentSender,
   attachments = [],
   reactions = {},
-  onReact,
-  messageId,
-  channelId
+  onReact
 }: ChatMessageProps) => {
-  useEffect(() => {
-    const updateMentionStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Check if the current user is mentioned in this message
-      const mentionRegex = new RegExp(`@${user.user_metadata.first_name} ${user.user_metadata.last_name}`);
-      if (mentionRegex.test(content)) {
-        // Update mention status to read when the message is viewed
-        await supabase
-          .from('message_mentions')
-          .update({ status: 'read' })
-          .eq('message_id', messageId)
-          .eq('mentioned_user_id', user.id)
-          .eq('channel_id', channelId);
-      }
-    };
-
-    updateMentionStatus();
-  }, [content, messageId, channelId]);
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
