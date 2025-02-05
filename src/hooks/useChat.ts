@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,8 +39,8 @@ export const useChat = (channelId: string) => {
         });
       }
 
-      // Ensure attachments match the schema
-      const attachments = messageData.attachments && Array.isArray(messageData.attachments) 
+      // Validate attachments against schema
+      const attachments = messageData.attachments && Array.isArray(messageData.attachments)
         ? messageData.attachments
             .filter(att => att && typeof att === 'object')
             .map(att => ({
@@ -50,6 +49,14 @@ export const useChat = (channelId: string) => {
               type: String(att.type || ''),
               size: Number(att.size || 0)
             }))
+            .filter(att => {
+              try {
+                AttachmentSchema.parse(att);
+                return true;
+              } catch {
+                return false;
+              }
+            })
         : [];
 
       const parsedMessage = MessageSchema.parse({
@@ -62,9 +69,10 @@ export const useChat = (channelId: string) => {
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || null,
-        reactions: reactions,
-        attachments: attachments
+        reactions,
+        attachments
       });
+
       return parsedMessage;
     } catch (error) {
       console.error('Message validation error:', error);
