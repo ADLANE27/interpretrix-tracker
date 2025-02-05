@@ -6,7 +6,7 @@ export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
 
   return (
-    <div className="grid grid-cols-[300px_1fr] gap-4 h-[600px]">
+    <div className="grid grid-cols-[300px_1fr] gap-4 h-[calc(100vh-16rem)]">
       <ChannelList onChannelSelect={setSelectedChannelId} />
       {selectedChannelId ? (
         <MessagingContainer channelId={selectedChannelId} />
