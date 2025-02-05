@@ -9,9 +9,13 @@ export const MessageComposer = ({
   channelId,
   currentUserId
 }: MessageComposerProps) => {
+  const handleSendMessage = async (content: string, parentMessageId?: string): Promise<string> => {
+    return await onSendMessage(content, parentMessageId);
+  };
+
   return (
     <ChatInput
-      onSendMessage={onSendMessage}
+      onSendMessage={handleSendMessage}
       isLoading={isLoading}
       replyTo={replyTo}
       onCancelReply={onCancelReply}

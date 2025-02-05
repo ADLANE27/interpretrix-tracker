@@ -21,7 +21,8 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
 
   const handleSendMessage = async (content: string, parentMessageId?: string): Promise<string> => {
     if (!currentUserId) throw new Error("User not authenticated");
-    return await sendMessage(content, parentMessageId);
+    const messageId = await sendMessage(content, parentMessageId);
+    return messageId;
   };
 
   return (

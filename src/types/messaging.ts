@@ -26,12 +26,12 @@ export interface ReplyToMessage {
 }
 
 export interface MessageComposerProps {
-  onSendMessage: (content: string, parentMessageId?: string, attachments?: any[]) => void;
+  onSendMessage: (content: string, parentMessageId?: string) => Promise<string>;
   isLoading?: boolean;
   replyTo?: ReplyToMessage;
   onCancelReply?: () => void;
   channelId: string;
-  currentUserId: string | null; // Add currentUserId prop
+  currentUserId: string | null;
 }
 
 export interface MessageListProps {
