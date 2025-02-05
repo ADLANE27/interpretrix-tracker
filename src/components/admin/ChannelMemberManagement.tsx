@@ -85,6 +85,27 @@ export const ChannelMemberManagement = ({
 
   const addMember = async (userId: string) => {
     try {
+      // First check if the user is already a member
+      const { data: existingMember, error: checkError } = await supabase
+        .from("channel_members")
+        .select("user_id")
+        .eq("channel_id", channelId)
+        .eq("user_id", userId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingMember) {
+        toast({
+          title: "Membre déjà présent",
+          description: "Cet utilisateur est déjà membre du canal",
+          variant: "default",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("channel_members")
         .insert({
@@ -148,16 +169,18 @@ export const ChannelMemberManagement = ({
               <Users className="h-5 w-5" />
               Gérer les membres du canal
             </DialogTitle>
-            <DialogDescription className="flex flex-col gap-2 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 shrink-0" />
-                <span>Pour ajouter un nouveau membre :</span>
+            <DialogDescription>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Info className="h-4 w-4 shrink-0" />
+                  <span>Pour ajouter un nouveau membre :</span>
+                </div>
+                <ol className="list-decimal ml-8 space-y-1 text-muted-foreground">
+                  <li>Tapez le nom ou l'email de l'utilisateur dans la barre de recherche ci-dessous</li>
+                  <li>Les utilisateurs disponibles apparaîtront dans la section "Utilisateurs disponibles"</li>
+                  <li>Cliquez sur "Ajouter au canal" à côté de l'utilisateur souhaité</li>
+                </ol>
               </div>
-              <ol className="list-decimal ml-8 space-y-1">
-                <li>Tapez le nom ou l'email de l'utilisateur dans la barre de recherche ci-dessous</li>
-                <li>Les utilisateurs disponibles apparaîtront sous "Utilisateurs disponibles"</li>
-                <li>Cliquez sur "Ajouter au canal" à côté de l'utilisateur souhaité</li>
-              </ol>
             </DialogDescription>
           </DialogHeader>
 
@@ -207,7 +230,7 @@ export const ChannelMemberManagement = ({
                 </div>
               </div>
 
-              {/* Available Users Section - Always visible */}
+              {/* Available Users Section */}
               <div>
                 <h3 className="font-medium mb-3 flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
