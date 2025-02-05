@@ -4,6 +4,7 @@ import { Message, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
+import { useToast } from '@/hooks/use-toast';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -11,6 +12,7 @@ export const useChat = (channelId: string) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const { toast } = useToast();
 
   const { formatMessage } = useMessageFormatter();
 
@@ -124,10 +126,22 @@ export const useChat = (channelId: string) => {
         .delete()
         .eq('id', messageId);
 
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete message",
+          variant: "destructive",
+        });
+        throw error;
+      }
 
       // Update local state immediately after successful deletion
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+      
+      toast({
+        title: "Success",
+        description: "Message deleted successfully",
+      });
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);
     }
