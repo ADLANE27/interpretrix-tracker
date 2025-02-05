@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Message } from '@/types/messaging';
+import { Message, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
@@ -21,7 +21,6 @@ export const useChat = (channelId: string) => {
     try {
       console.log('[Chat] Fetching messages for channel:', channelId);
       
-      // First, get the messages
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
@@ -30,11 +29,9 @@ export const useChat = (channelId: string) => {
 
       if (messagesError) throw messagesError;
 
-      // Format messages with proper sender details
       const formattedMessages: Message[] = [];
       for (const message of messagesData || []) {
         try {
-          // Get sender details using the dedicated function
           const { data: senderData, error: senderError } = await supabase
             .rpc('get_message_sender_details', {
               sender_id: message.sender_id
@@ -57,7 +54,6 @@ export const useChat = (channelId: string) => {
             if (typeof message.reactions === 'string') {
               parsedReactions = JSON.parse(message.reactions);
             } else if (message.reactions && typeof message.reactions === 'object') {
-              // Ensure each value is an array of strings
               Object.entries(message.reactions).forEach(([emoji, users]) => {
                 if (Array.isArray(users)) {
                   parsedReactions[emoji] = users.map(String);
@@ -70,14 +66,22 @@ export const useChat = (channelId: string) => {
           }
 
           // Parse and validate attachments
-          const parsedAttachments = Array.isArray(message.attachments) 
-            ? message.attachments.map(att => ({
-                url: String(att.url || ''),
-                filename: String(att.filename || ''),
-                type: String(att.type || ''),
-                size: Number(att.size || 0)
-              }))
-            : [];
+          const parsedAttachments: Attachment[] = [];
+          if (Array.isArray(message.attachments)) {
+            for (const att of message.attachments) {
+              if (typeof att === 'object' && att !== null) {
+                const attachment = {
+                  url: String(att['url'] || ''),
+                  filename: String(att['filename'] || ''),
+                  type: String(att['type'] || ''),
+                  size: Number(att['size'] || 0)
+                };
+                if (isAttachment(attachment)) {
+                  parsedAttachments.push(attachment);
+                }
+              }
+            }
+          }
 
           const formattedMessage: Message = {
             id: message.id,
