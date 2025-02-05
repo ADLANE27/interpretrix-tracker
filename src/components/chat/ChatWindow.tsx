@@ -4,19 +4,7 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/hooks/useChat";
-
-interface Message {
-  id: string;
-  content: string;
-  sender: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-  timestamp: Date;
-  parent_message_id?: string;
-  reactions?: Record<string, string[]>;
-}
+import { Message } from "@/types/messaging";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -95,6 +83,7 @@ export const ChatWindow = ({
                 parentSender={parentMessage?.sender}
                 reactions={message.reactions}
                 onReact={(emoji) => reactToMessage(message.id, emoji)}
+                attachments={message.attachments}
               />
             );
           })}

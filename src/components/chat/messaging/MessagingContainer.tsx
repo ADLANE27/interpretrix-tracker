@@ -43,12 +43,12 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
         timestamp: rawMsg.timestamp instanceof Date ? rawMsg.timestamp : new Date(rawMsg.timestamp),
         parent_message_id: rawMsg.parent_message_id || null,
         reactions: rawMsg.reactions || {},
-        attachments: (rawMsg.attachments || []).map(att => ({
+        attachments: Array.isArray(rawMsg.attachments) ? rawMsg.attachments.map(att => ({
           url: att.url,
           filename: att.filename,
           type: att.type,
           size: att.size
-        }))
+        })) : []
       };
 
       const validatedMessage = MessageSchema.parse(messageData);
@@ -65,7 +65,6 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
       onSendMessage={handleSendMessage}
       isLoading={isLoading}
       channelId={channelId}
-      currentUserId={currentUserId}
     />
   );
 };
