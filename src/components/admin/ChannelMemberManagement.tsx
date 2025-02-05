@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Search, UserPlus, UserMinus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +52,7 @@ export const ChannelMemberManagement = ({
   channelId,
 }: ChannelMemberManagementProps) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
   const { data: members = [], refetch: refetchMembers } = useQuery({
@@ -71,68 +71,47 @@ export const ChannelMemberManagement = ({
   const { data: availableUsers = [] } = useQuery({
     queryKey: ["available-users", searchQuery],
     queryFn: async () => {
-      // First, get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*")
-        .ilike("email", `%${searchQuery}%`);
+      if (!searchQuery) return [];
 
-      if (rolesError) throw rolesError;
-
-      // Then, get interpreter profiles
+      // First get interpreter profiles that match the search
       const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from("interpreter_profiles")
-        .select("*");
+        .from('interpreter_profiles')
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles!inner (
+            role
+          )
+        `)
+        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
+        .not('id', 'in', members.map(m => m.user_id));
 
       if (interpreterError) throw interpreterError;
 
-      // Create a map of interpreter profiles
-      const profilesMap = new Map(
-        interpreterProfiles.map(profile => [profile.id, profile])
+      // Then get admin users from user_roles that match the search
+      const { data: adminUsers, error: adminError } = await supabase.functions.invoke('search-admin-users', {
+        body: { searchQuery }
+      });
+
+      if (adminError) throw adminError;
+
+      // Filter out admins who are already members
+      const filteredAdmins = (adminUsers || []).filter(
+        admin => !members.some(member => member.user_id === admin.id)
       );
 
-      // Combine the data
-      const users: AvailableUser[] = await Promise.all(
-        userRoles.map(async (userRole) => {
-          const profile = profilesMap.get(userRole.user_id);
-          
-          if (!profile) {
-            const response = await supabase.functions.invoke('get-user-info', {
-              body: { userId: userRole.user_id }
-            });
-            
-            if (response.error) {
-              console.error('Error fetching user info:', response.error);
-              return {
-                id: userRole.user_id,
-                email: "",
-                role: userRole.role,
-                first_name: "",
-                last_name: "",
-              };
-            }
+      // Combine and format the results
+      const interpreters = (interpreterProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        role: profile.user_roles[0].role as 'interpreter'
+      }));
 
-            const userData = response.data;
-            return {
-              id: userRole.user_id,
-              email: userData.email || "",
-              role: userRole.role,
-              first_name: userData.first_name || "",
-              last_name: userData.last_name || "",
-            };
-          }
-
-          return {
-            id: userRole.user_id,
-            email: profile.email,
-            role: userRole.role,
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-          };
-        })
-      );
-
-      return users.filter(user => user.email && user.first_name && user.last_name);
+      return [...interpreters, ...filteredAdmins] as AvailableUser[];
     },
     enabled: isOpen && searchQuery.length > 0,
   });
@@ -179,7 +158,7 @@ export const ChannelMemberManagement = ({
         description: "L'utilisateur a été retiré du canal avec succès",
       });
 
-      setMemberToRemove(null);
+      setUserToRemove(null);
       refetchMembers();
     } catch (error: any) {
       console.error("Error removing member:", error);
@@ -190,10 +169,6 @@ export const ChannelMemberManagement = ({
       });
     }
   };
-
-  const filteredUsers = availableUsers.filter(
-    user => !members.some(member => member.user_id === user.id)
-  );
 
   return (
     <>
@@ -216,11 +191,11 @@ export const ChannelMemberManagement = ({
 
             <ScrollArea className="h-[50vh]">
               <div className="space-y-4">
-                {searchQuery && filteredUsers.length > 0 && (
+                {searchQuery && availableUsers.length > 0 && (
                   <div>
                     <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
                     <div className="space-y-2">
-                      {filteredUsers.map(user => (
+                      {availableUsers.map(user => (
                         <div
                           key={user.id}
                           className="flex items-center justify-between p-2 rounded-lg border"
@@ -268,7 +243,7 @@ export const ChannelMemberManagement = ({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => setMemberToRemove(member)}
+                            onClick={() => setUserToRemove(member)}
                             className="gap-2"
                           >
                             <UserMinus className="h-4 w-4" />
@@ -285,20 +260,20 @@ export const ChannelMemberManagement = ({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
+      <AlertDialog open={!!userToRemove} onOpenChange={() => setUserToRemove(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer le retrait du membre</AlertDialogTitle>
             <AlertDialogDescription>
-              Êtes-vous sûr de vouloir retirer {memberToRemove?.first_name} {memberToRemove?.last_name} du canal ?
+              Êtes-vous sûr de vouloir retirer {userToRemove?.first_name} {userToRemove?.last_name} du canal ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setMemberToRemove(null)}>
+            <AlertDialogCancel onClick={() => setUserToRemove(null)}>
               Annuler
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => memberToRemove && removeMember(memberToRemove)}
+              onClick={() => userToRemove && removeMember(userToRemove)}
               className="bg-red-600 hover:bg-red-700"
             >
               Retirer
