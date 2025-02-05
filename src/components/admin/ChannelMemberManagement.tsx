@@ -34,8 +34,18 @@ interface Member {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: 'admin' | 'interpreter';
   joined_at: string;
+}
+
+interface AvailableUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_roles: {
+    role: 'admin' | 'interpreter';
+  };
 }
 
 export const ChannelMemberManagement = ({
@@ -60,11 +70,10 @@ export const ChannelMemberManagement = ({
     enabled: isOpen,
   });
 
-  // Fetch available users (interpreters and admins)
   const { data: availableUsers = [] } = useQuery({
     queryKey: ["available-users", searchQuery],
     queryFn: async () => {
-      const { data: users, error } = await supabase
+      const { data, error } = await supabase
         .from("interpreter_profiles")
         .select(`
           id,
@@ -80,7 +89,7 @@ export const ChannelMemberManagement = ({
 
       if (error) throw error;
 
-      return users.map(user => ({
+      return (data as AvailableUser[]).map(user => ({
         id: user.id,
         email: user.email,
         first_name: user.first_name,

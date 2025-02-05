@@ -34,8 +34,18 @@ interface Member {
   email: string;
   first_name: string;
   last_name: string;
-  role: string;
+  role: 'admin' | 'interpreter';
   joined_at: string;
+}
+
+interface AvailableUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_roles: {
+    role: 'admin' | 'interpreter';
+  };
 }
 
 export const ChannelMembersDialog = ({
@@ -47,7 +57,6 @@ export const ChannelMembersDialog = ({
   const [userToRemove, setUserToRemove] = useState<Member | null>(null);
   const { toast } = useToast();
 
-  // Fetch current channel members using the RPC function
   const { data: members = [], refetch: refetchMembers } = useQuery({
     queryKey: ["channel-members", channelId],
     queryFn: async () => {
@@ -61,11 +70,10 @@ export const ChannelMembersDialog = ({
     enabled: isOpen,
   });
 
-  // Fetch available users
   const { data: availableUsers = [] } = useQuery({
     queryKey: ["available-users", searchQuery],
     queryFn: async () => {
-      const { data: users, error } = await supabase
+      const { data, error } = await supabase
         .from("interpreter_profiles")
         .select(`
           id,
@@ -81,7 +89,7 @@ export const ChannelMembersDialog = ({
 
       if (error) throw error;
 
-      return users.map(user => ({
+      return (data as AvailableUser[]).map(user => ({
         id: user.id,
         email: user.email,
         first_name: user.first_name,
