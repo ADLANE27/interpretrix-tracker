@@ -82,7 +82,7 @@ export const useChat = (channelId: string) => {
         userRoles?.map(ur => [ur.user_id, ur.role]) || []
       );
 
-      const formattedMessages: Message[] = await Promise.all(
+      const formattedMessages = await Promise.all(
         messagesData.map(async (message) => {
           const profile = profilesMap.get(message.sender_id);
           const role = rolesMap.get(message.sender_id);
@@ -166,11 +166,8 @@ export const useChat = (channelId: string) => {
         },
         async (payload) => {
           console.log('[Chat] Received real-time update:', payload);
-          
-          // Refresh messages when any change occurs
           await fetchMessages();
           
-          // Show toast for new messages from others
           if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
             toast({
               title: "Nouveau message",
@@ -194,7 +191,7 @@ export const useChat = (channelId: string) => {
     
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chat_messages')
         .insert({
           channel_id: channelId,
@@ -203,9 +200,29 @@ export const useChat = (channelId: string) => {
           parent_message_id: parentMessageId,
           attachments,
           reactions: {}
-        });
+        })
+        .select('*')
+        .single();
 
       if (error) throw error;
+
+      // Immediately add the new message to the messages list
+      if (data) {
+        const newMessage: Message = {
+          id: data.id,
+          content: data.content,
+          sender: {
+            id: currentUserId,
+            name: 'Admin', // This will be updated by the real-time subscription
+          },
+          timestamp: new Date(data.created_at),
+          parent_message_id: data.parent_message_id,
+          reactions: {},
+        };
+        
+        setMessages(prev => [...prev, newMessage]);
+      }
+
     } catch (error) {
       console.error('[Chat] Error sending message:', error);
       toast({
