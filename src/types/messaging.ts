@@ -31,7 +31,7 @@ export interface MessageComposerProps {
   replyTo?: ReplyToMessage;
   onCancelReply?: () => void;
   channelId: string;
-  currentUserId: string | null; // Add currentUserId prop
+  currentUserId: string | null;
 }
 
 export interface MessageListProps {
@@ -40,4 +40,5 @@ export interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onReplyMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
+  channelId: string; // Added this property
 }
