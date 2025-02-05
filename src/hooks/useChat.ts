@@ -49,12 +49,19 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const formatMessage = (messageData: MessageData): Message | null => {
+  const formatMessage = async (messageData: MessageData): Promise<Message | null> => {
     try {
       if (!messageData?.id || !messageData?.sender_id) {
         console.error('Missing required message data:', messageData);
         return null;
       }
+
+      // Get sender details from the database
+      const { data: senderDetails } = await supabase
+        .rpc('get_message_sender_details', {
+          sender_id: messageData.sender_id
+        })
+        .single();
 
       const reactions: Record<string, string[]> = {};
       if (messageData.reactions && typeof messageData.reactions === 'object') {
@@ -77,8 +84,8 @@ export const useChat = (channelId: string) => {
         content: messageData.content || '',
         sender: {
           id: messageData.sender_id,
-          name: 'Unknown User',
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
+          name: senderDetails?.name || 'Unknown User',
+          avatarUrl: senderDetails?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${messageData.sender_id}`
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
