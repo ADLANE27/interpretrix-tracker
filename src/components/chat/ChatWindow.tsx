@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -70,32 +71,34 @@ export const ChatWindow = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
+    <div className="flex flex-col h-[600px] bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
       <ScrollArea 
-        className="flex-1 p-4 space-y-4 overflow-hidden" 
+        className="flex-1 p-4" 
         ref={scrollRef}
       >
-        {messages.map((message) => {
-          const parentMessage = message.parent_message_id 
-            ? messageMap.get(message.parent_message_id) 
-            : undefined;
+        <div className="space-y-4">
+          {messages.map((message) => {
+            const parentMessage = message.parent_message_id 
+              ? messageMap.get(message.parent_message_id) 
+              : undefined;
 
-          return (
-            <ChatMessage
-              key={message.id}
-              content={message.content}
-              sender={message.sender}
-              timestamp={message.timestamp}
-              isCurrentUser={message.sender.id === currentUserId}
-              onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
-              onReply={() => handleReply(message.id)}
-              isReply={!!message.parent_message_id}
-              parentSender={parentMessage?.sender}
-              reactions={message.reactions}
-              onReact={(emoji) => reactToMessage(message.id, emoji)}
-            />
-          );
-        })}
+            return (
+              <ChatMessage
+                key={message.id}
+                content={message.content}
+                sender={message.sender}
+                timestamp={message.timestamp}
+                isCurrentUser={message.sender.id === currentUserId}
+                onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
+                onReply={() => handleReply(message.id)}
+                isReply={!!message.parent_message_id}
+                parentSender={parentMessage?.sender}
+                reactions={message.reactions}
+                onReact={(emoji) => reactToMessage(message.id, emoji)}
+              />
+            );
+          })}
+        </div>
       </ScrollArea>
       <ChatInput 
         onSendMessage={handleSendMessage}

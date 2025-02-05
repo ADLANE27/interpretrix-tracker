@@ -28,9 +28,9 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     return messageId;
   };
 
-  // Ensure messages match the required Message type
+  // Transform messages to ensure they match the required Message type
   const validMessages: Message[] = messages?.map(msg => ({
-    id: msg.id || '',
+    id: msg.id || crypto.randomUUID(),
     content: msg.content || '',
     sender: {
       id: msg.sender?.id || '',
@@ -45,7 +45,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
       filename: att.filename || '',
       type: att.type || '',
       size: att.size || 0
-    }))
+    })) || []
   })) || [];
 
   return (
