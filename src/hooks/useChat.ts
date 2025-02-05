@@ -42,6 +42,7 @@ export const useChat = (channelId: string) => {
     
     setIsLoading(true);
     try {
+      console.log('[Chat] Fetching messages for channel:', channelId);
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select(`
@@ -49,7 +50,8 @@ export const useChat = (channelId: string) => {
           content,
           created_at,
           sender_id,
-          reactions
+          reactions,
+          parent_message_id
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true });
@@ -102,10 +104,11 @@ export const useChat = (channelId: string) => {
                   name: `${userData.first_name} ${userData.last_name} (Admin)`,
                 },
                 timestamp: new Date(message.created_at),
+                parent_message_id: message.parent_message_id,
                 reactions: message.reactions as Record<string, string[]> || {},
               };
             } catch (error) {
-              console.error('Error fetching admin info:', error);
+              console.error('[Chat] Error fetching admin info:', error);
               return {
                 id: message.id,
                 content: message.content,
@@ -114,6 +117,7 @@ export const useChat = (channelId: string) => {
                   name: 'Admin',
                 },
                 timestamp: new Date(message.created_at),
+                parent_message_id: message.parent_message_id,
                 reactions: message.reactions as Record<string, string[]> || {},
               };
             }
@@ -128,6 +132,7 @@ export const useChat = (channelId: string) => {
               avatarUrl: profile?.profile_picture_url,
             },
             timestamp: new Date(message.created_at),
+            parent_message_id: message.parent_message_id,
             reactions: message.reactions as Record<string, string[]> || {},
           };
         })
@@ -135,7 +140,7 @@ export const useChat = (channelId: string) => {
 
       setMessages(formattedMessages);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('[Chat] Error fetching messages:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les messages",
@@ -147,6 +152,8 @@ export const useChat = (channelId: string) => {
   };
 
   const subscribeToMessages = () => {
+    console.log('[Chat] Setting up real-time subscription for channel:', channelId);
+    
     const channel = supabase
       .channel(`messages:${channelId}`)
       .on(
@@ -157,13 +164,27 @@ export const useChat = (channelId: string) => {
           table: 'chat_messages',
           filter: `channel_id=eq.${channelId}`,
         },
-        () => {
-          fetchMessages();
+        async (payload) => {
+          console.log('[Chat] Received real-time update:', payload);
+          
+          // Refresh messages when any change occurs
+          await fetchMessages();
+          
+          // Show toast for new messages from others
+          if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
+            toast({
+              title: "Nouveau message",
+              description: "Un nouveau message a été reçu",
+            });
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Chat] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[Chat] Cleaning up real-time subscription');
       supabase.removeChannel(channel);
     };
   };
@@ -186,7 +207,7 @@ export const useChat = (channelId: string) => {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[Chat] Error sending message:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer le message",
@@ -211,7 +232,7 @@ export const useChat = (channelId: string) => {
         description: "Message supprimé",
       });
     } catch (error) {
-      console.error('Error deleting message:', error);
+      console.error('[Chat] Error deleting message:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le message",
@@ -256,7 +277,7 @@ export const useChat = (channelId: string) => {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error updating reaction:', error);
+      console.error('[Chat] Error updating reaction:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la réaction",
