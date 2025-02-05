@@ -39,25 +39,41 @@ export const useChat = (channelId: string) => {
         return null;
       }
 
-      // Ensure reactions is a valid object
+      // Parse and validate reactions
       let parsedReactions: Record<string, string[]> = {};
-      if (typeof messageData.reactions === 'string') {
-        try {
+      try {
+        if (typeof messageData.reactions === 'string') {
           parsedReactions = JSON.parse(messageData.reactions);
-        } catch (e) {
-          console.error('Error parsing reactions:', e);
+        } else if (messageData.reactions && typeof messageData.reactions === 'object') {
+          parsedReactions = messageData.reactions as Record<string, string[]>;
         }
-      } else if (messageData.reactions && typeof messageData.reactions === 'object') {
-        parsedReactions = messageData.reactions;
+        
+        // Validate reactions structure
+        Object.entries(parsedReactions).forEach(([emoji, users]) => {
+          if (!Array.isArray(users)) {
+            console.error('Invalid reactions structure:', emoji, users);
+            parsedReactions[emoji] = [];
+          }
+        });
+      } catch (e) {
+        console.error('Error parsing reactions:', e);
+        parsedReactions = {};
       }
 
-      // Ensure attachments are properly formatted
-      const parsedAttachments: Attachment[] = messageData.attachments?.map(att => ({
-        url: String(att.url || ''),
-        filename: String(att.filename || ''),
-        type: String(att.type || ''),
-        size: Number(att.size || 0)
-      })) || [];
+      // Parse and validate attachments
+      const parsedAttachments: Attachment[] = [];
+      if (Array.isArray(messageData.attachments)) {
+        for (const att of messageData.attachments) {
+          if (typeof att === 'object' && att !== null) {
+            parsedAttachments.push({
+              url: String(att.url || ''),
+              filename: String(att.filename || ''),
+              type: String(att.type || ''),
+              size: Number(att.size || 0)
+            });
+          }
+        }
+      }
 
       const formatted: Message = {
         id: messageData.id,
@@ -240,7 +256,12 @@ export const useChat = (channelId: string) => {
           sender_id: currentUserId,
           content: content.trim(),
           parent_message_id: parentMessageId,
-          attachments,
+          attachments: attachments.map(att => ({
+            url: att.url,
+            filename: att.filename,
+            type: att.type,
+            size: att.size
+          })),
           reactions: {}
         })
         .select('*')

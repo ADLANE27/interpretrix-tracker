@@ -31,13 +31,8 @@ export interface MessageData {
   channel_id: string;
   created_at: string;
   parent_message_id: string | null;
-  reactions: Record<string, string[]>;
-  attachments?: Array<{
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  }>;
+  reactions: unknown;
+  attachments?: unknown[];
   sender?: {
     id: string;
     email?: string;
