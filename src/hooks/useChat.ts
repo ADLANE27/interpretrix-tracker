@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { Message, MessageSchema, AttachmentSchema } from '@/types/messaging';
-import { z } from 'zod';
+import { Message } from '@/types/messaging';
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -22,44 +21,14 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  const validateAndFormatMessage = (messageData: any): Message | null => {
+  const formatMessage = (messageData: any): Message | null => {
     try {
       if (!messageData?.id || !messageData?.sender_id) {
         console.error('Missing required message data:', messageData);
         return null;
       }
 
-      // Ensure reactions is a valid Record<string, string[]>
-      const reactions: Record<string, string[]> = {};
-      if (messageData.reactions && typeof messageData.reactions === 'object') {
-        Object.entries(messageData.reactions).forEach(([emoji, users]) => {
-          if (Array.isArray(users)) {
-            reactions[emoji] = users.filter((user): user is string => typeof user === 'string');
-          }
-        });
-      }
-
-      // Validate attachments against schema
-      const attachments = messageData.attachments && Array.isArray(messageData.attachments)
-        ? messageData.attachments
-            .filter(att => att && typeof att === 'object')
-            .map(att => ({
-              url: String(att.url || ''),
-              filename: String(att.filename || ''),
-              type: String(att.type || ''),
-              size: Number(att.size || 0)
-            }))
-            .filter(att => {
-              try {
-                AttachmentSchema.parse(att);
-                return true;
-              } catch {
-                return false;
-              }
-            })
-        : [];
-
-      const parsedMessage = MessageSchema.parse({
+      return {
         id: messageData.id,
         content: messageData.content || '',
         sender: {
@@ -69,13 +38,11 @@ export const useChat = (channelId: string) => {
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || null,
-        reactions,
-        attachments
-      });
-
-      return parsedMessage;
+        reactions: messageData.reactions || {},
+        attachments: messageData.attachments || []
+      };
     } catch (error) {
-      console.error('Message validation error:', error);
+      console.error('Message formatting error:', error);
       return null;
     }
   };
@@ -276,16 +243,12 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const sendMessage = async (content: string, parentMessageId?: string, attachments: z.infer<typeof AttachmentSchema>[] = []): Promise<string> => {
+  const sendMessage = async (content: string, parentMessageId?: string, attachments: any[] = []): Promise<string> => {
     if (!channelId || !currentUserId) throw new Error("Missing required data");
     if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
     
     setIsLoading(true);
     try {
-      attachments.forEach(att => {
-        AttachmentSchema.parse(att);
-      });
-
       const { data, error } = await supabase
         .from('chat_messages')
         .insert({
@@ -302,7 +265,7 @@ export const useChat = (channelId: string) => {
       if (error) throw error;
       if (!data) throw new Error("No data returned from insert");
 
-      const newMessage = validateAndFormatMessage(data);
+      const newMessage = formatMessage(data);
       if (!newMessage) throw new Error("Invalid message format");
       
       await fetchMessages();
@@ -356,10 +319,8 @@ export const useChat = (channelId: string) => {
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
-        // Remove reaction
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
       } else {
-        // Add reaction
         updatedUsers = [...currentUsers, currentUserId];
       }
 
@@ -368,12 +329,10 @@ export const useChat = (channelId: string) => {
         [emoji]: updatedUsers
       };
 
-      // Remove emoji key if no users have reacted
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
       }
 
-      // Optimistically update the UI
       setMessages(prevMessages =>
         prevMessages.map(msg =>
           msg.id === messageId
@@ -390,7 +349,6 @@ export const useChat = (channelId: string) => {
       if (error) throw error;
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);
-      // Revert optimistic update on error
       await fetchMessages();
       toast({
         title: "Erreur",
