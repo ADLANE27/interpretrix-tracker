@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Paperclip, Loader2 } from "lucide-react";
+import { Paperclip, Loader2, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,7 +170,7 @@ export const ChatInput = ({
                 className="h-4 w-4"
                 onClick={() => removeAttachment(index)}
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash className="h-3 w-3" />
               </Button>
             </div>
           ))}

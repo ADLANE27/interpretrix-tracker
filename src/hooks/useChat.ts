@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Message, Attachment, isAttachment } from '@/types/messaging';
+import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
@@ -90,7 +90,6 @@ export const useChat = (channelId: string) => {
               avatarUrl: sender.avatar_url
             },
             timestamp: new Date(message.created_at),
-            parent_message_id: message.parent_message_id,
             reactions: parsedReactions,
             attachments: parsedAttachments
           };
@@ -126,7 +125,6 @@ export const useChat = (channelId: string) => {
 
       if (error) throw error;
 
-      // Update local state immediately after successful deletion
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);

@@ -60,3 +60,11 @@ export interface MessageListProps {
   onDeleteMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
 }
+
+export interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'admin' | 'interpreter';
+}
