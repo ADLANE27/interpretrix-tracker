@@ -39,7 +39,7 @@ export const useChat = (channelId: string) => {
         return null;
       }
 
-      // Parse reactions from Json to Record<string, string[]>
+      // Ensure reactions is a valid object
       let parsedReactions: Record<string, string[]> = {};
       if (typeof messageData.reactions === 'string') {
         try {
@@ -48,8 +48,16 @@ export const useChat = (channelId: string) => {
           console.error('Error parsing reactions:', e);
         }
       } else if (messageData.reactions && typeof messageData.reactions === 'object') {
-        parsedReactions = messageData.reactions as Record<string, string[]>;
+        parsedReactions = messageData.reactions;
       }
+
+      // Ensure attachments are properly formatted
+      const parsedAttachments: Attachment[] = messageData.attachments?.map(att => ({
+        url: String(att.url || ''),
+        filename: String(att.filename || ''),
+        type: String(att.type || ''),
+        size: Number(att.size || 0)
+      })) || [];
 
       const formatted: Message = {
         id: messageData.id,
@@ -62,12 +70,7 @@ export const useChat = (channelId: string) => {
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id || undefined,
         reactions: parsedReactions,
-        attachments: messageData.attachments?.map(att => ({
-          url: String(att.url || ''),
-          filename: String(att.filename || ''),
-          type: String(att.type || ''),
-          size: Number(att.size || 0)
-        })) || []
+        attachments: parsedAttachments
       };
 
       return formatted;

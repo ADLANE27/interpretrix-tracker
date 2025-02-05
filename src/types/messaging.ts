@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { Json } from "@supabase/supabase-js";
 
 export const AttachmentSchema = z.object({
   url: z.string().url(),
@@ -22,6 +21,9 @@ export const MessageSchema = z.object({
   attachments: z.array(AttachmentSchema).optional().default([])
 });
 
+export type Message = z.infer<typeof MessageSchema>;
+export type Attachment = z.infer<typeof AttachmentSchema>;
+
 export interface MessageData {
   id: string;
   content: string;
@@ -29,7 +31,7 @@ export interface MessageData {
   channel_id: string;
   created_at: string;
   parent_message_id: string | null;
-  reactions: Json;
+  reactions: Record<string, string[]>;
   attachments?: Array<{
     url: string;
     filename: string;
@@ -42,9 +44,6 @@ export interface MessageData {
     raw_user_meta_data?: Record<string, any>;
   };
 }
-
-export type Message = z.infer<typeof MessageSchema>;
-export type Attachment = z.infer<typeof AttachmentSchema>;
 
 export interface ReplyToMessage {
   id: string;
