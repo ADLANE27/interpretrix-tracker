@@ -239,6 +239,29 @@ export const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      // First delete from user_roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+
+      if (roleError) {
+        console.error("Error deleting user roles:", roleError);
+        throw roleError;
+      }
+
+      // Then delete from interpreter_profiles if exists
+      const { error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error("Error deleting interpreter profile:", profileError);
+        // Don't throw here as the profile might not exist
+      }
+
+      // Finally delete the user from auth
       const { error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
       });
