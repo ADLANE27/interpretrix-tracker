@@ -28,6 +28,7 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     return messageId;
   };
 
+  // Validate and format messages
   const validMessages = messages?.reduce<Message[]>((acc, rawMsg) => {
     try {
       if (!rawMsg) return acc;
@@ -36,20 +37,23 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
         id: rawMsg.id,
         content: rawMsg.content || '',
         sender: {
-          id: rawMsg.sender.id,
-          name: rawMsg.sender.name || 'Unknown User',
-          avatarUrl: rawMsg.sender.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${rawMsg.sender.id}`
+          id: rawMsg.sender?.id,
+          name: rawMsg.sender?.name || 'Unknown User',
+          avatarUrl: rawMsg.sender?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${rawMsg.sender?.id}`
         },
         timestamp: rawMsg.timestamp instanceof Date ? rawMsg.timestamp : new Date(rawMsg.timestamp),
         parent_message_id: rawMsg.parent_message_id || null,
         reactions: rawMsg.reactions || {},
         attachments: Array.isArray(rawMsg.attachments) ? rawMsg.attachments.map(att => ({
-          url: att.url,
-          filename: att.filename,
-          type: att.type,
-          size: att.size
+          url: att.url || '',
+          filename: att.filename || '',
+          type: att.type || '',
+          size: att.size || 0
         })) : []
       };
+
+      // Log the message data for debugging
+      console.log('Processing message:', messageData);
 
       const validatedMessage = MessageSchema.parse(messageData);
       acc.push(validatedMessage);
@@ -58,6 +62,9 @@ export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
     }
     return acc;
   }, []) || [];
+
+  // Log the final valid messages for debugging
+  console.log('Valid messages:', validMessages);
 
   return (
     <ChatWindow
