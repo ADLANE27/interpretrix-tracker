@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,15 +7,10 @@ import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ChannelMember } from "@/types/messaging";
+import { ChannelMember, Attachment } from "@/types/messaging";
 
 interface ChatInputProps {
-  onSendMessage: (content: string, parentMessageId?: string, attachments?: Array<{
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  }>) => Promise<string>;
+  onSendMessage: (content: string, parentMessageId?: string, attachments?: Attachment[]) => Promise<string>;
   isLoading?: boolean;
   replyTo?: {
     id: string;
@@ -43,12 +37,7 @@ export const ChatInput = ({
   const [isMentioning, setIsMentioning] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [attachments, setAttachments] = useState<Array<{
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  }>>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,7 +64,6 @@ export const ChatInput = ({
       setMentionQuery('');
     }
     
-    // Handle Enter key (without shift) to send message
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       await handleSubmit(e);
@@ -131,7 +119,7 @@ export const ChatInput = ({
         });
 
         if (response.error) throw response.error;
-        return response.data;
+        return response.data as Attachment;
       } catch (error) {
         console.error('File upload error:', error);
         toast({
@@ -145,7 +133,7 @@ export const ChatInput = ({
 
     try {
       const results = await Promise.all(uploadPromises);
-      const validAttachments = results.filter(Boolean);
+      const validAttachments = results.filter((att): att is Attachment => att !== null);
       setAttachments(prev => [...prev, ...validAttachments]);
     } catch (error) {
       console.error('Upload error:', error);
