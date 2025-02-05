@@ -112,10 +112,7 @@ export const ChannelMemberManagement = ({
               };
             }
 
-            // Properly extract user data from the response
             const userData = response.data;
-            console.log('Admin user data:', userData);
-            
             return {
               id: userRole.user_id,
               email: userData.email || "",
@@ -198,10 +195,6 @@ export const ChannelMemberManagement = ({
     user => !members.some(member => member.user_id === user.id)
   );
 
-  const formatUserName = (member: Member) => {
-    return `${member.first_name} ${member.last_name}${member.role === 'admin' ? ' (Admin)' : ' (Interpreter)'}`;
-  };
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -214,7 +207,7 @@ export const ChannelMemberManagement = ({
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un utilisateur..."
+                placeholder="Rechercher un utilisateur à ajouter..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8"
@@ -223,36 +216,6 @@ export const ChannelMemberManagement = ({
 
             <ScrollArea className="h-[50vh]">
               <div className="space-y-4">
-                {members.length > 0 && (
-                  <div>
-                    <h3 className="font-medium mb-2">Membres actuels</h3>
-                    <div className="space-y-2">
-                      {members.map(member => (
-                        <div
-                          key={member.user_id}
-                          className="flex items-center justify-between p-2 rounded-lg border"
-                        >
-                          <div>
-                            <p className="font-medium">
-                              {formatUserName(member)}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {member.email}
-                            </p>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setMemberToRemove(member)}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {searchQuery && filteredUsers.length > 0 && (
                   <div>
                     <h3 className="font-medium mb-2">Utilisateurs disponibles</h3>
@@ -264,18 +227,52 @@ export const ChannelMemberManagement = ({
                         >
                           <div>
                             <p className="font-medium">
-                              {user.first_name} {user.last_name} ({user.role === 'admin' ? 'Admin' : 'Interpreter'})
+                              {user.first_name} {user.last_name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {user.email}
+                              {user.email} ({user.role})
                             </p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => addMember(user.id)}
+                            className="gap-2"
                           >
                             <UserPlus className="h-4 w-4" />
+                            Ajouter
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {members.length > 0 && (
+                  <div>
+                    <h3 className="font-medium mb-2">Membres actuels</h3>
+                    <div className="space-y-2">
+                      {members.map(member => (
+                        <div
+                          key={member.user_id}
+                          className="flex items-center justify-between p-2 rounded-lg border"
+                        >
+                          <div>
+                            <p className="font-medium">
+                              {member.first_name} {member.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {member.email} ({member.role})
+                            </p>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setMemberToRemove(member)}
+                            className="gap-2"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                            Retirer
                           </Button>
                         </div>
                       ))}
