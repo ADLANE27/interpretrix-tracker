@@ -48,7 +48,6 @@ export const useChat = (channelId: string) => {
             avatar_url: ''
           };
 
-          // Parse and validate reactions
           let parsedReactions: Record<string, string[]> = {};
           try {
             if (typeof message.reactions === 'string') {
@@ -65,7 +64,6 @@ export const useChat = (channelId: string) => {
             parsedReactions = {};
           }
 
-          // Parse and validate attachments
           const parsedAttachments: Attachment[] = [];
           if (Array.isArray(message.attachments)) {
             for (const att of message.attachments) {
@@ -119,7 +117,23 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
-  const { sendMessage, deleteMessage, reactToMessage } = useMessageActions(
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+
+      // Update local state immediately after successful deletion
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== messageId));
+    } catch (error) {
+      console.error('[Chat] Error deleting message:', error);
+    }
+  };
+
+  const { sendMessage, reactToMessage } = useMessageActions(
     channelId,
     currentUserId,
     fetchMessages
@@ -165,7 +179,7 @@ export const useChat = (channelId: string) => {
     isLoading,
     isSubscribed,
     sendMessage,
-    deleteMessage,
+    deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
   };
