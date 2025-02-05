@@ -148,16 +148,23 @@ export const ChannelMemberManagement = ({
               <Users className="h-5 w-5" />
               Gérer les membres du canal
             </DialogTitle>
-            <DialogDescription className="flex items-center gap-2 text-muted-foreground">
-              <Info className="h-4 w-4" />
-              Recherchez des utilisateurs par nom ou email pour les ajouter au canal
+            <DialogDescription className="flex flex-col gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 shrink-0" />
+                <span>Pour ajouter un nouveau membre :</span>
+              </div>
+              <ol className="list-decimal ml-8 space-y-1">
+                <li>Tapez le nom ou l'email de l'utilisateur dans la barre de recherche ci-dessous</li>
+                <li>Les utilisateurs disponibles apparaîtront sous "Utilisateurs disponibles"</li>
+                <li>Cliquez sur "Ajouter au canal" à côté de l'utilisateur souhaité</li>
+              </ol>
             </DialogDescription>
           </DialogHeader>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher un utilisateur par nom ou email..."
+              placeholder="Recherchez un utilisateur par nom ou email pour l'ajouter au canal..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -168,7 +175,7 @@ export const ChannelMemberManagement = ({
             <div className="p-4 space-y-6">
               {/* Current Members Section */}
               <div>
-                <h3 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+                <h3 className="font-medium mb-3 flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   Membres actuels ({members.length})
                 </h3>
@@ -200,52 +207,54 @@ export const ChannelMemberManagement = ({
                 </div>
               </div>
 
-              {/* Available Users Section */}
-              {searchQuery && (
-                <div>
-                  <h3 className="font-medium mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <UserPlus className="h-4 w-4" />
-                    Utilisateurs disponibles ({nonMembers.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {nonMembers.map(user => (
-                      <div
-                        key={user.user_id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {user.first_name} {user.last_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {user.email} • {user.role === 'admin' ? 'Administrateur' : 'Interprète'}
-                          </p>
-                        </div>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => addMember(user.user_id)}
-                          className="gap-2"
+              {/* Available Users Section - Always visible */}
+              <div>
+                <h3 className="font-medium mb-3 flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Utilisateurs disponibles {searchQuery && `(${nonMembers.length})`}
+                </h3>
+                <div className="space-y-2">
+                  {searchQuery ? (
+                    <>
+                      {nonMembers.map(user => (
+                        <div
+                          key={user.user_id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                         >
-                          <UserPlus className="h-4 w-4" />
-                          Ajouter au canal
-                        </Button>
-                      </div>
-                    ))}
-                    {nonMembers.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Aucun utilisateur trouvé pour "{searchQuery}"
-                      </div>
-                    )}
-                  </div>
+                          <div>
+                            <p className="font-medium">
+                              {user.first_name} {user.last_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {user.email} • {user.role === 'admin' ? 'Administrateur' : 'Interprète'}
+                            </p>
+                          </div>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => addMember(user.user_id)}
+                            className="gap-2"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Ajouter au canal
+                          </Button>
+                        </div>
+                      ))}
+                      {nonMembers.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          Aucun utilisateur trouvé pour "{searchQuery}"
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-2 text-muted-foreground border-2 border-dashed rounded-lg">
+                      <Search className="h-8 w-8 mb-2" />
+                      <p className="font-medium">Recherchez des utilisateurs à ajouter</p>
+                      <p>Tapez un nom ou un email dans la barre de recherche ci-dessus pour trouver des utilisateurs à ajouter au canal</p>
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {!searchQuery && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Commencez à taper pour rechercher des utilisateurs à ajouter
-                </div>
-              )}
+              </div>
             </div>
           </ScrollArea>
         </DialogContent>
