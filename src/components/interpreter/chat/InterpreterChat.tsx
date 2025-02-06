@@ -9,10 +9,10 @@ import {
   Send, 
   Smile, 
   User, 
-  Trash2, 
-  Languages,
+  Trash2,
   Bell,
-  BellDot 
+  BellDot,
+  ArrowRight 
 } from 'lucide-react';
 import { 
   Popover, 
@@ -39,6 +39,11 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    content: string;
+    sender: { name: string };
+  } | null>(null);
   const [mentionSuggestions, setMentionSuggestions] = useState<Array<{
     id: string;
     name: string;
@@ -53,12 +58,6 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const { messages, sendMessage, deleteMessage, currentUserId, markMentionsAsRead } = useChat(channelId);
   const { unreadMentions } = useUnreadMentions();
   const unreadCount = unreadMentions[channelId] || 0;
-
-  useEffect(() => {
-    if (channelId && currentUserId) {
-      markMentionsAsRead();
-    }
-  }, [channelId, currentUserId, markMentionsAsRead]);
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
@@ -93,7 +92,6 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         type?: 'language';
       }> = [];
 
-      // Add language suggestions with debug logging
       if (languages) {
         const languageSuggestions = languages
           .filter(lang => 
@@ -112,7 +110,6 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         suggestions.push(...languageSuggestions);
       }
 
-      // Add member suggestions
       if (Array.isArray(members)) {
         const memberSuggestions = members
           .filter(member => {
@@ -147,7 +144,6 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         const mentionText = `@${suggestion.name}`;
         setMessage(`${beforeMention}${mentionText} ${afterMention}`);
         
-        // Get interpreters for this language in the background
         const { data: interpreters, error } = await supabase
           .rpc('get_channel_interpreters_by_language', {
             p_channel_id: channelId,
@@ -168,7 +164,6 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
           console.log('[InterpreterChat Debug] Found interpreters for language:', interpreters);
         }
       } else {
-        // Regular user mention
         setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
       }
       
@@ -239,12 +234,22 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     }
   };
 
+  const handleReplyClick = (messageToReply: any) => {
+    setReplyingTo(messageToReply);
+    textareaRef.current?.focus();
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim() && !fileInputRef.current?.files?.length) return;
 
     try {
-      await sendMessage(message);
+      await sendMessage(message, replyingTo?.id);
       setMessage('');
+      setReplyingTo(null);
     } catch (error) {
       console.error('[InterpreterChat] Error sending message:', error);
       toast({
@@ -303,7 +308,14 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                 {messages
                   .filter(msg => msg.content.includes('@'))
                   .map(msg => (
-                    <div key={msg.id} className="p-2 hover:bg-accent rounded-md">
+                    <div 
+                      key={msg.id} 
+                      className="p-2 hover:bg-accent rounded-md cursor-pointer"
+                      onClick={() => {
+                        handleReplyClick(msg);
+                        setShowNotifications(false);
+                      }}
+                    >
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           {msg.sender.avatarUrl ? (
@@ -332,9 +344,24 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         {messages.map(message => (
           <div key={message.id} className="mb-4 group">
             <div className="flex items-start justify-between">
-              <div>
-                <div className="font-bold">{message.sender.name}</div>
-                <div className="mt-1">{message.content}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{message.sender.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(message.timestamp, 'HH:mm')}
+                  </span>
+                </div>
+                {message.parent_message_id && (
+                  <div className="ml-4 pl-2 border-l-2 border-gray-200 text-sm text-muted-foreground mb-1">
+                    <p>Replying to {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                  </div>
+                )}
+                <div 
+                  className="mt-1 cursor-pointer hover:bg-gray-50 rounded p-1"
+                  onClick={() => handleReplyClick(message)}
+                >
+                  {message.content}
+                </div>
               </div>
               {currentUserId === message.sender.id && (
                 <Button
@@ -353,12 +380,27 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
 
       <div className="border-t p-4 bg-white">
         <div className="relative">
+          {replyingTo && (
+            <div className="mb-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ArrowRight className="h-4 w-4" />
+                <span>Replying to {replyingTo.sender.name}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelReply}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
           <Textarea
             ref={textareaRef}
             value={message}
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
-            placeholder="Écrivez votre message..."
+            placeholder="Write your message..."
             className="min-h-[80px]"
           />
 
@@ -405,7 +447,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
             >
               <Send className="h-4 w-4 mr-2" />
-              Envoyer
+              Send
             </Button>
           </div>
         </div>
