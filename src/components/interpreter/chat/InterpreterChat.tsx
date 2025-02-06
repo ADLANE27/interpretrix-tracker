@@ -4,8 +4,21 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, User, Trash2, Languages } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { 
+  Paperclip, 
+  Send, 
+  Smile, 
+  User, 
+  Trash2, 
+  Languages,
+  Bell,
+  BellDot 
+} from 'lucide-react';
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
@@ -13,6 +26,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
+import { Badge } from '@/components/ui/badge';
 
 interface ChatProps {
   channelId: string;
@@ -23,6 +38,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState<Array<{
     id: string;
     name: string;
@@ -35,6 +51,8 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, markMentionsAsRead } = useChat(channelId);
+  const { unreadMentions } = useUnreadMentions();
+  const unreadCount = unreadMentions[channelId] || 0;
 
   useEffect(() => {
     if (channelId && currentUserId) {
@@ -244,65 +262,93 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     }
   };
 
+  const handleNotificationsClick = async () => {
+    setShowNotifications(!showNotifications);
+    if (unreadCount > 0) {
+      await markMentionsAsRead();
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-400px)]">
-      <ScrollArea className="flex-1 px-4">
-        <div className="space-y-4 py-4">
-          {messages.map(message => (
-            <div 
-              key={message.id} 
-              className={cn(
-                "flex gap-3 animate-fade-in",
-                message.sender.id === currentUserId ? "justify-end" : "justify-start"
-              )}
+      <div className="flex items-center justify-between px-4 py-2 border-b">
+        <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
+        <Popover open={showNotifications} onOpenChange={setShowNotifications}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative"
+              onClick={handleNotificationsClick}
             >
-              {message.sender.id !== currentUserId && (
-                <Avatar className="h-8 w-8">
-                  {message.sender.avatarUrl ? (
-                    <img src={message.sender.avatarUrl} alt={message.sender.name} />
-                  ) : (
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  )}
-                </Avatar>
+              {unreadCount > 0 ? (
+                <>
+                  <BellDot className="h-5 w-5 text-interpreter-navy" />
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {unreadCount}
+                  </Badge>
+                </>
+              ) : (
+                <Bell className="h-5 w-5 text-interpreter-navy" />
               )}
-              <div className={cn(
-                "flex flex-col max-w-[70%]",
-                message.sender.id === currentUserId ? "items-end" : "items-start"
-              )}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {message.sender.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(message.timestamp, 'HH:mm')}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className={cn(
-                    "rounded-lg px-4 py-2 shadow-sm",
-                    message.sender.id === currentUserId 
-                      ? "bg-interpreter-navy text-white" 
-                      : "bg-accent"
-                  )}>
-                    {message.content}
-                  </div>
-                  {message.sender.id === currentUserId && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteMessage(message.id)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-100/20 h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80">
+            <div className="space-y-2">
+              <h3 className="font-medium">Recent Mentions</h3>
+              <ScrollArea className="h-[200px]">
+                {messages
+                  .filter(msg => msg.content.includes('@'))
+                  .map(msg => (
+                    <div key={msg.id} className="p-2 hover:bg-accent rounded-md">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          {msg.sender.avatarUrl ? (
+                            <img src={msg.sender.avatarUrl} alt={msg.sender.name} />
+                          ) : (
+                            <AvatarFallback>
+                              <User className="h-4 w-4" />
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <span className="text-sm font-medium">{msg.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(msg.timestamp, 'HH:mm')}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1">{msg.content}</p>
+                    </div>
+                  ))}
+              </ScrollArea>
             </div>
-          ))}
-        </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <ScrollArea className="flex-1 px-4">
+        {messages.map(message => (
+          <div key={message.id} className="mb-4 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="font-bold">{message.sender.name}</div>
+                <div className="mt-1">{message.content}</div>
+              </div>
+              {currentUserId === message.sender.id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => deleteMessage(message.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
       </ScrollArea>
 
       <div className="border-t p-4 bg-white">
@@ -312,8 +358,8 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             value={message}
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
-            placeholder="Write your message..."
-            className="min-h-[80px] pr-32 resize-none"
+            placeholder="Écrivez votre message..."
+            className="min-h-[80px]"
           />
 
           <MentionSuggestions
@@ -335,14 +381,13 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="hover:bg-accent"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="hover:bg-accent">
+                <Button variant="ghost" size="icon">
                   <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -358,10 +403,9 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             <Button 
               onClick={handleSendMessage}
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-              className="bg-interpreter-navy hover:bg-interpreter-navy/90"
             >
               <Send className="h-4 w-4 mr-2" />
-              Send
+              Envoyer
             </Button>
           </div>
         </div>

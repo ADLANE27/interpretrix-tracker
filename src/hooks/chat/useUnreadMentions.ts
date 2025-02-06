@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,7 +16,7 @@ export const useUnreadMentions = () => {
       
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('*')
+        .select('channel_id, message_id')
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread');
 
@@ -48,14 +47,17 @@ export const useUnreadMentions = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
-        () => {
-          console.log('[Mentions Debug] Message mentions table changed, refreshing counts');
+        (payload) => {
+          console.log('[Mentions Debug] Message mentions table changed:', payload);
           fetchUnreadMentions();
         }
       )
-      .subscribe();
+      .subscribe(async (status) => {
+        console.log('[Mentions Debug] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[Mentions Debug] Cleaning up mentions subscription');
       supabase.removeChannel(channel);
     };
   }, []);
