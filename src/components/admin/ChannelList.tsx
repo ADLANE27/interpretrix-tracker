@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Plus, Trash2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
@@ -138,31 +138,31 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
-                  className={`flex items-center gap-1 ${
-                    selectedChannelId === channel.id ? 'hover:bg-interpreter-navy/80 text-white' : 'hover:bg-accent'
+                  className={`h-8 w-8 ${
+                    selectedChannelId === channel.id ? 'text-white hover:bg-white/20' : 'hover:bg-accent'
                   }`}
                   title="Gérer les membres"
                 >
-                  <Users className="h-4 w-4" />
+                  <Settings className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
                     setChannelToDelete(channel);
                     setIsDeleteDialogOpen(true);
                   }}
-                  className={`flex items-center gap-1 ${
+                  className={`h-8 w-8 ${
                     selectedChannelId === channel.id 
-                      ? 'hover:bg-red-700 text-white' 
-                      : 'hover:bg-destructive/10 hover:text-destructive'
+                      ? 'text-white hover:bg-red-700/50' 
+                      : 'text-destructive hover:bg-destructive/10'
                   }`}
                   title="Supprimer le canal"
                 >
