@@ -2,7 +2,7 @@
 import React from 'react';
 import { Command, CommandGroup, CommandItem, CommandList, CommandInput } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Language } from 'lucide-react';
+import { Languages } from 'lucide-react';
 
 interface MemberSuggestion {
   id: string;
@@ -73,7 +73,7 @@ export const MentionSuggestions = ({
                     onSelect={() => onSelect(lang)}
                     className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
                   >
-                    <Language className="h-4 w-4" />
+                    <Languages className="h-4 w-4" />
                     <div className="font-medium">{lang.name}</div>
                   </CommandItem>
                 ))}
