@@ -40,7 +40,7 @@ interface Mention {
   mentioning_user: {
     first_name: string;
     last_name: string;
-  };
+  } | null;
   channel_name: string;
   created_at: string;
 }
@@ -71,18 +71,15 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .from('message_mentions')
         .select(`
           message_id,
-          chat_messages (
+          chat_messages!inner (
             content,
-            channel_id,
-            chat_channels (
+            chat_channels!inner (
               name
             )
           ),
           mentioning_user:mentioning_user_id (
-            interpreter_profiles (
-              first_name,
-              last_name
-            )
+            first_name,
+            last_name
           ),
           created_at
         `)
@@ -90,12 +87,15 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .eq('status', 'unread')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching unread mentions:', error);
+        return;
+      }
 
       const formattedMentions = data.map(mention => ({
         message_id: mention.message_id,
         message_content: mention.chat_messages.content,
-        mentioning_user: mention.mentioning_user.interpreter_profiles,
+        mentioning_user: mention.mentioning_user,
         channel_name: mention.chat_messages.chat_channels.name,
         created_at: mention.created_at,
       }));
@@ -250,7 +250,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                           className="p-2 rounded-lg bg-muted/50 space-y-1"
                         >
                           <p className="text-sm font-medium">
-                            {mention.mentioning_user.first_name} {mention.mentioning_user.last_name}
+                            {mention.mentioning_user ? 
+                              `${mention.mentioning_user.first_name} ${mention.mentioning_user.last_name}` :
+                              'Utilisateur inconnu'}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {mention.message_content}
