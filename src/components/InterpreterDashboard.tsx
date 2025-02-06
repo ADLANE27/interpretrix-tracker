@@ -57,11 +57,12 @@ export const InterpreterDashboard = () => {
   // Separate effect for mentions handling
   useEffect(() => {
     if (!profile?.id) {
-      console.log('No profile ID available for mentions subscription');
+      console.log('[Mentions Debug] No profile ID available for mentions subscription');
       return;
     }
 
-    console.log('Setting up mentions subscription for user:', profile.id);
+    console.log('[Mentions Debug] Setting up mentions subscription for user:', profile.id);
+    console.log('[Mentions Debug] Current user email:', profile.email);
     fetchUnreadMentions();
 
     const mentionsChannel = supabase
@@ -75,9 +76,9 @@ export const InterpreterDashboard = () => {
           filter: `mentioned_user_id=eq.${profile.id}`,
         },
         (payload) => {
-          console.log('Mentions update received:', payload);
+          console.log('[Mentions Debug] Mentions update received:', payload);
           if (payload.eventType === 'INSERT') {
-            console.log('New mention detected');
+            console.log('[Mentions Debug] New mention detected');
             toast({
               title: "Nouvelle mention",
               description: "Quelqu'un vous a mentionné dans un message",
@@ -87,11 +88,11 @@ export const InterpreterDashboard = () => {
         }
       )
       .subscribe((status) => {
-        console.log('Mentions subscription status:', status);
+        console.log('[Mentions Debug] Mentions subscription status:', status);
       });
 
     return () => {
-      console.log('Cleaning up mentions subscription');
+      console.log('[Mentions Debug] Cleaning up mentions subscription');
       supabase.removeChannel(mentionsChannel);
     };
   }, [profile?.id]);
@@ -100,11 +101,12 @@ export const InterpreterDashboard = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('No user found for fetching mentions');
+        console.log('[Mentions Debug] No user found for fetching mentions');
         return;
       }
 
-      console.log('Fetching unread mentions for user ID:', user.id);
+      console.log('[Mentions Debug] Fetching unread mentions for user ID:', user.id);
+      console.log('[Mentions Debug] User email:', user.email);
 
       const { data: mentions, error } = await supabase
         .from('message_mentions')
@@ -113,14 +115,15 @@ export const InterpreterDashboard = () => {
         .eq('status', 'unread');
 
       if (error) {
-        console.error('Error fetching unread mentions:', error);
+        console.error('[Mentions Debug] Error fetching unread mentions:', error);
         throw error;
       }
 
-      console.log('Unread mentions found:', mentions?.length, mentions);
+      console.log('[Mentions Debug] Unread mentions found:', mentions?.length);
+      console.log('[Mentions Debug] Mentions data:', mentions);
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
-      console.error('Error in fetchUnreadMentions:', error);
+      console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les mentions non lues",
