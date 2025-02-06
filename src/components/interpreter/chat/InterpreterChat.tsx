@@ -575,7 +575,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
                 >
                   <Send className="h-4 w-4 mr-2" />
-                  Send
+                  Envoyer
                 </Button>
               </div>
             </div>
