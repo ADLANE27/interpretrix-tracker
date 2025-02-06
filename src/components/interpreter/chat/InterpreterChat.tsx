@@ -59,7 +59,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, markMentionsAsRead } = useChat(channelId);
-  const { unreadMentions } = useUnreadMentions();
+  const { unreadMentions, totalUnreadCount } = useUnreadMentions();
   const unreadCount = unreadMentions[channelId] || 0;
 
   const fetchMentionSuggestions = async (search: string) => {
@@ -397,14 +397,14 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
               className="relative"
               onClick={handleNotificationsClick}
             >
-              {unreadCount > 0 ? (
+              {totalUnreadCount > 0 ? (
                 <>
                   <BellDot className="h-5 w-5 text-interpreter-navy" />
                   <Badge 
                     variant="destructive" 
                     className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500"
                   >
-                    {unreadCount}
+                    {totalUnreadCount}
                   </Badge>
                 </>
               ) : (

@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useUnreadMentions = () => {
   const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
+  const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
 
   const fetchUnreadMentions = async () => {
     try {
@@ -29,12 +31,18 @@ export const useUnreadMentions = () => {
 
       // Count mentions per channel
       const counts: { [key: string]: number } = {};
+      let total = 0;
+      
       data.forEach(mention => {
         counts[mention.channel_id] = (counts[mention.channel_id] || 0) + 1;
+        total += 1;
       });
 
       console.log('[Mentions Debug] Processed unread mentions counts:', counts);
+      console.log('[Mentions Debug] Total unread mentions:', total);
+      
       setUnreadMentions(counts);
+      setTotalUnreadCount(total);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
     }
@@ -62,5 +70,5 @@ export const useUnreadMentions = () => {
     };
   }, []);
 
-  return { unreadMentions };
+  return { unreadMentions, totalUnreadCount };
 };
