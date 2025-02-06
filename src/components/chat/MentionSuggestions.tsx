@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandGroup, CommandItem, CommandList, CommandInput } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MemberSuggestion {
@@ -32,8 +32,9 @@ export const MentionSuggestions = ({
           return 0
         }}
       >
+        <CommandInput placeholder="Search members..." className="border-b" />
         <CommandList>
-          <ScrollArea className="max-h-[200px]">
+          <ScrollArea className="max-h-[200px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             <CommandGroup heading="Membres">
               {suggestions.map((member) => (
                 <CommandItem
