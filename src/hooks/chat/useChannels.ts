@@ -28,14 +28,15 @@ export const useChannels = () => {
       const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .maybeSingle();
       
       if (error) {
         console.error('[Chat Debug] Error checking admin role:', error);
         return false;
       }
 
-      const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
+      const isAdmin = roles?.role === 'admin';
       console.log('[Chat Debug] User is admin:', isAdmin);
       return isAdmin;
     }
@@ -54,20 +55,7 @@ export const useChannels = () => {
       }
       console.log('[Chat Debug] Fetching channels for user:', user.id);
 
-      // First check which channels the user is a member of
-      const { data: memberChannels, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
-
-      if (memberError) {
-        console.error('[Chat Debug] Error fetching channel memberships:', memberError);
-        throw memberError;
-      }
-
-      console.log('[Chat Debug] User is member of channels:', memberChannels);
-
-      // Then fetch the actual channels
+      // Get channels user is a member of
       const { data: channels, error: channelsError } = await supabase
         .from('chat_channels')
         .select('*')
@@ -75,6 +63,11 @@ export const useChannels = () => {
 
       if (channelsError) {
         console.error('[Chat Debug] Error fetching channels:', channelsError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch channels",
+          variant: "destructive",
+        });
         throw channelsError;
       }
 
