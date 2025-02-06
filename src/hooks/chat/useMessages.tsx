@@ -1,19 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
-import { useMessageFormatter } from './chat/useMessageFormatter';
-import { useSubscriptions } from './chat/useSubscriptions';
-import { useMessageActions } from './chat/useMessageActions';
+import { Message, Attachment, isAttachment } from '@/types/messaging';
 
-export const useChat = (channelId: string) => {
+export const useMessages = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-
-  const { formatMessage } = useMessageFormatter();
 
   const fetchMessages = async () => {
     if (!channelId) return;
@@ -128,82 +120,10 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const { subscribeToMessages, subscribeToMentions } = useSubscriptions(
-    channelId,
-    currentUserId,
-    retryCount,
-    setRetryCount,
-    fetchMessages
-  );
-
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
-
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('id', messageId);
-
-      if (error) {
-        console.error('[Chat] Error deleting message:', error);
-        await fetchMessages();
-        throw error;
-      }
-    } catch (error) {
-      console.error('[Chat] Error deleting message:', error);
-    }
-  };
-
-  const { sendMessage, reactToMessage, markMentionsAsRead } = useMessageActions(
-    channelId,
-    currentUserId,
-    fetchMessages
-  );
-
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    if (!channelId) return;
-    
-    let mentionsChannel;
-
-    const setupSubscriptions = async () => {
-      try {
-        await fetchMessages();
-        subscribeToMessages();
-        mentionsChannel = subscribeToMentions();
-        setIsSubscribed(true);
-        setRetryCount(0);
-      } catch (error) {
-        console.error('[Chat] Error setting up subscriptions:', error);
-      }
-    };
-
-    setupSubscriptions();
-
-    return () => {
-      if (mentionsChannel) {
-        console.log('[Chat] Cleaning up mentions subscription');
-        supabase.removeChannel(mentionsChannel);
-      }
-    };
-  }, [channelId]);
-
   return {
     messages,
     isLoading,
-    isSubscribed,
-    sendMessage,
-    deleteMessage: handleDeleteMessage,
-    currentUserId,
-    reactToMessage,
-    markMentionsAsRead,
+    fetchMessages,
+    setMessages
   };
 };
