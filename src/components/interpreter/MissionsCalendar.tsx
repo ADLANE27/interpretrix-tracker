@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 
@@ -27,18 +27,18 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
   // Filter missions for the selected date
   const missionsForSelectedDate = missions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time || mission.status !== 'accepted') return false;
+    
     const missionDate = new Date(mission.scheduled_start_time);
-    return (
-      missionDate.getDate() === selectedDate.getDate() &&
-      missionDate.getMonth() === selectedDate.getMonth() &&
-      missionDate.getFullYear() === selectedDate.getFullYear()
-    );
+    const selectedDayStart = startOfDay(selectedDate);
+    const missionDayStart = startOfDay(missionDate);
+    
+    return selectedDayStart.getTime() === missionDayStart.getTime();
   });
 
   // Get all dates that have accepted missions
   const datesWithMissions = missions
     .filter((mission) => mission.scheduled_start_time && mission.status === 'accepted')
-    .map((mission) => new Date(mission.scheduled_start_time!));
+    .map((mission) => startOfDay(new Date(mission.scheduled_start_time!)));
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
