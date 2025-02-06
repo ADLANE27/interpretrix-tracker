@@ -121,7 +121,7 @@ export const ChannelMemberManagement = ({
         .select("user_id")
         .eq("channel_id", channelId)
         .eq("user_id", userId)
-        .maybeSingle(); // Changed from .single() to .maybeSingle()
+        .maybeSingle();
 
       if (checkError) {
         console.error("Error checking existing member:", checkError);
@@ -185,6 +185,7 @@ export const ChannelMemberManagement = ({
       });
 
       setUserToRemove(null);
+      onClose(); // Close the dialog after removing yourself
       
       // Refresh data after removing member
       await Promise.all([
