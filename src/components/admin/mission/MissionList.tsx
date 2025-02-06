@@ -52,94 +52,96 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      {missions.map((mission) => (
-        <Card key={mission.id} className="p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-2">
-                {mission.mission_type === 'scheduled' ? (
-                  <Calendar className="h-4 w-4 text-blue-500" />
-                ) : (
-                  <Clock className="h-4 w-4 text-green-500" />
-                )}
-                <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
-                  {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
-                </Badge>
-                {mission.status === 'awaiting_acceptance' && (
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                    En attente d'acceptation
+    <div className="h-[calc(100vh-16rem)] overflow-y-auto pr-2">
+      <div className="space-y-4">
+        {missions.map((mission) => (
+          <Card key={mission.id} className="p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2">
+                  {mission.mission_type === 'scheduled' ? (
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-green-500" />
+                  )}
+                  <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
+                    {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
                   </Badge>
+                  {mission.status === 'awaiting_acceptance' && (
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                      En attente d'acceptation
+                    </Badge>
+                  )}
+                </div>
+                
+                <p className="text-sm text-gray-600 mt-2">
+                  {mission.source_language} → {mission.target_language}
+                </p>
+                
+                {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
+                  <p className="text-sm text-gray-600">
+                    Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy", { locale: fr })} {" "}
+                    de {format(new Date(mission.scheduled_start_time), "HH:mm")} {" "}
+                    à {format(new Date(mission.scheduled_end_time), "HH:mm")} {" "}
+                    <span className="ml-1">({calculateDuration(mission)})</span>
+                  </p>
+                )}
+                
+                {mission.mission_type === 'immediate' && (
+                  <p className="text-sm text-gray-600">
+                    Durée: {calculateDuration(mission)}
+                  </p>
+                )}
+
+                {mission.interpreter_profiles && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={mission.interpreter_profiles.profile_picture_url || undefined} />
+                      <AvatarFallback>
+                        {mission.interpreter_profiles.first_name[0]}
+                        {mission.interpreter_profiles.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-gray-600">
+                      Mission acceptée par {mission.interpreter_profiles.first_name} {mission.interpreter_profiles.last_name}
+                    </span>
+                  </div>
                 )}
               </div>
               
-              <p className="text-sm text-gray-600 mt-2">
-                {mission.source_language} → {mission.target_language}
-              </p>
-              
-              {mission.mission_type === 'scheduled' && mission.scheduled_start_time && mission.scheduled_end_time && (
+              <div className="flex items-center gap-4">
                 <p className="text-sm text-gray-600">
-                  Le {format(new Date(mission.scheduled_start_time), "dd/MM/yyyy", { locale: fr })} {" "}
-                  de {format(new Date(mission.scheduled_start_time), "HH:mm")} {" "}
-                  à {format(new Date(mission.scheduled_end_time), "HH:mm")} {" "}
-                  <span className="ml-1">({calculateDuration(mission)})</span>
+                  {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}
                 </p>
-              )}
-              
-              {mission.mission_type === 'immediate' && (
-                <p className="text-sm text-gray-600">
-                  Durée: {calculateDuration(mission)}
-                </p>
-              )}
-
-              {mission.interpreter_profiles && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={mission.interpreter_profiles.profile_picture_url || undefined} />
-                    <AvatarFallback>
-                      {mission.interpreter_profiles.first_name[0]}
-                      {mission.interpreter_profiles.last_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-gray-600">
-                    Mission acceptée par {mission.interpreter_profiles.first_name} {mission.interpreter_profiles.last_name}
-                  </span>
-                </div>
-              )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Supprimer la mission</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Êtes-vous sûr de vouloir supprimer cette mission ? Cette action est irréversible.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => onDelete(mission.id)}
+                        className="bg-red-500 hover:bg-red-600"
+                      >
+                        Supprimer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
-            
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-gray-600">
-                {format(new Date(mission.created_at), "d MMMM yyyy", { locale: fr })}
-              </p>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Supprimer la mission</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Êtes-vous sûr de vouloir supprimer cette mission ? Cette action est irréversible.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={() => onDelete(mission.id)}
-                      className="bg-red-500 hover:bg-red-600"
-                    >
-                      Supprimer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        ))}
+      </div>
     </div>
   );
 };
