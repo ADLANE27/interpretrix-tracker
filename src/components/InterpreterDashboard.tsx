@@ -14,7 +14,7 @@ import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { MessagesTab } from "./chat/MessagesTab";
+import { MessagesTab } from "@/components/admin/MessagesTab";
 import { Badge } from "@/components/ui/badge";
 
 interface Profile {

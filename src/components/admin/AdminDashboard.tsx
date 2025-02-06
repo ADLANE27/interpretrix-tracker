@@ -14,7 +14,7 @@ import { UserManagement } from "./UserManagement";
 import { AdminGuideContent } from "./AdminGuideContent";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { MessagesTab } from "../chat/MessagesTab";
+import { MessagesTab } from "./MessagesTab";
 
 const LANGUAGES = [
   // Langues européennes
@@ -379,3 +379,4 @@ export const AdminDashboard = () => {
     </>
   );
 };
+
