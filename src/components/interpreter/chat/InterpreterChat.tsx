@@ -528,7 +528,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                 value={message}
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Write your message..."
+                placeholder=""
                 className="min-h-[80px]"
               />
 
