@@ -56,7 +56,10 @@ export const InterpreterDashboard = () => {
 
   // Separate effect for mentions handling
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id) {
+      console.log('No profile ID available for mentions subscription');
+      return;
+    }
 
     console.log('Setting up mentions subscription for user:', profile.id);
     fetchUnreadMentions();
@@ -74,6 +77,7 @@ export const InterpreterDashboard = () => {
         (payload) => {
           console.log('Mentions update received:', payload);
           if (payload.eventType === 'INSERT') {
+            console.log('New mention detected');
             toast({
               title: "Nouvelle mention",
               description: "Quelqu'un vous a mentionné dans un message",
