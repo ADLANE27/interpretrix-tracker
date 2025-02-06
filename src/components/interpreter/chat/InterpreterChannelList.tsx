@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { MessageCircle } from "lucide-react";
 
 interface Channel {
   id: string;
@@ -95,35 +95,34 @@ export const InterpreterChannelList = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Canaux de discussion</h2>
-      </div>
-
-      <ScrollArea className="h-[400px] pr-4">
-        <div className="space-y-2">
-          {channels.map((channel) => (
-            <div
-              key={channel.id}
-              className={`
-                flex items-center justify-between p-2 rounded-lg 
-                cursor-pointer transition-colors
-                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
-              `}
-              onClick={() => handleChannelSelect(channel.id)}
-            >
-              <div className="flex items-center gap-2 flex-1">
-                <span className="font-medium">{channel.name}</span>
-                {unreadMentions[channel.id] > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {unreadMentions[channel.id]}
-                  </Badge>
-                )}
-              </div>
+    <ScrollArea className="h-[calc(100vh-400px)]">
+      <div className="space-y-2 pr-4">
+        {channels.map((channel) => (
+          <div
+            key={channel.id}
+            className={`
+              flex items-center gap-3 p-3 rounded-lg 
+              cursor-pointer transition-all duration-200
+              hover:bg-accent/50 group
+              ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white shadow-sm' : 'hover:shadow-sm'}
+            `}
+            onClick={() => handleChannelSelect(channel.id)}
+          >
+            <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy group-hover:text-interpreter-navy/70'}`} />
+            <div className="flex items-center justify-between flex-1 min-w-0">
+              <span className="font-medium truncate">{channel.name}</span>
+              {unreadMentions[channel.id] > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="ml-2 animate-pulse"
+                >
+                  {unreadMentions[channel.id]}
+                </Badge>
+              )}
             </div>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
   );
 };

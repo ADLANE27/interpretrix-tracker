@@ -4,12 +4,13 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile } from 'lucide-react';
+import { Paperclip, Send, Smile, User } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
-import { supabase } from '@/integrations/supabase/client';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 interface ChatProps {
   channelId: string;
@@ -192,18 +193,49 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[600px]">
-      <ScrollArea className="flex-1 p-4">
-        {messages.map(message => (
-          <div key={message.id} className="mb-4 group">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="font-bold">{message.sender.name}</div>
-                <div className="mt-1">{message.content}</div>
+    <div className="flex flex-col h-[calc(100vh-400px)]">
+      <ScrollArea className="flex-1 px-4">
+        <div className="space-y-4 py-4">
+          {messages.map(message => (
+            <div 
+              key={message.id} 
+              className={cn(
+                "flex gap-3 group animate-fade-in",
+                message.sender.id === currentUserId ? "justify-end" : "justify-start"
+              )}
+            >
+              {message.sender.id !== currentUserId && (
+                <Avatar className="h-8 w-8">
+                  {message.sender.avatar_url ? (
+                    <img src={message.sender.avatar_url} alt={message.sender.name} />
+                  ) : (
+                    <AvatarFallback>
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              )}
+              <div className={cn(
+                "flex flex-col max-w-[70%]",
+                message.sender.id === currentUserId ? "items-end" : "items-start"
+              )}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {message.sender.name}
+                  </span>
+                </div>
+                <div className={cn(
+                  "rounded-lg px-4 py-2 shadow-sm",
+                  message.sender.id === currentUserId 
+                    ? "bg-interpreter-navy text-white" 
+                    : "bg-accent"
+                )}>
+                  {message.content}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </ScrollArea>
 
       <div className="border-t p-4 bg-white">
@@ -213,8 +245,8 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             value={message}
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
-            placeholder="Écrivez votre message..."
-            className="min-h-[80px]"
+            placeholder="Write your message..."
+            className="min-h-[80px] pr-32 resize-none"
           />
 
           <MentionSuggestions
@@ -236,13 +268,14 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
+              className="hover:bg-accent"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="hover:bg-accent">
                   <Smile className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -258,9 +291,10 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             <Button 
               onClick={handleSendMessage}
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+              className="bg-interpreter-navy hover:bg-interpreter-navy/90"
             >
               <Send className="h-4 w-4 mr-2" />
-              Envoyer
+              Send
             </Button>
           </div>
         </div>
