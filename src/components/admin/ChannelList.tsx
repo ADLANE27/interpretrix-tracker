@@ -37,12 +37,18 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const { data: isAdmin } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
-      const { data: roles } = await supabase
+      const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .maybeSingle();
       
-      return roles?.some(r => r.role === 'admin') ?? false;
+      if (error) {
+        console.error('Error checking admin role:', error);
+        return false;
+      }
+      
+      return roles?.role === 'admin' ?? false;
     }
   });
 
