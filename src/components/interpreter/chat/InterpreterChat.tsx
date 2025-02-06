@@ -299,7 +299,10 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
           let parsedReactions: Record<string, string[]> = {};
           if (typeof msg.reactions === 'object' && msg.reactions !== null) {
             parsedReactions = Object.entries(msg.reactions).reduce((acc, [key, value]) => {
-              acc[key] = Array.isArray(value) ? value : [];
+              // Ensure each value is a string array
+              acc[key] = Array.isArray(value) 
+                ? value.map(item => String(item)) 
+                : [];
               return acc;
             }, {} as Record<string, string[]>);
           }
