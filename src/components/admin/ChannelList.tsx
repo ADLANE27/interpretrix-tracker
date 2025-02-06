@@ -48,7 +48,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         return false;
       }
       
-      return roles?.role === 'admin' ?? false;
+      return roles?.role === 'admin' || false;
     }
   });
 
