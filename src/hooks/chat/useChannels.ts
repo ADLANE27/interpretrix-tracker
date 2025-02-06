@@ -30,44 +30,23 @@ export const useChannels = () => {
     }
   });
 
-  // Fetch channels the user has access to through channel_members
+  // Fetch channels - now simplified with RLS handling access
   const { data: channels = [], refetch: fetchChannels } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('[Chat Debug] No user found');
-        return [];
-      }
-
-      const { data: memberChannels, error } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
+      console.log('[Chat Debug] Fetching channels');
+      
+      const { data: channels, error } = await supabase
+        .from('chat_channels')
+        .select('*')
+        .order('name');
 
       if (error) {
-        console.error('[Chat Debug] Error fetching channel members:', error);
+        console.error('[Chat Debug] Error fetching channels:', error);
         throw error;
       }
 
-      if (!memberChannels || memberChannels.length === 0) {
-        console.log('[Chat Debug] No channels found for user');
-        return [];
-      }
-
-      const channelIds = memberChannels.map(mc => mc.channel_id);
-      
-      const { data: channels, error: channelsError } = await supabase
-        .from('chat_channels')
-        .select('*')
-        .in('id', channelIds)
-        .order('name');
-
-      if (channelsError) {
-        console.error('[Chat Debug] Error fetching channels:', channelsError);
-        throw channelsError;
-      }
-
+      console.log('[Chat Debug] Fetched channels:', channels);
       return channels;
     },
     retry: 1
