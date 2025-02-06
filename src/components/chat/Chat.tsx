@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -113,20 +114,32 @@ export const Chat = ({ channelId }: ChatProps) => {
       const afterMention = message.substring(cursorPosition);
       
       if (suggestion.type === 'language') {
-        // Get all interpreters for this language in the channel
+        // Add the language mention directly
+        const mentionText = `@${suggestion.name}`;
+        setMessage(`${beforeMention}${mentionText} ${afterMention}`);
+        
+        // Get interpreters for this language in the background
         const { data: interpreters, error } = await supabase
           .rpc('get_channel_interpreters_by_language', {
             p_channel_id: channelId,
             p_target_language: suggestion.name
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Chat Debug] Error fetching interpreters:', error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de récupérer les interprètes pour cette langue",
+            variant: "destructive",
+          });
+          return;
+        }
 
-        const mentionText = interpreters
-          .map(interpreter => `@${interpreter.first_name} ${interpreter.last_name}`)
-          .join(' ');
-
-        setMessage(`${beforeMention}${mentionText} ${afterMention}`);
+        // Store interpreters to be notified when the message is sent
+        if (interpreters && interpreters.length > 0) {
+          const interpreterIds = interpreters.map(interpreter => interpreter.user_id);
+          console.log('[Chat Debug] Found interpreters for language:', interpreterIds);
+        }
       } else {
         // Regular user mention
         setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
