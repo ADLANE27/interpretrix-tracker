@@ -24,7 +24,16 @@ export const useChat = (channelId: string) => {
       
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
-        .select('*')
+        .select(`
+          id,
+          content,
+          channel_id,
+          sender_id,
+          parent_message_id,
+          created_at,
+          attachments,
+          reactions
+        `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
         .limit(50);
@@ -195,6 +204,6 @@ export const useChat = (channelId: string) => {
     deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
-    markMentionsAsRead, // Added this export
+    markMentionsAsRead,
   };
 };
