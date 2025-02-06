@@ -21,14 +21,19 @@ export const ChatWindow = ({
   channelId
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { currentUserId, deleteMessage, reactToMessage } = useChat('');
+  const { currentUserId, deleteMessage, reactToMessage } = useChat(channelId);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [localMessages, setLocalMessages] = useState<Message[]>(messages);
+
+  useEffect(() => {
+    setLocalMessages(messages);
+  }, [messages]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [localMessages]); // Changed from messages to localMessages
 
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
@@ -42,6 +47,18 @@ export const ChatWindow = ({
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    // Update local state immediately
+    setLocalMessages(prev => prev.filter(msg => msg.id !== messageId));
+    try {
+      await deleteMessage(messageId);
+    } catch (error) {
+      // If deletion fails, revert to the server state
+      console.error('Failed to delete message:', error);
+      setLocalMessages(messages);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
       <ScrollArea 
@@ -50,7 +67,7 @@ export const ChatWindow = ({
         onScroll={handleScroll}
       >
         <div className="space-y-4">
-          {messages.map((message) => {
+          {localMessages.map((message) => {
             const sender = {
               id: message.sender.id,
               name: message.sender.name,
@@ -71,7 +88,7 @@ export const ChatWindow = ({
                 sender={sender}
                 timestamp={message.timestamp}
                 isCurrentUser={message.sender.id === currentUserId}
-                onDelete={message.sender.id === currentUserId ? () => deleteMessage(message.id) : undefined}
+                onDelete={message.sender.id === currentUserId ? () => handleDeleteMessage(message.id) : undefined}
                 reactions={message.reactions}
                 onReact={(emoji) => reactToMessage(message.id, emoji)}
                 attachments={attachments}
