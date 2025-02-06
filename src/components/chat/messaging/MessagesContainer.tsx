@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { MessageList } from "./MessageList";
-import { ChatInput } from "./ChatInput";
+import { ChatInput } from "../ChatInput";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";

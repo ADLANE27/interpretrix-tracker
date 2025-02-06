@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CreateChannelDialog } from "./CreateChannelDialog";
+import { CreateChannelDialog } from "../CreateChannelDialog";
 import { ChannelListItem } from "./ChannelListItem";
 import { useChannels } from "@/hooks/chat/useChannels";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
