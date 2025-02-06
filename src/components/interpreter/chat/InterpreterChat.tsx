@@ -12,6 +12,7 @@ import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 interface ChatProps {
   channelId: string;
@@ -201,7 +202,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             <div 
               key={message.id} 
               className={cn(
-                "flex gap-3 group animate-fade-in",
+                "flex gap-3 animate-fade-in",
                 message.sender.id === currentUserId ? "justify-end" : "justify-start"
               )}
             >
@@ -224,8 +225,11 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                   <span className="text-sm font-medium text-muted-foreground">
                     {message.sender.name}
                   </span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(message.timestamp, 'HH:mm')}
+                  </span>
                 </div>
-                <div className="space-y-2">
+                <div className="flex items-start gap-2">
                   <div className={cn(
                     "rounded-lg px-4 py-2 shadow-sm",
                     message.sender.id === currentUserId 
@@ -239,7 +243,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteMessage(message.id)}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-100/20"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-100/20 h-8 w-8"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
