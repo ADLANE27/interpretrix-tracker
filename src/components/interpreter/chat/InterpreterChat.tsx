@@ -4,7 +4,7 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, User } from 'lucide-react';
+import { Paperclip, Send, Smile, User, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -225,13 +225,25 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                     {message.sender.name}
                   </span>
                 </div>
-                <div className={cn(
-                  "rounded-lg px-4 py-2 shadow-sm",
-                  message.sender.id === currentUserId 
-                    ? "bg-interpreter-navy text-white" 
-                    : "bg-accent"
-                )}>
-                  {message.content}
+                <div className="relative group">
+                  <div className={cn(
+                    "rounded-lg px-4 py-2 shadow-sm",
+                    message.sender.id === currentUserId 
+                      ? "bg-interpreter-navy text-white" 
+                      : "bg-accent"
+                  )}>
+                    {message.content}
+                  </div>
+                  {message.sender.id === currentUserId && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteMessage(message.id)}
+                      className="absolute -right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
