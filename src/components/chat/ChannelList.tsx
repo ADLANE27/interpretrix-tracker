@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Settings } from "lucide-react";
+import { Plus, Trash2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
-import { ChannelMembersDialog } from "./ChannelMembersDialog";
+import { ChannelMemberManagement } from "./ChannelMemberManagement";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useQuery } from "@tanstack/react-query";
 
 interface Channel {
   id: string;
@@ -20,92 +25,86 @@ interface Channel {
 }
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchChannels();
-    subscribeToChannels();
-  }, []);
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['isUserAdmin'],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      
+      return roles?.some(r => r.role === 'admin') ?? false;
+    }
+  });
 
-  const fetchChannels = async () => {
-    try {
-      const { data, error } = await supabase
+  // Fetch channels the user has access to
+  const { data: channels = [], refetch: fetchChannels } = useQuery({
+    queryKey: ['channels'],
+    queryFn: async () => {
+      const { data: userChannels, error } = await supabase
         .from('chat_channels')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name');
 
       if (error) throw error;
-      setChannels(data || []);
-
-      // Select first channel by default if none selected
-      if (data && data.length > 0 && !selectedChannelId) {
-        handleChannelSelect(data[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching channels:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les canaux de discussion",
-        variant: "destructive",
-      });
+      return userChannels;
     }
-  };
+  });
 
-  const subscribeToChannels = () => {
-    const channel = supabase
-      .channel('chat-channels')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_channels'
-        },
-        () => {
-          fetchChannels();
-        }
-      )
-      .subscribe();
+  const handleDeleteChannel = async () => {
+    if (!channelToDelete) return;
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
-
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-    onChannelSelect(channelId);
-  };
-
-  const handleDeleteChannel = async (channelId: string) => {
     try {
-      const { error } = await supabase
-        .from('chat_channels')
+      // Delete channel members first
+      const { error: membersError } = await supabase
+        .from("channel_members")
         .delete()
-        .eq('id', channelId);
+        .eq("channel_id", channelToDelete.id);
 
-      if (error) throw error;
+      if (membersError) throw membersError;
+
+      // Delete messages mentions
+      const { error: mentionsError } = await supabase
+        .from("message_mentions")
+        .delete()
+        .eq("channel_id", channelToDelete.id);
+
+      if (mentionsError) throw mentionsError;
+
+      // Delete messages
+      const { error: messagesError } = await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("channel_id", channelToDelete.id);
+
+      if (messagesError) throw messagesError;
+
+      // Finally delete the channel
+      const { error: channelError } = await supabase
+        .from("chat_channels")
+        .delete()
+        .eq("id", channelToDelete.id);
+
+      if (channelError) throw channelError;
+
+      setChannelToDelete(null);
+      setIsDeleteDialogOpen(false);
+      fetchChannels();
 
       toast({
-        title: "Canal supprimé",
+        title: "Succès",
         description: "Le canal a été supprimé avec succès",
       });
-
-      // Select another channel if the deleted one was selected
-      if (selectedChannelId === channelId) {
-        const remainingChannels = channels.filter(c => c.id !== channelId);
-        if (remainingChannels.length > 0) {
-          handleChannelSelect(remainingChannels[0].id);
-        } else {
-          setSelectedChannelId(null);
-        }
-      }
     } catch (error) {
-      console.error('Error deleting channel:', error);
+      console.error("Error deleting channel:", error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le canal",
@@ -114,77 +113,117 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     }
   };
 
+  // Select first channel by default
+  useEffect(() => {
+    if (channels.length > 0 && !selectedChannelId) {
+      setSelectedChannelId(channels[0].id);
+      onChannelSelect(channels[0].id);
+    }
+  }, [channels, selectedChannelId, onChannelSelect]);
+
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="font-semibold">Canaux de discussion</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nouveau canal
-        </Button>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Canaux de discussion</h2>
+        {isAdmin && (
+          <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouveau canal
+          </Button>
+        )}
       </div>
-      
-      <ScrollArea className="flex-1">
-        <div className="space-y-1 p-2">
+
+      <ScrollArea className="h-[400px] pr-4">
+        <div className="space-y-2">
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between group"
+              className={`
+                flex items-center justify-between p-2 rounded-lg 
+                cursor-pointer transition-colors
+                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
+              `}
+              onClick={() => {
+                setSelectedChannelId(channel.id);
+                onChannelSelect(channel.id);
+              }}
             >
-              <button
-                onClick={() => handleChannelSelect(channel.id)}
-                className={`flex-1 text-left px-4 py-2 rounded-lg transition-colors ${
-                  selectedChannelId === channel.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-muted'
-                }`}
-              >
-                <div className="font-medium">{channel.name}</div>
-                {channel.description && (
-                  <div className="text-sm text-muted-foreground truncate">
-                    {channel.description}
-                  </div>
-                )}
-              </button>
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity px-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => {
+              <span className="flex-1 font-medium">{channel.name}</span>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedChannelId(channel.id);
                       setIsMembersDialogOpen(true);
-                    }}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Gérer les membres
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                    }}
+                    className={`h-8 w-8 ${
+                      selectedChannelId === channel.id ? 'text-white hover:bg-white/20' : 'hover:bg-accent'
+                    }`}
+                    title="Gérer les membres"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChannelToDelete(channel);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    className={`h-8 w-8 ${
+                      selectedChannelId === channel.id 
+                        ? 'text-white hover:bg-red-700/50' 
+                        : 'text-destructive hover:bg-destructive/10'
+                    }`}
+                    title="Supprimer le canal"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </ScrollArea>
 
-      <CreateChannelDialog
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-      />
+      {isAdmin && (
+        <>
+          <CreateChannelDialog
+            isOpen={isCreateDialogOpen}
+            onClose={() => setIsCreateDialogOpen(false)}
+            onChannelCreated={fetchChannels}
+          />
 
-      {selectedChannelId && (
-        <ChannelMembersDialog
-          isOpen={isMembersDialogOpen}
-          onClose={() => setIsMembersDialogOpen(false)}
-          channelId={selectedChannelId}
-        />
+          {selectedChannelId && (
+            <ChannelMemberManagement
+              channelId={selectedChannelId}
+              isOpen={isMembersDialogOpen}
+              onClose={() => setIsMembersDialogOpen(false)}
+            />
+          )}
+
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer le canal</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Êtes-vous sûr de vouloir supprimer le canal "{channelToDelete?.name}" ? Cette action ne peut pas
+                  être annulée.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteChannel} className="bg-destructive hover:bg-destructive/90">
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
     </div>
   );
