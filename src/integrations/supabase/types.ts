@@ -285,54 +285,6 @@ export type Database = {
         }
         Relationships: []
       }
-      message_mentions: {
-        Row: {
-          channel_id: string
-          created_at: string
-          id: string
-          mentioned_user_id: string
-          mentioning_user_id: string
-          message_id: string
-          status: Database["public"]["Enums"]["mention_status"]
-          updated_at: string
-        }
-        Insert: {
-          channel_id: string
-          created_at?: string
-          id?: string
-          mentioned_user_id: string
-          mentioning_user_id: string
-          message_id: string
-          status?: Database["public"]["Enums"]["mention_status"]
-          updated_at?: string
-        }
-        Update: {
-          channel_id?: string
-          created_at?: string
-          id?: string
-          mentioned_user_id?: string
-          mentioning_user_id?: string
-          message_id?: string
-          status?: Database["public"]["Enums"]["mention_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "message_mentions_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "chat_channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "message_mentions_message_id_fkey"
-            columns: ["message_id"]
-            isOneToOne: false
-            referencedRelation: "chat_messages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       mission_notifications: {
         Row: {
           created_at: string
@@ -544,7 +496,6 @@ export type Database = {
         | "mental_health"
         | "financial"
         | "diplomatic"
-      mention_status: "unread" | "read"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }
