@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Channel {
   id: string;
@@ -35,8 +36,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const { data: isAdmin = false } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
+      console.log('[Chat Debug] Checking admin status');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
+      if (!user) {
+        console.log('[Chat Debug] No user found');
+        return false;
+      }
 
       const { data: roles, error } = await supabase
         .from('user_roles')
@@ -45,20 +50,28 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .maybeSingle();
       
       if (error) {
-        console.error('Error checking admin role:', error);
+        console.error('[Chat Debug] Error checking admin role:', error);
         return false;
       }
 
-      return roles?.role === 'admin';
+      const isAdmin = roles?.role === 'admin';
+      console.log('[Chat Debug] Is admin?', isAdmin);
+      return isAdmin;
     }
   });
 
   // Fetch channels
-  const { data: channels = [], refetch: fetchChannels } = useQuery({
+  const { data: channels = [], refetch: fetchChannels, error: channelsError } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
       console.log('[Chat Debug] Starting to fetch channels');
       
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('[Chat Debug] No authenticated user found');
+        throw new Error('Not authenticated');
+      }
+
       const { data: channels, error } = await supabase
         .from('chat_channels')
         .select('*')
@@ -66,17 +79,13 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       if (error) {
         console.error('[Chat Debug] Error fetching channels:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch channels",
-          variant: "destructive",
-        });
         throw error;
       }
 
       console.log('[Chat Debug] Successfully fetched channels:', channels);
       return channels || [];
-    }
+    },
+    enabled: isAdmin // Only fetch if user is admin
   });
 
   const handleChannelSelect = (channelId: string) => {
@@ -137,6 +146,16 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       });
     }
   };
+
+  if (channelsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Failed to fetch channels. Please try again later.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-4">
