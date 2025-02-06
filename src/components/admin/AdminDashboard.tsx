@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MessagingContainer } from "@/components/chat/messaging/MessagingContainer";
 import { ChannelList } from "@/components/chat/ChannelList";
 
