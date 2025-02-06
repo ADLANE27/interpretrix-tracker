@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { MessageList } from "./MessageList";
-import { ChatInput } from "../ChatInput";
+import { ChatInput } from "./ChatInput";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export const MessagingContainer = ({ channelId }: { channelId: string }) => {
+interface MessagesContainerProps {
+  channelId: string;
+}
+
+export const MessagesContainer = ({ channelId }: MessagesContainerProps) => {
   const { messages, sendMessage, deleteMessage, reactToMessage, currentUserId } = useChat(channelId);
   const { toast } = useToast();
 
