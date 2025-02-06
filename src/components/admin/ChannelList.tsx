@@ -124,14 +124,14 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer group"
+              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer"
               onClick={() => {
                 setSelectedChannelId(channel.id);
                 onChannelSelect(channel.id);
               }}
             >
               <span className="flex-1">{channel.name}</span>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -155,7 +155,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   className="hover:bg-red-100 dark:hover:bg-red-900"
                   title="Delete channel"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
             </div>
