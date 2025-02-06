@@ -32,6 +32,15 @@ export interface Attachment {
   size: number;
 }
 
+export interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  joined_at: string;
+}
+
 export function isAttachment(obj: any): obj is Attachment {
   return (
     typeof obj === 'object' &&

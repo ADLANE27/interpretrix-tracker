@@ -1,6 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 
+interface SenderDetails {
+  id: string;
+  name: string;
+  avatar_url: string;
+}
+
 export const useMessageFormatter = () => {
   const formatMessage = async (messageData: MessageData): Promise<Message | null> => {
     if (!messageData?.id || !messageData?.sender_id) {
@@ -19,6 +25,8 @@ export const useMessageFormatter = () => {
         console.error('Error fetching sender details:', senderError);
         return null;
       }
+
+      const typedSenderDetails = senderDetails as SenderDetails;
 
       let parsedReactions: Record<string, string[]> = {};
       try {
@@ -53,9 +61,9 @@ export const useMessageFormatter = () => {
         id: messageData.id,
         content: messageData.content,
         sender: {
-          id: senderDetails.id,
-          name: senderDetails.name,
-          avatarUrl: senderDetails.avatar_url
+          id: typedSenderDetails.id,
+          name: typedSenderDetails.name,
+          avatarUrl: typedSenderDetails.avatar_url
         },
         timestamp: new Date(messageData.created_at),
         reactions: parsedReactions,
