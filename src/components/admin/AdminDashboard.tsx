@@ -1,30 +1,42 @@
 import { useState } from "react";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesTab } from "@/components/chat/MessagesTab";
-import { UsersTab } from "@/components/admin/UsersTab";
-import { ChannelList } from "@/components/shared/ChannelList";
+import { UserManagement } from "./UserManagement";
+import { MissionManagement } from "./MissionManagement";
+import { AdminGuideContent } from "./AdminGuideContent";
 
 export const AdminDashboard = () => {
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-  };
+  const [selectedTab, setSelectedTab] = useState<string>("missions");
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs defaultValue="messages" className="w-full">
-        <TabsList>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-        </TabsList>
-        <TabsContent value="messages">
-          <MessagesTab />
-        </TabsContent>
-        <TabsContent value="users">
-          <UsersTab />
-        </TabsContent>
-      </Tabs>
+      <Card className="p-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="missions">Missions</TabsTrigger>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+            <TabsTrigger value="guide">Guide</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="missions" className="mt-6">
+            <MissionManagement />
+          </TabsContent>
+
+          <TabsContent value="messages" className="mt-6">
+            <MessagesTab />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-6">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="guide" className="mt-6">
+            <AdminGuideContent />
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 };
