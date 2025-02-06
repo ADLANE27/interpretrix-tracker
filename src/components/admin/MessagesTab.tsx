@@ -5,6 +5,7 @@ import { ChannelMemberManagement } from "./ChannelMemberManagement";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Chat } from "@/components/chat/Chat";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -20,13 +21,12 @@ export const MessagesTab = () => {
         .select('role')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
       
-      return roles?.some(r => r.role === 'admin') ?? false;
+      return roles?.some(r => r.role === 'admin') || false;
     }
   });
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    setIsMembersDialogOpen(true);
   };
 
   return (
@@ -36,6 +36,12 @@ export const MessagesTab = () => {
           onChannelSelect={handleChannelSelect}
         />
       </Card>
+      
+      {selectedChannelId && (
+        <Card className="p-4 md:col-span-2">
+          <Chat channelId={selectedChannelId} />
+        </Card>
+      )}
       
       {selectedChannelId && (
         <ChannelMemberManagement
@@ -50,7 +56,6 @@ export const MessagesTab = () => {
           isOpen={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
           onChannelCreated={() => {
-            // Refresh channel list if needed
             setIsCreateDialogOpen(false);
           }}
         />
