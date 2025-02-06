@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
@@ -471,38 +470,11 @@ export const MissionManagement = () => {
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
-                      <div className="p-2">
-                        <Input
-                          placeholder="Rechercher une langue..."
-                          className="mb-2"
-                          onChange={(e) => {
-                            const searchInput = document.querySelector('[cmdk-input]') as HTMLInputElement;
-                            if (searchInput) {
-                              searchInput.value = e.target.value;
-                              searchInput.dispatchEvent(new Event('input'));
-                            }
-                          }}
-                        />
-                      </div>
-                      <Command>
-                        <CommandInput placeholder="Rechercher une langue..." className="hidden" />
-                        <CommandEmpty>Aucune langue trouvée</CommandEmpty>
-                        <CommandGroup className="max-h-[200px] overflow-auto">
-                          {[...LANGUAGES].sort().map((lang) => (
-                            <CommandItem
-                              key={lang}
-                              value={lang}
-                              onSelect={(value) => {
-                                setSourceLanguage(value);
-                                const trigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement;
-                                if (trigger) trigger.click();
-                              }}
-                            >
-                              {lang}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -513,38 +485,11 @@ export const MissionManagement = () => {
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
-                      <div className="p-2">
-                        <Input
-                          placeholder="Rechercher une langue..."
-                          className="mb-2"
-                          onChange={(e) => {
-                            const searchInput = document.querySelector('[cmdk-input]') as HTMLInputElement;
-                            if (searchInput) {
-                              searchInput.value = e.target.value;
-                              searchInput.dispatchEvent(new Event('input'));
-                            }
-                          }}
-                        />
-                      </div>
-                      <Command>
-                        <CommandInput placeholder="Rechercher une langue..." className="hidden" />
-                        <CommandEmpty>Aucune langue trouvée</CommandEmpty>
-                        <CommandGroup className="max-h-[200px] overflow-auto">
-                          {[...LANGUAGES].sort().map((lang) => (
-                            <CommandItem
-                              key={lang}
-                              value={lang}
-                              onSelect={(value) => {
-                                setTargetLanguage(value);
-                                const trigger = document.querySelector('[aria-expanded="true"]') as HTMLButtonElement;
-                                if (trigger) trigger.click();
-                              }}
-                            >
-                              {lang}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </Command>
+                      {LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
