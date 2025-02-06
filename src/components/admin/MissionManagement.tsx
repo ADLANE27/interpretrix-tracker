@@ -13,6 +13,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 
+// Sort languages alphabetically
+const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
+
 interface Mission {
   id: string;
   source_language: string;
@@ -470,7 +473,7 @@ export const MissionManagement = () => {
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map((lang) => (
+                      {sortedLanguages.map((lang) => (
                         <SelectItem key={lang} value={lang}>
                           {lang}
                         </SelectItem>
@@ -485,7 +488,7 @@ export const MissionManagement = () => {
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LANGUAGES.map((lang) => (
+                      {sortedLanguages.map((lang) => (
                         <SelectItem key={lang} value={lang}>
                           {lang}
                         </SelectItem>
@@ -524,7 +527,7 @@ export const MissionManagement = () => {
                         <SelectValue placeholder="Sélectionner une langue" />
                       </SelectTrigger>
                       <SelectContent>
-                        {LANGUAGES.map((lang) => (
+                        {sortedLanguages.map((lang) => (
                           <SelectItem key={lang} value={lang}>
                             {lang}
                           </SelectItem>
@@ -539,7 +542,7 @@ export const MissionManagement = () => {
                         <SelectValue placeholder="Sélectionner une langue" />
                       </SelectTrigger>
                       <SelectContent>
-                        {LANGUAGES.map((lang) => (
+                        {sortedLanguages.map((lang) => (
                           <SelectItem key={lang} value={lang}>
                             {lang}
                           </SelectItem>
