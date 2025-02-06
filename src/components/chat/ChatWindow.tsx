@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/hooks/useChat";
 import { Message } from "@/types/messaging";
+import { Button } from "@/components/ui/button";
+import { ArrowDown } from "lucide-react";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -20,6 +22,7 @@ export const ChatWindow = ({
 }: ChatWindowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { currentUserId, deleteMessage, reactToMessage } = useChat('');
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -27,11 +30,24 @@ export const ChatWindow = ({
     }
   }, [messages]);
 
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
       <ScrollArea 
-        className="flex-1 p-4" 
+        className="flex-1 p-4 relative" 
         ref={scrollRef}
+        onScroll={handleScroll}
       >
         <div className="space-y-4">
           {messages.map((message) => {
@@ -63,6 +79,17 @@ export const ChatWindow = ({
             );
           })}
         </div>
+        {showScrollButton && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="fixed bottom-24 right-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 opacity-90 hover:opacity-100"
+            onClick={scrollToBottom}
+          >
+            <ArrowDown className="h-4 w-4 mr-2" />
+            Nouveaux messages
+          </Button>
+        )}
       </ScrollArea>
       <ChatInput 
         onSendMessage={onSendMessage}
