@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
@@ -128,7 +128,7 @@ export const useChat = (channelId: string) => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
-      // Optimistic update
+      // Optimistic update - remove message from local state immediately
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
       const { error } = await supabase
@@ -137,7 +137,8 @@ export const useChat = (channelId: string) => {
         .eq('id', messageId);
 
       if (error) {
-        // Revert on error
+        // If deletion fails, revert the optimistic update
+        console.error('[Chat] Error deleting message:', error);
         await fetchMessages();
         throw error;
       }
