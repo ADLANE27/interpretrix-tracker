@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -20,7 +21,12 @@ export const Chat = ({ channelId }: ChatProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
-  const [mentionSuggestions, setMentionSuggestions] = useState<any[]>([]);
+  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'interpreter';
+  }>>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,21 +34,28 @@ export const Chat = ({ channelId }: ChatProps) => {
   const { messages, sendMessage, currentUserId } = useChat(channelId);
 
   const fetchMentionSuggestions = async (search: string) => {
-    const { data: members } = await supabase
-      .rpc('get_channel_members', { channel_id: channelId });
+    try {
+      const { data: members, error } = await supabase
+        .rpc('get_channel_members', { channel_id: channelId });
 
-    if (members) {
-      const filtered = members.filter(member => 
-        `${member.first_name} ${member.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-        member.email.toLowerCase().includes(search.toLowerCase())
-      );
+      if (error) throw error;
 
-      setMentionSuggestions(filtered.map(member => ({
-        id: member.user_id,
-        name: `${member.first_name} ${member.last_name}`,
-        email: member.email,
-        role: member.role
-      })));
+      if (members) {
+        const filtered = members.filter(member => 
+          `${member.first_name} ${member.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
+          member.email.toLowerCase().includes(search.toLowerCase())
+        );
+
+        setMentionSuggestions(filtered.map(member => ({
+          id: member.user_id,
+          name: `${member.first_name} ${member.last_name}`,
+          email: member.email,
+          role: member.role
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching mention suggestions:', error);
+      setMentionSuggestions([]);
     }
   };
 
