@@ -15,8 +15,12 @@ interface MentionSuggestionsProps {
   visible: boolean;
 }
 
-export const MentionSuggestions = ({ suggestions, onSelect, visible }: MentionSuggestionsProps) => {
-  if (!visible || suggestions.length === 0) return null;
+export const MentionSuggestions = ({ 
+  suggestions = [], // Provide default empty array
+  onSelect, 
+  visible 
+}: MentionSuggestionsProps) => {
+  if (!visible || !suggestions?.length) return null;
 
   return (
     <div className="absolute bottom-full mb-1 w-64 z-50">
