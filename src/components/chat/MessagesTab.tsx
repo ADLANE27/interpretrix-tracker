@@ -21,13 +21,19 @@ export const MessagesTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log('Fetching unread mentions for user:', user.id);
       const { data: mentions, error } = await supabase
         .from('message_mentions')
         .select('*')
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching unread mentions:', error);
+        return;
+      }
+
+      console.log('Unread mentions:', mentions?.length);
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
       console.error('Error fetching unread mentions:', error);
@@ -35,6 +41,7 @@ export const MessagesTab = () => {
   };
 
   const subscribeToMentions = () => {
+    console.log('Setting up mentions subscription');
     const channel = supabase.channel('mentions')
       .on(
         'postgres_changes',
@@ -43,13 +50,17 @@ export const MessagesTab = () => {
           schema: 'public',
           table: 'message_mentions'
         },
-        () => {
+        (payload) => {
+          console.log('Mentions update received:', payload);
           fetchUnreadMentions();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Mentions subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up mentions subscription');
       supabase.removeChannel(channel);
     };
   };
