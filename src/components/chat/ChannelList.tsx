@@ -55,19 +55,18 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('channel_id, count', { count: 'exact', head: false })
+        .select('channel_id')
         .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread')
-        .groupBy('channel_id');
+        .eq('status', 'unread');
 
       if (error) {
         console.error('Error fetching unread mentions:', error);
         return;
       }
 
-      // Transform the data into the expected format
-      const counts = data.reduce((acc: { [key: string]: number }, mention: any) => {
-        acc[mention.channel_id] = parseInt(mention.count);
+      // Count mentions per channel
+      const counts = data.reduce((acc: { [key: string]: number }, mention) => {
+        acc[mention.channel_id] = (acc[mention.channel_id] || 0) + 1;
         return acc;
       }, {});
 
