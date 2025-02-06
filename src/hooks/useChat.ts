@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -145,7 +146,7 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const { sendMessage, reactToMessage } = useMessageActions(
+  const { sendMessage, reactToMessage, markMentionsAsRead } = useMessageActions(
     channelId,
     currentUserId,
     fetchMessages
@@ -194,5 +195,6 @@ export const useChat = (channelId: string) => {
     deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
+    markMentionsAsRead, // Added this export
   };
 };

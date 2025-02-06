@@ -17,10 +17,11 @@ export const useUnreadMentions = () => {
       
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('channel_id, count(*)')
+        .select('channel_id, count')
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread')
-        .group_by('channel_id');
+        .groupBy('channel_id') // Changed from group_by to groupBy
+        .select('channel_id, count'); // Need to select after groupBy
 
       if (error) {
         console.error('[Mentions Debug] Error fetching unread mentions:', error);
