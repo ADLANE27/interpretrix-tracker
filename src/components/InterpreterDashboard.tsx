@@ -16,6 +16,7 @@ import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "@/components/admin/MessagesTab";
 import { Badge } from "@/components/ui/badge";
+import { MessagingTab } from "./interpreter/MessagingTab";
 
 interface Profile {
   id: string;
@@ -439,7 +440,7 @@ export const InterpreterDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="messages" className="m-0 h-full">
-                  <MessagesTab />
+                  <MessagingTab />
                 </TabsContent>
                 
                 <TabsContent value="profile" className="m-0 h-full">
