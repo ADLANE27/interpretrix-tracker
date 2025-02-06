@@ -333,20 +333,51 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     try {
       const { data: counts, error } = await supabase
         .from('chat_messages')
-        .select('parent_message_id, count')
-        .not('parent_message_id', 'is', null)
-        .group_by('parent_message_id');
+        .select('parent_message_id, id')
+        .not('parent_message_id', 'is', null);
 
       if (error) throw error;
 
+      // Count messages for each parent_message_id
       const countsMap = counts.reduce((acc, curr) => {
-        acc[curr.parent_message_id] = parseInt(curr.count);
+        const parentId = curr.parent_message_id;
+        if (parentId) {
+          acc[parentId] = (acc[parentId] || 0) + 1;
+        }
         return acc;
       }, {} as Record<string, number>);
 
       setThreadCounts(countsMap);
     } catch (error) {
       console.error('Error fetching thread counts:', error);
+    }
+  };
+
+  const handleThreadClick = async (message: Message) => {
+    setSelectedThread(message);
+    await fetchThreadMessages(message.id);
+  };
+
+  const handleCloseThread = () => {
+    setSelectedThread(null);
+    setThreadMessages([]);
+  };
+
+  const handleSendThreadMessage = async () => {
+    if (!message.trim() || !selectedThread) return;
+
+    try {
+      await sendMessage(message, selectedThread.id);
+      setMessage('');
+      await fetchThreadMessages(selectedThread.id);
+      await fetchThreadCounts(); // Update thread counts after sending a message
+    } catch (error) {
+      console.error('Error sending thread message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive",
+      });
     }
   };
 
