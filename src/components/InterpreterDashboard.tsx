@@ -73,6 +73,12 @@ export const InterpreterDashboard = () => {
         },
         (payload) => {
           console.log('Mentions update received:', payload);
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: "Nouvelle mention",
+              description: "Quelqu'un vous a mentionné dans un message",
+            });
+          }
           fetchUnreadMentions();
         }
       )
