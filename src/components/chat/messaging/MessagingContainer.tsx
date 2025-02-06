@@ -39,7 +39,7 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative bg-background">
       <div className="flex justify-between items-center p-4 border-b">
         <h2 className="text-lg font-semibold">Messages</h2>
         <Button
@@ -52,7 +52,7 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
           Marquer comme lu
         </Button>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         <MessageList
           messages={messages}
           onDeleteMessage={deleteMessage}
@@ -60,7 +60,7 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
           currentUserId={currentUserId}
         />
       </div>
-      <div className="p-4 border-t">
+      <div className="sticky bottom-0 bg-background border-t">
         <ChatInput 
           onSendMessage={sendMessage} 
           channelId={channelId}

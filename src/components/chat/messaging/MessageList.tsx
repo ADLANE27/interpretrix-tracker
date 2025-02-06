@@ -8,7 +8,7 @@ export const MessageList = ({
   onReactToMessage
 }: MessageListProps) => {
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 p-4 min-h-0">
       {messages.map((message) => {
         const sender = {
           id: message.sender.id,
