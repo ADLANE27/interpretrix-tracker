@@ -295,11 +295,9 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
           const { data: senderDetails } = await supabase
             .rpc('get_message_sender_details', { sender_id: msg.sender_id });
           
-          // Ensure reactions is properly typed as Record<string, string[]>
           let parsedReactions: Record<string, string[]> = {};
           if (typeof msg.reactions === 'object' && msg.reactions !== null) {
             parsedReactions = Object.entries(msg.reactions).reduce((acc, [key, value]) => {
-              // Ensure each value is a string array
               acc[key] = Array.isArray(value) 
                 ? value.map(item => String(item)) 
                 : [];
@@ -329,32 +327,32 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     }
   };
 
-  const handleThreadClick = async (message: Message) => {
-    setSelectedThread(message);
-    await fetchThreadMessages(message.id);
-  };
+  const [threadCounts, setThreadCounts] = useState<Record<string, number>>({});
 
-  const handleCloseThread = () => {
-    setSelectedThread(null);
-    setThreadMessages([]);
-  };
-
-  const handleSendThreadMessage = async () => {
-    if (!message.trim() || !selectedThread) return;
-
+  const fetchThreadCounts = async () => {
     try {
-      await sendMessage(message, selectedThread.id);
-      setMessage('');
-      await fetchThreadMessages(selectedThread.id);
+      const { data: counts, error } = await supabase
+        .from('chat_messages')
+        .select('parent_message_id, count')
+        .not('parent_message_id', 'is', null)
+        .group_by('parent_message_id');
+
+      if (error) throw error;
+
+      const countsMap = counts.reduce((acc, curr) => {
+        acc[curr.parent_message_id] = parseInt(curr.count);
+        return acc;
+      }, {} as Record<string, number>);
+
+      setThreadCounts(countsMap);
     } catch (error) {
-      console.error('Error sending thread message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive",
-      });
+      console.error('Error fetching thread counts:', error);
     }
   };
+
+  useEffect(() => {
+    fetchThreadCounts();
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-400px)]">
@@ -449,10 +447,15 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
                           onClick={() => handleThreadClick(message)}
                         >
                           <MessageSquare className="h-4 w-4" />
+                          {threadCounts[message.id] > 0 && (
+                            <span className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full">
+                              {threadCounts[message.id]}
+                            </span>
+                          )}
                         </Button>
                       </div>
                     </div>
