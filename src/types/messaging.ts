@@ -9,15 +9,6 @@ export const AttachmentSchema = z.object({
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
-export const isAttachment = (value: unknown): value is Attachment => {
-  try {
-    AttachmentSchema.parse(value);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
 export const MessageSchema = z.object({
   id: z.string().uuid(),
   content: z.string(),
@@ -32,6 +23,21 @@ export const MessageSchema = z.object({
 });
 
 export type Message = z.infer<typeof MessageSchema>;
+
+export const isAttachment = (value: unknown): value is Attachment => {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'filename' in value &&
+    'type' in value &&
+    'size' in value &&
+    typeof (value as any).url === 'string' &&
+    typeof (value as any).filename === 'string' &&
+    typeof (value as any).type === 'string' &&
+    typeof (value as any).size === 'number'
+  );
+};
 
 export interface MessageData {
   id: string;
@@ -50,8 +56,7 @@ export interface MessageData {
 
 export interface MessageListProps {
   messages: Message[];
-  isLoading?: boolean;
-  currentUserId?: string | null;
+  currentUserId: string | null;
   onDeleteMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
 }

@@ -15,6 +15,7 @@ import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./chat/MessagesTab";
+import { Badge } from "@/components/ui/badge";
 
 interface Profile {
   id: string;
@@ -43,6 +44,7 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [unreadMentions, setUnreadMentions] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -51,6 +53,84 @@ export const InterpreterDashboard = () => {
     fetchProfile();
     fetchScheduledMissions();
   }, []);
+
+  // Separate effect for mentions handling
+  useEffect(() => {
+    if (!profile?.id) {
+      console.log('[Mentions Debug] No profile ID available for mentions subscription');
+      return;
+    }
+
+    console.log('[Mentions Debug] Setting up mentions subscription for user:', profile.id);
+    console.log('[Mentions Debug] Current user email:', profile.email);
+    fetchUnreadMentions();
+
+    const mentionsChannel = supabase
+      .channel('interpreter-mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `mentioned_user_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          console.log('[Mentions Debug] Mentions update received:', payload);
+          if (payload.eventType === 'INSERT') {
+            console.log('[Mentions Debug] New mention detected');
+            toast({
+              title: "Nouvelle mention",
+              description: "Quelqu'un vous a mentionné dans un message",
+            });
+            fetchUnreadMentions(); // Immediately fetch updated count
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Mentions Debug] Mentions subscription status:', status);
+      });
+
+    return () => {
+      console.log('[Mentions Debug] Cleaning up mentions subscription');
+      supabase.removeChannel(mentionsChannel);
+    };
+  }, [profile?.id]);
+
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('[Mentions Debug] No user found for fetching mentions');
+        return;
+      }
+
+      console.log('[Mentions Debug] Fetching unread mentions for user ID:', user.id);
+      console.log('[Mentions Debug] User email:', user.email);
+
+      const { data: mentions, error } = await supabase
+        .from('message_mentions')
+        .select('*')
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('[Mentions Debug] Error fetching unread mentions:', error);
+        throw error;
+      }
+
+      console.log('[Mentions Debug] Unread mentions found:', mentions?.length);
+      console.log('[Mentions Debug] Mentions data:', mentions);
+      setUnreadMentions(mentions?.length || 0);
+    } catch (error) {
+      console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les mentions non lues",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchScheduledMissions = async () => {
     try {
@@ -326,9 +406,17 @@ export const InterpreterDashboard = () => {
                   </TabsTrigger>
                   <TabsTrigger 
                     value="messages"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="relative data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
                     Messages
+                    {unreadMentions > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-2 -right-2 min-w-[20px] h-5 flex items-center justify-center"
+                      >
+                        {unreadMentions}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="profile"

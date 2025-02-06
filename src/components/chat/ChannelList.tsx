@@ -16,6 +16,7 @@ interface Channel {
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -45,6 +46,52 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       return userChannels;
     }
   });
+
+  // Fetch unread mentions for each channel
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('message_mentions')
+        .select('channel_id')
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('Error fetching unread mentions:', error);
+        return;
+      }
+
+      // Count mentions per channel
+      const counts = data.reduce((acc: { [key: string]: number }, mention) => {
+        acc[mention.channel_id] = (acc[mention.channel_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      setUnreadMentions(counts);
+    } catch (error) {
+      console.error('Error in fetchUnreadMentions:', error);
+    }
+  };
+
+  // Set up real-time subscription for mentions
+  useEffect(() => {
+    fetchUnreadMentions();
+
+    const channel = supabase.channel('mentions')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'message_mentions' },
+        () => fetchUnreadMentions()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
@@ -77,6 +124,11 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
             >
               <div className="flex items-center gap-2 flex-1">
                 <span className="font-medium">{channel.name}</span>
+                {unreadMentions[channel.id] > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {unreadMentions[channel.id]}
+                  </Badge>
+                )}
               </div>
             </div>
           ))}
