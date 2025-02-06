@@ -121,9 +121,10 @@ export const ChannelMemberManagement = ({
         .select("user_id")
         .eq("channel_id", channelId)
         .eq("user_id", userId)
-        .single();
+        .maybeSingle(); // Changed from .single() to .maybeSingle()
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
+        console.error("Error checking existing member:", checkError);
         throw checkError;
       }
 
