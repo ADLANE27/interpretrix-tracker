@@ -17,21 +17,19 @@ interface MentionSuggestionsProps {
 }
 
 export const MentionSuggestions = ({ 
-  suggestions, 
+  suggestions = [], // Provide default empty array
   onSelect, 
   visible 
 }: MentionSuggestionsProps) => {
-  // Ensure suggestions is an array and has items before rendering
-  const validSuggestions = Array.isArray(suggestions) ? suggestions : [];
-  
-  if (!visible || validSuggestions.length === 0) return null;
+  // Early return if not visible or no suggestions
+  if (!visible || !Array.isArray(suggestions) || suggestions.length === 0) return null;
 
   return (
     <div className="absolute bottom-full mb-1 w-64 z-50">
       <Command className="border rounded-lg shadow-md">
         <ScrollArea className="max-h-[200px]">
           <CommandGroup heading="Membres">
-            {validSuggestions.map((member) => (
+            {suggestions.map((member) => (
               <CommandItem
                 key={member.id}
                 onSelect={() => onSelect(member)}
