@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, UserPlus } from "lucide-react";
+import { Plus, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Channel {
   id: string;
@@ -30,11 +31,63 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
+  const [unreadMentions, setUnreadMentions] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
   useEffect(() => {
     fetchChannels();
+    subscribeToMentions();
   }, []);
+
+  const subscribeToMentions = () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const channel = supabase
+      .channel('mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `mentioned_user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUnreadMentions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: mentions, error } = await supabase
+        .from('message_mentions')
+        .select('channel_id, count')
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread')
+        .groupBy('channel_id');
+
+      if (error) throw error;
+
+      const mentionsCount = mentions.reduce((acc, curr) => ({
+        ...acc,
+        [curr.channel_id]: parseInt(curr.count)
+      }), {});
+
+      setUnreadMentions(mentionsCount);
+    } catch (error) {
+      console.error('Error fetching unread mentions:', error);
+    }
+  };
 
   const fetchChannels = async () => {
     try {
@@ -45,6 +98,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       if (error) throw error;
       setChannels(channels);
+      fetchUnreadMentions();
     } catch (error) {
       console.error("Error fetching channels:", error);
       toast({
@@ -124,13 +178,20 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 cursor-pointer border"
+              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 cursor-pointer border relative"
               onClick={() => {
                 setSelectedChannelId(channel.id);
                 onChannelSelect(channel.id);
               }}
             >
-              <span className="flex-1 font-medium">{channel.name}</span>
+              <div className="flex items-center gap-2 flex-1">
+                <span className="font-medium">{channel.name}</span>
+                {unreadMentions[channel.id] > 0 && (
+                  <Badge variant="destructive" className="h-5 w-5 rounded-full flex items-center justify-center">
+                    {unreadMentions[channel.id]}
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -143,7 +204,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   className="flex items-center gap-1 hover:bg-accent"
                   title="Manage members"
                 >
-                  <UserPlus className="h-4 w-4" />
+                  <Users className="h-5 w-5" />
                   <span className="hidden sm:inline">Members</span>
                 </Button>
                 <Button
@@ -157,7 +218,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   className="flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-900"
                   title="Delete channel"
                 >
-                  <Trash2 className="h-4 w-4 text-red-500" />
+                  <Trash2 className="h-5 w-5 text-red-500" />
                   <span className="hidden sm:inline">Delete</span>
                 </Button>
               </div>
