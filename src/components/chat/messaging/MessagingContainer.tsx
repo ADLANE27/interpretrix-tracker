@@ -61,7 +61,11 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
         />
       </div>
       <div className="p-4 border-t">
-        <ChatInput onSendMessage={sendMessage} />
+        <ChatInput 
+          onSendMessage={sendMessage} 
+          channelId={channelId}
+          currentUserId={currentUserId}
+        />
       </div>
     </div>
   );
