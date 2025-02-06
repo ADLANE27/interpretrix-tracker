@@ -19,34 +19,66 @@ export const useChannels = () => {
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
+      if (!user) {
+        console.log('[Chat Debug] No authenticated user found');
+        return false;
+      }
+      console.log('[Chat Debug] Checking admin status for user:', user.id);
 
-      const { data: roles } = await supabase
+      const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id);
       
-      return roles?.some(r => r.role === 'admin') ?? false;
+      if (error) {
+        console.error('[Chat Debug] Error checking admin role:', error);
+        return false;
+      }
+
+      const isAdmin = roles?.some(r => r.role === 'admin') ?? false;
+      console.log('[Chat Debug] User is admin:', isAdmin);
+      return isAdmin;
     }
   });
 
-  // Fetch channels - now simplified with RLS handling access
+  // Fetch channels - now with detailed logging
   const { data: channels = [], refetch: fetchChannels } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
-      console.log('[Chat Debug] Fetching channels');
+      console.log('[Chat Debug] Starting to fetch channels');
       
-      const { data: channels, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('[Chat Debug] No authenticated user found while fetching channels');
+        return [];
+      }
+      console.log('[Chat Debug] Fetching channels for user:', user.id);
+
+      // First check which channels the user is a member of
+      const { data: memberChannels, error: memberError } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('user_id', user.id);
+
+      if (memberError) {
+        console.error('[Chat Debug] Error fetching channel memberships:', memberError);
+        throw memberError;
+      }
+
+      console.log('[Chat Debug] User is member of channels:', memberChannels);
+
+      // Then fetch the actual channels
+      const { data: channels, error: channelsError } = await supabase
         .from('chat_channels')
         .select('*')
         .order('name');
 
-      if (error) {
-        console.error('[Chat Debug] Error fetching channels:', error);
-        throw error;
+      if (channelsError) {
+        console.error('[Chat Debug] Error fetching channels:', channelsError);
+        throw channelsError;
       }
 
-      console.log('[Chat Debug] Fetched channels:', channels);
+      console.log('[Chat Debug] Successfully fetched channels:', channels);
       return channels;
     },
     retry: 1
