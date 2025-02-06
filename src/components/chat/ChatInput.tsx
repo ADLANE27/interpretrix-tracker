@@ -231,7 +231,7 @@ export const ChatInput = ({
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           placeholder="Type your message..."
-          className="min-h-[100px] max-h-[150px] resize-none pr-24 overflow-y-auto"
+          className="min-h-[100px] h-[100px] max-h-[100px] resize-none pr-24 overflow-y-auto"
         />
         
         {isMentioning && (
