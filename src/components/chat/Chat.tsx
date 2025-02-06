@@ -142,7 +142,7 @@ export const Chat = ({ channelId }: ChatProps) => {
           </Popover>
 
           <Button type="submit" disabled={isLoading || !newMessage.trim()}>
-            Send
+            Envoyer
           </Button>
         </div>
       </form>
