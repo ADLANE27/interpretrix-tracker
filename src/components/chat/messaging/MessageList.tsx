@@ -5,8 +5,13 @@ export const MessageList = ({
   messages,
   currentUserId,
   onDeleteMessage,
-  onReactToMessage
+  onReactToMessage,
+  isLoading
 }: MessageListProps) => {
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-full">Loading messages...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4">
       {messages.map((message) => {
@@ -15,13 +20,6 @@ export const MessageList = ({
           name: message.sender.name,
           avatarUrl: message.sender.avatarUrl
         };
-
-        const attachments = message.attachments?.map(att => ({
-          url: att.url,
-          filename: att.filename,
-          type: att.type,
-          size: att.size
-        }));
 
         return (
           <ChatMessage
@@ -33,7 +31,7 @@ export const MessageList = ({
             onDelete={message.sender.id === currentUserId ? () => onDeleteMessage?.(message.id) : undefined}
             reactions={message.reactions}
             onReact={(emoji) => onReactToMessage?.(message.id, emoji)}
-            attachments={attachments}
+            attachments={message.attachments}
           />
         );
       })}

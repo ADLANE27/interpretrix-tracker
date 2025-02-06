@@ -9,6 +9,15 @@ export const AttachmentSchema = z.object({
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
+export const isAttachment = (value: unknown): value is Attachment => {
+  try {
+    AttachmentSchema.parse(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const MessageSchema = z.object({
   id: z.string().uuid(),
   content: z.string(),
@@ -42,6 +51,9 @@ export interface MessageData {
 export interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
+  currentUserId?: string | null;
+  onDeleteMessage?: (messageId: string) => void;
+  onReactToMessage?: (messageId: string, emoji: string) => void;
 }
 
 export interface ChannelMember {
