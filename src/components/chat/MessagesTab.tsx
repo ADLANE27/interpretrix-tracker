@@ -14,46 +14,50 @@ export const MessagesTab = () => {
     console.log('Setting up mentions subscription in MessagesTab');
     fetchUnreadMentions();
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('No user found for mentions subscription');
-      return;
-    }
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found for mentions subscription');
+        return;
+      }
 
-    console.log('Subscribing to mentions for user:', user.id);
-    const channel = supabase.channel('interpreter-mentions-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${user.id}`
-        },
-        (payload) => {
-          console.log('Received mention update:', payload);
-          fetchUnreadMentions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('Mentions subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to mentions');
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to mentions');
-          toast({
-            title: "Erreur de notification",
-            description: "Impossible de recevoir les notifications en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
+      console.log('Subscribing to mentions for user:', user.id);
+      const channel = supabase.channel('interpreter-mentions-messages')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'message_mentions',
+            filter: `mentioned_user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Received mention update:', payload);
+            fetchUnreadMentions();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Mentions subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to mentions');
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error('Error subscribing to mentions');
+            toast({
+              title: "Erreur de notification",
+              description: "Impossible de recevoir les notifications en temps réel",
+              variant: "destructive",
+            });
+          }
+        });
 
-    return () => {
-      console.log('Cleaning up mentions subscription');
-      supabase.removeChannel(channel);
+      return () => {
+        console.log('Cleaning up mentions subscription');
+        supabase.removeChannel(channel);
+      };
     };
+
+    setupSubscription();
   }, []);
 
   const fetchUnreadMentions = async () => {
