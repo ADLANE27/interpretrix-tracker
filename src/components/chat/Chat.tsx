@@ -35,12 +35,21 @@ export const Chat = ({ channelId }: ChatProps) => {
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
+      if (!channelId) {
+        console.warn('No channel ID provided for fetching mention suggestions');
+        return;
+      }
+
       const { data: members, error } = await supabase
         .rpc('get_channel_members', { channel_id: channelId });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching mention suggestions:', error);
+        setMentionSuggestions([]);
+        return;
+      }
 
-      if (members) {
+      if (Array.isArray(members)) {
         const filtered = members.filter(member => 
           `${member.first_name} ${member.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
           member.email.toLowerCase().includes(search.toLowerCase())
@@ -52,6 +61,9 @@ export const Chat = ({ channelId }: ChatProps) => {
           email: member.email,
           role: member.role
         })));
+      } else {
+        console.warn('Members data is not an array:', members);
+        setMentionSuggestions([]);
       }
     } catch (error) {
       console.error('Error fetching mention suggestions:', error);

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Command, CommandGroup, CommandItem } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,11 +17,11 @@ interface MentionSuggestionsProps {
 }
 
 export const MentionSuggestions = ({ 
-  suggestions = [], // Provide default empty array
+  suggestions = [], 
   onSelect, 
   visible 
 }: MentionSuggestionsProps) => {
-  if (!visible || !suggestions?.length) return null;
+  if (!visible || !Array.isArray(suggestions) || suggestions.length === 0) return null;
 
   return (
     <div className="absolute bottom-full mb-1 w-64 z-50">
