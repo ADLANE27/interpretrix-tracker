@@ -11,6 +11,7 @@ import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChatProps {
   channelId: string;
@@ -206,8 +207,8 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             >
               {message.sender.id !== currentUserId && (
                 <Avatar className="h-8 w-8">
-                  {message.sender.avatar_url ? (
-                    <img src={message.sender.avatar_url} alt={message.sender.name} />
+                  {message.sender.avatarUrl ? (
+                    <img src={message.sender.avatarUrl} alt={message.sender.name} />
                   ) : (
                     <AvatarFallback>
                       <User className="h-4 w-4" />
