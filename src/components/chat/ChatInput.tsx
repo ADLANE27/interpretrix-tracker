@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -35,6 +35,7 @@ export const ChatInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const mentionStartPosition = useRef<number>(0);
 
   const { data: channelMembers = [] } = useQuery({
     queryKey: ['channelMembers', channelId],
@@ -49,16 +50,28 @@ export const ChatInput = ({
     enabled: !!channelId
   });
 
+  useEffect(() => {
+    if (textareaRef.current && !isMentioning) {
+      textareaRef.current.selectionStart = cursorPosition;
+      textareaRef.current.selectionEnd = cursorPosition;
+    }
+  }, [cursorPosition, isMentioning]);
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === '@') {
       setIsMentioning(true);
-      setCursorPosition(e.currentTarget.selectionStart || 0);
+      mentionStartPosition.current = e.currentTarget.selectionStart || 0;
+      setCursorPosition(mentionStartPosition.current);
       setMentionQuery('');
     }
     
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       await handleSubmit(e);
+    }
+
+    if (e.key === 'Escape' && isMentioning) {
+      setIsMentioning(false);
     }
   };
 
@@ -67,33 +80,42 @@ export const ChatInput = ({
     setMessage(newValue);
     
     if (isMentioning) {
-      const lastAtSymbol = newValue.lastIndexOf('@', cursorPosition);
-      if (lastAtSymbol >= 0) {
-        const query = newValue.slice(lastAtSymbol + 1, e.target.selectionStart).trim();
-        setMentionQuery(query);
+      const currentPosition = e.target.selectionStart || 0;
+      const textFromMentionStart = newValue.slice(mentionStartPosition.current, currentPosition);
+      const mentionText = textFromMentionStart.replace('@', '');
+      setMentionQuery(mentionText);
+
+      // Check if user has typed a space or moved cursor away from mention area
+      if (textFromMentionStart.includes(' ') || currentPosition < mentionStartPosition.current) {
+        setIsMentioning(false);
       }
     }
-  };
 
-  const filteredMembers = channelMembers.filter(member => {
-    const searchTerm = mentionQuery.toLowerCase();
-    return (
-      member.first_name.toLowerCase().includes(searchTerm) ||
-      member.last_name.toLowerCase().includes(searchTerm) ||
-      member.email.toLowerCase().includes(searchTerm)
-    );
-  });
+    setCursorPosition(e.target.selectionStart || 0);
+  };
 
   const handleMentionSelect = (member: ChannelMember) => {
     if (!textareaRef.current) return;
 
-    const beforeMention = message.slice(0, cursorPosition);
-    const afterMention = message.slice(cursorPosition + 1);
-    const mentionText = `@${member.first_name} ${member.last_name}`;
+    const beforeMention = message.slice(0, mentionStartPosition.current);
+    const afterMention = message.slice(cursorPosition);
+    const mentionText = `@${member.first_name} ${member.last_name} `;
     
-    setMessage(`${beforeMention}${mentionText} ${afterMention}`);
+    const newMessage = beforeMention + mentionText + afterMention;
+    const newCursorPosition = mentionStartPosition.current + mentionText.length;
+    
+    setMessage(newMessage);
     setIsMentioning(false);
-    textareaRef.current.focus();
+    setCursorPosition(newCursorPosition);
+
+    // Defer focus and cursor position update
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = newCursorPosition;
+        textareaRef.current.selectionEnd = newCursorPosition;
+      }
+    }, 0);
   };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +171,7 @@ export const ChatInput = ({
       await onSendMessage(message);
       setMessage("");
       setAttachments([]);
+      setCursorPosition(0);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -162,16 +185,21 @@ export const ChatInput = ({
   const handleEmojiSelect = (emoji: string) => {
     if (!textareaRef.current) return;
     
-    const start = textareaRef.current.selectionStart;
-    const end = textareaRef.current.selectionEnd;
+    const start = textareaRef.current.selectionStart || 0;
+    const end = textareaRef.current.selectionEnd || 0;
     const newMessage = message.slice(0, start) + emoji + message.slice(end);
+    const newPosition = start + emoji.length;
     
     setMessage(newMessage);
-    
-    // Set cursor position after the inserted emoji
+    setCursorPosition(newPosition);
+
+    // Defer focus and cursor position update
     setTimeout(() => {
-      textareaRef.current?.setSelectionRange(start + emoji.length, start + emoji.length);
-      textareaRef.current?.focus();
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = newPosition;
+        textareaRef.current.selectionEnd = newPosition;
+      }
     }, 0);
   };
 
@@ -213,15 +241,24 @@ export const ChatInput = ({
                 <CommandInput placeholder="Search members..." />
                 <CommandEmpty>No members found.</CommandEmpty>
                 <CommandGroup>
-                  {filteredMembers.map((member) => (
-                    <CommandItem
-                      key={member.user_id}
-                      onSelect={() => handleMentionSelect(member)}
-                      className="cursor-pointer"
-                    >
-                      {member.first_name} {member.last_name}
-                    </CommandItem>
-                  ))}
+                  {channelMembers
+                    .filter(member => {
+                      const searchTerm = mentionQuery.toLowerCase();
+                      return (
+                        member.first_name.toLowerCase().includes(searchTerm) ||
+                        member.last_name.toLowerCase().includes(searchTerm) ||
+                        member.email.toLowerCase().includes(searchTerm)
+                      );
+                    })
+                    .map((member) => (
+                      <CommandItem
+                        key={member.user_id}
+                        onSelect={() => handleMentionSelect(member)}
+                        className="cursor-pointer"
+                      >
+                        {member.first_name} {member.last_name}
+                      </CommandItem>
+                    ))}
                 </CommandGroup>
               </CommandList>
             </Command>
