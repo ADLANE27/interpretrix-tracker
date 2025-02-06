@@ -67,14 +67,6 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       if (membersError) throw membersError;
 
-      // Delete messages mentions
-      const { error: mentionsError } = await supabase
-        .from("message_mentions")
-        .delete()
-        .eq("channel_id", channelToDelete.id);
-
-      if (mentionsError) throw mentionsError;
-
       // Delete messages
       const { error: messagesError } = await supabase
         .from("chat_messages")

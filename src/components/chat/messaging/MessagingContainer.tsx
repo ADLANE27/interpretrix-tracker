@@ -1,42 +1,76 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "../ChatInput";
-import { useChat } from "@/hooks/useChat";
-import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
+import { ChannelMembersDialog } from "../ChannelMembersDialog";
+
+interface Message {
+  id: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
+  attachments?: string[];
+}
 
 export const MessagingContainer = ({ channelId }: { channelId: string }) => {
-  const { messages, sendMessage, deleteMessage, reactToMessage, currentUserId } = useChat(channelId);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const handleMarkMentionsAsRead = async () => {
+  const fetchMessages = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('message_mentions')
-        .update({ status: 'read' })
-        .eq('mentioned_user_id', user.id)
-        .eq('channel_id', channelId);
+      const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("channel_id", channelId)
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
-
-      toast({
-        title: "Mentions marquées comme lues",
-        description: "Toutes les mentions ont été marquées comme lues",
-      });
+      setMessages(data || []);
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error marking mentions as read:', error);
+      console.error("Error fetching messages:", error);
       toast({
-        title: "Erreur",
-        description: "Impossible de marquer les mentions comme lues",
+        title: "Error",
+        description: "Failed to load messages",
         variant: "destructive",
       });
     }
   };
+
+  useEffect(() => {
+    fetchMessages();
+    
+    const channel = supabase
+      .channel(`messages:${channelId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_messages",
+          filter: `channel_id=eq.${channelId}`,
+        },
+        (payload) => {
+          console.log("Message change received:", payload);
+          fetchMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [channelId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full">
@@ -45,28 +79,28 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
         <Button
           variant="outline"
           size="sm"
-          className="gap-2"
-          onClick={handleMarkMentionsAsRead}
+          onClick={() => setIsMembersDialogOpen(true)}
+          className="flex items-center gap-2"
         >
-          <Check className="h-4 w-4" />
-          Marquer comme lu
+          <Users className="h-4 w-4" />
+          Members
         </Button>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <MessageList
-          messages={messages}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          currentUserId={currentUserId}
-        />
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <MessageList messages={messages} isLoading={isLoading} />
+        <div ref={messagesEndRef} />
       </div>
+
       <div className="p-4 border-t">
-        <ChatInput 
-          onSendMessage={sendMessage} 
-          channelId={channelId}
-          currentUserId={currentUserId}
-        />
+        <ChatInput channelId={channelId} onMessageSent={fetchMessages} />
       </div>
+
+      <ChannelMembersDialog
+        channelId={channelId}
+        isOpen={isMembersDialogOpen}
+        onClose={() => setIsMembersDialogOpen(false)}
+      />
     </div>
   );
 };

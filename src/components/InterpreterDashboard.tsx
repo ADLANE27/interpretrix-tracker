@@ -406,7 +406,7 @@ export const InterpreterDashboard = () => {
                   </TabsTrigger>
                   <TabsTrigger 
                     value="messages"
-                    className="relative data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
                     Messages
                     {unreadMentions > 0 && (
