@@ -18,6 +18,7 @@ interface Channel {
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Check if user is admin
@@ -55,7 +56,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('channel_id')
+        .select('channel_id, count', { count: 'exact' })
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread');
 
@@ -155,6 +156,14 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           ))}
         </div>
       </ScrollArea>
+
+      {isCreateDialogOpen && (
+        <CreateChannelDialog
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+          onChannelCreated={fetchChannels}
+        />
+      )}
     </div>
   );
 };
