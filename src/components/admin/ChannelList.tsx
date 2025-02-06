@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 
 interface Channel {
   id: string;
@@ -163,7 +162,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   className={`flex items-center gap-1 ${
                     selectedChannelId === channel.id 
                       ? 'hover:bg-red-700 text-white' 
-                      : 'hover:bg-destructive/10 text-destructive'
+                      : 'hover:bg-destructive/10 hover:text-destructive'
                   }`}
                   title="Supprimer le canal"
                 >
@@ -192,16 +191,16 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Channel</AlertDialogTitle>
+            <AlertDialogTitle>Supprimer le canal</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the channel "{channelToDelete?.name}"? This action cannot
-              be undone.
+              Êtes-vous sûr de vouloir supprimer le canal "{channelToDelete?.name}" ? Cette action ne peut pas
+              être annulée.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteChannel} className="bg-destructive hover:bg-destructive/90">
-              Delete
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
