@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, UserPlus } from "lucide-react";
+import { Plus, Trash2, Users, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface Channel {
   id: string;
@@ -31,10 +32,6 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchChannels();
-  }, []);
 
   const fetchChannels = async () => {
     try {
@@ -54,6 +51,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       });
     }
   };
+
+  useEffect(() => {
+    fetchChannels();
+  }, []);
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -113,8 +114,8 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Channels</h2>
-        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
+        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
           New Channel
         </Button>
       </div>
@@ -124,13 +125,29 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 cursor-pointer border"
+              className={`
+                flex items-center justify-between p-3 rounded-lg 
+                hover:bg-accent/50 cursor-pointer border transition-colors
+                ${selectedChannelId === channel.id ? 'bg-accent/50 border-primary' : ''}
+              `}
               onClick={() => {
                 setSelectedChannelId(channel.id);
                 onChannelSelect(channel.id);
               }}
             >
-              <span className="flex-1 font-medium">{channel.name}</span>
+              <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-medium">{channel.name}</span>
+                  {channel.description && (
+                    <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                      {channel.description}
+                    </span>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -143,8 +160,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                   className="flex items-center gap-1 hover:bg-accent"
                   title="Manage members"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Members</span>
+                  <Users className="h-4 w-4" />
+                  <Badge variant="secondary" className="ml-1">
+                    <span className="text-xs">Members</span>
+                  </Badge>
                 </Button>
                 <Button
                   variant="ghost"
@@ -154,11 +173,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setChannelToDelete(channel);
                     setIsDeleteDialogOpen(true);
                   }}
-                  className="flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-900"
+                  className="flex items-center gap-1 hover:bg-destructive/10"
                   title="Delete channel"
                 >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                  <span className="hidden sm:inline">Delete</span>
+                  <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>
@@ -191,7 +209,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteChannel} className="bg-red-500 hover:bg-red-600">
+            <AlertDialogAction onClick={handleDeleteChannel} className="bg-destructive hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
