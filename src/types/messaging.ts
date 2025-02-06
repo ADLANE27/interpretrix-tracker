@@ -7,6 +7,7 @@ export interface Message {
     avatarUrl?: string;
   };
   timestamp: Date;
+  parent_message_id?: string | null;
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
 }
@@ -16,6 +17,7 @@ export interface MessageData {
   content: string;
   sender_id: string;
   created_at: string;
+  parent_message_id?: string | null;
   reactions: Record<string, string[]>;
   attachments?: Array<{
     url: string;
