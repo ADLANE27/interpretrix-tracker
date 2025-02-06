@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
 import { ChannelMemberManagement } from "@/components/admin/ChannelMemberManagement";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useQuery } from "@tanstack/react-query";
 
 interface Channel {
   id: string;
@@ -30,6 +31,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
+  const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
   const { toast } = useToast();
 
   // Check if user is admin
@@ -58,6 +60,63 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       return userChannels;
     }
   });
+
+  // Fetch unread mentions for each channel
+  const fetchUnreadMentions = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('Fetching unread mentions for user:', user.id);
+      const { data: mentions, error } = await supabase
+        .from('message_mentions')
+        .select('channel_id, count')
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('Error fetching unread mentions:', error);
+        return;
+      }
+
+      const mentionCounts = mentions.reduce((acc: { [key: string]: number }, mention) => {
+        acc[mention.channel_id] = (acc[mention.channel_id] || 0) + 1;
+        return acc;
+      }, {});
+
+      console.log('Unread mentions by channel:', mentionCounts);
+      setUnreadMentions(mentionCounts);
+    } catch (error) {
+      console.error('Error in fetchUnreadMentions:', error);
+    }
+  };
+
+  // Set up real-time subscription for mentions
+  useEffect(() => {
+    fetchUnreadMentions();
+
+    const channel = supabase.channel('interpreter-mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions'
+        },
+        (payload) => {
+          console.log('Mentions update received:', payload);
+          fetchUnreadMentions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Mentions subscription status:', status);
+      });
+
+    return () => {
+      console.log('Cleaning up mentions subscription');
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -95,9 +154,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       if (channelError) throw channelError;
 
+      fetchChannels();
       setChannelToDelete(null);
       setIsDeleteDialogOpen(false);
-      fetchChannels();
 
       toast({
         title: "Succès",
@@ -113,13 +172,33 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     }
   };
 
-  // Select first channel by default
-  useEffect(() => {
-    if (channels.length > 0 && !selectedChannelId) {
-      setSelectedChannelId(channels[0].id);
-      onChannelSelect(channels[0].id);
+  const handleChannelSelect = async (channelId: string) => {
+    setSelectedChannelId(channelId);
+    onChannelSelect(channelId);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Mark mentions as read when entering the channel
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'read' })
+        .eq('mentioned_user_id', user.id)
+        .eq('channel_id', channelId);
+
+      if (error) throw error;
+
+      // Update local state to remove the badge
+      setUnreadMentions(prev => {
+        const updated = { ...prev };
+        delete updated[channelId];
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error marking mentions as read:', error);
     }
-  }, [channels, selectedChannelId, onChannelSelect]);
+  };
 
   return (
     <div className="space-y-4">
@@ -143,12 +222,19 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                 cursor-pointer transition-colors
                 ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
               `}
-              onClick={() => {
-                setSelectedChannelId(channel.id);
-                onChannelSelect(channel.id);
-              }}
+              onClick={() => handleChannelSelect(channel.id)}
             >
-              <span className="flex-1 font-medium">{channel.name}</span>
+              <div className="flex items-center gap-2 flex-1">
+                <span className="font-medium">{channel.name}</span>
+                {unreadMentions[channel.id] > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="ml-2"
+                  >
+                    {unreadMentions[channel.id]}
+                  </Badge>
+                )}
+              </div>
               {isAdmin && (
                 <div className="flex items-center gap-2">
                   <Button
