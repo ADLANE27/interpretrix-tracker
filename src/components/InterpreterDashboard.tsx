@@ -52,9 +52,15 @@ export const InterpreterDashboard = () => {
   useEffect(() => {
     fetchProfile();
     fetchScheduledMissions();
+  }, []);
+
+  // Separate effect for mentions handling
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    console.log('Setting up mentions subscription for user:', profile.id);
     fetchUnreadMentions();
 
-    // Set up realtime subscriptions for mentions
     const mentionsChannel = supabase
       .channel('interpreter-mentions')
       .on(
@@ -63,14 +69,16 @@ export const InterpreterDashboard = () => {
           event: '*',
           schema: 'public',
           table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${profile?.id}`,
+          filter: `mentioned_user_id=eq.${profile.id}`,
         },
         (payload) => {
           console.log('Mentions update received:', payload);
           fetchUnreadMentions();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Mentions subscription status:', status);
+      });
 
     const profileChannel = supabase
       .channel('interpreter-profile-updates')
@@ -80,16 +88,14 @@ export const InterpreterDashboard = () => {
           event: 'UPDATE',
           schema: 'public',
           table: 'interpreter_profiles',
-          filter: `id=eq.${profile?.id}`,
+          filter: `id=eq.${profile.id}`,
         },
         (payload) => {
           console.log('Profile update received:', payload);
           fetchProfile();
         }
       )
-      .subscribe((status) => {
-        console.log('Profile subscription status:', status);
-      });
+      .subscribe();
 
     const missionsChannel = supabase
       .channel('interpreter-missions-updates')
@@ -99,18 +105,17 @@ export const InterpreterDashboard = () => {
           event: '*',
           schema: 'public',
           table: 'interpretation_missions',
-          filter: `assigned_interpreter_id=eq.${profile?.id}`,
+          filter: `assigned_interpreter_id=eq.${profile.id}`,
         },
         (payload) => {
           console.log('Mission update received:', payload);
           fetchScheduledMissions();
         }
       )
-      .subscribe((status) => {
-        console.log('Missions subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
+      console.log('Cleaning up subscriptions');
       supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(profileChannel);
       supabase.removeChannel(missionsChannel);
@@ -120,18 +125,32 @@ export const InterpreterDashboard = () => {
   const fetchUnreadMentions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('No user found for fetching mentions');
+        return;
+      }
 
+      console.log('Fetching unread mentions for user:', user.id);
       const { data: mentions, error } = await supabase
         .from('message_mentions')
         .select('*')
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching unread mentions:', error);
+        throw error;
+      }
+
+      console.log('Unread mentions count:', mentions?.length);
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
-      console.error('Error fetching unread mentions:', error);
+      console.error('Error in fetchUnreadMentions:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les mentions non lues",
+        variant: "destructive",
+      });
     }
   };
 
