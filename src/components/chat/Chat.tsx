@@ -25,6 +25,7 @@ export const Chat = ({ channelId }: ChatProps) => {
     name: string;
     email: string;
     role: 'admin' | 'interpreter';
+    type?: 'language';
   }>>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -40,44 +41,64 @@ export const Chat = ({ channelId }: ChatProps) => {
         return;
       }
 
-      const { data: members, error } = await supabase
+      // Fetch target languages for the channel
+      const { data: languages, error: languagesError } = await supabase
+        .rpc('get_channel_target_languages', { channel_id: channelId });
+
+      if (languagesError) {
+        console.error('[Chat Debug] Error fetching languages:', languagesError);
+      }
+
+      // Fetch channel members
+      const { data: members, error: membersError } = await supabase
         .rpc('get_channel_members', { channel_id: channelId });
 
-      if (error) {
-        console.error('[Chat Debug] Error fetching members:', error);
+      if (membersError) {
+        console.error('[Chat Debug] Error fetching members:', membersError);
         setMentionSuggestions([]);
         return;
       }
 
-      if (!Array.isArray(members)) {
-        console.warn('[Chat Debug] Members is not an array:', members);
-        setMentionSuggestions([]);
-        return;
+      const suggestions: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role: 'admin' | 'interpreter';
+        type?: 'language';
+      }> = [];
+
+      // Add language suggestions
+      if (languages) {
+        const languageSuggestions = languages
+          .filter(lang => 
+            lang.target_language.toLowerCase().includes(search.toLowerCase())
+          )
+          .map(lang => ({
+            id: `lang_${lang.target_language}`,
+            name: lang.target_language,
+            email: '',
+            role: 'interpreter' as const,
+            type: 'language' as const
+          }));
+        suggestions.push(...languageSuggestions);
       }
 
-      // Filter out invalid member data
-      const validMembers = members.filter(member => 
-        member && 
-        typeof member === 'object' &&
-        typeof member.user_id === 'string' &&
-        typeof member.first_name === 'string' &&
-        typeof member.last_name === 'string' &&
-        typeof member.email === 'string'
-      );
-
-      const searchLower = search.toLowerCase();
-      const suggestions = validMembers
-        .filter(member => {
-          const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
-          return fullName.includes(searchLower) || 
-                 member.email.toLowerCase().includes(searchLower);
-        })
-        .map(member => ({
-          id: member.user_id,
-          name: `${member.first_name} ${member.last_name}`,
-          email: member.email,
-          role: member.role as 'admin' | 'interpreter'
-        }));
+      // Add member suggestions
+      if (Array.isArray(members)) {
+        const memberSuggestions = members
+          .filter(member => {
+            const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+            return fullName.includes(search.toLowerCase()) || 
+                   member.email.toLowerCase().includes(search.toLowerCase());
+          })
+          .map(member => ({
+            id: member.user_id,
+            name: `${member.first_name} ${member.last_name}`,
+            email: member.email,
+            role: member.role as 'admin' | 'interpreter'
+          }));
+        suggestions.push(...memberSuggestions);
+      }
 
       setMentionSuggestions(suggestions);
     } catch (error) {
@@ -86,13 +107,41 @@ export const Chat = ({ channelId }: ChatProps) => {
     }
   };
 
-  const handleMentionSelect = (member: any) => {
-    const beforeMention = message.substring(0, message.lastIndexOf('@'));
-    const afterMention = message.substring(cursorPosition);
-    const newMessage = `${beforeMention}@${member.name} ${afterMention}`;
-    setMessage(newMessage);
-    setShowMentions(false);
-    textareaRef.current?.focus();
+  const handleMentionSelect = async (suggestion: any) => {
+    try {
+      const beforeMention = message.substring(0, message.lastIndexOf('@'));
+      const afterMention = message.substring(cursorPosition);
+      
+      if (suggestion.type === 'language') {
+        // Get all interpreters for this language in the channel
+        const { data: interpreters, error } = await supabase
+          .rpc('get_channel_interpreters_by_language', {
+            p_channel_id: channelId,
+            p_target_language: suggestion.name
+          });
+
+        if (error) throw error;
+
+        const mentionText = interpreters
+          .map(interpreter => `@${interpreter.first_name} ${interpreter.last_name}`)
+          .join(' ');
+
+        setMessage(`${beforeMention}${mentionText} ${afterMention}`);
+      } else {
+        // Regular user mention
+        setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
+      }
+      
+      setShowMentions(false);
+      textareaRef.current?.focus();
+    } catch (error) {
+      console.error('[Chat Debug] Error in handleMentionSelect:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de traiter la mention",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

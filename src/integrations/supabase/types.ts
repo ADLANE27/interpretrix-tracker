@@ -485,6 +485,19 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      get_channel_interpreters_by_language: {
+        Args: {
+          p_channel_id: string
+          p_target_language: string
+        }
+        Returns: {
+          user_id: string
+          email: string
+          first_name: string
+          last_name: string
+          role: Database["public"]["Enums"]["user_role"]
+        }[]
+      }
       get_channel_members: {
         Args: {
           channel_id: string
@@ -496,6 +509,14 @@ export type Database = {
           last_name: string
           role: Database["public"]["Enums"]["user_role"]
           joined_at: string
+        }[]
+      }
+      get_channel_target_languages: {
+        Args: {
+          channel_id: string
+        }
+        Returns: {
+          target_language: string
         }[]
       }
       get_message_sender_details: {
