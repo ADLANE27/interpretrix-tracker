@@ -82,53 +82,17 @@ export const InterpreterDashboard = () => {
               title: "Nouvelle mention",
               description: "Quelqu'un vous a mentionné dans un message",
             });
+            fetchUnreadMentions(); // Immediately fetch updated count
           }
-          fetchUnreadMentions();
         }
       )
       .subscribe((status) => {
         console.log('Mentions subscription status:', status);
       });
 
-    const profileChannel = supabase
-      .channel('interpreter-profile-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${profile.id}`,
-        },
-        (payload) => {
-          console.log('Profile update received:', payload);
-          fetchProfile();
-        }
-      )
-      .subscribe();
-
-    const missionsChannel = supabase
-      .channel('interpreter-missions-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions',
-          filter: `assigned_interpreter_id=eq.${profile.id}`,
-        },
-        (payload) => {
-          console.log('Mission update received:', payload);
-          fetchScheduledMissions();
-        }
-      )
-      .subscribe();
-
     return () => {
-      console.log('Cleaning up subscriptions');
+      console.log('Cleaning up mentions subscription');
       supabase.removeChannel(mentionsChannel);
-      supabase.removeChannel(profileChannel);
-      supabase.removeChannel(missionsChannel);
     };
   }, [profile?.id]);
 
@@ -139,6 +103,8 @@ export const InterpreterDashboard = () => {
         console.log('No user found for fetching mentions');
         return;
       }
+
+      console.log('Fetching unread mentions for user ID:', user.id);
 
       const { data: mentions, error } = await supabase
         .from('message_mentions')
@@ -151,6 +117,7 @@ export const InterpreterDashboard = () => {
         throw error;
       }
 
+      console.log('Unread mentions found:', mentions?.length, mentions);
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
       console.error('Error in fetchUnreadMentions:', error);
