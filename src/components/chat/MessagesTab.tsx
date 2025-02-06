@@ -10,16 +10,9 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     fetchUnreadMentions();
-    let cleanup: (() => void) | undefined;
-    
-    const initSubscription = async () => {
-      cleanup = await subscribeToMentions();
-    };
-
-    initSubscription();
-
+    const cleanup = subscribeToMentions();
     return () => {
-      if (cleanup) cleanup();
+      cleanup();
     };
   }, []);
 
@@ -41,18 +34,14 @@ export const MessagesTab = () => {
     }
   };
 
-  const subscribeToMentions = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return () => {};
-
-    const channel = supabase.channel('interpreter-mentions')
+  const subscribeToMentions = () => {
+    const channel = supabase.channel('mentions')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'message_mentions',
-          filter: `mentioned_user_id=eq.${user.id}`
+          table: 'message_mentions'
         },
         () => {
           fetchUnreadMentions();
@@ -67,21 +56,20 @@ export const MessagesTab = () => {
 
   const handleChannelSelect = async (channelId: string) => {
     setSelectedChannelId(channelId);
-    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Mark mentions as read when entering the channel
       await supabase
         .from('message_mentions')
         .update({ status: 'read' })
         .eq('mentioned_user_id', user.id)
-        .eq('channel_id', channelId)
-        .eq('status', 'unread');
+        .eq('channel_id', channelId);
 
       fetchUnreadMentions();
     } catch (error) {
-      console.error('Error updating mention status:', error);
+      console.error('Error updating mentions:', error);
     }
   };
 
@@ -92,7 +80,7 @@ export const MessagesTab = () => {
         {unreadMentions > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute top-2 right-2 z-10"
+            className="absolute top-2 right-2"
           >
             {unreadMentions}
           </Badge>
@@ -102,7 +90,7 @@ export const MessagesTab = () => {
         <MessagingContainer channelId={selectedChannelId} />
       ) : (
         <div className="flex items-center justify-center h-full text-muted-foreground">
-          Sélectionnez un canal pour commencer à discuter
+          Select a channel to start chatting
         </div>
       )}
     </div>

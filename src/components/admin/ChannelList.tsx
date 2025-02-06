@@ -134,29 +134,31 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
-                  className="hover:bg-accent"
+                  className="flex items-center gap-1 hover:bg-accent"
                   title="Manage members"
                 >
-                  <UserPlus className="h-4 w-4 text-primary" />
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Members</span>
                 </Button>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
                     setChannelToDelete(channel);
                     setIsDeleteDialogOpen(true);
                   }}
-                  className="hover:bg-red-100 dark:hover:bg-red-900"
+                  className="flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-900"
                   title="Delete channel"
                 >
                   <Trash2 className="h-4 w-4 text-red-500" />
+                  <span className="hidden sm:inline">Delete</span>
                 </Button>
               </div>
             </div>

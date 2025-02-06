@@ -24,6 +24,8 @@ interface ChatMessageProps {
   attachments?: Attachment[];
   reactions?: Record<string, string[]>;
   onReact?: (emoji: string) => void;
+  mentions?: { id: string; name: string }[];
+  isHighlighted?: boolean;
 }
 
 const REACTIONS = [
@@ -41,7 +43,9 @@ export const ChatMessage = ({
   onDelete,
   attachments = [],
   reactions = {},
-  onReact
+  onReact,
+  mentions = [],
+  isHighlighted = false
 }: ChatMessageProps) => {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -51,10 +55,24 @@ export const ChatMessage = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Function to highlight mentions in the message content
+  const renderMessageContent = () => {
+    let renderedContent = content;
+    mentions.forEach(mention => {
+      const mentionText = `@${mention.name}`;
+      renderedContent = renderedContent.replace(
+        mentionText,
+        `<span class="text-primary font-semibold">${mentionText}</span>`
+      );
+    });
+    return <div dangerouslySetInnerHTML={{ __html: renderedContent }} />;
+  };
+
   return (
     <div className={cn(
       "flex gap-3 mb-4 group animate-fade-in",
-      isCurrentUser ? "flex-row-reverse" : "flex-row"
+      isCurrentUser ? "flex-row-reverse" : "flex-row",
+      isHighlighted && "bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-2"
     )}>
       <div className="flex flex-col items-center gap-1">
         <Avatar className="h-8 w-8 ring-2 ring-background shadow-sm">
@@ -75,7 +93,7 @@ export const ChatMessage = ({
             "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground shadow-md" : 
             "bg-gradient-to-br from-muted/80 to-muted/95 shadow-sm"
         )}>
-          <p className="text-sm">{content}</p>
+          {renderMessageContent()}
           {attachments && attachments.length > 0 && (
             <div className="mt-2 space-y-2">
               {attachments.map((attachment, index) => (
