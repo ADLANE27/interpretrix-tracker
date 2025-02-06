@@ -35,9 +35,10 @@ export const MessagesTab = () => {
     } catch (error) {
       console.error('Error in fetchUnreadMentions:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les mentions non lues",
+        title: "Erreur de notifications",
+        description: "Impossible de charger les mentions non lues. Veuillez rafraîchir la page.",
         variant: "destructive",
+        duration: 5000, // Keep toast visible for 5 seconds
       });
     }
   };
@@ -45,6 +46,8 @@ export const MessagesTab = () => {
   useEffect(() => {
     console.log('Setting up mentions subscription in MessagesTab');
     let channel: ReturnType<typeof supabase.channel>;
+    let retryCount = 0;
+    const maxRetries = 3;
     
     const setupSubscription = async () => {
       try {
@@ -73,18 +76,32 @@ export const MessagesTab = () => {
             console.log('Mentions subscription status:', status);
             if (status === 'SUBSCRIBED') {
               console.log('Successfully subscribed to mentions');
+              retryCount = 0; // Reset retry count on successful subscription
             }
             if (status === 'CHANNEL_ERROR') {
               console.error('Error subscribing to mentions');
-              toast({
-                title: "Erreur de notification",
-                description: "Impossible de recevoir les notifications en temps réel",
-                variant: "destructive",
-              });
+              if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`Retrying subscription (attempt ${retryCount}/${maxRetries})...`);
+                setTimeout(setupSubscription, 1000 * retryCount); // Exponential backoff
+              } else {
+                toast({
+                  title: "Erreur de connexion",
+                  description: "Impossible de recevoir les notifications en temps réel. Veuillez rafraîchir la page.",
+                  variant: "destructive",
+                  duration: 5000, // Keep toast visible for 5 seconds
+                });
+              }
             }
           });
       } catch (error) {
         console.error('Error setting up subscription:', error);
+        toast({
+          title: "Erreur de configuration",
+          description: "Une erreur est survenue lors de la configuration des notifications. Veuillez rafraîchir la page.",
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     };
 
@@ -131,6 +148,7 @@ export const MessagesTab = () => {
         title: "Erreur",
         description: "Impossible de marquer les mentions comme lues",
         variant: "destructive",
+        duration: 5000,
       });
     }
   };
