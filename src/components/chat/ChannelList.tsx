@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CreateChannelDialog } from "./CreateChannelDialog";
-import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
+import { ChannelMemberManagement } from "@/components/admin/ChannelMemberManagement";
 import {
   AlertDialog,
   AlertDialogAction,

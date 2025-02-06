@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface CreateChannelDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onChannelCreated: () => void;
+  onChannelCreated: () => void | Promise<any>;
 }
 
 export const CreateChannelDialog = ({ isOpen, onClose, onChannelCreated }: CreateChannelDialogProps) => {
