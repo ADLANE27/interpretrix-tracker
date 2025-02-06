@@ -4,7 +4,7 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, User, Trash2 } from 'lucide-react';
+import { Paperclip, Send, Smile, User, Trash2, Languages } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -44,20 +44,25 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
-      if (!channelId) return;
+      if (!channelId) {
+        console.log('[InterpreterChat Debug] No channel ID provided');
+        return;
+      }
 
       const { data: languages, error: languagesError } = await supabase
         .rpc('get_channel_target_languages', { channel_id: channelId });
 
       if (languagesError) {
-        console.error('[InterpreterChat] Error fetching languages:', languagesError);
+        console.error('[InterpreterChat Debug] Error fetching languages:', languagesError);
+      } else {
+        console.log('[InterpreterChat Debug] Available languages:', languages);
       }
 
       const { data: members, error: membersError } = await supabase
         .rpc('get_channel_members', { channel_id: channelId });
 
       if (membersError) {
-        console.error('[InterpreterChat] Error fetching members:', membersError);
+        console.error('[InterpreterChat Debug] Error fetching members:', membersError);
         setMentionSuggestions([]);
         return;
       }
@@ -70,21 +75,26 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         type?: 'language';
       }> = [];
 
+      // Add language suggestions with debug logging
       if (languages) {
         const languageSuggestions = languages
           .filter(lang => 
             lang.target_language.toLowerCase().includes(search.toLowerCase())
           )
-          .map(lang => ({
-            id: `lang_${lang.target_language}`,
-            name: lang.target_language,
-            email: '',
-            role: 'interpreter' as const,
-            type: 'language' as const
-          }));
+          .map(lang => {
+            console.log('[InterpreterChat Debug] Adding language suggestion:', lang.target_language);
+            return {
+              id: `lang_${lang.target_language}`,
+              name: lang.target_language,
+              email: '',
+              role: 'interpreter' as const,
+              type: 'language' as const
+            };
+          });
         suggestions.push(...languageSuggestions);
       }
 
+      // Add member suggestions
       if (Array.isArray(members)) {
         const memberSuggestions = members
           .filter(member => {
@@ -101,19 +111,59 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         suggestions.push(...memberSuggestions);
       }
 
+      console.log('[InterpreterChat Debug] Final suggestions:', suggestions);
       setMentionSuggestions(suggestions);
     } catch (error) {
-      console.error('[InterpreterChat] Error in fetchMentionSuggestions:', error);
+      console.error('[InterpreterChat Debug] Error in fetchMentionSuggestions:', error);
       setMentionSuggestions([]);
     }
   };
 
-  const handleMentionSelect = (suggestion: any) => {
-    const beforeMention = message.substring(0, message.lastIndexOf('@'));
-    const afterMention = message.substring(cursorPosition);
-    setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
-    setShowMentions(false);
-    textareaRef.current?.focus();
+  const handleMentionSelect = async (suggestion: any) => {
+    try {
+      const beforeMention = message.substring(0, message.lastIndexOf('@'));
+      const afterMention = message.substring(cursorPosition);
+      
+      if (suggestion.type === 'language') {
+        console.log('[InterpreterChat Debug] Selected language mention:', suggestion.name);
+        const mentionText = `@${suggestion.name}`;
+        setMessage(`${beforeMention}${mentionText} ${afterMention}`);
+        
+        // Get interpreters for this language in the background
+        const { data: interpreters, error } = await supabase
+          .rpc('get_channel_interpreters_by_language', {
+            p_channel_id: channelId,
+            p_target_language: suggestion.name
+          });
+
+        if (error) {
+          console.error('[InterpreterChat Debug] Error fetching interpreters:', error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de récupérer les interprètes pour cette langue",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (interpreters && interpreters.length > 0) {
+          console.log('[InterpreterChat Debug] Found interpreters for language:', interpreters);
+        }
+      } else {
+        // Regular user mention
+        setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
+      }
+      
+      setShowMentions(false);
+      textareaRef.current?.focus();
+    } catch (error) {
+      console.error('[InterpreterChat Debug] Error in handleMentionSelect:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de traiter la mention",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
