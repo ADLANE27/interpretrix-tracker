@@ -21,7 +21,6 @@ export const InterpreterChannelList = ({
   const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
   const { toast } = useToast();
 
-  // Fetch channels the interpreter has access to
   const fetchChannels = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -58,7 +57,6 @@ export const InterpreterChannelList = ({
     }
   };
 
-  // Fetch unread mentions for each channel
   const fetchUnreadMentions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -101,8 +99,12 @@ export const InterpreterChannelList = ({
             if (user && payload.new.mentioned_user_id === user.id) {
               toast({
                 title: "New Mention",
-                description: "You were mentioned in a message",
-                icon: <Bell className="h-4 w-4" />,
+                description: (
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4" />
+                    <span>You were mentioned in a message</span>
+                  </div>
+                )
               });
             }
           }
