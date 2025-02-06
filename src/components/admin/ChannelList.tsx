@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,19 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
+
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['isUserAdmin'],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      
+      return roles?.some(r => r.role === 'admin') ?? false;
+    }
+  });
 
   const fetchChannels = async () => {
     try {
@@ -113,10 +127,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Canaux de discussion</h2>
-        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nouveau canal
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nouveau canal
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="h-[400px] pr-4">
@@ -135,50 +151,54 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               }}
             >
               <span className="flex-1 font-medium">{channel.name}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedChannelId(channel.id);
-                    setIsMembersDialogOpen(true);
-                  }}
-                  className={`h-8 w-8 ${
-                    selectedChannelId === channel.id ? 'text-white hover:bg-white/20' : 'hover:bg-accent'
-                  }`}
-                  title="Gérer les membres"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setChannelToDelete(channel);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  className={`h-8 w-8 ${
-                    selectedChannelId === channel.id 
-                      ? 'text-white hover:bg-red-700/50' 
-                      : 'text-destructive hover:bg-destructive/10'
-                  }`}
-                  title="Supprimer le canal"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedChannelId(channel.id);
+                      setIsMembersDialogOpen(true);
+                    }}
+                    className={`h-8 w-8 ${
+                      selectedChannelId === channel.id ? 'text-white hover:bg-white/20' : 'hover:bg-accent'
+                    }`}
+                    title="Gérer les membres"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChannelToDelete(channel);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    className={`h-8 w-8 ${
+                      selectedChannelId === channel.id 
+                        ? 'text-white hover:bg-red-700/50' 
+                        : 'text-destructive hover:bg-destructive/10'
+                    }`}
+                    title="Supprimer le canal"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))}
         </div>
       </ScrollArea>
 
-      <CreateChannelDialog
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        onChannelCreated={fetchChannels}
-      />
+      {isCreateDialogOpen && (
+        <CreateChannelDialog
+          isOpen={isCreateDialogOpen}
+          onClose={() => setIsCreateDialogOpen(false)}
+          onChannelCreated={fetchChannels}
+        />
+      )}
 
       {selectedChannelId && (
         <ChannelMemberManagement
