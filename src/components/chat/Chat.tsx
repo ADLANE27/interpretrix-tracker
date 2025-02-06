@@ -36,37 +36,58 @@ export const Chat = ({ channelId }: ChatProps) => {
   const fetchMentionSuggestions = async (search: string) => {
     try {
       if (!channelId) {
-        console.warn('No channel ID provided for fetching mention suggestions');
+        console.warn('[Chat Debug] No channel ID provided for fetching mention suggestions');
+        setMentionSuggestions([]);
         return;
       }
 
+      console.log('[Chat Debug] Fetching mentions for channel:', channelId);
+      
       const { data: members, error } = await supabase
         .rpc('get_channel_members', { channel_id: channelId });
 
       if (error) {
-        console.error('Error fetching mention suggestions:', error);
+        console.error('[Chat Debug] Error fetching mention suggestions:', error);
         setMentionSuggestions([]);
         return;
       }
 
-      if (Array.isArray(members)) {
-        const filtered = members.filter(member => 
-          `${member.first_name} ${member.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
-          member.email.toLowerCase().includes(search.toLowerCase())
-        );
+      console.log('[Chat Debug] Raw members data:', members);
 
-        setMentionSuggestions(filtered.map(member => ({
-          id: member.user_id,
-          name: `${member.first_name} ${member.last_name}`,
-          email: member.email,
-          role: member.role
-        })));
-      } else {
-        console.warn('Members data is not an array:', members);
+      if (!Array.isArray(members)) {
+        console.warn('[Chat Debug] Members data is not an array:', members);
         setMentionSuggestions([]);
+        return;
       }
+
+      const validMembers = members.filter(member => 
+        member && 
+        typeof member === 'object' && 
+        member.first_name && 
+        member.last_name && 
+        member.email
+      );
+
+      console.log('[Chat Debug] Valid members:', validMembers);
+
+      const filtered = validMembers.filter(member => {
+        const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
+        const searchLower = search.toLowerCase();
+        return fullName.includes(searchLower) || member.email.toLowerCase().includes(searchLower);
+      });
+
+      const suggestions = filtered.map(member => ({
+        id: member.user_id,
+        name: `${member.first_name} ${member.last_name}`,
+        email: member.email,
+        role: member.role
+      }));
+
+      console.log('[Chat Debug] Final suggestions:', suggestions);
+      setMentionSuggestions(suggestions);
+
     } catch (error) {
-      console.error('Error fetching mention suggestions:', error);
+      console.error('[Chat Debug] Error in fetchMentionSuggestions:', error);
       setMentionSuggestions([]);
     }
   };
