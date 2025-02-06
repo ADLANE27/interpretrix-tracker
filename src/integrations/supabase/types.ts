@@ -519,12 +519,6 @@ export type Database = {
           target_language: string
         }[]
       }
-      get_full_name_from_metadata: {
-        Args: {
-          metadata: Json
-        }
-        Returns: string
-      }
       get_message_sender_details: {
         Args: {
           sender_id: string

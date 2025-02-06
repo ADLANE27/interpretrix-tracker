@@ -1,11 +1,19 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment, isAttachment } from '@/types/messaging';
+import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
+import { useMessageFormatter } from './chat/useMessageFormatter';
+import { useSubscriptions } from './chat/useSubscriptions';
+import { useMessageActions } from './chat/useMessageActions';
 
-export const useMessages = (channelId: string) => {
+export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const { formatMessage } = useMessageFormatter();
 
   const fetchMessages = async () => {
     if (!channelId) return;
@@ -16,16 +24,7 @@ export const useMessages = (channelId: string) => {
       
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
-        .select(`
-          id,
-          content,
-          channel_id,
-          sender_id,
-          parent_message_id,
-          created_at,
-          attachments,
-          reactions
-        `)
+        .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
         .limit(50);
@@ -120,10 +119,82 @@ export const useMessages = (channelId: string) => {
     }
   };
 
+  const { subscribeToMessages, subscribeToMentions } = useSubscriptions(
+    channelId,
+    currentUserId,
+    retryCount,
+    setRetryCount,
+    fetchMessages
+  );
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('[Chat] Error deleting message:', error);
+        await fetchMessages();
+        throw error;
+      }
+    } catch (error) {
+      console.error('[Chat] Error deleting message:', error);
+    }
+  };
+
+  const { sendMessage, reactToMessage, markMentionsAsRead } = useMessageActions(
+    channelId,
+    currentUserId,
+    fetchMessages
+  );
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (!channelId) return;
+    
+    let mentionsChannel;
+
+    const setupSubscriptions = async () => {
+      try {
+        await fetchMessages();
+        subscribeToMessages();
+        mentionsChannel = subscribeToMentions();
+        setIsSubscribed(true);
+        setRetryCount(0);
+      } catch (error) {
+        console.error('[Chat] Error setting up subscriptions:', error);
+      }
+    };
+
+    setupSubscriptions();
+
+    return () => {
+      if (mentionsChannel) {
+        console.log('[Chat] Cleaning up mentions subscription');
+        supabase.removeChannel(mentionsChannel);
+      }
+    };
+  }, [channelId]);
+
   return {
     messages,
     isLoading,
-    fetchMessages,
-    setMessages
+    isSubscribed,
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
+    currentUserId,
+    reactToMessage,
+    markMentionsAsRead, // Added this export
   };
 };
