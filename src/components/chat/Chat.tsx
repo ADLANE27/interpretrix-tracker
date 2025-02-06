@@ -5,7 +5,7 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile } from 'lucide-react';
+import { Paperclip, Send, Smile, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -31,7 +31,7 @@ export const Chat = ({ channelId }: ChatProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { messages, sendMessage, currentUserId } = useChat(channelId);
+  const { messages, sendMessage, deleteMessage, currentUserId } = useChat(channelId);
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
@@ -139,6 +139,23 @@ export const Chat = ({ channelId }: ChatProps) => {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await deleteMessage(messageId);
+      toast({
+        title: "Succès",
+        description: "Message supprimé",
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleEmojiSelect = (emoji: any) => {
     setMessage(prev => prev + emoji.native);
   };
@@ -151,17 +168,31 @@ export const Chat = ({ channelId }: ChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[600px]">
       <ScrollArea className="flex-1 p-4">
         {messages.map(message => (
-          <div key={message.id} className="mb-2">
-            <div className="font-bold">{message.sender.name}</div>
-            <div>{message.content}</div>
+          <div key={message.id} className="mb-4 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="font-bold">{message.sender.name}</div>
+                <div className="mt-1">{message.content}</div>
+              </div>
+              {currentUserId === message.sender.id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteMessage(message.id)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              )}
+            </div>
           </div>
         ))}
       </ScrollArea>
 
-      <div className="border-t p-4">
+      <div className="border-t p-4 bg-white">
         <div className="relative">
           <Textarea
             ref={textareaRef}
