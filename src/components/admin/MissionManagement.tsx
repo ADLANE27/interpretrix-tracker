@@ -444,7 +444,7 @@ export const MissionManagement = () => {
               <Label>Type de mission</Label>
               <Select value={missionType} onValueChange={(value: 'immediate' | 'scheduled') => setMissionType(value)}>
                 <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Sélectionner le type de mission" />
+                  <SelectValue placeholder="Sélectionner le type de mission" className="pointer-events-none" />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
                   <SelectItem value="immediate">Immédiate</SelectItem>
@@ -471,7 +471,7 @@ export const MissionManagement = () => {
                   <Label htmlFor="source_language">Langue source</Label>
                   <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
                     <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Sélectionner une langue" />
+                      <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
                     </SelectTrigger>
                     <SelectContent className="bg-background max-h-[300px]">
                       {sortedLanguages.map((lang) => (
@@ -486,7 +486,7 @@ export const MissionManagement = () => {
                   <Label htmlFor="target_language">Langue cible</Label>
                   <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
                     <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Sélectionner une langue" />
+                      <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
                     </SelectTrigger>
                     <SelectContent className="bg-background max-h-[300px]">
                       {sortedLanguages.map((lang) => (
@@ -527,7 +527,7 @@ export const MissionManagement = () => {
                     <Label htmlFor="source_language">Langue source</Label>
                     <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Sélectionner une langue" />
+                        <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
                       </SelectTrigger>
                       <SelectContent className="bg-background max-h-[300px]">
                         {sortedLanguages.map((lang) => (
@@ -542,7 +542,7 @@ export const MissionManagement = () => {
                     <Label htmlFor="target_language">Langue cible</Label>
                     <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Sélectionner une langue" />
+                        <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
                       </SelectTrigger>
                       <SelectContent className="bg-background max-h-[300px]">
                         {sortedLanguages.map((lang) => (
