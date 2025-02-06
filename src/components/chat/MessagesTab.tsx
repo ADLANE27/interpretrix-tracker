@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MessagingContainer } from "./messaging/MessagingContainer";
-import { ChannelList } from "@/components/shared/ChannelList";
+import { ChannelList } from "./ChannelList";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
