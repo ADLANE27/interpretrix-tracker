@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { MissionsTab } from "./interpreter/MissionsTab";
+import { MessagingTab } from "./interpreter/MessagingTab";
 import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
@@ -324,6 +325,12 @@ export const InterpreterDashboard = () => {
                     Calendrier
                   </TabsTrigger>
                   <TabsTrigger 
+                    value="messaging"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                  >
+                    Messagerie
+                  </TabsTrigger>
+                  <TabsTrigger 
                     value="profile"
                     className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
                   >
@@ -341,6 +348,10 @@ export const InterpreterDashboard = () => {
                   <MissionsCalendar 
                     missions={scheduledMissions}
                   />
+                </TabsContent>
+
+                <TabsContent value="messaging" className="m-0 h-full">
+                  <MessagingTab />
                 </TabsContent>
                 
                 <TabsContent value="profile" className="m-0 h-full">
