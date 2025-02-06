@@ -17,11 +17,9 @@ export const useUnreadMentions = () => {
       
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('channel_id, count')
+        .select('*')
         .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread')
-        .groupBy('channel_id') // Changed from group_by to groupBy
-        .select('channel_id, count'); // Need to select after groupBy
+        .eq('status', 'unread');
 
       if (error) {
         console.error('[Mentions Debug] Error fetching unread mentions:', error);
@@ -30,10 +28,11 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Unread mentions data:', data);
 
-      const counts = data.reduce((acc: { [key: string]: number }, mention) => {
-        acc[mention.channel_id] = parseInt(mention.count as any);
-        return acc;
-      }, {});
+      // Count mentions per channel
+      const counts: { [key: string]: number } = {};
+      data.forEach(mention => {
+        counts[mention.channel_id] = (counts[mention.channel_id] || 0) + 1;
+      });
 
       console.log('[Mentions Debug] Processed unread mentions counts:', counts);
       setUnreadMentions(counts);
