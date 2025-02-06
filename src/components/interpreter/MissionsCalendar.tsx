@@ -14,6 +14,7 @@ interface Mission {
   scheduled_end_time: string | null;
   client_name: string | null;
   estimated_duration: number;
+  status: string;
 }
 
 interface MissionsCalendarProps {
@@ -25,7 +26,7 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
 
   // Filter missions for the selected date
   const missionsForSelectedDate = missions.filter((mission) => {
-    if (!selectedDate || !mission.scheduled_start_time) return false;
+    if (!selectedDate || !mission.scheduled_start_time || mission.status !== 'accepted') return false;
     const missionDate = new Date(mission.scheduled_start_time);
     return (
       missionDate.getDate() === selectedDate.getDate() &&
@@ -34,9 +35,9 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
     );
   });
 
-  // Get all dates that have missions
+  // Get all dates that have accepted missions
   const datesWithMissions = missions
-    .filter((mission) => mission.scheduled_start_time)
+    .filter((mission) => mission.scheduled_start_time && mission.status === 'accepted')
     .map((mission) => new Date(mission.scheduled_start_time!));
 
   return (
