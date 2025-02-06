@@ -37,6 +37,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const { data: isAdmin } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
+      console.log('Checking admin status...');
       const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -48,18 +49,25 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         return false;
       }
       
-      return roles?.role === 'admin' || false;
+      const isAdmin = roles?.role === 'admin';
+      console.log('Is user admin?', isAdmin);
+      return isAdmin;
     }
   });
 
   const fetchChannels = async () => {
     try {
+      console.log('Fetching channels...');
       const { data: channels, error } = await supabase
         .from("chat_channels")
         .select("*")
         .order("name");
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching channels:", error);
+        throw error;
+      }
+      console.log('Channels fetched:', channels);
       setChannels(channels);
     } catch (error) {
       console.error("Error fetching channels:", error);
@@ -79,13 +87,18 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     if (!channelToDelete) return;
 
     try {
+      console.log('Deleting channel:', channelToDelete.id);
+      
       // Delete channel members first
       const { error: membersError } = await supabase
         .from("channel_members")
         .delete()
         .eq("channel_id", channelToDelete.id);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error("Error deleting channel members:", membersError);
+        throw membersError;
+      }
 
       // Delete messages mentions
       const { error: mentionsError } = await supabase
@@ -93,7 +106,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .delete()
         .eq("channel_id", channelToDelete.id);
 
-      if (mentionsError) throw mentionsError;
+      if (mentionsError) {
+        console.error("Error deleting message mentions:", mentionsError);
+        throw mentionsError;
+      }
 
       // Delete messages
       const { error: messagesError } = await supabase
@@ -101,7 +117,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .delete()
         .eq("channel_id", channelToDelete.id);
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error("Error deleting messages:", messagesError);
+        throw messagesError;
+      }
 
       // Finally delete the channel
       const { error: channelError } = await supabase
@@ -109,8 +128,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         .delete()
         .eq("id", channelToDelete.id);
 
-      if (channelError) throw channelError;
+      if (channelError) {
+        console.error("Error deleting channel:", channelError);
+        throw channelError;
+      }
 
+      console.log('Channel deleted successfully');
       setChannels(channels.filter((channel) => channel.id !== channelToDelete.id));
       setChannelToDelete(null);
       setIsDeleteDialogOpen(false);
@@ -129,6 +152,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     }
   };
 
+  // ... keep existing code (JSX return statement)
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
