@@ -1,11 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Settings } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CreateChannelDialog } from "./CreateChannelDialog";
-import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
@@ -25,55 +25,64 @@ interface Channel {
 }
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
 
   // Check if user is admin
-  const { data: isAdmin } = useQuery({
+  const { data: isAdmin = false } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
       const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user.id)
         .maybeSingle();
       
       if (error) {
         console.error('Error checking admin role:', error);
         return false;
       }
-      
-      return roles?.role === 'admin' || false;
+
+      return roles?.role === 'admin';
     }
   });
 
-  const fetchChannels = async () => {
-    try {
+  // Fetch channels
+  const { data: channels = [], refetch: fetchChannels } = useQuery({
+    queryKey: ['channels'],
+    queryFn: async () => {
+      console.log('[Chat Debug] Starting to fetch channels');
+      
       const { data: channels, error } = await supabase
-        .from("chat_channels")
-        .select("*")
-        .order("name");
+        .from('chat_channels')
+        .select('*')
+        .order('name');
 
-      if (error) throw error;
-      setChannels(channels);
-    } catch (error) {
-      console.error("Error fetching channels:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch channels",
-        variant: "destructive",
-      });
+      if (error) {
+        console.error('[Chat Debug] Error fetching channels:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch channels",
+          variant: "destructive",
+        });
+        throw error;
+      }
+
+      console.log('[Chat Debug] Successfully fetched channels:', channels);
+      return channels || [];
     }
-  };
+  });
 
-  useEffect(() => {
-    fetchChannels();
-  }, []);
+  const handleChannelSelect = (channelId: string) => {
+    setSelectedChannelId(channelId);
+    onChannelSelect(channelId);
+  };
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -111,7 +120,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       if (channelError) throw channelError;
 
-      setChannels(channels.filter((channel) => channel.id !== channelToDelete.id));
+      await fetchChannels();
       setChannelToDelete(null);
       setIsDeleteDialogOpen(false);
 
@@ -143,7 +152,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="space-y-2">
-          {channels.map((channel) => (
+          {channels?.map((channel) => (
             <div
               key={channel.id}
               className={`
@@ -151,47 +160,27 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                 cursor-pointer transition-colors
                 ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
               `}
-              onClick={() => {
-                setSelectedChannelId(channel.id);
-                onChannelSelect(channel.id);
-              }}
+              onClick={() => handleChannelSelect(channel.id)}
             >
               <span className="flex-1 font-medium">{channel.name}</span>
               {isAdmin && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedChannelId(channel.id);
-                      setIsMembersDialogOpen(true);
-                    }}
-                    className={`h-8 w-8 ${
-                      selectedChannelId === channel.id ? 'text-white hover:bg-white/20' : 'hover:bg-accent'
-                    }`}
-                    title="Gérer les membres"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setChannelToDelete(channel);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                    className={`h-8 w-8 ${
-                      selectedChannelId === channel.id 
-                        ? 'text-white hover:bg-red-700/50' 
-                        : 'text-destructive hover:bg-destructive/10'
-                    }`}
-                    title="Supprimer le canal"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChannelToDelete(channel);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  className={`h-8 w-8 ${
+                    selectedChannelId === channel.id 
+                      ? 'text-white hover:bg-red-700/50' 
+                      : 'text-destructive hover:bg-destructive/10'
+                  }`}
+                  title="Supprimer le canal"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
             </div>
           ))}
@@ -203,14 +192,6 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           isOpen={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
           onChannelCreated={fetchChannels}
-        />
-      )}
-
-      {selectedChannelId && (
-        <ChannelMemberManagement
-          channelId={selectedChannelId}
-          isOpen={isMembersDialogOpen}
-          onClose={() => setIsMembersDialogOpen(false)}
         />
       )}
 
