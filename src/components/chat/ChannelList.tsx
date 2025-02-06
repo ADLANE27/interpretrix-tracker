@@ -70,10 +70,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       console.log('Fetching unread mentions for user:', user.id);
       const { data: mentions, error } = await supabase
         .from('message_mentions')
-        .select('channel_id, count(*)')
+        .select('channel_id, count(*)', { count: 'exact' })
         .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread')
-        .groupBy('channel_id');
+        .eq('status', 'unread');
 
       if (error) {
         console.error('Error fetching unread mentions:', error);
@@ -81,7 +80,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       }
 
       const mentionCounts = mentions.reduce((acc: { [key: string]: number }, mention) => {
-        acc[mention.channel_id] = parseInt(mention.count);
+        acc[mention.channel_id] = (acc[mention.channel_id] || 0) + 1;
         return acc;
       }, {});
 
