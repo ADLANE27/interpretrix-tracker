@@ -295,14 +295,23 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
           const { data: senderDetails } = await supabase
             .rpc('get_message_sender_details', { sender_id: msg.sender_id });
           
+          // Ensure reactions is properly typed as Record<string, string[]>
+          let parsedReactions: Record<string, string[]> = {};
+          if (typeof msg.reactions === 'object' && msg.reactions !== null) {
+            parsedReactions = Object.entries(msg.reactions).reduce((acc, [key, value]) => {
+              acc[key] = Array.isArray(value) ? value : [];
+              return acc;
+            }, {} as Record<string, string[]>);
+          }
+          
           return {
             id: msg.id,
             content: msg.content,
             sender: senderDetails[0],
             timestamp: new Date(msg.created_at),
             parent_message_id: msg.parent_message_id,
-            reactions: msg.reactions || {}
-          };
+            reactions: parsedReactions
+          } as Message;
         })
       );
 
