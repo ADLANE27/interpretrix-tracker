@@ -3,135 +3,85 @@ import { MessagingContainer } from "./messaging/MessagingContainer";
 import { ChannelList } from "./ChannelList";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<number>(0);
-  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchUnreadMentions();
+    let cleanup: (() => void) | undefined;
+    
+    const initSubscription = async () => {
+      cleanup = await subscribeToMentions();
+    };
+
+    initSubscription();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
 
   const fetchUnreadMentions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No user found for fetching mentions');
-        return;
-      }
+      if (!user) return;
 
-      console.log('Fetching unread mentions for user:', user.id);
       const { data: mentions, error } = await supabase
         .from('message_mentions')
         .select('*')
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread');
 
-      if (error) {
-        console.error('Error fetching unread mentions:', error);
-        throw error;
-      }
-
-      console.log('Unread mentions count:', mentions?.length);
+      if (error) throw error;
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
-      console.error('Error in fetchUnreadMentions:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les mentions non lues",
-        variant: "destructive",
-      });
+      console.error('Error fetching unread mentions:', error);
     }
   };
 
-  useEffect(() => {
-    console.log('Setting up mentions subscription in MessagesTab');
-    let channel: ReturnType<typeof supabase.channel>;
-    
-    const setupSubscription = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.error('No user found for mentions subscription');
-          return;
+  const subscribeToMentions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return () => {};
+
+    const channel = supabase.channel('interpreter-mentions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `mentioned_user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUnreadMentions();
         }
+      )
+      .subscribe();
 
-        console.log('Subscribing to mentions for user:', user.id);
-        channel = supabase.channel('interpreter-mentions-messages')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'message_mentions',
-              filter: `mentioned_user_id=eq.${user.id}`
-            },
-            (payload) => {
-              console.log('Received mention update:', payload);
-              fetchUnreadMentions();
-            }
-          )
-          .subscribe((status) => {
-            console.log('Mentions subscription status:', status);
-            if (status === 'SUBSCRIBED') {
-              console.log('Successfully subscribed to mentions');
-            }
-            if (status === 'CHANNEL_ERROR') {
-              console.error('Error subscribing to mentions');
-              toast({
-                title: "Erreur de notification",
-                description: "Impossible de recevoir les notifications en temps réel",
-                variant: "destructive",
-              });
-            }
-          });
-      } catch (error) {
-        console.error('Error setting up subscription:', error);
-      }
-    };
-
-    // Initial fetch and setup
-    fetchUnreadMentions();
-    setupSubscription();
-
-    // Cleanup function
     return () => {
-      console.log('Cleaning up mentions subscription');
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      supabase.removeChannel(channel);
     };
-  }, []);
+  };
 
   const handleChannelSelect = async (channelId: string) => {
     setSelectedChannelId(channelId);
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No user found for updating mentions');
-        return;
-      }
+      if (!user) return;
 
-      console.log('Marking mentions as read for channel:', channelId);
-      const { error } = await supabase
+      await supabase
         .from('message_mentions')
         .update({ status: 'read' })
         .eq('mentioned_user_id', user.id)
         .eq('channel_id', channelId)
         .eq('status', 'unread');
 
-      if (error) {
-        console.error('Error updating mention status:', error);
-        throw error;
-      }
-
       fetchUnreadMentions();
     } catch (error) {
-      console.error('Error in handleChannelSelect:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de marquer les mentions comme lues",
-        variant: "destructive",
-      });
+      console.error('Error updating mention status:', error);
     }
   };
 
@@ -142,7 +92,7 @@ export const MessagesTab = () => {
         {unreadMentions > 0 && (
           <Badge 
             variant="destructive" 
-            className="absolute top-2 right-2 z-10 min-w-[20px] h-5 flex items-center justify-center"
+            className="absolute top-2 right-2 z-10"
           >
             {unreadMentions}
           </Badge>
