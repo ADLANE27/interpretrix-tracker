@@ -128,7 +128,6 @@ export const useChat = (channelId: string) => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
-      // Optimistic update - remove message from local state immediately
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
 
       const { error } = await supabase
@@ -137,7 +136,6 @@ export const useChat = (channelId: string) => {
         .eq('id', messageId);
 
       if (error) {
-        // If deletion fails, revert the optimistic update
         console.error('[Chat] Error deleting message:', error);
         await fetchMessages();
         throw error;
@@ -152,72 +150,6 @@ export const useChat = (channelId: string) => {
     currentUserId,
     fetchMessages
   );
-
-  const sendMessage = async (
-    content: string,
-    parentMessageId?: string,
-    attachments: Attachment[] = []
-  ): Promise<string> => {
-    if (!channelId || !currentUserId) throw new Error("Missing required data");
-    if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
-    
-    const newMessage = {
-      channel_id: channelId,
-      sender_id: currentUserId,
-      content: content.trim(),
-      parent_message_id: parentMessageId,
-      attachments: attachments.map(att => ({
-        url: att.url,
-        filename: att.filename,
-        type: att.type,
-        size: att.size
-      })),
-      reactions: {}
-    };
-
-    try {
-      const { data: messageData, error: messageError } = await supabase
-        .from('chat_messages')
-        .insert(newMessage)
-        .select('*')
-        .single();
-
-      if (messageError) throw messageError;
-      if (!messageData) throw new Error("No data returned from insert");
-
-      // Handle mentions
-      const mentionRegex = /@([a-zA-Z\s]+)/g;
-      const mentions = content.match(mentionRegex);
-
-      if (mentions) {
-        const { data: members } = await supabase
-          .rpc('get_channel_members', { channel_id: channelId });
-
-        if (members) {
-          for (const mention of mentions) {
-            const name = mention.substring(1).trim();
-            const mentionedMember = members.find(member => 
-              `${member.first_name} ${member.last_name}`.toLowerCase() === name.toLowerCase()
-            );
-
-            if (mentionedMember) {
-              await supabase.from('message_mentions').insert({
-                channel_id: channelId,
-                message_id: messageData.id,
-                mentioned_user_id: mentionedMember.user_id,
-              });
-            }
-          }
-        }
-      }
-
-      await fetchMessages();
-      return messageData.id;
-    } catch (error) {
-      console.error('[Chat] Error sending message:', error);
-      throw error;
-    }
-  };
 
   useEffect(() => {
     const getCurrentUser = async () => {
