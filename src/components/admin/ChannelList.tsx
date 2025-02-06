@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Users, MessageSquare } from "lucide-react";
+import { Plus, Trash2, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
@@ -113,10 +113,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Channels</h2>
+        <h2 className="text-lg font-semibold">Canaux de discussion</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
-          New Channel
+          Nouveau canal
         </Button>
       </div>
 
@@ -126,28 +126,16 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
             <div
               key={channel.id}
               className={`
-                flex items-center justify-between p-3 rounded-lg 
-                hover:bg-accent/50 cursor-pointer border transition-colors
-                ${selectedChannelId === channel.id ? 'bg-accent/50 border-primary' : ''}
+                flex items-center justify-between p-2 rounded-lg 
+                cursor-pointer transition-colors
+                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
               `}
               onClick={() => {
                 setSelectedChannelId(channel.id);
                 onChannelSelect(channel.id);
               }}
             >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-medium">{channel.name}</span>
-                  {channel.description && (
-                    <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-                      {channel.description}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <span className="flex-1 font-medium">{channel.name}</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -157,13 +145,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
-                  className="flex items-center gap-1 hover:bg-accent"
-                  title="Manage members"
+                  className={`flex items-center gap-1 ${
+                    selectedChannelId === channel.id ? 'hover:bg-interpreter-navy/80 text-white' : 'hover:bg-accent'
+                  }`}
+                  title="Gérer les membres"
                 >
                   <Users className="h-4 w-4" />
-                  <Badge variant="secondary" className="ml-1">
-                    <span className="text-xs">Members</span>
-                  </Badge>
                 </Button>
                 <Button
                   variant="ghost"
@@ -173,10 +160,14 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setChannelToDelete(channel);
                     setIsDeleteDialogOpen(true);
                   }}
-                  className="flex items-center gap-1 hover:bg-destructive/10"
-                  title="Delete channel"
+                  className={`flex items-center gap-1 ${
+                    selectedChannelId === channel.id 
+                      ? 'hover:bg-red-700 text-white' 
+                      : 'hover:bg-destructive/10 text-destructive'
+                  }`}
+                  title="Supprimer le canal"
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
