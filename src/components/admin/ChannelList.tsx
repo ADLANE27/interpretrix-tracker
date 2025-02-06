@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, Bell, Trash2, UserPlus } from "lucide-react";
+import { Plus, Users, Settings, Trash2, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,31 +17,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Channel {
   id: string;
   name: string;
   description: string | null;
-}
-
-interface Mention {
-  message_id: string;
-  message_content: string;
-  mentioning_user: {
-    first_name: string;
-    last_name: string;
-  } | null;
-  channel_name: string;
-  created_at: string;
 }
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
@@ -52,109 +36,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
-  const [unreadMentions, setUnreadMentions] = useState<Mention[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchChannels();
-    fetchUnreadMentions();
     subscribeToChannels();
-    subscribeToMentions();
   }, []);
-
-  const fetchUnreadMentions = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: mentionsData, error: mentionsError } = await supabase
-        .from('message_mentions')
-        .select(`
-          message_id,
-          chat_messages!inner (
-            content,
-            chat_channels!inner (
-              name
-            )
-          ),
-          mentioning_user_id
-        `)
-        .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread')
-        .order('created_at', { ascending: false });
-
-      if (mentionsError) {
-        console.error('Error fetching unread mentions:', mentionsError);
-        return;
-      }
-
-      // Fetch user details for each mentioning user
-      const formattedMentions = await Promise.all(
-        mentionsData.map(async (mention) => {
-          // Try to get interpreter profile first
-          const { data: interpreterData } = await supabase
-            .from('interpreter_profiles')
-            .select('first_name, last_name')
-            .eq('id', mention.mentioning_user_id)
-            .single();
-
-          if (interpreterData) {
-            return {
-              message_id: mention.message_id,
-              message_content: mention.chat_messages.content,
-              mentioning_user: {
-                first_name: interpreterData.first_name,
-                last_name: interpreterData.last_name
-              },
-              channel_name: mention.chat_messages.chat_channels.name,
-              created_at: mention.created_at,
-            };
-          }
-
-          // If not found in interpreter_profiles, try to get admin user details
-          const { data: { user: adminUser } } = await supabase.auth.admin.getUserById(
-            mention.mentioning_user_id
-          );
-
-          return {
-            message_id: mention.message_id,
-            message_content: mention.chat_messages.content,
-            mentioning_user: adminUser ? {
-              first_name: adminUser.user_metadata?.first_name || 'Admin',
-              last_name: adminUser.user_metadata?.last_name || 'User'
-            } : null,
-            channel_name: mention.chat_messages.chat_channels.name,
-            created_at: mention.created_at,
-          };
-        })
-      );
-
-      setUnreadMentions(formattedMentions);
-    } catch (error) {
-      console.error('Error fetching unread mentions:', error);
-    }
-  };
-
-  const subscribeToMentions = () => {
-    const channel = supabase
-      .channel('mentions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'message_mentions'
-        },
-        () => {
-          fetchUnreadMentions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   const fetchChannels = async () => {
     try {
@@ -227,6 +114,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         description: "Le canal a été supprimé avec succès",
       });
 
+      // Select another channel if the deleted one was selected
       if (selectedChannelId === channelToDelete.id) {
         const remainingChannels = channels.filter(c => c.id !== channelToDelete.id);
         if (remainingChannels.length > 0) {
@@ -252,65 +140,15 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-semibold">Canaux de discussion</h3>
-        <div className="flex items-center gap-2">
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-                {unreadMentions.length > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-                  >
-                    {unreadMentions.length}
-                  </Badge>
-                )}
-              </Button>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80">
-              <div className="space-y-2">
-                <h4 className="font-semibold">Mentions non lues</h4>
-                <ScrollArea className="h-[200px]">
-                  {unreadMentions.length > 0 ? (
-                    <div className="space-y-2">
-                      {unreadMentions.map((mention) => (
-                        <div 
-                          key={mention.message_id} 
-                          className="p-2 rounded-lg bg-muted/50 space-y-1"
-                        >
-                          <p className="text-sm font-medium">
-                            {mention.mentioning_user ? 
-                              `${mention.mentioning_user.first_name} ${mention.mentioning_user.last_name}` :
-                              'Utilisateur inconnu'}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {mention.message_content}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            dans {mention.channel_name}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Aucune mention non lue
-                    </p>
-                  )}
-                </ScrollArea>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Nouveau canal
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Nouveau canal
+        </Button>
       </div>
       
       <ScrollArea className="flex-1">
@@ -318,14 +156,14 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between group hover:bg-muted/50 rounded-lg transition-colors"
+              className="flex items-center justify-between group"
             >
               <button
                 onClick={() => handleChannelSelect(channel.id)}
                 className={`flex-1 text-left px-4 py-2 rounded-lg transition-colors ${
                   selectedChannelId === channel.id
                     ? 'bg-primary text-primary-foreground'
-                    : ''
+                    : 'hover:bg-muted'
                 }`}
               >
                 <div className="font-medium">{channel.name}</div>
@@ -336,42 +174,26 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                 )}
               </button>
               <div className="flex items-center gap-2 px-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedChannelId(channel.id);
-                        setIsMembersDialogOpen(true);
-                      }}
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Gérer les membres
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteChannel(channel);
-                      }}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Supprimer le canal
-                  </TooltipContent>
-                </Tooltip>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedChannelId(channel.id);
+                    setIsMembersDialogOpen(true);
+                  }}
+                  title="Gérer les membres"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDeleteChannel(channel)}
+                  className="text-destructive hover:text-destructive"
+                  title="Supprimer le canal"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
@@ -395,14 +217,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Cette action est irréversible. Cela supprimera définitivement le canal
-                "{channelToDelete?.name}" et tous ses messages.
-              </p>
-              <p className="font-medium text-destructive">
-                Les membres du canal n'auront plus accès à l'historique des conversations.
-              </p>
+            <AlertDialogDescription>
+              Cette action est irréversible. Cela supprimera définitivement le canal
+              "{channelToDelete?.name}" et tous ses messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -413,7 +230,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               onClick={confirmDeleteChannel}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Supprimer définitivement
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
