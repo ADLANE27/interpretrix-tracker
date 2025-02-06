@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ChannelList } from "@/components/chat/ChannelList";
-import { Chat } from "@/components/chat/Chat";
+import { InterpreterChannelList } from "./chat/InterpreterChannelList";
+import { InterpreterChat } from "./chat/InterpreterChat";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -9,14 +9,14 @@ export const MessagingTab = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card className="p-4 md:col-span-1">
-        <ChannelList 
+        <InterpreterChannelList 
           onChannelSelect={setSelectedChannelId}
         />
       </Card>
       
       {selectedChannelId && (
         <Card className="p-4 md:col-span-2">
-          <Chat channelId={selectedChannelId} />
+          <InterpreterChat channelId={selectedChannelId} />
         </Card>
       )}
     </div>
