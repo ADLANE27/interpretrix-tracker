@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Bell } from "lucide-react";
 
 interface Channel {
   id: string;
@@ -24,30 +24,21 @@ export const InterpreterChannelList = ({
   // Fetch channels the interpreter has access to
   const fetchChannels = async () => {
     try {
-      console.log('[InterpreterChat] Fetching channels...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      console.log('[InterpreterChat] Current user:', user.id);
 
-      // First get the channels where the user is a member
       const { data: memberChannels, error: memberError } = await supabase
         .from('channel_members')
         .select('channel_id')
         .eq('user_id', user.id);
 
-      if (memberError) {
-        console.error('[InterpreterChat] Error fetching channel memberships:', memberError);
-        throw memberError;
-      }
-      console.log('[InterpreterChat] User channel memberships:', memberChannels);
+      if (memberError) throw memberError;
 
       if (!memberChannels?.length) {
-        console.log('[InterpreterChat] User is not a member of any channels');
         setChannels([]);
         return;
       }
 
-      // Then fetch the actual channel data for those channels
       const channelIds = memberChannels.map(mc => mc.channel_id);
       const { data: channels, error: channelsError } = await supabase
         .from('chat_channels')
@@ -55,12 +46,7 @@ export const InterpreterChannelList = ({
         .in('id', channelIds)
         .order('name');
 
-      if (channelsError) {
-        console.error('[InterpreterChat] Error fetching channels:', channelsError);
-        throw channelsError;
-      }
-
-      console.log('[InterpreterChat] Channels fetched:', channels);
+      if (channelsError) throw channelsError;
       setChannels(channels || []);
     } catch (error) {
       console.error("[InterpreterChat] Error fetching channels:", error);
@@ -106,7 +92,23 @@ export const InterpreterChannelList = ({
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
-        () => fetchUnreadMentions()
+        async (payload) => {
+          console.log('[InterpreterChat] Mention update:', payload);
+          
+          // Show toast notification for new mentions
+          if (payload.eventType === 'INSERT') {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && payload.new.mentioned_user_id === user.id) {
+              toast({
+                title: "New Mention",
+                description: "You were mentioned in a message",
+                icon: <Bell className="h-4 w-4" />,
+              });
+            }
+          }
+          
+          fetchUnreadMentions();
+        }
       )
       .subscribe();
 
@@ -125,7 +127,7 @@ export const InterpreterChannelList = ({
       <div className="space-y-2 pr-4">
         {channels.length === 0 ? (
           <div className="text-center text-muted-foreground p-4">
-            Vous n'êtes membre d'aucun canal de discussion
+            You are not a member of any chat channels
           </div>
         ) : (
           channels.map((channel) => (
@@ -147,6 +149,7 @@ export const InterpreterChannelList = ({
                     variant="destructive" 
                     className="ml-2 animate-pulse"
                   >
+                    <Bell className="h-3 w-3 mr-1" />
                     {unreadMentions[channel.id]}
                   </Badge>
                 )}
