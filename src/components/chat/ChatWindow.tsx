@@ -33,7 +33,7 @@ export const ChatWindow = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [localMessages]); // Changed from messages to localMessages
+  }, [localMessages]);
 
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
@@ -48,12 +48,10 @@ export const ChatWindow = ({
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    // Update local state immediately
     setLocalMessages(prev => prev.filter(msg => msg.id !== messageId));
     try {
       await deleteMessage(messageId);
     } catch (error) {
-      // If deletion fails, revert to the server state
       console.error('Failed to delete message:', error);
       setLocalMessages(messages);
     }
@@ -61,8 +59,8 @@ export const ChatWindow = ({
 
   return (
     <div className="flex flex-col h-[600px] bg-gradient-to-br from-background via-background/95 to-muted/30 border rounded-xl shadow-lg backdrop-blur-sm transition-all duration-200">
-      <ScrollArea 
-        className="flex-1 p-4 relative" 
+      <div 
+        className="flex-1 p-4 overflow-y-auto"
         ref={scrollRef}
         onScroll={handleScroll}
       >
@@ -107,7 +105,7 @@ export const ChatWindow = ({
             Nouveaux messages
           </Button>
         )}
-      </ScrollArea>
+      </div>
       <ChatInput 
         onSendMessage={onSendMessage}
         isLoading={isLoading}
