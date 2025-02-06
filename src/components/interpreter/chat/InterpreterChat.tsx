@@ -225,7 +225,7 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                     {message.sender.name}
                   </span>
                 </div>
-                <div className="relative group">
+                <div className="space-y-2">
                   <div className={cn(
                     "rounded-lg px-4 py-2 shadow-sm",
                     message.sender.id === currentUserId 
@@ -239,9 +239,9 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteMessage(message.id)}
-                      className="absolute -right-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-100/20"
                     >
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
