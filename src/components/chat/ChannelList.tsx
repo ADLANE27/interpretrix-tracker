@@ -93,30 +93,9 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     };
   }, []);
 
-  const handleChannelSelect = async (channelId: string) => {
+  const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
     onChannelSelect(channelId);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Mark mentions as read
-      await supabase
-        .from('message_mentions')
-        .update({ status: 'read' })
-        .eq('mentioned_user_id', user.id)
-        .eq('channel_id', channelId);
-
-      // Update local state
-      setUnreadMentions(prev => {
-        const updated = { ...prev };
-        delete updated[channelId];
-        return updated;
-      });
-    } catch (error) {
-      console.error('Error marking mentions as read:', error);
-    }
   };
 
   return (

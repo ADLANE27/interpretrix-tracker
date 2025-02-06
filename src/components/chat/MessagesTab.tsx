@@ -65,23 +65,8 @@ export const MessagesTab = () => {
     };
   };
 
-  const handleChannelSelect = async (channelId: string) => {
+  const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Mark mentions as read when entering the channel
-      await supabase
-        .from('message_mentions')
-        .update({ status: 'read' })
-        .eq('mentioned_user_id', user.id)
-        .eq('channel_id', channelId);
-
-      fetchUnreadMentions();
-    } catch (error) {
-      console.error('Error updating mentions:', error);
-    }
   };
 
   return (
