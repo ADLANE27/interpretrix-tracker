@@ -25,13 +25,20 @@ export const MentionSuggestions = ({
 
   return (
     <div className="absolute bottom-full mb-1 w-64 z-50">
-      <Command className="border rounded-lg shadow-md">
+      <Command
+        className="border rounded-lg shadow-md"
+        filter={(value, search) => {
+          if (value.includes(search.toLowerCase())) return 1
+          return 0
+        }}
+      >
         <CommandList>
           <ScrollArea className="max-h-[200px]">
             <CommandGroup heading="Membres">
               {suggestions.map((member) => (
                 <CommandItem
                   key={member.id}
+                  value={`${member.name.toLowerCase()} ${member.email.toLowerCase()}`}
                   onSelect={() => onSelect(member)}
                   className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
                 >
@@ -48,4 +55,3 @@ export const MentionSuggestions = ({
     </div>
   );
 };
-
