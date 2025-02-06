@@ -399,10 +399,10 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
             >
               {totalUnreadCount > 0 ? (
                 <>
-                  <BellDot className="h-5 w-5 text-red-500" />
+                  <BellDot className="h-5 w-5 text-interpreter-navy" />
                   <Badge 
                     variant="destructive" 
-                    className="absolute -top-1 -right-1 min-w-[20px] h-5 flex items-center justify-center p-1 text-xs bg-red-500 text-white font-medium rounded-full"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500"
                   >
                     {totalUnreadCount}
                   </Badge>
