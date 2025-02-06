@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -32,7 +31,13 @@ export const Chat = ({ channelId }: ChatProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { messages, sendMessage, deleteMessage, currentUserId } = useChat(channelId);
+  const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
+
+  useEffect(() => {
+    if (channelId && currentUserId) {
+      markMentionsAsRead();
+    }
+  }, [channelId, currentUserId, markMentionsAsRead]);
 
   const fetchMentionSuggestions = async (search: string) => {
     try {

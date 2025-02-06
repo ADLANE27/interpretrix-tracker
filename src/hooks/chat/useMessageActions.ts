@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -73,6 +74,25 @@ export const useMessageActions = (
     }
   };
 
+  const markMentionsAsRead = async () => {
+    if (!currentUserId || !channelId) return;
+
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'read' })
+        .eq('mentioned_user_id', currentUserId)
+        .eq('channel_id', channelId)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('[Chat] Error marking mentions as read:', error);
+      }
+    } catch (error) {
+      console.error('[Chat] Error marking mentions as read:', error);
+    }
+  };
+
   const reactToMessage = async (messageId: string, emoji: string) => {
     if (!currentUserId) return;
 
@@ -124,5 +144,6 @@ export const useMessageActions = (
     sendMessage,
     deleteMessage,
     reactToMessage,
+    markMentionsAsRead,
   };
 };
