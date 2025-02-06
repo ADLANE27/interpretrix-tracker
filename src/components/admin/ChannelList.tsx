@@ -67,7 +67,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
           message_id,
@@ -77,28 +77,57 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               name
             )
           ),
-          mentioning_user:mentioning_user_id (
-            first_name,
-            last_name
-          ),
-          created_at
+          mentioning_user_id
         `)
         .eq('mentioned_user_id', user.id)
         .eq('status', 'unread')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching unread mentions:', error);
+      if (mentionsError) {
+        console.error('Error fetching unread mentions:', mentionsError);
         return;
       }
 
-      const formattedMentions = data.map(mention => ({
-        message_id: mention.message_id,
-        message_content: mention.chat_messages.content,
-        mentioning_user: mention.mentioning_user,
-        channel_name: mention.chat_messages.chat_channels.name,
-        created_at: mention.created_at,
-      }));
+      // Fetch user details for each mentioning user
+      const formattedMentions = await Promise.all(
+        mentionsData.map(async (mention) => {
+          // Try to get interpreter profile first
+          const { data: interpreterData } = await supabase
+            .from('interpreter_profiles')
+            .select('first_name, last_name')
+            .eq('id', mention.mentioning_user_id)
+            .single();
+
+          if (interpreterData) {
+            return {
+              message_id: mention.message_id,
+              message_content: mention.chat_messages.content,
+              mentioning_user: {
+                first_name: interpreterData.first_name,
+                last_name: interpreterData.last_name
+              },
+              channel_name: mention.chat_messages.chat_channels.name,
+              created_at: mention.created_at,
+            };
+          }
+
+          // If not found in interpreter_profiles, try to get admin user details
+          const { data: { user: adminUser } } = await supabase.auth.admin.getUserById(
+            mention.mentioning_user_id
+          );
+
+          return {
+            message_id: mention.message_id,
+            message_content: mention.chat_messages.content,
+            mentioning_user: adminUser ? {
+              first_name: adminUser.user_metadata?.first_name || 'Admin',
+              last_name: adminUser.user_metadata?.last_name || 'User'
+            } : null,
+            channel_name: mention.chat_messages.chat_channels.name,
+            created_at: mention.created_at,
+          };
+        })
+      );
 
       setUnreadMentions(formattedMentions);
     } catch (error) {
