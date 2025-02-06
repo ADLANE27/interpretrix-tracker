@@ -164,16 +164,16 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       </ScrollArea>
 
       <CreateChannelDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
+        isOpen={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
         onChannelCreated={fetchChannels}
       />
 
       {selectedChannelId && (
         <ChannelMemberManagement
           channelId={selectedChannelId}
-          open={isMembersDialogOpen}
-          onOpenChange={setIsMembersDialogOpen}
+          isOpen={isMembersDialogOpen}
+          onClose={() => setIsMembersDialogOpen(false)}
         />
       )}
 

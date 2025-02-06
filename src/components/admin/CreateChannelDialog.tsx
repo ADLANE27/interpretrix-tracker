@@ -7,12 +7,13 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface CreateChannelDialogProps {
+export interface CreateChannelDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onChannelCreated: () => void;
 }
 
-export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProps) => {
+export const CreateChannelDialog = ({ isOpen, onClose, onChannelCreated }: CreateChannelDialogProps) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +43,7 @@ export const CreateChannelDialog = ({ isOpen, onClose }: CreateChannelDialogProp
       });
 
       onClose();
+      onChannelCreated();
       setName("");
       setDescription("");
     } catch (error) {
