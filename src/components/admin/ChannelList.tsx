@@ -37,40 +37,59 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const { data: isAdmin } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
-      console.log('Checking admin status...');
+      console.log('[ChannelList] Checking admin status...');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('[ChannelList] Current user:', user?.id);
+      
       const { data: roles, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', user?.id)
         .maybeSingle();
       
       if (error) {
-        console.error('Error checking admin role:', error);
+        console.error('[ChannelList] Error checking admin role:', error);
         return false;
       }
       
       const isAdmin = roles?.role === 'admin';
-      console.log('Is user admin?', isAdmin);
+      console.log('[ChannelList] Is user admin?', isAdmin);
       return isAdmin;
     }
   });
 
   const fetchChannels = async () => {
     try {
-      console.log('Fetching channels...');
+      console.log('[ChannelList] Fetching channels...');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('[ChannelList] Current user:', user?.id);
+      
+      // First check if user is member of any channels
+      const { data: memberChannels, error: memberError } = await supabase
+        .from('channel_members')
+        .select('channel_id')
+        .eq('user_id', user?.id);
+        
+      if (memberError) {
+        console.error('[ChannelList] Error fetching channel memberships:', memberError);
+        throw memberError;
+      }
+      
+      console.log('[ChannelList] User channel memberships:', memberChannels);
+
       const { data: channels, error } = await supabase
         .from("chat_channels")
         .select("*")
         .order("name");
 
       if (error) {
-        console.error("Error fetching channels:", error);
+        console.error("[ChannelList] Error fetching channels:", error);
         throw error;
       }
-      console.log('Channels fetched:', channels);
+      console.log('[ChannelList] All channels fetched:', channels);
       setChannels(channels);
     } catch (error) {
-      console.error("Error fetching channels:", error);
+      console.error("[ChannelList] Error fetching channels:", error);
       toast({
         title: "Error",
         description: "Failed to fetch channels",
