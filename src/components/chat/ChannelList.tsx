@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Settings } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
-import { ChannelMemberManagement } from "@/components/admin/ChannelMemberManagement";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 
@@ -56,18 +55,19 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       const { data, error } = await supabase
         .from('message_mentions')
-        .select('channel_id, count', { count: 'exact' })
+        .select('channel_id, count', { count: 'exact', head: false })
         .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread');
+        .eq('status', 'unread')
+        .groupBy('channel_id');
 
       if (error) {
         console.error('Error fetching unread mentions:', error);
         return;
       }
 
-      // Count mentions per channel
-      const counts = data.reduce((acc: { [key: string]: number }, mention) => {
-        acc[mention.channel_id] = (acc[mention.channel_id] || 0) + 1;
+      // Transform the data into the expected format
+      const counts = data.reduce((acc: { [key: string]: number }, mention: any) => {
+        acc[mention.channel_id] = parseInt(mention.count);
         return acc;
       }, {});
 
