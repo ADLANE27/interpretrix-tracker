@@ -6,16 +6,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { ChannelMembersDialog } from "../ChannelMembersDialog";
+import { Message } from "@/types/messaging";
 
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  attachments?: string[];
+interface MessagingContainerProps {
+  channelId: string;
 }
 
-export const MessagingContainer = ({ channelId }: { channelId: string }) => {
+export const MessagingContainer = ({ channelId }: MessagingContainerProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
@@ -31,7 +28,36 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+
+      // Transform the data to match the Message type
+      const formattedMessages: Message[] = await Promise.all((data || []).map(async (msg) => {
+        const { data: senderData } = await supabase
+          .rpc('get_message_sender_details', {
+            sender_id: msg.sender_id
+          });
+
+        const sender = senderData?.[0] || { id: msg.sender_id, name: 'Unknown', avatar_url: '' };
+
+        return {
+          id: msg.id,
+          content: msg.content,
+          sender: {
+            id: sender.id,
+            name: sender.name,
+            avatarUrl: sender.avatar_url
+          },
+          timestamp: new Date(msg.created_at),
+          reactions: msg.reactions as Record<string, string[]>,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments.map(att => ({
+            url: String(att.url || ''),
+            filename: String(att.filename || ''),
+            type: String(att.type || ''),
+            size: Number(att.size || 0)
+          })) : []
+        };
+      }));
+
+      setMessages(formattedMessages);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -72,6 +98,10 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleSendMessage = async (content: string) => {
+    await fetchMessages();
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center p-4 border-b">
@@ -88,12 +118,20 @@ export const MessagingContainer = ({ channelId }: { channelId: string }) => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <MessageList messages={messages} isLoading={isLoading} />
+        <MessageList 
+          messages={messages} 
+          isLoading={isLoading} 
+        />
         <div ref={messagesEndRef} />
       </div>
 
       <div className="p-4 border-t">
-        <ChatInput channelId={channelId} onMessageSent={fetchMessages} />
+        <ChatInput 
+          onSendMessage={handleSendMessage}
+          isLoading={isLoading}
+          channelId={channelId}
+          currentUserId={null}
+        />
       </div>
 
       <ChannelMembersDialog

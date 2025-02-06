@@ -24,21 +24,6 @@ export const MessageSchema = z.object({
 
 export type Message = z.infer<typeof MessageSchema>;
 
-export const isAttachment = (value: unknown): value is Attachment => {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'url' in value &&
-    'filename' in value &&
-    'type' in value &&
-    'size' in value &&
-    typeof (value as any).url === 'string' &&
-    typeof (value as any).filename === 'string' &&
-    typeof (value as any).type === 'string' &&
-    typeof (value as any).size === 'number'
-  );
-};
-
 export interface MessageData {
   id: string;
   content: string;
@@ -56,9 +41,7 @@ export interface MessageData {
 
 export interface MessageListProps {
   messages: Message[];
-  currentUserId: string | null;
-  onDeleteMessage?: (messageId: string) => void;
-  onReactToMessage?: (messageId: string, emoji: string) => void;
+  isLoading?: boolean;
 }
 
 export interface ChannelMember {
