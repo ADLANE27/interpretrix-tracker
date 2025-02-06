@@ -33,59 +33,53 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
   const { toast } = useToast();
 
   // Check if user is admin
-  const { data: isAdmin = false } = useQuery({
+  const { data: isAdmin = false, isLoading: isAdminLoading } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
-      console.log('[Chat Debug] Checking admin status');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Chat Debug] No user found');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { data: roles, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Admin Debug] Error checking admin role:', error);
+          return false;
+        }
+
+        return roles?.role === 'admin';
+      } catch (error) {
+        console.error('[Admin Debug] Error in admin check:', error);
         return false;
       }
-
-      const { data: roles, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('[Chat Debug] Error checking admin role:', error);
-        return false;
-      }
-
-      const isAdmin = roles?.role === 'admin';
-      console.log('[Chat Debug] Is admin?', isAdmin);
-      return isAdmin;
     }
   });
 
   // Fetch channels
-  const { data: channels = [], refetch: fetchChannels, error: channelsError } = useQuery({
+  const { data: channels = [], refetch: fetchChannels, error: channelsError, isLoading: isChannelsLoading } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
-      console.log('[Chat Debug] Starting to fetch channels');
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Chat Debug] No authenticated user found');
-        throw new Error('Not authenticated');
+      if (!isAdmin) {
+        throw new Error('Unauthorized');
       }
 
-      const { data: channels, error } = await supabase
+      const { data, error } = await supabase
         .from('chat_channels')
         .select('*')
         .order('name');
 
       if (error) {
-        console.error('[Chat Debug] Error fetching channels:', error);
+        console.error('[Admin Debug] Error fetching channels:', error);
         throw error;
       }
 
-      console.log('[Chat Debug] Successfully fetched channels:', channels);
-      return channels || [];
+      return data || [];
     },
-    enabled: isAdmin // Only fetch if user is admin
+    enabled: isAdmin && !isAdminLoading
   });
 
   const handleChannelSelect = (channelId: string) => {
@@ -138,7 +132,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         description: "Channel deleted successfully",
       });
     } catch (error) {
-      console.error("Error deleting channel:", error);
+      console.error("[Admin Debug] Error deleting channel:", error);
       toast({
         title: "Error",
         description: "Failed to delete channel",
@@ -146,6 +140,20 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       });
     }
   };
+
+  if (isAdminLoading || isChannelsLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          You do not have permission to access this section.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (channelsError) {
     return (
@@ -161,12 +169,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Canaux de discussion</h2>
-        {isAdmin && (
-          <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nouveau canal
-          </Button>
-        )}
+        <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nouveau canal
+        </Button>
       </div>
 
       <ScrollArea className="h-[400px] pr-4">
@@ -182,25 +188,23 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               onClick={() => handleChannelSelect(channel.id)}
             >
               <span className="flex-1 font-medium">{channel.name}</span>
-              {isAdmin && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setChannelToDelete(channel);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  className={`h-8 w-8 ${
-                    selectedChannelId === channel.id 
-                      ? 'text-white hover:bg-red-700/50' 
-                      : 'text-destructive hover:bg-destructive/10'
-                  }`}
-                  title="Supprimer le canal"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setChannelToDelete(channel);
+                  setIsDeleteDialogOpen(true);
+                }}
+                className={`h-8 w-8 ${
+                  selectedChannelId === channel.id 
+                    ? 'text-white hover:bg-red-700/50' 
+                    : 'text-destructive hover:bg-destructive/10'
+                }`}
+                title="Supprimer le canal"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           ))}
         </div>

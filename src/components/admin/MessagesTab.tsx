@@ -14,27 +14,26 @@ export const MessagesTab = () => {
   const { data: isAdmin, isLoading: isCheckingAdmin } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
-      console.log('[Admin Debug] Checking admin status');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Admin Debug] No user found');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { data: roles, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Admin Debug] Error checking admin role:', error);
+          return false;
+        }
+
+        return roles?.role === 'admin';
+      } catch (error) {
+        console.error('[Admin Debug] Error in admin check:', error);
         return false;
       }
-
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('[Admin Debug] Error checking admin role:', error);
-        return false;
-      }
-
-      const isAdmin = data?.role === 'admin';
-      console.log('[Admin Debug] Is admin?', isAdmin);
-      return isAdmin;
     }
   });
 
