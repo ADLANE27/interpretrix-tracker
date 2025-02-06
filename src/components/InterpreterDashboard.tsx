@@ -140,7 +140,6 @@ export const InterpreterDashboard = () => {
         return;
       }
 
-      console.log('Fetching unread mentions for user:', user.id);
       const { data: mentions, error } = await supabase
         .from('message_mentions')
         .select('*')
@@ -152,7 +151,6 @@ export const InterpreterDashboard = () => {
         throw error;
       }
 
-      console.log('Unread mentions count:', mentions?.length);
       setUnreadMentions(mentions?.length || 0);
     } catch (error) {
       console.error('Error in fetchUnreadMentions:', error);
