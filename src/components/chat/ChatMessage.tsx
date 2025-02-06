@@ -1,8 +1,7 @@
-import { Trash, ThumbsUp, ThumbsDown, Heart, Smile, Download } from 'lucide-react';
+import { Trash, ThumbsUp, ThumbsDown, Heart, Download } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Attachment {
   url: string;
@@ -32,7 +31,6 @@ const REACTIONS = [
   { emoji: '👍', icon: ThumbsUp },
   { emoji: '👎', icon: ThumbsDown },
   { emoji: '❤️', icon: Heart },
-  { emoji: '😊', icon: Smile },
 ];
 
 export const ChatMessage = ({ 
@@ -151,32 +149,6 @@ export const ChatMessage = ({
                 <Trash className="h-4 w-4" />
               </Button>
             )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 hover:bg-muted/50 transition-colors duration-200"
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2">
-                <div className="flex gap-1">
-                  {REACTIONS.map(({ emoji, icon: Icon }) => (
-                    <Button
-                      key={emoji}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 hover:bg-muted/50 transition-colors duration-200"
-                      onClick={() => onReact?.(emoji)}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </Button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
       </div>
