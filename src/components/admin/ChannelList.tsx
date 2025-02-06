@@ -114,7 +114,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-semibold">Channels</h2>
         <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
-          <Plus className="mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           New Channel
         </Button>
       </div>
@@ -124,13 +124,13 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
           {channels.map((channel) => (
             <div
               key={channel.id}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent cursor-pointer"
+              className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 cursor-pointer border"
               onClick={() => {
                 setSelectedChannelId(channel.id);
                 onChannelSelect(channel.id);
               }}
             >
-              <span className="flex-1">{channel.name}</span>
+              <span className="flex-1 font-medium">{channel.name}</span>
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -140,9 +140,10 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
                     setSelectedChannelId(channel.id);
                     setIsMembersDialogOpen(true);
                   }}
+                  className="hover:bg-accent"
                   title="Manage members"
                 >
-                  <UserPlus className="h-4 w-4" />
+                  <UserPlus className="h-4 w-4 text-primary" />
                 </Button>
                 <Button
                   variant="ghost"
