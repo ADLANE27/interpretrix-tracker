@@ -1,3 +1,4 @@
+
 import { format, isWithinInterval, areIntervalsOverlapping, addMinutes } from 'date-fns';
 
 export const hasTimeOverlap = (
@@ -96,7 +97,8 @@ export const isInterpreterAvailableForScheduledMission = async (
       .from('interpretation_missions')
       .select('scheduled_start_time, scheduled_end_time, mission_type, status')
       .eq('assigned_interpreter_id', interpreterId)
-      .in('status', ['accepted', 'in_progress']);
+      .in('status', ['accepted', 'in_progress'])
+      .neq('status', 'deleted'); // Add this line to exclude deleted missions
 
     if (missionsError) {
       console.error('[missionUtils] Error checking existing missions:', missionsError);
