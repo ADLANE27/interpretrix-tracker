@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -25,9 +24,8 @@ interface MissionsCalendarProps {
   missions: Mission[];
 }
 
-type MissionPayload = RealtimePostgresChangesPayload<{
-  [key: string]: any;
-}>;
+type InterpretationMission = Database['public']['Tables']['interpretation_missions']['Row'];
+type MissionPayload = RealtimePostgresChangesPayload<InterpretationMission>;
 
 export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -85,7 +83,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               
               case 'DELETE':
                 return currentMissions.filter(mission => 
-                  mission.id !== (payload.old as { id: string })?.id
+                  mission.id !== payload.old?.id
                 );
               
               default:
