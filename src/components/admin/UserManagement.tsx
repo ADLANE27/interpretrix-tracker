@@ -197,6 +197,23 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
+      const { data: profile, error: profileCheckError } = await supabase
+        .from("interpreter_profiles")
+        .select("password_changed")
+        .eq("id", selectedUser.id)
+        .single();
+
+      if (profileCheckError) throw profileCheckError;
+
+      if (!profile.password_changed) {
+        toast({
+          title: "Action impossible",
+          description: "L'interprète doit d'abord se connecter et changer son mot de passe avant de pouvoir modifier son profil.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const languageStrings = formData.languages.map(
         (pair) => `${pair.source} → ${pair.target}`
       );
