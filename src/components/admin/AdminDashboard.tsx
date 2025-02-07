@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -28,6 +27,8 @@ interface Interpreter {
   phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
+  next_mission_start: string | null;
+  next_mission_duration: number | null;
 }
 
 export const AdminDashboard = () => {
@@ -81,13 +82,15 @@ export const AdminDashboard = () => {
       phone_interpretation_rate: item.phone_interpretation_rate,
       phone_number: item.phone_number,
       birth_country: item.birth_country,
+      next_mission_start: item.next_mission_start,
+      next_mission_duration: item.next_mission_duration,
     }));
   };
 
   const fetchInterpreters = async () => {
     try {
       const { data, error } = await supabase
-        .from("interpreter_profiles")
+        .from("interpreters_with_next_mission")
         .select("*");
 
       if (error) throw error;
@@ -334,6 +337,8 @@ export const AdminDashboard = () => {
                       languages: interpreter.languages,
                       hourlyRate: interpreter.phone_interpretation_rate,
                       phone_number: interpreter.phone_number,
+                      next_mission_start: interpreter.next_mission_start,
+                      next_mission_duration: interpreter.next_mission_duration,
                     }}
                   />
                 ))}

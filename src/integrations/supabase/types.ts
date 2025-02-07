@@ -179,6 +179,13 @@ export type Database = {
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
         ]
       }
       interpreter_languages: {
@@ -209,6 +216,13 @@ export type Database = {
             columns: ["interpreter_id"]
             isOneToOne: false
             referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpreter_languages_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
             referencedColumns: ["id"]
           },
         ]
@@ -364,6 +378,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "mission_notifications_mission_id_fkey"
             columns: ["mission_id"]
             isOneToOne: false
@@ -415,6 +436,13 @@ export type Database = {
             columns: ["interpreter_id"]
             isOneToOne: false
             referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
             referencedColumns: ["id"]
           },
         ]
@@ -469,7 +497,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      interpreters_with_next_mission: {
+        Row: {
+          address: Json | null
+          birth_country: string | null
+          created_at: string | null
+          email: string | null
+          employment_status:
+            | Database["public"]["Enums"]["employment_status"]
+            | null
+          first_name: string | null
+          id: string | null
+          landline_phone: string | null
+          languages: string[] | null
+          last_name: string | null
+          nationality: string | null
+          next_mission_duration: number | null
+          next_mission_end: string | null
+          next_mission_start: string | null
+          password_changed: boolean | null
+          phone_interpretation_rate: number | null
+          phone_number: string | null
+          profile_picture_url: string | null
+          siret_number: string | null
+          specializations: string[] | null
+          status: string | null
+          tarif_15min: number | null
+          updated_at: string | null
+          vat_number: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_available_channel_users: {

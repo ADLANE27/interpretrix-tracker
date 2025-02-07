@@ -1,6 +1,8 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Clock, Globe } from "lucide-react";
+import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 
 interface InterpreterCardProps {
   interpreter: {
@@ -11,6 +13,8 @@ interface InterpreterCardProps {
     languages: string[];
     hourlyRate?: number;
     phone_number?: string | null;
+    next_mission_start?: string | null;
+    next_mission_duration?: number | null;
   };
 }
 
@@ -31,9 +35,17 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             {interpreter.type === "internal" ? "Salarié" : "Freelance"}
           </Badge>
         </div>
-        <Badge className={`${statusConfig[interpreter.status].color}`}>
-          {statusConfig[interpreter.status].label}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge className={`${statusConfig[interpreter.status].color}`}>
+            {statusConfig[interpreter.status].label}
+          </Badge>
+          {interpreter.next_mission_start && (
+            <UpcomingMissionBadge
+              startTime={interpreter.next_mission_start}
+              estimatedDuration={interpreter.next_mission_duration || 0}
+            />
+          )}
+        </div>
       </div>
       
       <div className="space-y-2">
