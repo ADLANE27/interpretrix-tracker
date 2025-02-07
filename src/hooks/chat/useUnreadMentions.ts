@@ -12,11 +12,13 @@ export interface UnreadMention {
 }
 
 interface UnreadMentionResponse {
-  mention_id: string;
+  id: string;
   message_id: string;
   channel_id: string;
-  message_content: string;
-  mentioning_user_name: string;
+  chat_messages: {
+    content: string;
+    sender_id: string;
+  };
   created_at: string;
 }
 
@@ -37,11 +39,11 @@ export const useUnreadMentions = () => {
       const { data, error } = await supabase
         .from('message_mentions')
         .select(`
-          id as mention_id,
+          id,
           message_id,
           channel_id,
-          chat_messages (
-            content as message_content,
+          chat_messages:chat_messages (
+            content,
             sender_id
           ),
           created_at
@@ -65,14 +67,14 @@ export const useUnreadMentions = () => {
 
       // Get sender names for each mention
       const mentionsWithNames = await Promise.all(
-        data.map(async (mention) => {
+        (data as UnreadMentionResponse[]).map(async (mention) => {
           const { data: senderData } = await supabase
             .rpc('get_message_sender_details', {
               sender_id: mention.chat_messages.sender_id
             });
 
           return {
-            mention_id: mention.mention_id,
+            mention_id: mention.id,
             message_id: mention.message_id,
             channel_id: mention.channel_id,
             message_content: mention.chat_messages.content,
