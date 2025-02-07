@@ -50,24 +50,26 @@ export const InterpreterDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log('[InterpreterDashboard] No active session, redirecting to login');
-          navigate("/interpreter/login");
-          return;
-        }
-        setAuthChecked(true);
-        fetchProfile();
-        fetchScheduledMissions();
-      } catch (error) {
-        console.error('[InterpreterDashboard] Auth check error:', error);
+    const initializeAuth = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('[InterpreterDashboard] Session error:', sessionError);
         navigate("/interpreter/login");
+        return;
       }
+
+      if (!session) {
+        console.log('[InterpreterDashboard] No active session');
+        navigate("/interpreter/login");
+        return;
+      }
+
+      setAuthChecked(true);
+      await Promise.all([fetchProfile(), fetchScheduledMissions()]);
     };
 
-    checkAuth();
+    initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[InterpreterDashboard] Auth state changed:', event);
@@ -116,7 +118,13 @@ export const InterpreterDashboard = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('[InterpreterDashboard] User error:', userError);
+        throw userError;
+      }
+
       if (!user) {
         console.log('[InterpreterDashboard] No authenticated user');
         return;
@@ -282,7 +290,7 @@ export const InterpreterDashboard = () => {
         title: "Déconnexion réussie",
         description: "Vous avez été déconnecté avec succès",
       });
-      navigate("/");
+      navigate("/interpreter/login");
     } catch (error) {
       console.error("Error logging out:", error);
       toast({
