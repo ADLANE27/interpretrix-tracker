@@ -64,7 +64,7 @@ export const InterpreterDashboard = () => {
         .select('*')
         .eq('assigned_interpreter_id', user.id)
         .eq('status', 'accepted')
-        .is('scheduled_start_time', 'NOT NULL')
+        .not('scheduled_start_time', 'is', null)
         .order('scheduled_start_time', { ascending: true });
 
       if (error) throw error;
