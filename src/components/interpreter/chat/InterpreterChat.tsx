@@ -8,7 +8,6 @@ import {
   Paperclip, 
   Send, 
   Smile, 
-  User, 
   Trash2,
   ArrowRight,
   MessageSquare,
@@ -28,9 +27,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
+import { ChatFilters } from '@/components/chat/ChatFilters';
+import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/types/messaging';
 
-export const InterpreterChat = ({ channelId }: { channelId: string }) => {
+interface InterpreterChatProps {
+  channelId: string;
+  filters: {
+    userId?: string;
+    keyword?: string;
+    date?: Date;
+  };
+  onFiltersChange: (filters: InterpreterChatProps['filters']) => void;
+  onClearFilters: () => void;
+}
+
+export const InterpreterChat = ({ 
+  channelId,
+  filters,
+  onFiltersChange,
+  onClearFilters
+}: InterpreterChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -389,6 +406,63 @@ export const InterpreterChat = ({ channelId }: { channelId: string }) => {
     }
   };
 
+  const [channelUsers, setChannelUsers] = useState<Array<{ id: string; name: string; }>>([]);
+  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
+
+  useEffect(() => {
+    const fetchChannelUsers = async () => {
+      try {
+        const { data: users, error } = await supabase
+          .rpc('get_channel_members', { channel_id: channelId });
+
+        if (error) throw error;
+
+        setChannelUsers(users.map(user => ({
+          id: user.user_id,
+          name: `${user.first_name} ${user.last_name}`
+        })));
+      } catch (error) {
+        console.error('Error fetching channel users:', error);
+      }
+    };
+
+    if (channelId) {
+      fetchChannelUsers();
+    }
+  }, [channelId]);
+
+  useEffect(() => {
+    if (messages) {
+      let filtered = [...messages];
+
+      if (filters.userId) {
+        filtered = filtered.filter(msg => msg.sender.id === filters.userId);
+      }
+
+      if (filters.keyword) {
+        const keyword = filters.keyword.toLowerCase();
+        filtered = filtered.filter(msg => 
+          msg.content.toLowerCase().includes(keyword) ||
+          msg.sender.name.toLowerCase().includes(keyword)
+        );
+      }
+
+      if (filters.date) {
+        filtered = filtered.filter(msg => {
+          const msgDate = new Date(msg.timestamp);
+          const filterDate = new Date(filters.date!);
+          return (
+            msgDate.getDate() === filterDate.getDate() &&
+            msgDate.getMonth() === filterDate.getMonth() &&
+            msgDate.getFullYear() === filterDate.getFullYear()
+          );
+        });
+      }
+
+      setFilteredMessages(filtered);
+    }
+  }, [messages, filters]);
+
   useEffect(() => {
     fetchThreadCounts();
   }, [messages]);
@@ -406,13 +480,19 @@ export const InterpreterChat = ({ channelId }: { channelId: string }) => {
         />
       </div>
 
+      <ChatFilters
+        onFiltersChange={onFiltersChange}
+        users={channelUsers}
+        onClearFilters={onClearFilters}
+      />
+
       <div className="flex flex-1 overflow-hidden">
         <div className={cn(
           "flex-1 flex flex-col",
           selectedThread ? "w-2/3" : "w-full"
         )}>
           <ScrollArea className="flex-1 px-4">
-            {messages.map(message => (
+            {filteredMessages.map(message => (
               <div 
                 key={message.id} 
                 id={`message-${message.id}`}
