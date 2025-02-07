@@ -265,7 +265,11 @@ export const Chat = ({ channelId }: ChatProps) => {
     <div className="flex flex-col h-[600px]">
       <ScrollArea className="flex-1 p-4">
         {messages.map(message => (
-          <div key={message.id} className="mb-4 group">
+          <div 
+            key={message.id} 
+            id={`message-${message.id}`}
+            className="mb-4 group transition-colors duration-300"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <div className="font-bold">{message.sender.name}</div>

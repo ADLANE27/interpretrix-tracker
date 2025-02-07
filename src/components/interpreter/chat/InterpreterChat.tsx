@@ -10,8 +10,6 @@ import {
   Smile, 
   User, 
   Trash2,
-  Bell,
-  BellDot,
   ArrowRight,
   MessageSquare,
   X
@@ -29,14 +27,10 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
-import { Badge } from '@/components/ui/badge';
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { Message } from '@/types/messaging';
 
-interface ChatProps {
-  channelId: string;
-}
-
-export const InterpreterChat = ({ channelId }: ChatProps) => {
+export const InterpreterChat = ({ channelId }: { channelId: string }) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -59,8 +53,12 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, markMentionsAsRead } = useChat(channelId);
-  const { unreadMentions, totalUnreadCount } = useUnreadMentions();
-  const unreadCount = unreadMentions[channelId] || 0;
+  const { 
+    unreadMentions, 
+    totalUnreadCount, 
+    markMentionAsRead: markMentionAsReadNew, 
+    deleteMention 
+  } = useUnreadMentions();
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
@@ -270,11 +268,21 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     }
   };
 
-  const handleNotificationsClick = async () => {
-    setShowNotifications(!showNotifications);
-    if (unreadCount > 0) {
-      await markMentionsAsRead();
+  const handleMentionClick = (mention: any) => {
+    if (mention.channel_id !== channelId) {
+      console.log('[Chat Debug] Need to switch to channel:', mention.channel_id);
     }
+
+    const messageElement = document.getElementById(`message-${mention.message_id}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      messageElement.classList.add('bg-accent/50');
+      setTimeout(() => {
+        messageElement.classList.remove('bg-accent/50');
+      }, 2000);
+    }
+
+    markMentionAsReadNew(mention.mention_id);
   };
 
   const [selectedThread, setSelectedThread] = useState<Message | null>(null);
@@ -389,66 +397,13 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
     <div className="flex flex-col h-[calc(100vh-400px)]">
       <div className="flex items-center justify-between px-4 py-2 border-b">
         <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
-        <Popover open={showNotifications} onOpenChange={setShowNotifications}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="relative"
-              onClick={handleNotificationsClick}
-            >
-              {totalUnreadCount > 0 ? (
-                <>
-                  <BellDot className="h-5 w-5 text-interpreter-navy" />
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500"
-                  >
-                    {totalUnreadCount}
-                  </Badge>
-                </>
-              ) : (
-                <Bell className="h-5 w-5 text-interpreter-navy" />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80">
-            <div className="space-y-2">
-              <h3 className="font-medium">Recent Mentions</h3>
-              <ScrollArea className="h-[200px]">
-                {messages
-                  .filter(msg => msg.content.includes('@'))
-                  .map(msg => (
-                    <div 
-                      key={msg.id} 
-                      className="p-2 hover:bg-accent rounded-md cursor-pointer"
-                      onClick={() => {
-                        handleReplyClick(msg);
-                        setShowNotifications(false);
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          {msg.sender.avatarUrl ? (
-                            <img src={msg.sender.avatarUrl} alt={msg.sender.name} />
-                          ) : (
-                            <AvatarFallback>
-                              <User className="h-4 w-4" />
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <span className="text-sm font-medium">{msg.sender.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(msg.timestamp, 'HH:mm')}
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{msg.content}</p>
-                    </div>
-                  ))}
-              </ScrollArea>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <MentionsPopover
+          mentions={unreadMentions}
+          totalCount={totalUnreadCount}
+          onMentionClick={handleMentionClick}
+          onMarkAsRead={markMentionAsReadNew}
+          onDelete={deleteMention}
+        />
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -458,7 +413,11 @@ export const InterpreterChat = ({ channelId }: ChatProps) => {
         )}>
           <ScrollArea className="flex-1 px-4">
             {messages.map(message => (
-              <div key={message.id} className="mb-4 group">
+              <div 
+                key={message.id} 
+                id={`message-${message.id}`}
+                className="mb-4 group transition-colors duration-300"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">

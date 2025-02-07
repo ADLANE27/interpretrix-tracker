@@ -2,8 +2,17 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface UnreadMention {
+  mention_id: string;
+  message_id: string;
+  channel_id: string;
+  message_content: string;
+  mentioning_user_name: string;
+  created_at: Date;
+}
+
 export const useUnreadMentions = () => {
-  const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
+  const [unreadMentions, setUnreadMentions] = useState<UnreadMention[]>([]);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
 
   const fetchUnreadMentions = async () => {
@@ -17,10 +26,7 @@ export const useUnreadMentions = () => {
       console.log('[Mentions Debug] Fetching unread mentions for user:', user.id);
       
       const { data, error } = await supabase
-        .from('message_mentions')
-        .select('channel_id, message_id')
-        .eq('mentioned_user_id', user.id)
-        .eq('status', 'unread');
+        .rpc('get_unread_mentions', { p_user_id: user.id });
 
       if (error) {
         console.error('[Mentions Debug] Error fetching unread mentions:', error);
@@ -29,22 +35,43 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Unread mentions data:', data);
 
-      // Count mentions per channel
-      const counts: { [key: string]: number } = {};
-      let total = 0;
-      
-      data.forEach(mention => {
-        counts[mention.channel_id] = (counts[mention.channel_id] || 0) + 1;
-        total += 1;
-      });
+      const formattedMentions = data.map(mention => ({
+        ...mention,
+        created_at: new Date(mention.created_at)
+      }));
 
-      console.log('[Mentions Debug] Processed unread mentions counts:', counts);
-      console.log('[Mentions Debug] Total unread mentions:', total);
-      
-      setUnreadMentions(counts);
-      setTotalUnreadCount(total);
+      setUnreadMentions(formattedMentions);
+      setTotalUnreadCount(formattedMentions.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
+    }
+  };
+
+  const markMentionAsRead = async (mentionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'read' })
+        .eq('id', mentionId);
+
+      if (error) throw error;
+      await fetchUnreadMentions();
+    } catch (error) {
+      console.error('[Mentions Debug] Error marking mention as read:', error);
+    }
+  };
+
+  const deleteMention = async (mentionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'deleted' })
+        .eq('id', mentionId);
+
+      if (error) throw error;
+      await fetchUnreadMentions();
+    } catch (error) {
+      console.error('[Mentions Debug] Error deleting mention:', error);
     }
   };
 
@@ -55,20 +82,23 @@ export const useUnreadMentions = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
-        (payload) => {
-          console.log('[Mentions Debug] Message mentions table changed:', payload);
+        () => {
+          console.log('[Mentions Debug] Message mentions table changed');
           fetchUnreadMentions();
         }
       )
-      .subscribe(async (status) => {
-        console.log('[Mentions Debug] Subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('[Mentions Debug] Cleaning up mentions subscription');
       supabase.removeChannel(channel);
     };
   }, []);
 
-  return { unreadMentions, totalUnreadCount };
+  return { 
+    unreadMentions, 
+    totalUnreadCount, 
+    markMentionAsRead,
+    deleteMention,
+    refreshMentions: fetchUnreadMentions 
+  };
 };
