@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 import { parseISO, formatISO } from 'date-fns';
-import { zonedTimeToUtc } from 'date-fns-tz';
+import { fromZonedTime } from 'date-fns-tz';
 
 // Sort languages alphabetically
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
@@ -313,8 +313,8 @@ export const MissionManagement = () => {
 
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
         // Convert local datetime to UTC
-        utcStartTime = formatISO(zonedTimeToUtc(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
-        utcEndTime = formatISO(zonedTimeToUtc(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+        utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+        utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
         calculatedDuration = Math.round(
           (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
         );
