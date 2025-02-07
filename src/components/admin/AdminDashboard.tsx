@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut } from "lucide-react";
+import { Search, LogOut, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +43,21 @@ export const AdminDashboard = () => {
 
   // Sort languages once during component initialization
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
+
+  const resetAllFilters = () => {
+    setSelectedStatus(null);
+    setNameFilter("");
+    setSourceLanguageFilter("all");
+    setTargetLanguageFilter("all");
+    setPhoneFilter("");
+    setBirthCountryFilter("all");
+    setEmploymentStatusFilter("all");
+
+    toast({
+      title: "Filtres réinitialisés",
+      description: "Tous les filtres ont été réinitialisés",
+    });
+  };
 
   useEffect(() => {
     fetchInterpreters();
@@ -205,6 +220,18 @@ export const AdminDashboard = () => {
 
           <TabsContent value="interpreters">
             <div className="space-y-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Liste des interprètes</h2>
+                <Button
+                  variant="outline"
+                  onClick={resetAllFilters}
+                  className="gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name-search">Nom</Label>
