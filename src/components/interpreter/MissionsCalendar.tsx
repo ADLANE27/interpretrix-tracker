@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Mission {
   id: string;
@@ -22,8 +23,86 @@ interface MissionsCalendarProps {
   missions: Mission[];
 }
 
-export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
+export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [missions, setMissions] = useState<Mission[]>(initialMissions);
+
+  useEffect(() => {
+    setMissions(initialMissions);
+  }, [initialMissions]);
+
+  useEffect(() => {
+    console.log('[MissionsCalendar] Setting up realtime subscription');
+    
+    const channel = supabase
+      .channel('calendar-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        async (payload) => {
+          console.log('[MissionsCalendar] Mission update received:', payload);
+          
+          // Get the current user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          // Fetch the updated mission to get its complete data
+          const { data: updatedMission, error } = await supabase
+            .from('interpretation_missions')
+            .select('*')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (error) {
+            console.error('[MissionsCalendar] Error fetching updated mission:', error);
+            return;
+          }
+
+          // Update missions list based on the change type
+          setMissions(currentMissions => {
+            switch (payload.eventType) {
+              case 'INSERT':
+                // Only add if it's for the current user and is accepted
+                if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
+                  return [...currentMissions, updatedMission];
+                }
+                return currentMissions;
+              
+              case 'UPDATE':
+                return currentMissions.map(mission => 
+                  mission.id === updatedMission.id ? updatedMission : mission
+                );
+              
+              case 'DELETE':
+                return currentMissions.filter(mission => mission.id !== payload.old.id);
+              
+              default:
+                return currentMissions;
+            }
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionsCalendar] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MissionsCalendar] Successfully subscribed to changes');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MissionsCalendar] Error subscribing to changes');
+        }
+      });
+
+    return () => {
+      console.log('[MissionsCalendar] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Filter for only accepted missions that have scheduled times
   const scheduledMissions = missions.filter(
