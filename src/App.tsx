@@ -93,7 +93,7 @@ const App = () => {
                       </div>
                     </motion.div>
                     <footer className="text-center py-4 text-gray-600 text-sm">
-                      © {new Date().getFullYear()} Interprète App. Tous droits réservés.
+                      © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
                     </footer>
                   </div>
                 ) : userRole === 'admin' ? (
