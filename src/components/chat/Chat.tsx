@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -10,6 +11,7 @@ import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from './MentionSuggestions';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 interface ChatProps {
   channelId: string;
@@ -271,8 +273,13 @@ export const Chat = ({ channelId }: ChatProps) => {
             className="mb-4 group transition-colors duration-300"
           >
             <div className="flex items-start justify-between">
-              <div>
-                <div className="font-bold">{message.sender.name}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{message.sender.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
+                  </span>
+                </div>
                 <div className="mt-1">{message.content}</div>
               </div>
               {currentUserId === message.sender.id && (
