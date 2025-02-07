@@ -71,22 +71,22 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
       </div>
     );
   }
 
   if (!userRole) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center justify-center space-y-8 px-4"
         >
-          <h1 className="text-3xl font-bold text-white">Bienvenue</h1>
+          <h1 className="text-3xl font-bold">Bienvenue</h1>
           <div className="flex flex-col sm:flex-row gap-4">
             <a 
               href="/admin/login" 
