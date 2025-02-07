@@ -7,6 +7,8 @@ import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
 
 interface Mission {
   id: string;
@@ -22,6 +24,10 @@ interface Mission {
 interface MissionsCalendarProps {
   missions: Mission[];
 }
+
+type MissionPayload = RealtimePostgresChangesPayload<{
+  [key: string]: any;
+}>;
 
 export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -43,7 +49,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
           schema: 'public',
           table: 'interpretation_missions'
         },
-        async (payload) => {
+        async (payload: MissionPayload) => {
           console.log('[MissionsCalendar] Mission update received:', payload);
           
           // Get the current user
@@ -54,7 +60,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
           const { data: updatedMission, error } = await supabase
             .from('interpretation_missions')
             .select('*')
-            .eq('id', payload.new.id)
+            .eq('id', payload.new?.id)
             .single();
 
           if (error) {
@@ -78,7 +84,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                 );
               
               case 'DELETE':
-                return currentMissions.filter(mission => mission.id !== payload.old.id);
+                return currentMissions.filter(mission => 
+                  mission.id !== (payload.old as { id: string })?.id
+                );
               
               default:
                 return currentMissions;
