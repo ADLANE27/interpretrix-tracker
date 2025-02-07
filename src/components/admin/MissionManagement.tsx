@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MissionList } from "./mission/MissionList";
 import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
+import { parseISO, formatISO } from 'date-fns';
+import { zonedTimeToUtc } from 'date-fns-tz';
 
 // Sort languages alphabetically
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
@@ -306,7 +308,13 @@ export const MissionManagement = () => {
       }
 
       let calculatedDuration = parseInt(estimatedDuration);
+      let utcStartTime = null;
+      let utcEndTime = null;
+
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        // Convert local datetime to UTC
+        utcStartTime = formatISO(zonedTimeToUtc(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+        utcEndTime = formatISO(zonedTimeToUtc(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
         calculatedDuration = Math.round(
           (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
         );
@@ -323,8 +331,8 @@ export const MissionManagement = () => {
         notification_expiry: notificationExpiry.toISOString(),
         notified_interpreters: selectedInterpreters,
         mission_type: missionType,
-        scheduled_start_time: missionType === 'scheduled' ? scheduledStartTime : null,
-        scheduled_end_time: missionType === 'scheduled' ? scheduledEndTime : null
+        scheduled_start_time: utcStartTime,
+        scheduled_end_time: utcEndTime
       };
 
       console.log('[MissionManagement] Creating new mission with data:', newMissionData);
