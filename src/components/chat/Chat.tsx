@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -338,7 +339,7 @@ export const Chat = ({ channelId }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4 overflow-y-auto">
         {filteredMessages.map(message => (
           <div 
             key={message.id} 

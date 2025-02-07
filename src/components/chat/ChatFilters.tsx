@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, Filter, X } from 'lucide-react';
 
 interface ChatFiltersProps {
   onFiltersChange: (filters: {
@@ -25,6 +25,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [keyword, setKeyword] = useState('');
   const [date, setDate] = useState<Date>();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const userId = e.target.value;
@@ -50,70 +51,74 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
   };
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-white">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Filtres</h3>
+    <div className="border-b p-2 bg-white">
+      <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleClearFilters}
+          onClick={() => setIsExpanded(!isExpanded)}
           className="text-muted-foreground"
         >
-          <X className="h-4 w-4 mr-1" />
-          Effacer les filtres
+          <Filter className="h-4 w-4 mr-1" />
+          Filtres
         </Button>
-      </div>
-      
-      <div className="grid gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="user">Utilisateur</Label>
-          <select
-            id="user"
-            value={selectedUserId}
-            onChange={handleUserChange}
-            className="w-full p-2 border rounded-md"
-          >
-            <option value="">Tous les utilisateurs</option>
-            {users.map(user => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="keyword">Mot-clé</Label>
-          <Input
-            id="keyword"
-            value={keyword}
-            onChange={handleKeywordChange}
-            placeholder="Rechercher dans les messages..."
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={`w-full justify-start text-left font-normal ${!date && "text-muted-foreground"}`}
+        {isExpanded ? (
+          <>
+            <div className="flex-1 flex items-center gap-2">
+              <select
+                value={selectedUserId}
+                onChange={handleUserChange}
+                className="h-9 w-[200px] rounded-md border border-input bg-background px-3 text-sm"
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={handleDateChange}
-                initialFocus
+                <option value="">Tous les utilisateurs</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+
+              <Input
+                value={keyword}
+                onChange={handleKeywordChange}
+                placeholder="Rechercher..."
+                className="w-[200px] h-9"
               />
-            </PopoverContent>
-          </Popover>
-        </div>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`w-[180px] justify-start text-left ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="text-muted-foreground"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Effacer
+            </Button>
+          </>
+        ) : null}
       </div>
     </div>
   );
