@@ -16,8 +16,8 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
   
   const getVariant = () => {
     if (hoursUntilMission <= 2) return "destructive";
-    if (hoursUntilMission <= 24) return "warning";
-    return "secondary";
+    if (hoursUntilMission <= 24) return "secondary";
+    return "outline";
   };
 
   return (
