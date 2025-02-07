@@ -11,6 +11,15 @@ export interface UnreadMention {
   created_at: Date;
 }
 
+interface UnreadMentionResponse {
+  mention_id: string;
+  message_id: string;
+  channel_id: string;
+  message_content: string;
+  mentioning_user_name: string;
+  created_at: string;
+}
+
 export const useUnreadMentions = () => {
   const [unreadMentions, setUnreadMentions] = useState<UnreadMention[]>([]);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
@@ -26,7 +35,20 @@ export const useUnreadMentions = () => {
       console.log('[Mentions Debug] Fetching unread mentions for user:', user.id);
       
       const { data, error } = await supabase
-        .rpc('get_unread_mentions', { p_user_id: user.id });
+        .from('message_mentions')
+        .select(`
+          id as mention_id,
+          message_id,
+          channel_id,
+          chat_messages (
+            content as message_content,
+            sender_id
+          ),
+          created_at
+        `)
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread')
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('[Mentions Debug] Error fetching unread mentions:', error);
@@ -35,13 +57,33 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Unread mentions data:', data);
 
-      const formattedMentions = data.map(mention => ({
-        ...mention,
-        created_at: new Date(mention.created_at)
-      }));
+      if (!data) {
+        setUnreadMentions([]);
+        setTotalUnreadCount(0);
+        return;
+      }
 
-      setUnreadMentions(formattedMentions);
-      setTotalUnreadCount(formattedMentions.length);
+      // Get sender names for each mention
+      const mentionsWithNames = await Promise.all(
+        data.map(async (mention) => {
+          const { data: senderData } = await supabase
+            .rpc('get_message_sender_details', {
+              sender_id: mention.chat_messages.sender_id
+            });
+
+          return {
+            mention_id: mention.mention_id,
+            message_id: mention.message_id,
+            channel_id: mention.channel_id,
+            message_content: mention.chat_messages.content,
+            mentioning_user_name: senderData?.[0]?.name || 'Unknown User',
+            created_at: new Date(mention.created_at)
+          };
+        })
+      );
+
+      setUnreadMentions(mentionsWithNames);
+      setTotalUnreadCount(mentionsWithNames.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
     }
