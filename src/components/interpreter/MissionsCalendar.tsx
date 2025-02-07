@@ -25,8 +25,13 @@ interface MissionsCalendarProps {
 export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
+  // Filter for only accepted missions that have scheduled times
+  const scheduledMissions = missions.filter(
+    (mission) => mission.status === 'accepted' && mission.scheduled_start_time
+  );
+
   // Filter missions for the selected date
-  const missionsForSelectedDate = missions.filter((mission) => {
+  const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
     // Convert mission start time to local timezone for comparison
@@ -40,14 +45,14 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
   });
 
   // Get all dates that have missions
-  const datesWithMissions = missions
-    .filter((mission) => mission.scheduled_start_time)
+  const datesWithMissions = scheduledMissions
     .map((mission) => {
       const missionDate = new Date(mission.scheduled_start_time!);
       // Convert to local timezone for display
       return startOfDay(new Date(missionDate.getTime() - (missionDate.getTimezoneOffset() * 60000)));
     });
 
+  console.log('[MissionsCalendar] Scheduled missions:', scheduledMissions);
   console.log('[MissionsCalendar] Dates with missions:', datesWithMissions);
   console.log('[MissionsCalendar] Missions for selected date:', missionsForSelectedDate);
 
@@ -126,4 +131,3 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
     </div>
   );
 };
-
