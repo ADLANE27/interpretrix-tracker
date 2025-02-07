@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -26,7 +27,7 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
 
   // Filter missions for the selected date
   const missionsForSelectedDate = missions.filter((mission) => {
-    if (!selectedDate || !mission.scheduled_start_time || mission.status !== 'accepted') return false;
+    if (!selectedDate || !mission.scheduled_start_time) return false;
     
     const missionDate = new Date(mission.scheduled_start_time);
     const selectedDayStart = startOfDay(selectedDate);
@@ -35,10 +36,13 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
     return selectedDayStart.getTime() === missionDayStart.getTime();
   });
 
-  // Get all dates that have accepted missions
+  // Get all dates that have missions
   const datesWithMissions = missions
-    .filter((mission) => mission.scheduled_start_time && mission.status === 'accepted')
+    .filter((mission) => mission.scheduled_start_time)
     .map((mission) => startOfDay(new Date(mission.scheduled_start_time!)));
+
+  console.log('[MissionsCalendar] Dates with missions:', datesWithMissions);
+  console.log('[MissionsCalendar] Missions for selected date:', missionsForSelectedDate);
 
   return (
     <div className="grid md:grid-cols-2 gap-4">

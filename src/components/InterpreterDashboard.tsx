@@ -57,15 +57,19 @@ export const InterpreterDashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
+      console.log('[InterpreterDashboard] Fetching scheduled missions for user:', user.id);
+
       const { data, error } = await supabase
         .from('interpretation_missions')
         .select('*')
         .eq('assigned_interpreter_id', user.id)
         .eq('status', 'accepted')
-        .eq('mission_type', 'scheduled');
+        .is('scheduled_start_time', 'NOT NULL')
+        .order('scheduled_start_time', { ascending: true });
 
       if (error) throw error;
       
+      console.log('[InterpreterDashboard] Fetched scheduled missions:', data);
       setScheduledMissions(data || []);
     } catch (error) {
       console.error("Error fetching scheduled missions:", error);
