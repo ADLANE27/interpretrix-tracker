@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -12,6 +11,7 @@ import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from './MentionSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { ChatFilters } from './ChatFilters';
 
 interface ChatProps {
   channelId: string;
@@ -30,16 +30,76 @@ export const Chat = ({ channelId }: ChatProps) => {
     type?: 'language';
   }>>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [filteredMessages, setFilteredMessages] = useState(messages);
+  const [filters, setFilters] = useState<{
+    userId?: string;
+    keyword?: string;
+    date?: Date;
+  }>({});
+  const [channelUsers, setChannelUsers] = useState<Array<{ id: string; name: string; }>>([]);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
 
   useEffect(() => {
+    const fetchChannelUsers = async () => {
+      try {
+        const { data: users, error } = await supabase
+          .rpc('get_channel_members', { channel_id: channelId });
+
+        if (error) throw error;
+
+        setChannelUsers(users.map(user => ({
+          id: user.user_id,
+          name: `${user.first_name} ${user.last_name}`
+        })));
+      } catch (error) {
+        console.error('Error fetching channel users:', error);
+      }
+    };
+
+    if (channelId) {
+      fetchChannelUsers();
+    }
+  }, [channelId]);
+
+  useEffect(() => {
     if (channelId && currentUserId) {
       markMentionsAsRead();
     }
   }, [channelId, currentUserId, markMentionsAsRead]);
+
+  useEffect(() => {
+    let filtered = [...messages];
+
+    if (filters.userId) {
+      filtered = filtered.filter(msg => msg.sender.id === filters.userId);
+    }
+
+    if (filters.keyword) {
+      const keyword = filters.keyword.toLowerCase();
+      filtered = filtered.filter(msg => 
+        msg.content.toLowerCase().includes(keyword) ||
+        msg.sender.name.toLowerCase().includes(keyword)
+      );
+    }
+
+    if (filters.date) {
+      filtered = filtered.filter(msg => {
+        const msgDate = new Date(msg.timestamp);
+        const filterDate = new Date(filters.date!);
+        return (
+          msgDate.getDate() === filterDate.getDate() &&
+          msgDate.getMonth() === filterDate.getMonth() &&
+          msgDate.getFullYear() === filterDate.getFullYear()
+        );
+      });
+    }
+
+    setFilteredMessages(filtered);
+  }, [messages, filters]);
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
@@ -180,6 +240,14 @@ export const Chat = ({ channelId }: ChatProps) => {
     }
   };
 
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({});
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -265,8 +333,13 @@ export const Chat = ({ channelId }: ChatProps) => {
 
   return (
     <div className="flex flex-col h-[600px]">
+      <ChatFilters
+        onFiltersChange={handleFiltersChange}
+        users={channelUsers}
+        onClearFilters={handleClearFilters}
+      />
       <ScrollArea className="flex-1 p-4">
-        {messages.map(message => (
+        {filteredMessages.map(message => (
           <div 
             key={message.id} 
             id={`message-${message.id}`}
