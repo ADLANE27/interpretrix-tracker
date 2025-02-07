@@ -29,9 +29,12 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
   const missionsForSelectedDate = missions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
+    // Convert mission start time to local timezone for comparison
     const missionDate = new Date(mission.scheduled_start_time);
+    const localMissionDate = new Date(missionDate.getTime() - (missionDate.getTimezoneOffset() * 60000));
+    
     const selectedDayStart = startOfDay(selectedDate);
-    const missionDayStart = startOfDay(missionDate);
+    const missionDayStart = startOfDay(localMissionDate);
     
     return selectedDayStart.getTime() === missionDayStart.getTime();
   });
@@ -39,7 +42,11 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
   // Get all dates that have missions
   const datesWithMissions = missions
     .filter((mission) => mission.scheduled_start_time)
-    .map((mission) => startOfDay(new Date(mission.scheduled_start_time!)));
+    .map((mission) => {
+      const missionDate = new Date(mission.scheduled_start_time!);
+      // Convert to local timezone for display
+      return startOfDay(new Date(missionDate.getTime() - (missionDate.getTimezoneOffset() * 60000)));
+    });
 
   console.log('[MissionsCalendar] Dates with missions:', datesWithMissions);
   console.log('[MissionsCalendar] Missions for selected date:', missionsForSelectedDate);
@@ -77,43 +84,46 @@ export const MissionsCalendar = ({ missions }: MissionsCalendarProps) => {
               Aucune mission programmée pour cette date
             </p>
           ) : (
-            missionsForSelectedDate.map((mission) => (
-              <Card key={mission.id} className="p-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">
-                        {mission.scheduled_start_time &&
-                          format(new Date(mission.scheduled_start_time), "HH:mm", {
-                            locale: fr,
-                          })}
-                        {mission.scheduled_end_time &&
-                          ` - ${format(
-                            new Date(mission.scheduled_end_time),
-                            "HH:mm",
-                            { locale: fr }
-                          )}`}
-                      </span>
+            missionsForSelectedDate.map((mission) => {
+              // Convert times to local timezone for display
+              const startTime = new Date(mission.scheduled_start_time!);
+              const endTime = mission.scheduled_end_time ? new Date(mission.scheduled_end_time) : null;
+              
+              const localStartTime = new Date(startTime.getTime() - (startTime.getTimezoneOffset() * 60000));
+              const localEndTime = endTime ? new Date(endTime.getTime() - (endTime.getTimezoneOffset() * 60000)) : null;
+
+              return (
+                <Card key={mission.id} className="p-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          {format(localStartTime, "HH:mm", { locale: fr })}
+                          {localEndTime &&
+                            ` - ${format(localEndTime, "HH:mm", { locale: fr })}`}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <p>
+                          {mission.source_language} → {mission.target_language}
+                        </p>
+                        {mission.client_name && (
+                          <p className="text-gray-500">{mission.client_name}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <p>
-                        {mission.source_language} → {mission.target_language}
-                      </p>
-                      {mission.client_name && (
-                        <p className="text-gray-500">{mission.client_name}</p>
-                      )}
-                    </div>
+                    <Badge variant="secondary">
+                      {mission.estimated_duration} min
+                    </Badge>
                   </div>
-                  <Badge variant="secondary">
-                    {mission.estimated_duration} min
-                  </Badge>
-                </div>
-              </Card>
-            ))
+                </Card>
+              );
+            })
           )}
         </div>
       </Card>
     </div>
   );
 };
+
