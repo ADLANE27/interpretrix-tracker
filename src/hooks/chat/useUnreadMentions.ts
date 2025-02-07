@@ -31,6 +31,8 @@ export const useUnreadMentions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('[Mentions Debug] No authenticated user found');
+        setUnreadMentions([]);
+        setTotalUnreadCount(0);
         return;
       }
 
@@ -88,15 +90,21 @@ export const useUnreadMentions = () => {
       setTotalUnreadCount(mentionsWithNames.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
+      setUnreadMentions([]);
+      setTotalUnreadCount(0);
     }
   };
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase
         .from('message_mentions')
         .update({ status: 'read' })
-        .eq('id', mentionId);
+        .eq('id', mentionId)
+        .eq('mentioned_user_id', user.id); // Add this line for security
 
       if (error) throw error;
       await fetchUnreadMentions();
@@ -107,10 +115,14 @@ export const useUnreadMentions = () => {
 
   const deleteMention = async (mentionId: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase
         .from('message_mentions')
         .update({ status: 'deleted' })
-        .eq('id', mentionId);
+        .eq('id', mentionId)
+        .eq('mentioned_user_id', user.id); // Add this line for security
 
       if (error) throw error;
       await fetchUnreadMentions();
@@ -122,6 +134,17 @@ export const useUnreadMentions = () => {
   useEffect(() => {
     fetchUnreadMentions();
 
+    // Subscribe to auth changes
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUnreadMentions([]);
+        setTotalUnreadCount(0);
+      } else if (event === 'SIGNED_IN') {
+        fetchUnreadMentions();
+      }
+    });
+
+    // Subscribe to mentions changes
     const channel = supabase.channel('mentions')
       .on(
         'postgres_changes',
@@ -134,6 +157,7 @@ export const useUnreadMentions = () => {
       .subscribe();
 
     return () => {
+      authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, []);
