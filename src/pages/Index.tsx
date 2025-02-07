@@ -15,18 +15,18 @@ const Index = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (!session) {
-          console.log("No active session found, redirecting to login");
-          navigate("/login");
+        if (!user) {
+          console.log("No active user found, redirecting to login");
+          navigate("/");
           return;
         }
 
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .single();
         
         if (rolesError) {
@@ -47,7 +47,7 @@ const Index = () => {
           description: "Veuillez vous reconnecter",
           variant: "destructive",
         });
-        navigate("/login");
+        navigate("/");
       } finally {
         setLoading(false);
       }
@@ -55,11 +55,30 @@ const Index = () => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.id);
+      
       if (!session) {
-        console.log("Auth state changed: no session, redirecting to login");
-        navigate("/login");
+        console.log("No session, redirecting to home");
+        setUserRole(null);
+        navigate("/");
+        return;
       }
+
+      // Fetch user role when auth state changes
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (rolesError) {
+        console.error("Error fetching user role:", rolesError);
+        return;
+      }
+
+      setUserRole(roles?.role || null);
     });
 
     return () => {
