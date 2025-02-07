@@ -52,9 +52,9 @@ export const MentionsPopover = ({
       <PopoverContent align="end" className="w-96">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-medium">Recent Mentions</h3>
+            <h3 className="font-medium">Mentions Récentes</h3>
             {mentions.length === 0 && (
-              <p className="text-sm text-muted-foreground">No unread mentions</p>
+              <p className="text-sm text-muted-foreground">Aucune mention non lue</p>
             )}
           </div>
           <ScrollArea className="h-[400px] pr-4">
