@@ -64,37 +64,43 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
         </Button>
 
         {isExpanded && (
-          <div className="flex-1 flex items-center gap-4">
-            <select
-              value={selectedUserId}
-              onChange={handleUserChange}
-              className="h-9 w-[180px] rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Tous les utilisateurs</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex-1 flex items-center space-x-3">
+            <div className="flex-none w-[160px]">
+              <select
+                value={selectedUserId}
+                onChange={handleUserChange}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">Tous les utilisateurs</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <Input
-              value={keyword}
-              onChange={handleKeywordChange}
-              placeholder="Rechercher..."
-              className="w-[180px] h-9"
-            />
+            <div className="flex-none w-[160px]">
+              <Input
+                value={keyword}
+                onChange={handleKeywordChange}
+                placeholder="Rechercher..."
+                className="h-9 px-2"
+              />
+            </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-3">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`w-[180px] justify-start text-left ${!date && "text-muted-foreground"}`}
+                    className={`w-[160px] h-9 justify-start text-left truncate ${!date && "text-muted-foreground"}`}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
+                    <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
+                    </span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -111,9 +117,9 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
-                className="text-muted-foreground whitespace-nowrap min-w-[100px]"
+                className="text-muted-foreground h-9 px-3"
               >
-                <X className="h-4 w-4 mr-1" />
+                <X className="h-4 w-4 mr-1.5" />
                 Effacer
               </Button>
             </div>
@@ -123,3 +129,4 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
     </div>
   );
 };
+
