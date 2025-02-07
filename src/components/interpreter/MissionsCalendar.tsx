@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -54,42 +55,50 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Fetch the updated mission to get its complete data
-          const { data: updatedMission, error } = await supabase
-            .from('interpretation_missions')
-            .select('*')
-            .eq('id', payload.new?.id)
-            .single();
-
-          if (error) {
-            console.error('[MissionsCalendar] Error fetching updated mission:', error);
+          // Only proceed if we have a valid payload.new
+          if (!payload.new && payload.eventType !== 'DELETE') {
+            console.log('[MissionsCalendar] Invalid payload received:', payload);
             return;
           }
 
-          // Update missions list based on the change type
-          setMissions(currentMissions => {
-            switch (payload.eventType) {
-              case 'INSERT':
-                // Only add if it's for the current user and is accepted
-                if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
-                  return [...currentMissions, updatedMission];
-                }
-                return currentMissions;
-              
-              case 'UPDATE':
-                return currentMissions.map(mission => 
-                  mission.id === updatedMission.id ? updatedMission : mission
-                );
-              
-              case 'DELETE':
-                return currentMissions.filter(mission => 
-                  mission.id !== payload.old?.id
-                );
-              
-              default:
-                return currentMissions;
+          // Fetch the updated mission to get its complete data
+          if (payload.eventType !== 'DELETE') {
+            const { data: updatedMission, error } = await supabase
+              .from('interpretation_missions')
+              .select('*')
+              .eq('id', payload.new.id)
+              .single();
+
+            if (error) {
+              console.error('[MissionsCalendar] Error fetching updated mission:', error);
+              return;
             }
-          });
+
+            // Update missions list based on the change type
+            setMissions(currentMissions => {
+              switch (payload.eventType) {
+                case 'INSERT':
+                  // Only add if it's for the current user and is accepted
+                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
+                    return [...currentMissions, updatedMission];
+                  }
+                  return currentMissions;
+                
+                case 'UPDATE':
+                  return currentMissions.map(mission => 
+                    mission.id === updatedMission.id ? updatedMission : mission
+                  );
+                
+                default:
+                  return currentMissions;
+              }
+            });
+          } else if (payload.old?.id) {
+            // Handle DELETE event
+            setMissions(currentMissions => 
+              currentMissions.filter(mission => mission.id !== payload.old?.id)
+            );
+          }
         }
       )
       .subscribe((status) => {
