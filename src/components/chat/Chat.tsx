@@ -30,7 +30,6 @@ export const Chat = ({ channelId }: ChatProps) => {
     type?: 'language';
   }>>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [filteredMessages, setFilteredMessages] = useState(messages);
   const [filters, setFilters] = useState<{
     userId?: string;
     keyword?: string;
@@ -42,6 +41,7 @@ export const Chat = ({ channelId }: ChatProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
+  const [filteredMessages, setFilteredMessages] = useState(messages);
 
   useEffect(() => {
     const fetchChannelUsers = async () => {
