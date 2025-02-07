@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,19 +44,48 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProfile();
-    fetchScheduledMissions();
-  }, []);
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log('[InterpreterDashboard] No active session, redirecting to login');
+          navigate("/interpreter/login");
+          return;
+        }
+        setAuthChecked(true);
+        fetchProfile();
+        fetchScheduledMissions();
+      } catch (error) {
+        console.error('[InterpreterDashboard] Auth check error:', error);
+        navigate("/interpreter/login");
+      }
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[InterpreterDashboard] Auth state changed:', event);
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate("/interpreter/login");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const fetchScheduledMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) {
+        console.log('[InterpreterDashboard] No authenticated user');
+        return;
+      }
 
       console.log('[InterpreterDashboard] Fetching scheduled missions for user:', user.id);
 
@@ -67,12 +97,15 @@ export const InterpreterDashboard = () => {
         .not('scheduled_start_time', 'is', null)
         .order('scheduled_start_time', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[InterpreterDashboard] Error fetching missions:', error);
+        throw error;
+      }
       
       console.log('[InterpreterDashboard] Fetched scheduled missions:', data);
       setScheduledMissions(data || []);
     } catch (error) {
-      console.error("Error fetching scheduled missions:", error);
+      console.error("[InterpreterDashboard] Error fetching scheduled missions:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les missions programmées",
@@ -84,15 +117,23 @@ export const InterpreterDashboard = () => {
   const fetchProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) {
+        console.log('[InterpreterDashboard] No authenticated user');
+        return;
+      }
 
+      console.log('[InterpreterDashboard] Fetching profile for user:', user.id);
+      
       const { data, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[InterpreterDashboard] Error fetching profile:', error);
+        throw error;
+      }
       
       const languagePairs = data.languages.map((lang: string) => {
         const [source, target] = lang.split(" → ");
@@ -125,7 +166,7 @@ export const InterpreterDashboard = () => {
         password_changed: data.password_changed,
       });
     } catch (error) {
-      console.error("Erreur lors du chargement du profil:", error);
+      console.error("[InterpreterDashboard] Error loading profile:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger votre profil",
@@ -252,7 +293,7 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  if (!profile) {
+  if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-lg">Chargement de votre profil...</div>
