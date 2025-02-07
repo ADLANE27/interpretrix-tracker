@@ -28,7 +28,6 @@ import { format } from 'date-fns';
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { ChatFilters } from '@/components/chat/ChatFilters';
-import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/types/messaging';
 
 interface InterpreterChatProps {
