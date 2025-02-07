@@ -63,64 +63,62 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
           Filtres
         </Button>
 
-        {isExpanded ? (
-          <>
-            <div className="flex-1 flex items-center gap-2">
-              <select
-                value={selectedUserId}
-                onChange={handleUserChange}
-                className="h-9 w-[200px] rounded-md border border-input bg-background px-3 text-sm"
+        {isExpanded && (
+          <div className="flex-1 flex items-center gap-4">
+            <select
+              value={selectedUserId}
+              onChange={handleUserChange}
+              className="h-9 w-[180px] rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="">Tous les utilisateurs</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
+
+            <Input
+              value={keyword}
+              onChange={handleKeywordChange}
+              placeholder="Rechercher..."
+              className="w-[180px] h-9"
+            />
+
+            <div className="flex items-center gap-4">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`w-[180px] justify-start text-left ${!date && "text-muted-foreground"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="text-muted-foreground whitespace-nowrap min-w-[100px]"
               >
-                <option value="">Tous les utilisateurs</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-
-              <Input
-                value={keyword}
-                onChange={handleKeywordChange}
-                placeholder="Rechercher..."
-                className="w-[200px] h-9"
-              />
-
-              <div className="flex items-center gap-2 ml-auto">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`w-[180px] justify-start text-left ${!date && "text-muted-foreground"}`}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={handleDateChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearFilters}
-                  className="text-muted-foreground whitespace-nowrap"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Effacer
-                </Button>
-              </div>
+                <X className="h-4 w-4 mr-1" />
+                Effacer
+              </Button>
             </div>
-          </>
-        ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
