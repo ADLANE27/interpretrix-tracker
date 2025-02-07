@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -228,7 +229,7 @@ export const AdminDashboard = () => {
                   className="gap-2"
                 >
                   <X className="h-4 w-4" />
-                  Réinitialiser les filtres
+                  Supprimer tous les filtres
                 </Button>
               </div>
 
