@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,58 +97,8 @@ export const MissionsTab = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        async (payload) => {
+        (payload) => {
           console.log('[MissionsTab] Mission update received:', payload);
-          
-          // When a new mission is created
-          if (payload.eventType === 'INSERT') {
-            try {
-              console.log('[MissionsTab] New mission created, sending push notification');
-              const { data: { user } } = await supabase.auth.getUser();
-              
-              if (!user) {
-                console.log('[MissionsTab] No user found');
-                return;
-              }
-
-              const missionData = payload.new;
-              
-              // Only send notification if this interpreter is notified
-              if (missionData.notified_interpreters?.includes(user.id)) {
-                console.log('[MissionsTab] Sending push notification for mission:', missionData.id);
-                
-                const { error } = await supabase.functions.invoke('send-push-notification', {
-                  body: {
-                    message: {
-                      title: 'Nouvelle mission disponible',
-                      body: `${missionData.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${missionData.source_language} → ${missionData.target_language} (${missionData.estimated_duration} min)`,
-                      data: {
-                        mission_id: missionData.id,
-                        mission_type: missionData.mission_type,
-                        source_language: missionData.source_language,
-                        target_language: missionData.target_language,
-                        estimated_duration: missionData.estimated_duration,
-                      },
-                      interpreterIds: [user.id]
-                    }
-                  }
-                });
-
-                if (error) {
-                  console.error('[MissionsTab] Error sending push notification:', error);
-                  toast({
-                    title: "Erreur",
-                    description: "Impossible d'envoyer la notification push",
-                    variant: "destructive",
-                  });
-                } else {
-                  console.log('[MissionsTab] Push notification sent successfully');
-                }
-              }
-            } catch (error) {
-              console.error('[MissionsTab] Error processing mission update:', error);
-            }
-          }
           fetchMissions();
         }
       )
@@ -336,13 +287,6 @@ export const MissionsTab = () => {
         return { label: status, variant: 'secondary' as const };
     }
   };
-
-  const scheduledMissions = missions.filter(
-    (mission) => 
-      mission.mission_type === 'scheduled' && 
-      mission.status === 'accepted' &&
-      mission.assigned_interpreter_id
-  );
 
   return (
     <div className="space-y-4">

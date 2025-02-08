@@ -20,8 +20,11 @@ serve(async (req) => {
   try {
     console.log('[Push Notification] Starting push notification service');
     
-    const { message } = await req.json();
-    console.log('[Push Notification] Received message payload:', JSON.stringify(message, null, 2));
+    const payload = await req.json();
+    console.log('[Push Notification] Received payload:', JSON.stringify(payload, null, 2));
+
+    // Extract mission data and interpreter IDs
+    const { message, notificationData } = payload;
     
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
@@ -51,16 +54,16 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Check for interpreterIds in message or fetch from mission_notifications
-    let interpreterIds = message.interpreterIds || [];
+    // Get interpreter IDs from the notification data or fetch from mission_notifications
+    let interpreterIds = message?.interpreterIds || [];
     console.log('[Push Notification] Initial interpreter IDs:', interpreterIds);
 
-    if (message.data?.mission_id && (!interpreterIds?.length)) {
+    if ((!interpreterIds?.length) && notificationData?.mission_id) {
       console.log('[Push Notification] No interpreter IDs provided, checking mission_notifications');
       const { data: notifications, error: notificationError } = await supabase
         .from('mission_notifications')
         .select('interpreter_id')
-        .eq('mission_id', message.data.mission_id)
+        .eq('mission_id', notificationData.mission_id)
         .eq('status', 'pending');
 
       if (notificationError) {
@@ -71,17 +74,6 @@ serve(async (req) => {
       if (notifications?.length) {
         interpreterIds = notifications.map(n => n.interpreter_id);
         console.log('[Push Notification] Found interpreter IDs from notifications:', interpreterIds);
-        
-        // Update the mission's notified_interpreters array
-        const { error: updateError } = await supabase
-          .from('interpretation_missions')
-          .update({ notified_interpreters: interpreterIds })
-          .eq('id', message.data.mission_id);
-
-        if (updateError) {
-          console.error('[Push Notification] Error updating mission:', updateError);
-          throw updateError;
-        }
       }
     }
 
@@ -117,21 +109,21 @@ serve(async (req) => {
     console.log(`[Push Notification] Found ${subscriptions.length} active subscriptions`);
     
     const notificationPayload = {
-      title: message.title || 'Nouvelle mission disponible',
-      body: message.body || `${message.data?.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${message.data?.source_language} → ${message.data?.target_language} (${message.data?.estimated_duration} min)`,
+      title: message?.title || 'Nouvelle mission disponible',
+      body: message?.body || `${message?.data?.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${message?.data?.source_language} → ${message?.data?.target_language} (${message?.data?.estimated_duration} min)`,
       data: {
-        mission_id: message.data?.mission_id,
-        mission_type: message.data?.mission_type,
-        source_language: message.data?.source_language,
-        target_language: message.data?.target_language,
-        estimated_duration: message.data?.estimated_duration,
+        mission_id: message?.data?.mission_id || notificationData?.mission_id,
+        mission_type: message?.data?.mission_type || notificationData?.mission_type,
+        source_language: message?.data?.source_language || notificationData?.source_language,
+        target_language: message?.data?.target_language || notificationData?.target_language,
+        estimated_duration: message?.data?.estimated_duration || notificationData?.estimated_duration,
         url: '/',
         timestamp: Date.now()
       },
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       vibrate: [200, 100, 200],
-      tag: `mission-${message.data?.mission_id}`,
+      tag: `mission-${message?.data?.mission_id || notificationData?.mission_id}`,
       renotify: true,
       requireInteraction: true,
       actions: [

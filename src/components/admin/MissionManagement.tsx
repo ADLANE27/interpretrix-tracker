@@ -412,36 +412,6 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Notifications created successfully for interpreters:', selectedInterpreters);
       
-      // Send push notifications to all selected interpreters
-      console.log('[MissionManagement] Sending push notifications to interpreters:', selectedInterpreters);
-      
-      const { data: pushResponse, error: pushError } = await supabase.functions.invoke(
-        'send-push-notification',
-        {
-          body: {
-            message: {
-              title: 'Nouvelle mission disponible',
-              body: `${newMissionData.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${newMissionData.source_language} → ${newMissionData.target_language} (${newMissionData.estimated_duration} min)`,
-              data: {
-                mission_id: createdMission.id,
-                mission_type: newMissionData.mission_type,
-                source_language: newMissionData.source_language,
-                target_language: newMissionData.target_language,
-                estimated_duration: newMissionData.estimated_duration,
-              },
-              interpreterIds: selectedInterpreters
-            }
-          }
-        }
-      );
-
-      if (pushError) {
-        console.error('[MissionManagement] Error sending push notifications:', pushError);
-        throw pushError;
-      }
-
-      console.log('[MissionManagement] Push notification response:', pushResponse);
-
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");
