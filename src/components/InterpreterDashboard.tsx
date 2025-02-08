@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,8 +13,10 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Profile {
   id: string;
@@ -45,9 +46,11 @@ export const InterpreterDashboard = () => {
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [activeTab, setActiveTab] = useState("missions");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -319,6 +322,13 @@ export const InterpreterDashboard = () => {
     );
   }
 
+  const tabItems = [
+    { value: "missions", label: "Missions" },
+    { value: "calendar", label: "Calendrier" },
+    { value: "messaging", label: "Messagerie" },
+    { value: "profile", label: "Mon Profil" },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
@@ -362,56 +372,61 @@ export const InterpreterDashboard = () => {
 
           {/* Main Content Section */}
           <Card className="shadow-sm">
-            <Tabs defaultValue="missions" className="w-full">
+            {isMobile ? (
+              <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[80%] sm:w-[385px]">
+                    <SheetHeader>
+                      <SheetTitle>Navigation</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6 flex flex-col gap-2">
+                      {tabItems.map((tab) => (
+                        <Button
+                          key={tab.value}
+                          variant={activeTab === tab.value ? "default" : "ghost"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setActiveTab(tab.value);
+                          }}
+                        >
+                          {tab.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            ) : (
               <div className="border-b overflow-x-auto">
                 <TabsList className="w-full justify-start h-12 bg-transparent p-0">
-                  <TabsTrigger 
-                    value="missions"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
-                  >
-                    Missions
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="calendar"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
-                  >
-                    Calendrier
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="messaging"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
-                  >
-                    Messagerie
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="profile"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
-                  >
-                    Mon Profil
-                  </TabsTrigger>
+                  {tabItems.map((tab) => (
+                    <TabsTrigger 
+                      key={tab.value}
+                      value={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
               </div>
+            )}
 
-              <div className="p-2 sm:p-6 min-h-[600px]">
-                <TabsContent value="missions" className="m-0 h-full">
-                  <MissionsTab />
-                </TabsContent>
-                
-                <TabsContent value="calendar" className="m-0 h-full">
-                  <MissionsCalendar 
-                    missions={scheduledMissions}
-                  />
-                </TabsContent>
-
-                <TabsContent value="messaging" className="m-0 h-full">
-                  <MessagingTab />
-                </TabsContent>
-                
-                <TabsContent value="profile" className="m-0 h-full">
-                  <InterpreterProfile />
-                </TabsContent>
-              </div>
-            </Tabs>
+            <div className="p-2 sm:p-6 min-h-[600px]">
+              {activeTab === "missions" && <MissionsTab />}
+              {activeTab === "calendar" && (
+                <MissionsCalendar missions={scheduledMissions} />
+              )}
+              {activeTab === "messaging" && <MessagingTab />}
+              {activeTab === "profile" && <InterpreterProfile />}
+            </div>
           </Card>
 
           {/* Hidden file input for profile picture */}
