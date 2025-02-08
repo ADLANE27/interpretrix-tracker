@@ -98,7 +98,9 @@ export const MessagesTab = () => {
   };
 
   useEffect(() => {
+    console.log('[MessagesTab] Setting up user interaction listeners');
     const handleUserInteraction = () => {
+      console.log('[MessagesTab] User interaction detected, initializing sound');
       initializeSound();
       // Remove event listeners after first interaction
       document.removeEventListener('click', handleUserInteraction);
@@ -139,21 +141,23 @@ export const MessagesTab = () => {
             const isImmediate = mission.mission_type === 'immediate';
             
             // Show toast notification with longer duration for mobile
+            console.log('[MessagesTab] Showing toast notification');
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
               variant: isImmediate ? "destructive" : "default",
-              duration: isMobile ? 10000 : 5000, // Even longer duration on mobile
+              duration: isMobile ? 10000 : 5000,
             });
 
             // Play sound if enabled and initialized
-            if (soundEnabled) {
+            if (soundEnabled && soundInitialized) {
               try {
                 console.log('[MessagesTab] Attempting to play sound for:', mission.mission_type);
                 await playNotificationSound(mission.mission_type);
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
                 // Try to reinitialize sound on error
+                console.log('[MessagesTab] Attempting to reinitialize sound');
                 initializeSound();
                 // Retry playing sound once
                 try {
@@ -162,6 +166,8 @@ export const MessagesTab = () => {
                   console.error('[MessagesTab] Retry failed:', retryError);
                 }
               }
+            } else {
+              console.log('[MessagesTab] Sound not played - enabled:', soundEnabled, 'initialized:', soundInitialized);
             }
           }
         }

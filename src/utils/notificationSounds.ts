@@ -13,6 +13,7 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     
     // Just preload the sound if preloadOnly is true
     if (preloadOnly) {
+      console.log('[notificationSounds] Preloading sound');
       sound.load();
       return;
     }
@@ -25,6 +26,7 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     
     // Play with proper error handling and awaiting
     try {
+      console.log('[notificationSounds] Starting playback');
       await sound.play();
       console.log('[notificationSounds] Sound played successfully');
     } catch (error: any) {
