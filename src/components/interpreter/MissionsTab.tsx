@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -244,86 +245,7 @@ export const MissionsTab = () => {
   useEffect(() => {
     console.log('[MissionsTab] Component mounted');
     fetchMissions();
-    
-    const channel = supabase
-      .channel('interpreter-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        async (payload) => {
-          console.log('[MissionsTab] Mission update received:', payload);
-          console.log('[MissionsTab] Event type:', payload.eventType);
-          
-          if (payload.eventType === 'INSERT') {
-            const mission = payload.new as any;
-            
-            if (!mission) {
-              console.error('[MissionsTab] Invalid mission payload');
-              return;
-            }
-
-            console.log('[MissionsTab] New mission data:', mission);
-            console.log('[MissionsTab] Notified interpreters:', mission.notified_interpreters);
-
-            const { data: { user } } = await supabase.auth.getUser();
-            console.log('[MissionsTab] Current user:', user?.id);
-
-            const isTargetedInterpreter = mission.notified_interpreters?.includes(user?.id);
-            console.log('[MissionsTab] Is targeted interpreter:', isTargetedInterpreter);
-
-            if (!isTargetedInterpreter) {
-              console.log('[MissionsTab] User not in notified interpreters list, skipping notification');
-              return;
-            }
-
-            const isImmediate = mission.mission_type === 'immediate';
-            
-            console.log('[MissionsTab] Showing toast notification');
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
-
-            if (soundEnabled) {
-              try {
-                console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                await playNotificationSound(mission.mission_type);
-              } catch (error) {
-                console.error('[MissionsTab] Error playing sound:', error);
-                // Try to reinitialize sound on error
-                initializeSound();
-                try {
-                  await playNotificationSound(mission.mission_type);
-                } catch (retryError) {
-                  console.error('[MissionsTab] Retry failed:', retryError);
-                }
-              }
-            } else {
-              console.log('[MissionsTab] Sound is disabled, skipping sound notification');
-            }
-          }
-          
-          fetchMissions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionsTab] Subscription status:', status);
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionsTab] Error subscribing to mission updates');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
+    const cleanup = setupRealtimeSubscription();
 
     // Initialize sound on first user interaction
     const handleUserInteraction = () => {
@@ -338,12 +260,11 @@ export const MissionsTab = () => {
     document.addEventListener('touchstart', handleUserInteraction);
 
     return () => {
-      console.log('[MissionsTab] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
+      cleanup();
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, [soundEnabled, toast]);
+  }, []);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
