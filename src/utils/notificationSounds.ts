@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 let immediateSound: HTMLAudioElement | null = null;
@@ -9,17 +8,12 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     console.log(`[notificationSounds] Initializing ${type} sound`);
     const fileName = `${type}-mission.mp3`;
     
-    // Get public URL for the sound file
-    const { data, error } = supabase
+    // Get public URL for the sound file - note that getPublicUrl doesn't return an error
+    const { data } = supabase
       .storage
       .from('notification_sounds')
       .getPublicUrl(fileName);
     
-    if (error) {
-      console.error('[notificationSounds] Error getting public URL:', error);
-      throw error;
-    }
-
     if (!data.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
       throw new Error('No public URL returned for sound file');
