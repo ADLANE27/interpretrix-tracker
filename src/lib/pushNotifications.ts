@@ -25,27 +25,26 @@ export async function registerServiceWorker() {
   try {
     console.log('[Push Notifications] Starting service worker registration');
     
-    // Check if service worker is already registered
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration?.active) {
-      console.log('[Push Notifications] Found existing service worker:', registration);
-      await registration.update(); // Check for updates
-      return registration;
+    // First unregister any existing service workers to ensure clean slate
+    const existingRegs = await navigator.serviceWorker.getRegistrations();
+    for (let reg of existingRegs) {
+      await reg.unregister();
     }
+    console.log('[Push Notifications] Unregistered existing service workers');
 
     // Register new service worker with proper scope and cache control
-    const newRegistration = await navigator.serviceWorker.register('/sw.js', {
+    const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'
     });
     
-    console.log('[Push Notifications] Service Worker registered successfully:', newRegistration);
+    console.log('[Push Notifications] Service Worker registered successfully:', registration);
     
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
     console.log('[Push Notifications] Service Worker is ready');
     
-    return newRegistration;
+    return registration;
   } catch (error) {
     console.error('[Push Notifications] Service Worker registration failed:', error);
     console.error('[Push Notifications] Error details:', {
@@ -91,8 +90,14 @@ export async function subscribeToPushNotifications(interpreterId: string) {
           }
         );
         
-        if (error) throw error;
-        if (!data?.vapidPublicKey) throw new Error('No VAPID key received');
+        if (error) {
+          console.error('[Push Notifications] Supabase function error:', error);
+          throw error;
+        }
+        if (!data?.vapidPublicKey) {
+          console.error('[Push Notifications] No VAPID key in response:', data);
+          throw new Error('No VAPID key received');
+        }
         
         console.log('[Push Notifications] Successfully retrieved VAPID key');
         

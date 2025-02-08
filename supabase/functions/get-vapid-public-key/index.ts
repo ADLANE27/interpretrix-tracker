@@ -5,12 +5,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    })
   }
 
   try {
@@ -30,6 +34,7 @@ serve(async (req) => {
 
     // First try to get from environment
     let vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    console.log('[VAPID] Checking environment variable:', vapidPublicKey ? 'Found' : 'Not found');
     
     // If not in environment, try to get from database
     if (!vapidPublicKey) {
