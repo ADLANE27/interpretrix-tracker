@@ -141,11 +141,35 @@ self.addEventListener('notificationclick', event => {
 // Enhanced installation handling with version logging
 self.addEventListener('install', event => {
   console.log(`[Service Worker ${SW_VERSION}] Installing`);
-  event.waitUntil(self.skipWaiting());
+  self.skipWaiting(); // Ensure service worker activates immediately
+  event.waitUntil(
+    caches.open('v1').then(cache => {
+      return cache.addAll([
+        '/',
+        '/index.html',
+        '/favicon.ico'
+      ]);
+    })
+  );
 });
 
 // Enhanced activation handling with client claim
 self.addEventListener('activate', event => {
   console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  event.waitUntil(self.clients.claim());
+  // Claim all clients immediately
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
 });

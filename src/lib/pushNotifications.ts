@@ -27,9 +27,10 @@ export async function registerServiceWorker() {
       await registration.unregister();
     }
 
-    // Register new service worker
+    // Register new service worker with proper scope
     const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/'
+      scope: '/',
+      updateViaCache: 'none' // Prevent the browser from using cached versions
     });
     console.log('[Push Notifications] Service Worker registered:', registration);
     
@@ -58,57 +59,72 @@ export async function subscribeToPushNotifications(interpreterId: string) {
       throw new Error('Notification permission denied');
     }
 
-    // Get VAPID public key
-    const { data: { vapidPublicKey }, error: vapidError } = await supabase.functions.invoke(
-      'get-vapid-public-key',
-      { method: 'GET' }
-    );
+    // Get VAPID public key with retry logic
+    let retries = 3;
+    let vapidError;
+    while (retries > 0) {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          'get-vapid-public-key',
+          { method: 'GET' }
+        );
+        
+        if (error) throw error;
+        if (!data?.vapidPublicKey) throw new Error('No VAPID key received');
+        
+        // Convert VAPID key
+        const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
 
+        // Check for existing subscription
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (existingSubscription) {
+          await existingSubscription.unsubscribe();
+        }
+
+        // Subscribe to push notifications
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey
+        });
+
+        console.log('[Push Notifications] Push subscription created');
+
+        const subscriptionJSON = subscription.toJSON();
+
+        // Store subscription in database
+        const { error: insertError } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            interpreter_id: interpreterId,
+            endpoint: subscriptionJSON.endpoint,
+            p256dh: subscriptionJSON.keys.p256dh,
+            auth: subscriptionJSON.keys.auth,
+            user_agent: navigator.userAgent,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'interpreter_id,endpoint'
+          });
+
+        if (insertError) throw insertError;
+
+        console.log('[Push Notifications] Subscription stored successfully');
+        return true;
+      } catch (error) {
+        vapidError = error;
+        retries--;
+        if (retries > 0) {
+          console.log(`[Push Notifications] Retrying... ${retries} attempts left`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
     if (vapidError) {
-      console.error('[Push Notifications] Error fetching VAPID key:', vapidError);
+      console.error('[Push Notifications] Error after all retries:', vapidError);
       throw vapidError;
     }
-
-    // Convert VAPID key
-    const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
-    // Check for existing subscription
-    const existingSubscription = await registration.pushManager.getSubscription();
-    if (existingSubscription) {
-      await existingSubscription.unsubscribe();
-    }
-
-    // Subscribe to push notifications
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey
-    });
-
-    console.log('[Push Notifications] Push subscription created');
-
-    const subscriptionJSON = subscription.toJSON();
-
-    // Store subscription in database
-    const { error: insertError } = await supabase
-      .from('push_subscriptions')
-      .upsert({
-        interpreter_id: interpreterId,
-        endpoint: subscriptionJSON.endpoint,
-        p256dh: subscriptionJSON.keys.p256dh,
-        auth: subscriptionJSON.keys.auth,
-        user_agent: navigator.userAgent,
-        status: 'active'
-      }, {
-        onConflict: 'interpreter_id,endpoint'
-      });
-
-    if (insertError) {
-      console.error('[Push Notifications] Error storing subscription:', insertError);
-      throw insertError;
-    }
-
-    console.log('[Push Notifications] Subscription stored successfully');
-    return true;
   } catch (error) {
     console.error('[Push Notifications] Error in subscription process:', error);
     throw error;
