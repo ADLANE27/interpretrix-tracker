@@ -1,8 +1,16 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-const MAX_RETRIES = 3;
+// Remove retry limit for better iOS PWA support
+const handleVisibilityChange = (channel: RealtimeChannel) => {
+  if (document.visibilityState === 'visible') {
+    channel.subscribe();
+  } else {
+    channel.unsubscribe();
+  }
+};
 
 export const useSubscriptions = (
   channelId: string,
@@ -14,24 +22,19 @@ export const useSubscriptions = (
   const { toast } = useToast();
 
   const handleSubscriptionError = () => {
-    if (retryCount < MAX_RETRIES) {
-      const timeout = Math.min(1000 * Math.pow(2, retryCount), 10000);
-      setTimeout(() => {
-        setRetryCount(retryCount + 1);
-      }, timeout);
-    } else {
-      toast({
-        title: "Erreur de connexion",
-        description: "Impossible de se connecter au chat. Veuillez rafraîchir la page.",
-        variant: "destructive",
-      });
-    }
+    // Instead of limiting retries, we'll reconnect when the app becomes visible
+    toast({
+      title: "Problème de connexion",
+      description: "Tentative de reconnexion en cours...",
+      variant: "destructive",
+    });
+    setRetryCount(retryCount + 1);
   };
 
   const subscribeToMessages = () => {
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
-    return supabase
+    const channel = supabase
       .channel(`messages:${channelId}`)
       .on(
         'postgres_changes',
@@ -45,7 +48,6 @@ export const useSubscriptions = (
           console.log('[Chat] Received real-time update:', payload);
           
           if (payload.eventType === 'UPDATE') {
-            // Handle message updates (reactions)
             await fetchMessages();
           } else {
             await fetchMessages();
@@ -65,12 +67,17 @@ export const useSubscriptions = (
           handleSubscriptionError();
         }
       });
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
+
+    return channel;
   };
 
   const subscribeToMentions = () => {
     console.log('[Chat] Setting up mentions subscription');
     
-    return supabase
+    const channel = supabase
       .channel(`mentions:${channelId}`)
       .on(
         'postgres_changes',
@@ -91,6 +98,11 @@ export const useSubscriptions = (
         }
       )
       .subscribe();
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
+
+    return channel;
   };
 
   return {

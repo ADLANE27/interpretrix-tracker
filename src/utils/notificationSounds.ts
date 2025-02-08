@@ -8,16 +8,16 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
   try {
     console.log(`[notificationSounds] Initializing ${type} sound`);
     
-    // Use exact filenames as they are in storage
+    // Fix the double extension for immediate sound
     const fileName = type === 'immediate' 
-      ? 'immediate-mission.mp3.mp3'  // Note the double .mp3 extension as it exists in storage
+      ? 'immediate-mission.mp3'  // Fixed filename
       : 'scheduled-mission.mp3';
     
     // Get public URL for the sound file
     const { data } = supabase
       .storage
       .from('notification_sounds')
-      .getPublicUrl(`/${fileName}`); // Note we're adding the leading slash as it exists in storage
+      .getPublicUrl(`/${fileName}`);
     
     if (!data?.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
@@ -47,7 +47,7 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
           message: error?.message,
           networkState: audio.networkState,
           readyState: audio.readyState,
-          url: data.publicUrl // Log the URL for debugging
+          url: data.publicUrl
         });
         audio.removeEventListener('canplaythrough', onCanPlay);
         audio.removeEventListener('error', onError);
@@ -104,11 +104,20 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       return;
     }
 
-    // Set volume appropriate for mobile (slightly louder)
+    // Set volume appropriate for mobile
     sound.volume = 1.0;
     
     // Reset the audio to start
     sound.currentTime = 0;
+    
+    // Try to vibrate on mobile devices
+    try {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(200);
+      }
+    } catch (error) {
+      console.log('[notificationSounds] Vibration not supported:', error);
+    }
     
     // Play with proper error handling and awaiting
     try {
@@ -129,6 +138,10 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       
       if (error.name === 'NotAllowedError') {
         console.log('[notificationSounds] Sound blocked by browser - requires user interaction');
+        // For iOS, try vibration as fallback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(200);
+        }
         throw new Error('User interaction required to play sound');
       }
       
