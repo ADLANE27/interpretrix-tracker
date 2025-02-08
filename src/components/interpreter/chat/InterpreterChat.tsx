@@ -593,9 +593,9 @@ export const InterpreterChat = ({
           )}
 
           <div className="border-t p-4 bg-white">
-            <div className="relative rounded-lg border bg-background">
+            <div className="relative rounded-lg border bg-[#F8F9FA] shadow-sm">
               {replyingTo && (
-                <div className="px-3 py-2 bg-gray-50 border-b rounded-t-lg flex items-center justify-between">
+                <div className="px-3 py-2 bg-[#F3F4F6] border-b rounded-t-lg flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <ArrowRight className="h-4 w-4" />
                     <span>En réponse à {replyingTo.sender.name}</span>
@@ -604,6 +604,7 @@ export const InterpreterChat = ({
                     variant="ghost"
                     size="sm"
                     onClick={cancelReply}
+                    className="hover:bg-[#E5E7EB] transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -615,7 +616,7 @@ export const InterpreterChat = ({
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
                 placeholder="Écrivez votre message..."
-                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg"
+                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
               />
 
               <MentionSuggestions
@@ -624,7 +625,7 @@ export const InterpreterChat = ({
                 visible={showMentions}
               />
 
-              <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              <div className="absolute bottom-2 right-2 flex items-center gap-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -637,9 +638,9 @@ export const InterpreterChat = ({
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="h-8 w-8 hover:bg-gray-100"
+                  className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
                 >
-                  <Paperclip className="h-4 w-4" />
+                  <Paperclip className="h-4 w-4 text-gray-600" />
                 </Button>
 
                 <Popover>
@@ -647,9 +648,9 @@ export const InterpreterChat = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 hover:bg-gray-100"
+                      className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
                     >
-                      <Smile className="h-4 w-4" />
+                      <Smile className="h-4 w-4 text-gray-600" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-full p-0" align="end">
@@ -664,7 +665,7 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
+                  className="h-8 bg-[#9b87f5] hover:bg-[#8B5CF6] text-white rounded-full transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed px-4"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer

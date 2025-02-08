@@ -47,7 +47,7 @@ export const MessagingTab = () => {
       )}
 
       {(!selectedChannelId || showChannels || !isMobile) && (
-        <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden">
+        <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden bg-[#F8F9FA]">
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
           />
@@ -55,7 +55,7 @@ export const MessagingTab = () => {
       )}
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 overflow-hidden">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 overflow-hidden bg-[#F8F9FA]">
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
@@ -64,7 +64,7 @@ export const MessagingTab = () => {
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 flex items-center justify-center">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 flex items-center justify-center bg-[#F8F9FA]">
           <div className="text-center text-muted-foreground">
             <p>Sélectionnez une conversation pour commencer à discuter</p>
           </div>
