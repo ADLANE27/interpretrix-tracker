@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     console.log('[VAPID] Starting VAPID key retrieval process');
     
-    // Initialize Supabase client
+    // Initialize Supabase client with proper error handling
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -63,7 +63,10 @@ serve(async (req) => {
       { 
         headers: { 
           ...corsHeaders,
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         status: 200 
       },

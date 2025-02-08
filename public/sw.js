@@ -1,5 +1,6 @@
+
 // Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.3';
+const SW_VERSION = '1.0.4';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling with detailed logging
@@ -30,7 +31,7 @@ self.addEventListener('push', event => {
     console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
     
     const options = {
-      body: `${data.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
+      body: data.body || `${data.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       data: {
@@ -66,7 +67,7 @@ self.addEventListener('push', event => {
 
           console.log('[Service Worker] Showing notification with options:', JSON.stringify(options, null, 2));
           const notification = await self.registration.showNotification(
-            'Nouvelle mission disponible',
+            data.title || 'Nouvelle mission disponible',
             options
           );
           

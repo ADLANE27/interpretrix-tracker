@@ -25,27 +25,27 @@ export async function registerServiceWorker() {
   try {
     console.log('[Push Notifications] Starting service worker registration');
     
-    // Check if we already have an active service worker
-    const existingRegistration = await navigator.serviceWorker.getRegistration('/');
-    
-    if (existingRegistration?.active) {
-      console.log('[Push Notifications] Found existing service worker:', existingRegistration);
-      return existingRegistration;
+    // Check if service worker is already registered
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration?.active) {
+      console.log('[Push Notifications] Found existing service worker:', registration);
+      await registration.update(); // Check for updates
+      return registration;
     }
 
-    // Register new service worker
-    const registration = await navigator.serviceWorker.register('/sw.js', {
+    // Register new service worker with proper scope and cache control
+    const newRegistration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'
     });
     
-    console.log('[Push Notifications] Service Worker registered successfully:', registration);
+    console.log('[Push Notifications] Service Worker registered successfully:', newRegistration);
     
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
     console.log('[Push Notifications] Service Worker is ready');
     
-    return registration;
+    return newRegistration;
   } catch (error) {
     console.error('[Push Notifications] Service Worker registration failed:', error);
     console.error('[Push Notifications] Error details:', {
@@ -63,7 +63,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     
     const registration = await registerServiceWorker();
     
-    // Request notification permission
+    // Request notification permission with proper error handling
     const permission = await Notification.requestPermission();
     console.log('[Push Notifications] Permission status:', permission);
     
@@ -72,7 +72,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
       throw new Error('Notification permission denied');
     }
 
-    // Get VAPID public key with improved retry logic
+    // Get VAPID public key with improved retry logic and error handling
     let retries = 3;
     let vapidError;
     let delay = 1000; // Start with 1 second delay
@@ -99,14 +99,14 @@ export async function subscribeToPushNotifications(interpreterId: string) {
         // Convert VAPID key
         const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
 
-        // Check for existing subscription
+        // Check for existing subscription and unsubscribe if found
         const existingSubscription = await registration.pushManager.getSubscription();
         if (existingSubscription) {
           console.log('[Push Notifications] Found existing subscription, unsubscribing...');
           await existingSubscription.unsubscribe();
         }
 
-        // Subscribe to push notifications
+        // Subscribe to push notifications with proper error handling
         console.log('[Push Notifications] Creating new push subscription...');
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -117,7 +117,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
 
         const subscriptionJSON = subscription.toJSON();
 
-        // Store subscription in database
+        // Store subscription in database with proper error handling
         const { error: insertError } = await supabase
           .from('push_subscriptions')
           .upsert({
@@ -179,7 +179,7 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
       console.log('[Push Notifications] Found active subscription, unsubscribing...');
       await subscription.unsubscribe();
       
-      // Remove from database
+      // Remove from database with proper error handling
       const { error } = await supabase
         .from('push_subscriptions')
         .delete()
