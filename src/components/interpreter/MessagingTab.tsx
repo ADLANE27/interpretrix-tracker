@@ -55,7 +55,9 @@ export const MessagingTab = () => {
               <MessageSquare className="h-5 w-5 text-interpreter-navy" />
               <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
             </div>
-            <HowToUseGuide isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} />
+            {(!selectedChannelId || !isMobile) && (
+              <HowToUseGuide isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} />
+            )}
           </div>
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
