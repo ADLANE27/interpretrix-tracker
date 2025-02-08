@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { MessageSquare, Menu } from "lucide-react";
-import { HowToUseGuide } from "./HowToUseGuide";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MessagingTab = () => {
@@ -15,7 +14,6 @@ export const MessagingTab = () => {
     keyword?: string;
     date?: Date;
   }>({});
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const handleFiltersChange = (newFilters: typeof filters) => {
@@ -55,9 +53,6 @@ export const MessagingTab = () => {
               <MessageSquare className="h-5 w-5 text-interpreter-navy" />
               <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
             </div>
-            {(!selectedChannelId || !isMobile) && (
-              <HowToUseGuide isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} />
-            )}
           </div>
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
