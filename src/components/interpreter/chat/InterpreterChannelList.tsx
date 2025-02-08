@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -85,7 +86,6 @@ export const InterpreterChannelList = ({
     fetchChannels();
     fetchUnreadMentions();
 
-    // Set up realtime subscription for mentions
     const channel = supabase.channel('interpreter-mentions')
       .on(
         'postgres_changes',
@@ -93,7 +93,6 @@ export const InterpreterChannelList = ({
         async (payload) => {
           console.log('[InterpreterChat] Mention update:', payload);
           
-          // Show toast notification for new mentions
           if (payload.eventType === 'INSERT') {
             const { data: { user } } = await supabase.auth.getUser();
             if (user && payload.new.mentioned_user_id === user.id) {
@@ -138,12 +137,13 @@ export const InterpreterChannelList = ({
               className={`
                 flex items-center gap-3 p-3 rounded-lg 
                 cursor-pointer transition-all duration-200
-                hover:bg-accent/50 group
-                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white shadow-sm' : 'hover:shadow-sm'}
+                ${selectedChannelId === channel.id 
+                  ? 'bg-interpreter-navy text-white' 
+                  : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
               `}
               onClick={() => handleChannelSelect(channel.id)}
             >
-              <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy group-hover:text-interpreter-navy/70'}`} />
+              <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
               <div className="flex items-center justify-between flex-1 min-w-0">
                 <span className="font-medium truncate">{channel.name}</span>
                 {unreadMentions[channel.id] > 0 && (
