@@ -138,7 +138,7 @@ export const MissionsTab = () => {
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
     if (isProcessing) {
-      console.log('Already processing a request');
+      console.log('[MissionsTab] Already processing a request');
       toast({
         title: "Action en cours",
         description: "Veuillez patienter pendant le traitement de votre demande",
@@ -148,23 +148,23 @@ export const MissionsTab = () => {
 
     try {
       setIsProcessing(true);
-      console.log(`Processing mission response: ${accept ? 'accept' : 'decline'} for mission ${missionId}`);
+      console.log(`[MissionsTab] Processing mission response: ${accept ? 'accept' : 'decline'} for mission ${missionId}`);
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('No user found');
+        console.error('[MissionsTab] No user found');
         throw new Error("Non authentifié");
       }
 
       if (accept) {
-        console.log('Calling handle_mission_acceptance RPC');
+        console.log('[MissionsTab] Calling handle_mission_acceptance RPC');
         const { error: updateError } = await supabase.rpc('handle_mission_acceptance', {
           p_mission_id: missionId,
           p_interpreter_id: user.id
         });
 
         if (updateError) {
-          console.error('Error in handle_mission_acceptance:', updateError);
+          console.error('[MissionsTab] Error in handle_mission_acceptance:', updateError);
           if (updateError.message.includes('Interpreter is not available')) {
             throw new Error("Vous n'êtes plus disponible pour accepter des missions");
           } else if (updateError.message.includes('Mission is no longer available')) {
@@ -173,13 +173,13 @@ export const MissionsTab = () => {
           throw updateError;
         }
 
-        console.log('Mission accepted successfully');
+        console.log('[MissionsTab] Mission accepted successfully');
         toast({
           title: "Mission acceptée",
           description: "Vous avez accepté la mission avec succès",
         });
       } else {
-        console.log('Declining mission');
+        console.log('[MissionsTab] Declining mission');
         const { error: declineError } = await supabase
           .from('mission_notifications')
           .update({ 
@@ -190,13 +190,13 @@ export const MissionsTab = () => {
           .eq('interpreter_id', user.id);
 
         if (declineError) {
-          console.error('Error declining mission:', declineError);
+          console.error('[MissionsTab] Error declining mission:', declineError);
           throw declineError;
         }
 
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
 
-        console.log('Mission declined successfully');
+        console.log('[MissionsTab] Mission declined successfully');
         toast({
           title: "Mission déclinée",
           description: "Vous avez décliné la mission",
@@ -205,7 +205,7 @@ export const MissionsTab = () => {
 
       fetchMissions();
     } catch (error) {
-      console.error('Error updating mission:', error);
+      console.error('[MissionsTab] Error updating mission:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de votre demande",
@@ -219,10 +219,53 @@ export const MissionsTab = () => {
   useEffect(() => {
     console.log('[MissionsTab] Component mounted');
     fetchMissions();
-    const cleanup = setupRealtimeSubscription();
+    
+    const channel = supabase
+      .channel('interpreter-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        (payload) => {
+          console.log('[MissionsTab] Mission update received:', payload);
+          fetchMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mission_notifications'
+        },
+        (payload) => {
+          console.log('[MissionsTab] Notification update received:', payload);
+          fetchMissions();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionsTab] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MissionsTab] Successfully subscribed to changes');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MissionsTab] Error subscribing to changes');
+          toast({
+            title: "Erreur",
+            description: "Impossible de recevoir les mises à jour en temps réel",
+            variant: "destructive",
+          });
+        }
+      });
+
     return () => {
-      console.log('[MissionsTab] Component unmounting');
-      cleanup();
+      console.log('[MissionsTab] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
     };
   }, []);
 

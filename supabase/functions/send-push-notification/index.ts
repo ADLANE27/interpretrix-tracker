@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import webPush from 'npm:web-push';
 import { createClient } from 'npm:@supabase/supabase-js';
@@ -17,13 +16,7 @@ serve(async (req) => {
     console.log('[Push Notification] Starting push notification service');
     
     const { message } = await req.json();
-    console.log('[Push Notification] Received request with message:', { 
-      title: message.title,
-      body: message.body,
-      interpreterIds: message.interpreterIds,
-      type: message.data?.type,
-      mission_id: message.data?.mission_id 
-    });
+    console.log('[Push Notification] Received message payload:', JSON.stringify(message, null, 2));
     
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
@@ -108,7 +101,7 @@ serve(async (req) => {
       timestamp: Date.now()
     };
 
-    console.log('[Push Notification] Sending with payload:', notificationPayload);
+    console.log('[Push Notification] Sending with payload:', JSON.stringify(notificationPayload, null, 2));
 
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
