@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -51,56 +50,50 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
   };
 
   return (
-    <div className="border-b p-2 bg-white">
-      <div className="flex flex-col gap-2">
+    <div className="border-b border-gray-100 p-4 bg-white/80 backdrop-blur-sm">
+      <div className="flex flex-col gap-3">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-muted-foreground self-start"
+          className="text-muted-foreground self-start hover:bg-gray-100/80 transition-colors duration-200"
         >
-          <Filter className="h-4 w-4 mr-1" />
+          <Filter className="h-4 w-4 mr-1.5" />
           Filtres
         </Button>
 
         {isExpanded && (
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="w-full sm:w-[160px]">
-              <select
-                value={selectedUserId}
-                onChange={handleUserChange}
-                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              >
-                <option value="">Tous les utilisateurs</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center animate-fade-in">
+            <select
+              value={selectedUserId}
+              onChange={handleUserChange}
+              className="h-9 rounded-lg border border-gray-200 bg-white/70 px-3 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+            >
+              <option value="">Tous les utilisateurs</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </select>
 
-            <div className="w-full sm:w-[160px]">
-              <Input
-                value={keyword}
-                onChange={handleKeywordChange}
-                placeholder="Rechercher..."
-                className="h-9 px-2"
-              />
-            </div>
+            <Input
+              value={keyword}
+              onChange={handleKeywordChange}
+              placeholder="Rechercher..."
+              className="h-9 rounded-lg border-gray-200 bg-white/70 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+            />
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`w-full sm:w-[160px] h-9 justify-start text-left truncate ${!date && "text-muted-foreground"}`}
+                    className={`w-full sm:w-[200px] h-9 justify-start text-left rounded-lg border-gray-200 bg-white/70 hover:bg-gray-100/80 transition-all duration-300 ${!date && "text-muted-foreground"}`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">
-                      {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
-                    </span>
+                    {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -109,6 +102,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
                     selected={date}
                     onSelect={handleDateChange}
                     initialFocus
+                    className="rounded-lg border-0 shadow-lg"
                   />
                 </PopoverContent>
               </Popover>
@@ -117,7 +111,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
-                className="text-muted-foreground h-9 w-full sm:w-auto"
+                className="text-muted-foreground h-9 hover:bg-gray-100/80 transition-colors duration-200"
               >
                 <X className="h-4 w-4 mr-1.5" />
                 Effacer

@@ -339,39 +339,45 @@ export const Chat = ({ channelId }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
-      <ScrollArea className="flex-1 p-4 overflow-y-auto">
-        {filteredMessages.map(message => (
-          <div 
-            key={message.id} 
-            id={`message-${message.id}`}
-            className="mb-4 group transition-colors duration-300"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">{message.sender.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
-                  </span>
+      <ScrollArea className="flex-1 px-6 py-4 overflow-y-auto">
+        <div className="space-y-6">
+          {filteredMessages.map(message => (
+            <div 
+              key={message.id} 
+              id={`message-${message.id}`}
+              className="group transition-all duration-300 ease-in-out hover:bg-gray-50/50 rounded-lg p-3"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
+                      {message.sender.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-gray-700 leading-relaxed">
+                    {message.content}
+                  </div>
                 </div>
-                <div className="mt-1">{message.content}</div>
+                {currentUserId === message.sender.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteMessage(message.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-400 hover:text-red-500 transition-colors" />
+                  </Button>
+                )}
               </div>
-              {currentUserId === message.sender.id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeleteMessage(message.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </ScrollArea>
 
-      <div className="border-t p-4 bg-white">
+      <div className="border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
         <div className="relative">
           <Textarea
             ref={textareaRef}
@@ -379,7 +385,7 @@ export const Chat = ({ channelId }: ChatProps) => {
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
             placeholder="Écrivez votre message..."
-            className="min-h-[80px]"
+            className="min-h-[80px] bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
           />
 
           <MentionSuggestions
@@ -388,7 +394,7 @@ export const Chat = ({ channelId }: ChatProps) => {
             visible={showMentions}
           />
 
-          <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -401,14 +407,19 @@ export const Chat = ({ channelId }: ChatProps) => {
               size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
+              className="hover:bg-gray-100/80 transition-colors duration-200"
             >
-              <Paperclip className="h-4 w-4" />
+              <Paperclip className="h-4 w-4 text-gray-500" />
             </Button>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Smile className="h-4 w-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="hover:bg-gray-100/80 transition-colors duration-200"
+                >
+                  <Smile className="h-4 w-4 text-gray-500" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="end">
@@ -423,6 +434,7 @@ export const Chat = ({ channelId }: ChatProps) => {
             <Button 
               onClick={handleSendMessage}
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+              className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg"
             >
               <Send className="h-4 w-4 mr-2" />
               Envoyer
