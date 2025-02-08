@@ -256,12 +256,27 @@ export const MissionsTab = () => {
         },
         async (payload) => {
           console.log('[MissionsTab] Mission update received:', payload);
+          console.log('[MissionsTab] Event type:', payload.eventType);
           
           if (payload.eventType === 'INSERT') {
             const mission = payload.new as any;
             
             if (!mission) {
               console.error('[MissionsTab] Invalid mission payload');
+              return;
+            }
+
+            console.log('[MissionsTab] New mission data:', mission);
+            console.log('[MissionsTab] Notified interpreters:', mission.notified_interpreters);
+
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log('[MissionsTab] Current user:', user?.id);
+
+            const isTargetedInterpreter = mission.notified_interpreters?.includes(user?.id);
+            console.log('[MissionsTab] Is targeted interpreter:', isTargetedInterpreter);
+
+            if (!isTargetedInterpreter) {
+              console.log('[MissionsTab] User not in notified interpreters list, skipping notification');
               return;
             }
 
@@ -289,6 +304,8 @@ export const MissionsTab = () => {
                   console.error('[MissionsTab] Retry failed:', retryError);
                 }
               }
+            } else {
+              console.log('[MissionsTab] Sound is disabled, skipping sound notification');
             }
           }
           
