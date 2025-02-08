@@ -8,21 +8,46 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function isValidBase64UrlSafe(str: string): boolean {
+  return /^[A-Za-z0-9\-_]+$/.test(str);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    console.log('Generating VAPID keys...')
-    const vapidKeys = webPush.generateVAPIDKeys()
-    console.log('Raw VAPID keys generated:', vapidKeys)
+    console.log('[VAPID] Starting key generation process')
+    
+    // Try up to 3 times to generate valid keys
+    let vapidKeys;
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    // Validate key format
-    if (!vapidKeys.publicKey || !vapidKeys.privateKey || 
-        !/^[A-Za-z0-9\-_]+$/.test(vapidKeys.publicKey) || 
-        !/^[A-Za-z0-9\-_]+$/.test(vapidKeys.privateKey)) {
-      throw new Error('Generated VAPID keys are not in valid URL-safe base64 format')
+    while (attempts < maxAttempts) {
+      try {
+        vapidKeys = webPush.generateVAPIDKeys();
+        console.log('[VAPID] Generated keys, validating format...')
+        
+        if (isValidBase64UrlSafe(vapidKeys.publicKey) && 
+            isValidBase64UrlSafe(vapidKeys.privateKey)) {
+          console.log('[VAPID] Valid keys generated')
+          break;
+        }
+        
+        console.log('[VAPID] Invalid key format, retrying...')
+        attempts++;
+      } catch (genError) {
+        console.error('[VAPID] Key generation error:', genError)
+        attempts++;
+        if (attempts === maxAttempts) throw genError;
+      }
+    }
+
+    if (!vapidKeys || !isValidBase64UrlSafe(vapidKeys.publicKey) || 
+        !isValidBase64UrlSafe(vapidKeys.privateKey)) {
+      throw new Error('Failed to generate valid VAPID keys after multiple attempts')
     }
 
     // Initialize Supabase client
@@ -37,7 +62,7 @@ serve(async (req) => {
       }
     )
 
-    console.log('Storing public key...')
+    console.log('[VAPID] Storing public key...')
     const { error: publicKeyError } = await supabaseAdmin
       .from('secrets')
       .upsert({ 
@@ -48,11 +73,11 @@ serve(async (req) => {
       })
 
     if (publicKeyError) {
-      console.error('Error storing public key:', publicKeyError)
+      console.error('[VAPID] Error storing public key:', publicKeyError)
       throw publicKeyError
     }
 
-    console.log('Storing private key...')
+    console.log('[VAPID] Storing private key...')
     const { error: privateKeyError } = await supabaseAdmin
       .from('secrets')
       .upsert({ 
@@ -63,11 +88,11 @@ serve(async (req) => {
       })
 
     if (privateKeyError) {
-      console.error('Error storing private key:', privateKeyError)
+      console.error('[VAPID] Error storing private key:', privateKeyError)
       throw privateKeyError
     }
 
-    console.log('VAPID keys stored successfully')
+    console.log('[VAPID] Keys stored successfully')
     
     return new Response(
       JSON.stringify({
@@ -83,11 +108,13 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error in generate-vapid-keys:', error)
+    console.error('[VAPID] Error:', error.message)
+    console.error('[VAPID] Stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.toString()
+        error: error.message || 'Internal server error',
+        details: error.stack
       }),
       { 
         headers: { 
