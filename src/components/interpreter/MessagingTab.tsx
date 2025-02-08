@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
-import { MessageSquare, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MessagingTab = () => {
@@ -48,10 +48,6 @@ export const MessagingTab = () => {
 
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden">
-          <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 px-2">
-            <MessageSquare className="h-5 w-5 text-interpreter-navy" />
-            <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
-          </div>
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
           />
@@ -70,7 +66,6 @@ export const MessagingTab = () => {
       ) : !selectedChannelId && !isMobile ? (
         <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-20" />
             <p>Sélectionnez une conversation pour commencer à discuter</p>
           </div>
         </Card>
