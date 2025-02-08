@@ -483,24 +483,25 @@ export const InterpreterChat = ({
         onFiltersChange={onFiltersChange}
         users={channelUsers}
         onClearFilters={onClearFilters}
+        className="p-2 sm:p-4"
       />
 
       <div className="flex flex-1 overflow-hidden">
         <div className={cn(
           "flex-1 flex flex-col",
-          selectedThread ? "w-full lg:w-2/3" : "w-full"
+          selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea className="flex-1 px-2 sm:px-4">
             {filteredMessages.map(message => (
               <div 
                 key={message.id} 
                 id={`message-${message.id}`}
-                className="mb-3 sm:mb-4 group transition-colors duration-300"
+                className="mb-2 sm:mb-4 group transition-colors duration-300"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm sm:text-base">{message.sender.name}</span>
+                      <span className="font-semibold text-sm sm:text-base">{message.sender.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {format(message.timestamp, 'HH:mm')}
                       </span>
@@ -568,7 +569,7 @@ export const InterpreterChat = ({
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
                 placeholder="Écrivez votre message..."
-                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base"
+                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base pr-24"
               />
 
               <MentionSuggestions
@@ -577,7 +578,7 @@ export const InterpreterChat = ({
                 visible={showMentions}
               />
 
-              <div className="absolute bottom-2 right-2 flex items-center gap-1 sm:gap-2">
+              <div className="absolute bottom-2 right-2 flex items-center gap-1">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -590,7 +591,7 @@ export const InterpreterChat = ({
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="h-8 w-8 sm:h-10 sm:w-10"
+                  className="h-8 w-8"
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
@@ -600,7 +601,7 @@ export const InterpreterChat = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8 sm:h-10 sm:w-10"
+                      className="h-8 w-8"
                     >
                       <Smile className="h-4 w-4" />
                     </Button>
@@ -617,7 +618,7 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="text-sm sm:text-base h-8 sm:h-10"
+                  className="text-sm sm:text-base h-8"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer
@@ -629,18 +630,19 @@ export const InterpreterChat = ({
 
         {selectedThread && (
           <div className="fixed inset-0 z-50 bg-white lg:static lg:w-1/3 lg:border-l flex flex-col">
-            <div className="p-3 sm:p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">Conversation</h3>
+            <div className="p-2 sm:p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-sm sm:text-base">Conversation</h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleCloseThread}
+                className="h-8 w-8"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            <div className="p-3 sm:p-4 bg-gray-50">
+            <div className="p-2 sm:p-4 bg-gray-50">
               <div className="flex items-center gap-2 mb-2">
                 <span className="font-bold text-sm sm:text-base">{selectedThread.sender.name}</span>
                 <span className="text-xs text-muted-foreground">
@@ -668,7 +670,7 @@ export const InterpreterChat = ({
               ))}
             </ScrollArea>
 
-            <div className="p-3 sm:p-4 border-t">
+            <div className="p-2 sm:p-4 border-t">
               <Textarea
                 value={message}
                 onChange={handleMessageChange}
