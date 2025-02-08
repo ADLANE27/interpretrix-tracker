@@ -1,6 +1,6 @@
 
 // Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.5';
+const SW_VERSION = '1.0.6';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling with detailed logging
@@ -20,6 +20,7 @@ self.addEventListener('unhandledrejection', event => {
 // Enhanced push event handler with better debugging
 self.addEventListener('push', event => {
   console.log('[Service Worker] Push received at:', new Date().toISOString());
+  console.log('[Service Worker] Raw push data:', event.data ? event.data.text() : 'No data');
   
   if (!event.data) {
     console.warn('[Service Worker] Push event received but no data');
@@ -31,29 +32,21 @@ self.addEventListener('push', event => {
     console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
     
     const options = {
-      body: data.body || `${data.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${data.source_language} → ${data.target_language} (${data.estimated_duration} min)`,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      body: data.body,
+      icon: data.icon || '/favicon.ico',
+      badge: data.badge || '/favicon.ico',
       data: {
-        missionId: data.mission_id,
-        url: '/',
+        ...data.data,
         timestamp: Date.now()
       },
-      vibrate: [200, 100, 200],
-      tag: `mission-${data.mission_id}`,
+      vibrate: data.vibrate || [200, 100, 200],
+      tag: data.tag || `mission-${data.data?.mission_id}`,
       renotify: true,
       requireInteraction: true,
-      actions: [
-        {
-          action: 'accept',
-          title: 'Accepter'
-        },
-        {
-          action: 'decline',
-          title: 'Décliner'
-        }
+      actions: data.actions || [
+        { action: 'accept', title: 'Accepter' },
+        { action: 'decline', title: 'Décliner' }
       ],
-      priority: 'high',
       silent: false,
       timestamp: Date.now()
     };
@@ -62,6 +55,7 @@ self.addEventListener('push', event => {
       (async () => {
         try {
           if (!self.registration.showNotification) {
+            console.error('[Service Worker] Notifications not supported');
             throw new Error('Notifications not supported');
           }
 

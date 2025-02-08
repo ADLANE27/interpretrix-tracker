@@ -8,8 +8,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+console.log('[Push Notification] Function loaded and ready');
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('[Push Notification] Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -47,67 +51,55 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    if (!message.interpreterIds?.length) {
-      console.log('[Push Notification] No interpreter IDs provided');
+    // Check for interpreterIds in message or fetch from mission_notifications
+    let interpreterIds = message.interpreterIds || [];
+    console.log('[Push Notification] Initial interpreter IDs:', interpreterIds);
+
+    if (message.data?.mission_id && (!interpreterIds?.length)) {
+      console.log('[Push Notification] No interpreter IDs provided, checking mission_notifications');
+      const { data: notifications, error: notificationError } = await supabase
+        .from('mission_notifications')
+        .select('interpreter_id')
+        .eq('mission_id', message.data.mission_id)
+        .eq('status', 'pending');
+
+      if (notificationError) {
+        console.error('[Push Notification] Error fetching notifications:', notificationError);
+        throw notificationError;
+      }
+
+      if (notifications?.length) {
+        interpreterIds = notifications.map(n => n.interpreter_id);
+        console.log('[Push Notification] Found interpreter IDs from notifications:', interpreterIds);
+        
+        // Update the mission's notified_interpreters array
+        const { error: updateError } = await supabase
+          .from('interpretation_missions')
+          .update({ notified_interpreters: interpreterIds })
+          .eq('id', message.data.mission_id);
+
+        if (updateError) {
+          console.error('[Push Notification] Error updating mission:', updateError);
+          throw updateError;
+        }
+      }
+    }
+
+    if (!interpreterIds?.length) {
+      console.log('[Push Notification] No interpreter IDs found after all checks');
       return new Response(
-        JSON.stringify({ message: 'No interpreter IDs provided' }),
+        JSON.stringify({ message: 'No interpreter IDs found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[Push Notification] Fetching active subscriptions for interpreters:', message.interpreterIds);
+    console.log('[Push Notification] Fetching active subscriptions for interpreters:', interpreterIds);
     
-    // First, verify the mission exists and interpreters are notified
-    if (message.data?.mission_id) {
-      const { data: missionData, error: missionError } = await supabase
-        .from('interpretation_missions')
-        .select('notified_interpreters')
-        .eq('id', message.data.mission_id)
-        .single();
-
-      if (missionError) {
-        console.error('[Push Notification] Error fetching mission:', missionError);
-        throw missionError;
-      }
-
-      console.log('[Push Notification] Mission data:', missionData);
-
-      // If no interpreters are in the notified_interpreters array, check mission_notifications
-      if (!missionData.notified_interpreters?.length) {
-        const { data: notifications, error: notificationError } = await supabase
-          .from('mission_notifications')
-          .select('interpreter_id')
-          .eq('mission_id', message.data.mission_id)
-          .eq('status', 'pending');
-
-        if (notificationError) {
-          console.error('[Push Notification] Error fetching notifications:', notificationError);
-          throw notificationError;
-        }
-
-        if (notifications?.length) {
-          // Update the mission's notified_interpreters array
-          const interpreterIds = notifications.map(n => n.interpreter_id);
-          const { error: updateError } = await supabase
-            .from('interpretation_missions')
-            .update({ notified_interpreters: interpreterIds })
-            .eq('id', message.data.mission_id);
-
-          if (updateError) {
-            console.error('[Push Notification] Error updating mission:', updateError);
-            throw updateError;
-          }
-
-          console.log('[Push Notification] Updated mission notified_interpreters:', interpreterIds);
-        }
-      }
-    }
-
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
       .select('*')
       .eq('status', 'active')
-      .in('interpreter_id', message.interpreterIds);
+      .in('interpreter_id', interpreterIds);
     
     if (subscriptionError) {
       console.error('[Push Notification] Error fetching subscriptions:', subscriptionError);
@@ -115,7 +107,7 @@ serve(async (req) => {
     }
 
     if (!subscriptions?.length) {
-      console.log('[Push Notification] No active subscriptions found for interpreters:', message.interpreterIds);
+      console.log('[Push Notification] No active subscriptions found for interpreters:', interpreterIds);
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -164,7 +156,7 @@ serve(async (req) => {
             }
           };
 
-          console.log(`[Push Notification] Subscription details:`, subscription);
+          console.log(`[Push Notification] Subscription details:`, JSON.stringify(subscription, null, 2));
 
           const maxAttempts = 3;
           let attempt = 0;
@@ -173,11 +165,12 @@ serve(async (req) => {
           while (attempt < maxAttempts) {
             try {
               console.log(`[Push Notification] Attempt ${attempt + 1} for subscription ${sub.id}`);
-              await webPush.sendNotification(
+              const result = await webPush.sendNotification(
                 subscription,
                 JSON.stringify(notificationPayload)
               );
               
+              console.log(`[Push Notification] Push result:`, result);
               console.log(`[Push Notification] Successfully sent to subscription ${sub.id}`);
               
               // Update last successful push timestamp
@@ -240,7 +233,7 @@ serve(async (req) => {
       details: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason })
     };
     
-    console.log('[Push Notification] Results summary:', summary);
+    console.log('[Push Notification] Results summary:', JSON.stringify(summary, null, 2));
     
     return new Response(
       JSON.stringify({ success: true, results: summary }),
