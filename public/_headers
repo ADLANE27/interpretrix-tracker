@@ -1,6 +1,6 @@
 
 /*
-  Content-Security-Policy: frame-ancestors 'self'; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; script-src-elem 'self' 'unsafe-inline' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob: https://*.supabase.co https:; font-src 'self' data: https: *
+  Content-Security-Policy: frame-ancestors 'self'; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co; script-src-elem 'self' 'unsafe-inline' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob: https://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co; font-src 'self' data: https: *
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
