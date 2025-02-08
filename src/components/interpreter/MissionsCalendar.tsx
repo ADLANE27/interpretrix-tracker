@@ -9,7 +9,7 @@ import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
-import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
 interface Mission {
   id: string;
@@ -122,7 +122,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
-    const missionDate = utcToZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+    const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
     const selectedDayStart = startOfDay(selectedDate);
     const missionDayStart = startOfDay(missionDate);
     
@@ -132,7 +132,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
-      return startOfDay(utcToZonedTime(new Date(mission.scheduled_start_time), userTimeZone));
+      return startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone));
     })
     .filter((date): date is Date => date !== null);
 
@@ -174,9 +174,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             </p>
           ) : (
             missionsForSelectedDate.map((mission) => {
-              const startTime = utcToZonedTime(new Date(mission.scheduled_start_time!), userTimeZone);
+              const startTime = toZonedTime(new Date(mission.scheduled_start_time!), userTimeZone);
               const endTime = mission.scheduled_end_time 
-                ? utcToZonedTime(new Date(mission.scheduled_end_time), userTimeZone)
+                ? toZonedTime(new Date(mission.scheduled_end_time), userTimeZone)
                 : null;
 
               return (
