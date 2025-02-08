@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -119,15 +120,15 @@ export const MessagesTab = () => {
   useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
     const channel = supabase
-      .channel('admin-missions')
+      .channel('realtime-mission-updates')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'interpretation_missions'
         },
-        async (payload) => {
+        async (payload: any) => {
           console.log('[MessagesTab] New mission update:', payload);
           
           if (payload.eventType === 'INSERT') {
@@ -146,7 +147,7 @@ export const MessagesTab = () => {
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
               variant: isImmediate ? "destructive" : "default",
-              duration: isMobile ? 10000 : 5000,
+              duration: 10000, // Longer duration for better visibility
             });
 
             // Play sound if enabled and initialized
@@ -174,6 +175,19 @@ export const MessagesTab = () => {
       )
       .subscribe((status) => {
         console.log('[MessagesTab] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MessagesTab] Successfully subscribed to mission updates');
+        }
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MessagesTab] Error subscribing to mission updates');
+          toast({
+            title: "Erreur",
+            description: "Impossible de recevoir les mises à jour en temps réel",
+            variant: "destructive",
+          });
+        }
       });
 
     return () => {
@@ -272,3 +286,4 @@ export const MessagesTab = () => {
     </div>
   );
 };
+
