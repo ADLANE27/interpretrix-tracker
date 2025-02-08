@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import webPush from 'npm:web-push';
 import { createClient } from 'npm:@supabase/supabase-js';
@@ -14,9 +15,10 @@ serve(async (req) => {
 
   try {
     const { message } = await req.json();
-    console.log('[Push Notification] Received request:', { 
+    console.log('[Push Notification] Received request with message:', { 
       title: message.title,
-      interpreterIds: message.interpreterIds?.length,
+      body: message.body,
+      interpreterIds: message.interpreterIds,
       type: message.data?.type 
     });
     
@@ -24,10 +26,14 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('[Push Notification] Missing VAPID keys');
+      console.error('[Push Notification] Missing VAPID keys:', { 
+        hasPublicKey: !!vapidPublicKey,
+        hasPrivateKey: !!vapidPrivateKey 
+      });
       throw new Error('VAPID configuration missing');
     }
     
+    console.log('[Push Notification] Setting VAPID details');
     webPush.setVapidDetails(
       'mailto:debassi.adlane@gmail.com',
       vapidPublicKey,
@@ -52,7 +58,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('[Push Notification] Fetching subscriptions for interpreters:', message.interpreterIds);
+    console.log('[Push Notification] Fetching active subscriptions for interpreters:', message.interpreterIds);
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
       .select('*')
@@ -65,7 +71,7 @@ serve(async (req) => {
     }
 
     if (!subscriptions?.length) {
-      console.log('[Push Notification] No active subscriptions found');
+      console.log('[Push Notification] No active subscriptions found for interpreters:', message.interpreterIds);
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -75,10 +81,14 @@ serve(async (req) => {
     console.log(`[Push Notification] Found ${subscriptions.length} active subscriptions`);
     
     const notificationPayload = {
-      title: message.title,
-      body: message.body,
-      icon: message.icon,
-      data: message.data,
+      title: message.title || 'Nouvelle mission disponible',
+      body: message.body || `${message.data?.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${message.data?.source_language} → ${message.data?.target_language} (${message.data?.estimated_duration} min)`,
+      mission_id: message.data?.mission_id,
+      mission_type: message.data?.mission_type,
+      source_language: message.data?.source_language,
+      target_language: message.data?.target_language,
+      estimated_duration: message.data?.estimated_duration,
+      icon: '/favicon.ico',
       badge: '/favicon.ico',
       vibrate: [200, 100, 200],
       requireInteraction: true,
@@ -89,29 +99,35 @@ serve(async (req) => {
       timestamp: Date.now()
     };
 
+    console.log('[Push Notification] Sending with payload:', notificationPayload);
+
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
           console.log(`[Push Notification] Sending to subscription ${sub.id}`);
           
+          const subscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          };
+
           const maxAttempts = 3;
           let attempt = 0;
+          let lastError;
           
           while (attempt < maxAttempts) {
             try {
               await webPush.sendNotification(
-                {
-                  endpoint: sub.endpoint,
-                  keys: {
-                    p256dh: sub.p256dh,
-                    auth: sub.auth
-                  }
-                },
+                subscription,
                 JSON.stringify(notificationPayload)
               );
               
               console.log(`[Push Notification] Successfully sent to subscription ${sub.id}`);
               
+              // Update last successful push timestamp
               await supabase
                 .from('push_subscriptions')
                 .update({ 
@@ -122,11 +138,17 @@ serve(async (req) => {
                 
               return { success: true, subscriptionId: sub.id };
             } catch (error) {
+              lastError = error;
+              console.error(`[Push Notification] Attempt ${attempt + 1} failed for ${sub.id}:`, error);
               attempt++;
-              if (attempt === maxAttempts) throw error;
-              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+              if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+              }
             }
           }
+          
+          // If we get here, all attempts failed
+          throw lastError;
         } catch (error) {
           console.error(`[Push Notification] Failed for subscription ${sub.id}:`, error);
           
@@ -165,9 +187,11 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('[Push Notification] Unhandled error:', error);
+    console.error('[Push Notification] Stack:', error.stack);
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error.message || 'Internal server error',
         details: error.stack 
       }),
       { 
