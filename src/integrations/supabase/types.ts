@@ -611,6 +611,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      rename_storage_object: {
+        Args: {
+          bucket_name: string
+          old_path: string
+          new_path: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       employment_status: "salaried" | "self_employed"

@@ -10,12 +10,17 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     const fileName = `${type}-mission.mp3`;
     
     // Get public URL for the sound file
-    const { data } = supabase
+    const { data, error: urlError } = supabase
       .storage
       .from('notification_sounds')
       .getPublicUrl(fileName);
     
-    if (!data.publicUrl) {
+    if (urlError) {
+      console.error('[notificationSounds] Error getting public URL:', urlError);
+      throw new Error(`Failed to get public URL: ${urlError.message}`);
+    }
+
+    if (!data?.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
       throw new Error('No public URL returned for sound file');
     }
@@ -33,14 +38,20 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
         console.log(`[notificationSounds] ${type} sound loaded successfully`);
         audio.removeEventListener('canplaythrough', onCanPlay);
         audio.removeEventListener('error', onError);
-        resolve(true);
+        resolve(audio);
       };
       
-      const onError = (e: ErrorEvent) => {
-        console.error(`[notificationSounds] Error loading ${type} sound:`, e);
+      const onError = (e: Event) => {
+        const error = (e.target as HTMLAudioElement).error;
+        console.error(`[notificationSounds] Error loading ${type} sound:`, {
+          code: error?.code,
+          message: error?.message,
+          networkState: audio.networkState,
+          readyState: audio.readyState
+        });
         audio.removeEventListener('canplaythrough', onCanPlay);
         audio.removeEventListener('error', onError);
-        reject(new Error(`Failed to load ${type} sound: ${e.message}`));
+        reject(new Error(`Failed to load ${type} sound: ${error?.message || 'Unknown error'}`));
       };
       
       audio.addEventListener('canplaythrough', onCanPlay);
@@ -52,9 +63,9 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     audio.load();
     
     // Wait for the audio to be loaded
-    await loadPromise;
-    
-    return audio;
+    const loadedAudio = await loadPromise;
+    console.log(`[notificationSounds] ${type} sound ready to play`);
+    return loadedAudio;
   } catch (error) {
     console.error(`[notificationSounds] Error initializing ${type} sound:`, error);
     throw error;
@@ -63,20 +74,19 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
 
 export const playNotificationSound = async (type: 'immediate' | 'scheduled', preloadOnly: boolean = false) => {
   try {
-    console.log('[notificationSounds] Attempting to play sound for:', type);
+    console.log('[notificationSounds] Attempting to play sound for:', type, 'preloadOnly:', preloadOnly);
     
-    // Initialize sound if not already done
-    if (!immediateSound && type === 'immediate') {
-      immediateSound = await initializeSound('immediate');
-    }
-    if (!scheduledSound && type === 'scheduled') {
-      scheduledSound = await initializeSound('scheduled');
-    }
+    let sound = type === 'immediate' ? immediateSound : scheduledSound;
     
-    const sound = type === 'immediate' ? immediateSound : scheduledSound;
-    
-    if (!sound) {
-      throw new Error('Sound not initialized');
+    // Initialize sound if not already done or if previous initialization failed
+    if (!sound || sound.error) {
+      console.log(`[notificationSounds] ${type} sound needs initialization`);
+      sound = await initializeSound(type);
+      if (type === 'immediate') {
+        immediateSound = sound;
+      } else {
+        scheduledSound = sound;
+      }
     }
     
     // Log the audio element state
@@ -90,31 +100,8 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
 
     // Just preload the sound if preloadOnly is true
     if (preloadOnly) {
-      console.log('[notificationSounds] Preloading sound');
-      try {
-        await new Promise((resolve, reject) => {
-          const onCanPlay = () => {
-            sound.removeEventListener('canplaythrough', onCanPlay);
-            sound.removeEventListener('error', onError);
-            resolve(true);
-          };
-          
-          const onError = (e: ErrorEvent) => {
-            sound.removeEventListener('canplaythrough', onCanPlay);
-            sound.removeEventListener('error', onError);
-            reject(new Error(`Failed to load sound: ${e.message}`));
-          };
-          
-          sound.addEventListener('canplaythrough', onCanPlay);
-          sound.addEventListener('error', onError);
-          sound.load();
-        });
-        console.log('[notificationSounds] Sound preloaded successfully');
-        return;
-      } catch (error) {
-        console.error('[notificationSounds] Preload failed:', error);
-        throw error;
-      }
+      console.log('[notificationSounds] Preloading sound only');
+      return;
     }
 
     // Set volume appropriate for mobile (slightly louder)
@@ -129,7 +116,16 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       await sound.play();
       console.log('[notificationSounds] Sound played successfully');
     } catch (error: any) {
-      console.error('[notificationSounds] Error playing sound:', error);
+      console.error('[notificationSounds] Error playing sound:', {
+        error,
+        name: error.name,
+        message: error.message,
+        audioState: {
+          readyState: sound.readyState,
+          networkState: sound.networkState,
+          error: sound.error
+        }
+      });
       
       if (error.name === 'NotAllowedError') {
         console.log('[notificationSounds] Sound blocked by browser - requires user interaction');
