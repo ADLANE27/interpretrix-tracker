@@ -13,10 +13,12 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
+import { LogOut, Menu, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 
 interface Profile {
   id: string;
@@ -52,6 +54,8 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  const { mentions, totalCount, handleMentionClick, handleMarkAsRead, handleDelete } = useUnreadMentions();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -342,15 +346,25 @@ export const InterpreterDashboard = () => {
           <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader
-                firstName={profile.first_name}
-                lastName={profile.last_name}
-                status={profile.status}
-                profilePictureUrl={profile.profile_picture_url}
+                firstName={profile?.first_name}
+                lastName={profile?.last_name}
+                status={profile?.status}
+                profilePictureUrl={profile?.profile_picture_url}
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex gap-2 w-full sm:w-auto">
+                  {profile && (
+                    <NotificationPermission interpreterId={profile.id} />
+                  )}
+                  <MentionsPopover
+                    mentions={mentions}
+                    totalCount={totalCount}
+                    onMentionClick={handleMentionClick}
+                    onMarkAsRead={handleMarkAsRead}
+                    onDelete={handleDelete}
+                  />
                   <Button
                     variant="outline"
                     size="icon"
@@ -359,14 +373,6 @@ export const InterpreterDashboard = () => {
                     title="Guide d'utilisation"
                   >
                     <BookOpen className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="flex-1 sm:flex-none"
-                    title="Notifications"
-                  >
-                    <Bell className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
