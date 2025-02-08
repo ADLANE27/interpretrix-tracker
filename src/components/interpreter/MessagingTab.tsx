@@ -30,12 +30,8 @@ export const MessagingTab = () => {
     }
   };
 
-  const toggleChannels = () => {
-    setShowChannels(!showChannels);
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-220px)] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden bg-[#F8F9FA]">
           <InterpreterChannelList 
@@ -45,7 +41,7 @@ export const MessagingTab = () => {
       )}
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 overflow-hidden bg-[#F8F9FA]">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 bg-[#F8F9FA] flex flex-col">
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
