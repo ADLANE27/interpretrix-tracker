@@ -9,6 +9,7 @@ import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
 
 interface Mission {
   id: string;
@@ -31,6 +32,7 @@ type MissionPayload = RealtimePostgresChangesPayload<InterpretationMission>;
 export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
     setMissions(initialMissions);
@@ -51,17 +53,14 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
         async (payload: MissionPayload) => {
           console.log('[MissionsCalendar] Mission update received:', payload);
           
-          // Get the current user
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) return;
 
-          // Only proceed if we have a valid payload.new
           if (!payload.new && payload.eventType !== 'DELETE') {
             console.log('[MissionsCalendar] Invalid payload received:', payload);
             return;
           }
 
-          // Fetch the updated mission to get its complete data
           if (payload.eventType !== 'DELETE') {
             const { data: updatedMission, error } = await supabase
               .from('interpretation_missions')
@@ -74,11 +73,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               return;
             }
 
-            // Update missions list based on the change type
             setMissions(currentMissions => {
               switch (payload.eventType) {
                 case 'INSERT':
-                  // Only add if it's for the current user and is accepted
                   if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
                     return [...currentMissions, updatedMission];
                   }
@@ -94,7 +91,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               }
             });
           } else if (payload.old?.id) {
-            // Handle DELETE event
             setMissions(currentMissions => 
               currentMissions.filter(mission => mission.id !== payload.old?.id)
             );
@@ -119,32 +115,26 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     };
   }, []);
 
-  // Filter for only accepted missions that have scheduled times
   const scheduledMissions = missions.filter(
     (mission) => mission.status === 'accepted' && mission.scheduled_start_time
   );
 
-  // Filter missions for the selected date
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
-    // Convert mission start time to local timezone for comparison
-    const missionDate = new Date(mission.scheduled_start_time);
-    const localMissionDate = new Date(missionDate.getTime() - (missionDate.getTimezoneOffset() * 60000));
-    
+    const missionDate = utcToZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
     const selectedDayStart = startOfDay(selectedDate);
-    const missionDayStart = startOfDay(localMissionDate);
+    const missionDayStart = startOfDay(missionDate);
     
     return selectedDayStart.getTime() === missionDayStart.getTime();
   });
 
-  // Get all dates that have missions
   const datesWithMissions = scheduledMissions
     .map((mission) => {
-      const missionDate = new Date(mission.scheduled_start_time!);
-      // Convert to local timezone for display
-      return startOfDay(new Date(missionDate.getTime() - (missionDate.getTimezoneOffset() * 60000)));
-    });
+      if (!mission.scheduled_start_time) return null;
+      return startOfDay(utcToZonedTime(new Date(mission.scheduled_start_time), userTimeZone));
+    })
+    .filter((date): date is Date => date !== null);
 
   console.log('[MissionsCalendar] Scheduled missions:', scheduledMissions);
   console.log('[MissionsCalendar] Dates with missions:', datesWithMissions);
@@ -184,12 +174,10 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             </p>
           ) : (
             missionsForSelectedDate.map((mission) => {
-              // Convert times to local timezone for display
-              const startTime = new Date(mission.scheduled_start_time!);
-              const endTime = mission.scheduled_end_time ? new Date(mission.scheduled_end_time) : null;
-              
-              const localStartTime = new Date(startTime.getTime() - (startTime.getTimezoneOffset() * 60000));
-              const localEndTime = endTime ? new Date(endTime.getTime() - (endTime.getTimezoneOffset() * 60000)) : null;
+              const startTime = utcToZonedTime(new Date(mission.scheduled_start_time!), userTimeZone);
+              const endTime = mission.scheduled_end_time 
+                ? utcToZonedTime(new Date(mission.scheduled_end_time), userTimeZone)
+                : null;
 
               return (
                 <Card key={mission.id} className="p-3">
@@ -198,9 +186,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                       <div className="flex items-center gap-2 mb-2">
                         <Clock className="h-4 w-4 text-blue-500" />
                         <span className="text-sm font-medium">
-                          {format(localStartTime, "HH:mm", { locale: fr })}
-                          {localEndTime &&
-                            ` - ${format(localEndTime, "HH:mm", { locale: fr })}`}
+                          {formatInTimeZone(startTime, userTimeZone, "HH:mm")}
+                          {endTime &&
+                            ` - ${formatInTimeZone(endTime, userTimeZone, "HH:mm")}`}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
