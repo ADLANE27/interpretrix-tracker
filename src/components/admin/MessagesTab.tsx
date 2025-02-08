@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -42,32 +41,37 @@ export const MessagesTab = () => {
   const initializeSound = () => {
     if (!soundInitialized) {
       console.log('[MessagesTab] Initializing sounds...');
-      // Create a silent audio context to enable sound on mobile
+      // Create and play a silent buffer to enable audio
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+      const buffer = audioContext.createBuffer(1, 1, 22050);
       const source = audioContext.createBufferSource();
-      source.buffer = silentBuffer;
+      source.buffer = buffer;
       source.connect(audioContext.destination);
-      source.start();
+      source.start(0);
       setSoundInitialized(true);
+      
+      // Force preload the notification sounds
+      playNotificationSound('immediate', true);
+      playNotificationSound('scheduled', true);
+      
       console.log('[MessagesTab] Sounds initialized');
     }
   };
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    initializeSound(); // Initialize sound on first user interaction
+    initializeSound();
   };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
-    initializeSound(); // Initialize sound on user interaction
+    initializeSound();
   };
 
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
-    initializeSound(); // Initialize sound on user interaction
+    initializeSound();
     toast({
       title: soundEnabled ? "Sons désactivés" : "Sons activés",
       description: soundEnabled 
@@ -94,6 +98,23 @@ export const MessagesTab = () => {
   };
 
   useEffect(() => {
+    const handleUserInteraction = () => {
+      initializeSound();
+      // Remove event listeners after first interaction
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('touchstart', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
+  useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
     const channel = supabase
       .channel('admin-missions')
@@ -104,11 +125,17 @@ export const MessagesTab = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        (payload) => {
+        async (payload) => {
           console.log('[MessagesTab] New mission update:', payload);
           
           if (payload.eventType === 'INSERT') {
             const mission = payload.new as any;
+            
+            if (!mission) {
+              console.error('[MessagesTab] Invalid mission payload');
+              return;
+            }
+
             const isImmediate = mission.mission_type === 'immediate';
             
             // Show toast notification with longer duration for mobile
@@ -116,18 +143,25 @@ export const MessagesTab = () => {
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
               variant: isImmediate ? "destructive" : "default",
-              duration: isMobile ? 5000 : 3000, // Longer duration on mobile
+              duration: isMobile ? 10000 : 5000, // Even longer duration on mobile
             });
 
             // Play sound if enabled and initialized
-            if (soundEnabled && soundInitialized) {
-              console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
-              playNotificationSound(mission.mission_type);
-            } else {
-              console.log('[MessagesTab] Sound not played:', { 
-                enabled: soundEnabled, 
-                initialized: soundInitialized 
-              });
+            if (soundEnabled) {
+              try {
+                console.log('[MessagesTab] Attempting to play sound for:', mission.mission_type);
+                await playNotificationSound(mission.mission_type);
+              } catch (error) {
+                console.error('[MessagesTab] Error playing sound:', error);
+                // Try to reinitialize sound on error
+                initializeSound();
+                // Retry playing sound once
+                try {
+                  await playNotificationSound(mission.mission_type);
+                } catch (retryError) {
+                  console.error('[MessagesTab] Retry failed:', retryError);
+                }
+              }
             }
           }
         }
@@ -140,7 +174,7 @@ export const MessagesTab = () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, soundInitialized]);
+  }, [soundEnabled, soundInitialized, toast, isMobile]);
 
   return (
     <div className={cn(
