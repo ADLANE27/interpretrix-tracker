@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -144,7 +145,12 @@ export const MissionsTab = () => {
 
           console.log('[MissionsTab] Mission details:', mission);
 
-          const isImmediate = mission.mission_type === 'immediate';
+          // Ensure mission_type is valid before using it
+          const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
+            ? mission.mission_type 
+            : 'scheduled'; // Default to scheduled if invalid type
+
+          const isImmediate = missionType === 'immediate';
             
           console.log('[MissionsTab] Showing toast notification');
           toast({
@@ -156,13 +162,13 @@ export const MissionsTab = () => {
 
           if (soundEnabled) {
             try {
-              console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-              await playNotificationSound(mission.mission_type);
+              console.log('[MissionsTab] Playing notification sound for:', missionType);
+              await playNotificationSound(missionType);
             } catch (error) {
               console.error('[MissionsTab] Error playing sound:', error);
               initializeSound();
               try {
-                await playNotificationSound(mission.mission_type);
+                await playNotificationSound(missionType);
               } catch (retryError) {
                 console.error('[MissionsTab] Retry failed:', retryError);
               }
