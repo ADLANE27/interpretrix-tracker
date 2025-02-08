@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -25,23 +24,16 @@ export async function registerServiceWorker() {
 
   try {
     console.log('[Push Notifications] Starting service worker registration');
-    
-    // First unregister any existing service workers to ensure clean slate
-    const existingRegs = await navigator.serviceWorker.getRegistrations();
-    for (let reg of existingRegs) {
-      console.log('[Push Notifications] Unregistering existing service worker');
-      await reg.unregister();
-    }
-    console.log('[Push Notifications] Unregistered existing service workers');
 
-    // Register new service worker with proper scope and cache control
-    console.log('[Push Notifications] Registering new service worker');
+    // Register service worker with explicit scope '/'
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
+      type: 'module',
       updateViaCache: 'none'
     });
     
     console.log('[Push Notifications] Service Worker registered:', registration);
+    console.log('[Push Notifications] Service Worker scope:', registration.scope);
     
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
@@ -193,4 +185,3 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
     throw error;
   }
 }
-

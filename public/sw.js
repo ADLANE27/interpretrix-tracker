@@ -1,6 +1,6 @@
 
 // Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.6';
+const SW_VERSION = '1.0.7';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling with detailed logging
@@ -60,13 +60,12 @@ self.addEventListener('push', event => {
           }
 
           console.log('[Service Worker] Showing notification with options:', JSON.stringify(options, null, 2));
-          const notification = await self.registration.showNotification(
+          await self.registration.showNotification(
             data.title || 'Nouvelle mission disponible',
             options
           );
           
           console.log('[Service Worker] Notification shown successfully');
-          return notification;
         } catch (error) {
           console.error('[Service Worker] Error showing notification:', error);
           console.error('[Service Worker] Error details:', {
@@ -136,15 +135,6 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('install', event => {
   console.log(`[Service Worker ${SW_VERSION}] Installing`);
   self.skipWaiting();
-  event.waitUntil(
-    caches.open('v1').then(cache => {
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/favicon.ico'
-      ]);
-    })
-  );
 });
 
 self.addEventListener('activate', event => {
@@ -164,3 +154,4 @@ self.addEventListener('activate', event => {
     ])
   );
 });
+
