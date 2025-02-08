@@ -513,78 +513,80 @@ export const InterpreterChat = ({
         onClearFilters={onClearFilters}
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative h-full">
         <div className={cn(
-          "flex-1 flex flex-col relative",
+          "flex-1 flex flex-col relative h-full",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 pb-[160px]" // Added padding to ensure visibility of messages above input
+            className="flex-1 pb-[160px] h-full" 
             onScrollCapture={handleScroll}
           >
-            {filteredMessages.map(message => (
-              <div 
-                key={message.id} 
-                id={`message-${message.id}`}
-                className="group hover:bg-gray-50 rounded-lg p-3 transition-colors duration-200 mb-2"
-              >
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarFallback className="bg-interpreter-navy text-white">
-                      {message.sender.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{message.sender.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(message.timestamp, 'HH:mm')}
-                      </span>
-                    </div>
-                    {message.parent_message_id && (
-                      <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-muted-foreground">
-                        <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+            <div className="p-4">
+              {filteredMessages.map(message => (
+                <div 
+                  key={message.id} 
+                  id={`message-${message.id}`}
+                  className="group hover:bg-gray-50 rounded-lg p-3 transition-colors duration-200 mb-2"
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarFallback className="bg-interpreter-navy text-white">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
                       </div>
+                      {message.parent_message_id && (
+                        <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-muted-foreground">
+                          <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                        </div>
+                      )}
+                      <div className="group">
+                        <div className="flex items-start gap-2">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{message.content}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleThreadClick(message)}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            {threadCounts[message.id] > 0 && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                                {threadCounts[message.id]}
+                              </span>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    {currentUserId === message.sender.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMessage(message.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     )}
-                    <div className="group">
-                      <div className="flex items-start gap-2">
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{message.content}</p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleThreadClick(message)}
-                        >
-                          <MessageSquare className="h-4 w-4 mr-1" />
-                          {threadCounts[message.id] > 0 && (
-                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                              {threadCounts[message.id]}
-                            </span>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
                   </div>
-                  {currentUserId === message.sender.id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMessage(message.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </ScrollArea>
 
           {showScrollButton && (
             <Button
               onClick={scrollToBottom}
-              className="absolute bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
               size="icon"
               variant="outline"
             >
