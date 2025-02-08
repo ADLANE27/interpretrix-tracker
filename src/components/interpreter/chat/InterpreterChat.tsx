@@ -500,7 +500,7 @@ export const InterpreterChat = ({
   return (
     <div className={cn(
       "flex flex-col",
-      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-200px)]",
       "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
       <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
@@ -523,8 +523,7 @@ export const InterpreterChat = ({
           <ScrollArea 
             ref={scrollAreaRef}
             className={cn(
-              "flex-1 h-full",
-              isFullScreen ? "pb-[120px]" : "pb-[160px]"
+              "flex-1 h-full pb-[120px]"
             )}
             onScrollCapture={handleScroll}
           >
@@ -606,7 +605,7 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
+          <div className="absolute bottom-4 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
             <div className="p-4 max-w-[95%] mx-auto">
               <div className="chat-input-container">
                 {replyingTo && (
