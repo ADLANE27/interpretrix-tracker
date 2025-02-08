@@ -1,15 +1,54 @@
 
-const immediateSound = new Audio('/sounds/immediate-mission.mp3');
-const scheduledSound = new Audio('/sounds/scheduled-mission.mp3');
+import { supabase } from "@/integrations/supabase/client";
 
-// Pre-load sounds
-immediateSound.load();
-scheduledSound.load();
+let immediateSound: HTMLAudioElement | null = null;
+let scheduledSound: HTMLAudioElement | null = null;
+
+const initializeSound = async (type: 'immediate' | 'scheduled') => {
+  try {
+    console.log(`[notificationSounds] Initializing ${type} sound`);
+    const fileName = `${type}-mission.mp3`;
+    
+    // Get public URL for the sound file
+    const { data: { publicUrl }, error: urlError } = supabase
+      .storage
+      .from('notification_sounds')
+      .getPublicUrl(fileName);
+      
+    if (urlError) {
+      console.error('[notificationSounds] Error getting public URL:', urlError);
+      throw urlError;
+    }
+
+    console.log(`[notificationSounds] Loading sound from URL: ${publicUrl}`);
+    
+    const audio = new Audio(publicUrl);
+    audio.load();
+    
+    return audio;
+  } catch (error) {
+    console.error(`[notificationSounds] Error initializing ${type} sound:`, error);
+    throw error;
+  }
+};
 
 export const playNotificationSound = async (type: 'immediate' | 'scheduled', preloadOnly: boolean = false) => {
   try {
     console.log('[notificationSounds] Attempting to play sound for:', type);
+    
+    // Initialize sound if not already done
+    if (!immediateSound && type === 'immediate') {
+      immediateSound = await initializeSound('immediate');
+    }
+    if (!scheduledSound && type === 'scheduled') {
+      scheduledSound = await initializeSound('scheduled');
+    }
+    
     const sound = type === 'immediate' ? immediateSound : scheduledSound;
+    
+    if (!sound) {
+      throw new Error('Sound not initialized');
+    }
     
     // Log the audio element state
     console.log('[notificationSounds] Audio state:', {
@@ -46,15 +85,6 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     // Play with proper error handling and awaiting
     try {
       console.log('[notificationSounds] Starting playback');
-      // Force a load before playing
-      sound.load();
-      
-      // Check if audio file exists
-      const response = await fetch(sound.src);
-      if (!response.ok) {
-        throw new Error(`Sound file not found: ${sound.src}`);
-      }
-      
       await sound.play();
       console.log('[notificationSounds] Sound played successfully');
     } catch (error: any) {
