@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { CheckSquare, XSquare, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { playNotificationSound } from "@/utils/notificationSounds";
 
 interface Mission {
   id: string;
@@ -30,6 +30,30 @@ export const MissionsTab = () => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundInitialized, setSoundInitialized] = useState(false);
+
+  const initializeSound = () => {
+    if (!soundInitialized) {
+      console.log('[MissionsTab] Initializing sounds...');
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        setSoundInitialized(true);
+        
+        playNotificationSound('immediate', true).catch(console.error);
+        playNotificationSound('scheduled', true).catch(console.error);
+        
+        console.log('[MissionsTab] Sounds initialized successfully');
+      } catch (error) {
+        console.error('[MissionsTab] Error initializing sounds:', error);
+      }
+    }
+  };
 
   const fetchMissions = async () => {
     try {
@@ -230,32 +254,52 @@ export const MissionsTab = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        (payload) => {
+        async (payload) => {
           console.log('[MissionsTab] Mission update received:', payload);
-          fetchMissions();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'mission_notifications'
-        },
-        (payload) => {
-          console.log('[MissionsTab] Notification update received:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const mission = payload.new as any;
+            
+            if (!mission) {
+              console.error('[MissionsTab] Invalid mission payload');
+              return;
+            }
+
+            const isImmediate = mission.mission_type === 'immediate';
+            
+            console.log('[MissionsTab] Showing toast notification');
+            toast({
+              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+              variant: isImmediate ? "destructive" : "default",
+              duration: 10000,
+            });
+
+            if (soundEnabled) {
+              try {
+                console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                await playNotificationSound(mission.mission_type);
+              } catch (error) {
+                console.error('[MissionsTab] Error playing sound:', error);
+                // Try to reinitialize sound on error
+                initializeSound();
+                try {
+                  await playNotificationSound(mission.mission_type);
+                } catch (retryError) {
+                  console.error('[MissionsTab] Retry failed:', retryError);
+                }
+              }
+            }
+          }
+          
           fetchMissions();
         }
       )
       .subscribe((status) => {
         console.log('[MissionsTab] Subscription status:', status);
         
-        if (status === 'SUBSCRIBED') {
-          console.log('[MissionsTab] Successfully subscribed to changes');
-        }
-        
         if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionsTab] Error subscribing to changes');
+          console.error('[MissionsTab] Error subscribing to mission updates');
           toast({
             title: "Erreur",
             description: "Impossible de recevoir les mises à jour en temps réel",
@@ -264,11 +308,25 @@ export const MissionsTab = () => {
         }
       });
 
+    // Initialize sound on first user interaction
+    const handleUserInteraction = () => {
+      console.log('[MissionsTab] User interaction detected, initializing sound');
+      initializeSound();
+      // Remove event listeners after first interaction
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('touchstart', handleUserInteraction);
+
     return () => {
       console.log('[MissionsTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, []);
+  }, [soundEnabled, toast]);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
