@@ -1,6 +1,6 @@
 
 /*
-  Content-Security-Policy: frame-ancestors 'self'; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self'
+  Content-Security-Policy: frame-ancestors 'self'; connect-src 'self' https://*.supabase.co https://*.netlify.app wss://*.supabase.co; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' data: blob:
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
@@ -10,3 +10,4 @@
   Cache-Control: no-cache
   Service-Worker-Allowed: /
   Content-Type: application/javascript
+
