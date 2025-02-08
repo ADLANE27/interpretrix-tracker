@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +27,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const handleEnableNotifications = async () => {
     try {
       setIsSubscribing(true);
-      console.log('[Notifications] Requesting permission...');
+      console.log('[Notifications] Starting enable process...');
 
       // First request notification permission
       const permission = await Notification.requestPermission();
@@ -69,6 +70,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   const handleDisableNotifications = async () => {
     try {
+      console.log('[Notifications] Starting disable process...');
       await unsubscribeFromPushNotifications(interpreterId);
       setPermission('default');
       

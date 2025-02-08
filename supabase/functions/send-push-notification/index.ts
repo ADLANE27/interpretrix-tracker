@@ -31,7 +31,7 @@ serve(async (req) => {
 
     // Initialize web-push with VAPID details
     webPush.setVapidDetails(
-      'mailto:debassi.adlane@gmail.com',
+      'mailto:your-email@example.com', // Update this email
       vapidPublicKey,
       vapidPrivateKey
     );

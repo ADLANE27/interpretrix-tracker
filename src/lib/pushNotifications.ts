@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
+  console.log('[Push Notifications] Converting VAPID key to Uint8Array');
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
     .replace(/\-/g, '+')
@@ -28,17 +29,19 @@ export async function registerServiceWorker() {
     // First unregister any existing service workers to ensure clean slate
     const existingRegs = await navigator.serviceWorker.getRegistrations();
     for (let reg of existingRegs) {
+      console.log('[Push Notifications] Unregistering existing service worker');
       await reg.unregister();
     }
     console.log('[Push Notifications] Unregistered existing service workers');
 
     // Register new service worker with proper scope and cache control
+    console.log('[Push Notifications] Registering new service worker');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       updateViaCache: 'none'
     });
     
-    console.log('[Push Notifications] Service Worker registered successfully:', registration);
+    console.log('[Push Notifications] Service Worker registered:', registration);
     
     // Wait for the service worker to be ready
     await navigator.serviceWorker.ready;
@@ -63,6 +66,7 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     const registration = await registerServiceWorker();
     
     // Request notification permission with proper error handling
+    console.log('[Push Notifications] Requesting notification permission');
     const permission = await Notification.requestPermission();
     console.log('[Push Notifications] Permission status:', permission);
     
@@ -71,97 +75,74 @@ export async function subscribeToPushNotifications(interpreterId: string) {
       throw new Error('Notification permission denied');
     }
 
-    // Get VAPID public key with improved retry logic and error handling
-    let retries = 3;
-    let vapidError;
-    let delay = 1000; // Start with 1 second delay
-    
-    while (retries > 0) {
-      try {
-        console.log(`[Push Notifications] Attempting to get VAPID key (${retries} retries left)`);
-        
-        const { data, error } = await supabase.functions.invoke(
-          'get-vapid-public-key',
-          { 
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        if (error) {
-          console.error('[Push Notifications] Supabase function error:', error);
-          throw error;
-        }
-        if (!data?.vapidPublicKey) {
-          console.error('[Push Notifications] No VAPID key in response:', data);
-          throw new Error('No VAPID key received');
-        }
-        
-        console.log('[Push Notifications] Successfully retrieved VAPID key');
-        
-        // Convert VAPID key
-        const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
-
-        // Check for existing subscription and unsubscribe if found
-        const existingSubscription = await registration.pushManager.getSubscription();
-        if (existingSubscription) {
-          console.log('[Push Notifications] Found existing subscription, unsubscribing...');
-          await existingSubscription.unsubscribe();
-        }
-
-        // Subscribe to push notifications with proper error handling
-        console.log('[Push Notifications] Creating new push subscription...');
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey
-        });
-
-        console.log('[Push Notifications] Push subscription created successfully');
-
-        const subscriptionJSON = subscription.toJSON();
-
-        // Store subscription in database with proper error handling
-        const { error: insertError } = await supabase
-          .from('push_subscriptions')
-          .upsert({
-            interpreter_id: interpreterId,
-            endpoint: subscriptionJSON.endpoint,
-            p256dh: subscriptionJSON.keys.p256dh,
-            auth: subscriptionJSON.keys.auth,
-            user_agent: navigator.userAgent,
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'interpreter_id,endpoint'
-          });
-
-        if (insertError) {
-          console.error('[Push Notifications] Error storing subscription:', insertError);
-          throw insertError;
-        }
-
-        console.log('[Push Notifications] Subscription stored successfully');
-        return true;
-      } catch (error) {
-        vapidError = error;
-        retries--;
-        console.error(`[Push Notifications] Attempt failed (${retries} retries left):`, error);
-        
-        if (retries > 0) {
-          console.log(`[Push Notifications] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 2; // Exponential backoff
-        }
+    // Get VAPID public key
+    console.log('[Push Notifications] Retrieving VAPID public key');
+    const { data, error } = await supabase.functions.invoke(
+      'get-vapid-public-key',
+      { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       }
+    );
+    
+    if (error) {
+      console.error('[Push Notifications] Error getting VAPID key:', error);
+      throw error;
     }
     
-    if (vapidError) {
-      console.error('[Push Notifications] Final error after all retries:', vapidError);
-      throw vapidError;
+    if (!data?.vapidPublicKey) {
+      console.error('[Push Notifications] No VAPID key in response:', data);
+      throw new Error('No VAPID key received');
     }
+    
+    console.log('[Push Notifications] Successfully retrieved VAPID key');
+    
+    // Convert VAPID key
+    const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
+
+    // Check for existing subscription and unsubscribe if found
+    const existingSubscription = await registration.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('[Push Notifications] Found existing subscription, unsubscribing...');
+      await existingSubscription.unsubscribe();
+    }
+
+    // Subscribe to push notifications
+    console.log('[Push Notifications] Creating new push subscription...');
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey
+    });
+
+    console.log('[Push Notifications] Push subscription created:', subscription);
+
+    const subscriptionJSON = subscription.toJSON();
+    console.log('[Push Notifications] Subscription JSON:', subscriptionJSON);
+
+    // Store subscription in database
+    console.log('[Push Notifications] Storing subscription in database');
+    const { error: insertError } = await supabase
+      .from('push_subscriptions')
+      .upsert({
+        interpreter_id: interpreterId,
+        endpoint: subscriptionJSON.endpoint,
+        p256dh: subscriptionJSON.keys.p256dh,
+        auth: subscriptionJSON.keys.auth,
+        user_agent: navigator.userAgent,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'interpreter_id,endpoint'
+      });
+
+    if (insertError) {
+      console.error('[Push Notifications] Error storing subscription:', insertError);
+      throw insertError;
+    }
+
+    console.log('[Push Notifications] Subscription stored successfully');
+    return true;
   } catch (error) {
     console.error('[Push Notifications] Critical error in subscription process:', error);
     console.error('[Push Notifications] Error details:', {
@@ -184,7 +165,7 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
       console.log('[Push Notifications] Found active subscription, unsubscribing...');
       await subscription.unsubscribe();
       
-      // Remove from database with proper error handling
+      console.log('[Push Notifications] Removing subscription from database');
       const { error } = await supabase
         .from('push_subscriptions')
         .delete()
@@ -212,3 +193,4 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
     throw error;
   }
 }
+
