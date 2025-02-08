@@ -56,6 +56,53 @@ serve(async (req) => {
     }
 
     console.log('[Push Notification] Fetching active subscriptions for interpreters:', message.interpreterIds);
+    
+    // First, verify the mission exists and interpreters are notified
+    if (message.data?.mission_id) {
+      const { data: missionData, error: missionError } = await supabase
+        .from('interpretation_missions')
+        .select('notified_interpreters')
+        .eq('id', message.data.mission_id)
+        .single();
+
+      if (missionError) {
+        console.error('[Push Notification] Error fetching mission:', missionError);
+        throw missionError;
+      }
+
+      console.log('[Push Notification] Mission data:', missionData);
+
+      // If no interpreters are in the notified_interpreters array, check mission_notifications
+      if (!missionData.notified_interpreters?.length) {
+        const { data: notifications, error: notificationError } = await supabase
+          .from('mission_notifications')
+          .select('interpreter_id')
+          .eq('mission_id', message.data.mission_id)
+          .eq('status', 'pending');
+
+        if (notificationError) {
+          console.error('[Push Notification] Error fetching notifications:', notificationError);
+          throw notificationError;
+        }
+
+        if (notifications?.length) {
+          // Update the mission's notified_interpreters array
+          const interpreterIds = notifications.map(n => n.interpreter_id);
+          const { error: updateError } = await supabase
+            .from('interpretation_missions')
+            .update({ notified_interpreters: interpreterIds })
+            .eq('id', message.data.mission_id);
+
+          if (updateError) {
+            console.error('[Push Notification] Error updating mission:', updateError);
+            throw updateError;
+          }
+
+          console.log('[Push Notification] Updated mission notified_interpreters:', interpreterIds);
+        }
+      }
+    }
+
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
       .select('*')

@@ -372,13 +372,15 @@ export const MissionManagement = () => {
       const notificationExpiry = new Date();
       notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
+      console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
+
       const newMissionData = {
         source_language: sourceLanguage,
         target_language: targetLanguage,
         estimated_duration: calculatedDuration,
         status: "awaiting_acceptance",
         notification_expiry: notificationExpiry.toISOString(),
-        notified_interpreters: selectedInterpreters,
+        notified_interpreters: selectedInterpreters, // This is critical
         mission_type: missionType,
         scheduled_start_time: utcStartTime,
         scheduled_end_time: utcEndTime
@@ -408,8 +410,8 @@ export const MissionManagement = () => {
 
       if (notificationError) throw notificationError;
 
-      console.log('[MissionManagement] Notifications created successfully');
-
+      console.log('[MissionManagement] Notifications created successfully for interpreters:', selectedInterpreters);
+      
       // Send push notifications to all selected interpreters
       console.log('[MissionManagement] Sending push notifications to interpreters:', selectedInterpreters);
       
