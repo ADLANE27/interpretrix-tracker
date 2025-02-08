@@ -112,53 +112,85 @@ export const MissionsTab = () => {
   const setupRealtimeSubscription = () => {
     console.log('[MissionsTab] Setting up realtime subscription');
     
-    const channel = supabase
-      .channel('interpreter-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        (payload) => {
-          console.log('[MissionsTab] Mission update received:', payload);
-          fetchMissions();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'mission_notifications'
-        },
-        (payload) => {
-          console.log('[MissionsTab] Notification update received:', payload);
-          fetchMissions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionsTab] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MissionsTab] Successfully subscribed to changes');
-        }
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionsTab] Error subscribing to changes');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
+    try {
+      const channel = supabase
+        .channel('interpreter-missions')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'interpretation_missions'
+          },
+          (payload) => {
+            console.log('[MissionsTab] Mission update received:', payload);
+            fetchMissions();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'mission_notifications'
+          },
+          (payload) => {
+            console.log('[MissionsTab] Notification update received:', payload);
+            fetchMissions();
+          }
+        )
+        .subscribe(async (status) => {
+          console.log('[MissionsTab] Subscription status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            console.log('[MissionsTab] Successfully subscribed to changes');
+            // Vérifier l'état de la connexion
+            const { error: pingError } = await supabase.rpc('ping');
+            if (pingError) {
+              console.error('[MissionsTab] Error pinging database:', pingError);
+              toast({
+                title: "Erreur de connexion",
+                description: "La connexion temps réel n'a pas pu être établie. Veuillez rafraîchir la page.",
+                variant: "destructive",
+                duration: 10000,
+              });
+            }
+          }
+          
+          if (status === 'CHANNEL_ERROR') {
+            console.error('[MissionsTab] Error subscribing to changes');
+            toast({
+              title: "Erreur de connexion",
+              description: "Impossible de recevoir les mises à jour en temps réel. Veuillez rafraîchir la page.",
+              variant: "destructive",
+              duration: 10000,
+            });
+          }
 
-    return () => {
-      console.log('[MissionsTab] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
+          if (status === 'TIMED_OUT') {
+            console.error('[MissionsTab] Subscription timed out');
+            toast({
+              title: "Erreur de connexion",
+              description: "La connexion temps réel a expiré. Veuillez rafraîchir la page.",
+              variant: "destructive",
+              duration: 10000,
+            });
+          }
+        });
+
+      return () => {
+        console.log('[MissionsTab] Cleaning up realtime subscription');
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error('[MissionsTab] Error setting up realtime subscription:', error);
+      toast({
+        title: "Erreur de connexion",
+        description: "Une erreur est survenue lors de la configuration des mises à jour en temps réel.",
+        variant: "destructive",
+        duration: 10000,
+      });
+    }
   };
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
@@ -243,93 +275,22 @@ export const MissionsTab = () => {
 
   useEffect(() => {
     console.log('[MissionsTab] Component mounted');
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[MissionsTab] Auth state changed:', event, session?.user?.id);
+      if (event === 'SIGNED_IN') {
+        console.log('[MissionsTab] User signed in, setting up subscriptions');
+        setupRealtimeSubscription();
+      }
+    });
+
+    // Initial setup
     fetchMissions();
+    const cleanup = setupRealtimeSubscription();
     
-    const channel = supabase
-      .channel('interpreter-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        async (payload) => {
-          console.log('[MissionsTab] Mission update received:', payload);
-          console.log('[MissionsTab] Event type:', payload.eventType);
-          
-          if (payload.eventType === 'INSERT') {
-            const mission = payload.new as any;
-            
-            if (!mission) {
-              console.error('[MissionsTab] Invalid mission payload');
-              return;
-            }
-
-            console.log('[MissionsTab] New mission data:', mission);
-            console.log('[MissionsTab] Notified interpreters:', mission.notified_interpreters);
-
-            const { data: { user } } = await supabase.auth.getUser();
-            console.log('[MissionsTab] Current user:', user?.id);
-
-            const isTargetedInterpreter = mission.notified_interpreters?.includes(user?.id);
-            console.log('[MissionsTab] Is targeted interpreter:', isTargetedInterpreter);
-
-            if (!isTargetedInterpreter) {
-              console.log('[MissionsTab] User not in notified interpreters list, skipping notification');
-              return;
-            }
-
-            const isImmediate = mission.mission_type === 'immediate';
-            
-            console.log('[MissionsTab] Showing toast notification');
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
-
-            if (soundEnabled) {
-              try {
-                console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                await playNotificationSound(mission.mission_type);
-              } catch (error) {
-                console.error('[MissionsTab] Error playing sound:', error);
-                // Try to reinitialize sound on error
-                initializeSound();
-                try {
-                  await playNotificationSound(mission.mission_type);
-                } catch (retryError) {
-                  console.error('[MissionsTab] Retry failed:', retryError);
-                }
-              }
-            } else {
-              console.log('[MissionsTab] Sound is disabled, skipping sound notification');
-            }
-          }
-          
-          fetchMissions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionsTab] Subscription status:', status);
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionsTab] Error subscribing to mission updates');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
-
     // Initialize sound on first user interaction
     const handleUserInteraction = () => {
       console.log('[MissionsTab] User interaction detected, initializing sound');
       initializeSound();
-      // Remove event listeners after first interaction
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
@@ -338,12 +299,13 @@ export const MissionsTab = () => {
     document.addEventListener('touchstart', handleUserInteraction);
 
     return () => {
-      console.log('[MissionsTab] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
+      console.log('[MissionsTab] Component unmounting');
+      subscription.unsubscribe();
+      cleanup?.();
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, [soundEnabled, toast]);
+  }, [soundEnabled]);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
