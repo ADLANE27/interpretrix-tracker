@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -333,14 +332,13 @@ export const InterpreterDashboard = () => {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    setIsSheetOpen(false); // Close the sheet when changing tabs
+    setIsSheetOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
-          {/* Header Section */}
           <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader
@@ -384,7 +382,6 @@ export const InterpreterDashboard = () => {
             </div>
           </div>
 
-          {/* Status Manager Section */}
           <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
             <StatusManager
               currentStatus={profile.status}
@@ -392,7 +389,6 @@ export const InterpreterDashboard = () => {
             />
           </div>
 
-          {/* Main Content Section */}
           <Card className="shadow-sm">
             {isMobile ? (
               <div className="flex items-center justify-between p-4 border-b">
@@ -423,20 +419,21 @@ export const InterpreterDashboard = () => {
                 </Sheet>
               </div>
             ) : (
-              <div className="border-b overflow-x-auto">
-                <TabsList className="w-full justify-start h-12 bg-transparent p-0">
-                  {tabItems.map((tab) => (
-                    <TabsTrigger 
-                      key={tab.value}
-                      value={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </div>
+              <Tabs value={activeTab} onValueChange={handleTabChange}>
+                <div className="border-b overflow-x-auto">
+                  <TabsList className="w-full justify-start h-12 bg-transparent p-0">
+                    {tabItems.map((tab) => (
+                      <TabsTrigger 
+                        key={tab.value}
+                        value={tab.value}
+                        className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
+                      >
+                        {tab.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+              </Tabs>
             )}
 
             <div className="p-2 sm:p-6 min-h-[600px]">
@@ -449,7 +446,6 @@ export const InterpreterDashboard = () => {
             </div>
           </Card>
 
-          {/* Hidden file input for profile picture */}
           <input
             type="file"
             ref={fileInputRef}
@@ -458,7 +454,6 @@ export const InterpreterDashboard = () => {
             onChange={handleProfilePictureUpload}
           />
 
-          {/* Footer */}
           <footer className="text-center text-sm text-gray-500 pt-4">
             © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
           </footer>
