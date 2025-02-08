@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -12,7 +11,8 @@ import {
   Trash2,
   ArrowRight,
   MessageSquare,
-  X
+  X,
+  ArrowDown
 } from 'lucide-react';
 import { 
   Popover, 
@@ -467,6 +467,33 @@ export const InterpreterChat = ({
     fetchThreadCounts();
   }, [messages]);
 
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (event: any) => {
+    const element = event.target;
+    const scrollPosition = element.scrollTop;
+    const maxScroll = element.scrollHeight - element.clientHeight;
+    const threshold = 500; // Show button when user has scrolled up 500px from bottom
+    
+    setShowScrollButton(maxScroll - scrollPosition > threshold);
+  };
+
+  const scrollToBottom = () => {
+    if (scrollAreaRef.current) {
+      const scrollableElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollableElement) {
+        scrollableElement.scrollTop = scrollableElement.scrollHeight;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (messages && messages.length > 0 && !showScrollButton) {
+      scrollToBottom();
+    }
+  }, [messages]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-300px)]">
       <div className="flex items-center justify-between p-3 border-b bg-white">
@@ -484,15 +511,18 @@ export const InterpreterChat = ({
         onFiltersChange={onFiltersChange}
         users={channelUsers}
         onClearFilters={onClearFilters}
-        className="p-3 bg-gray-50 border-b"
       />
 
       <div className="flex flex-1 overflow-hidden">
         <div className={cn(
-          "flex-1 flex flex-col",
+          "flex-1 flex flex-col relative",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
-          <ScrollArea className="flex-1 px-4">
+          <ScrollArea 
+            ref={scrollAreaRef}
+            className="flex-1 px-4"
+            onScrollCapture={handleScroll}
+          >
             {filteredMessages.map(message => (
               <div 
                 key={message.id} 
@@ -550,6 +580,17 @@ export const InterpreterChat = ({
               </div>
             ))}
           </ScrollArea>
+
+          {showScrollButton && (
+            <Button
+              onClick={scrollToBottom}
+              className="absolute bottom-20 right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              size="icon"
+              variant="outline"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          )}
 
           <div className="border-t p-4 bg-white">
             <div className="relative rounded-lg border bg-background">
