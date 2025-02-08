@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -16,9 +15,10 @@ import { ChatFilters } from './ChatFilters';
 
 interface ChatProps {
   channelId: string;
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
 }
 
-export const Chat = ({ channelId }: ChatProps) => {
+export const Chat = ({ channelId, onScroll }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -339,7 +339,10 @@ export const Chat = ({ channelId }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
-      <ScrollArea className="flex-1 px-6 py-4 overflow-y-auto">
+      <ScrollArea 
+        className="flex-1 px-6 py-4 overflow-y-auto chat-messages-container"
+        onScroll={onScroll}
+      >
         <div className="space-y-6">
           {filteredMessages.map(message => (
             <div 

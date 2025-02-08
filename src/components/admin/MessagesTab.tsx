@@ -7,7 +7,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ export const MessagesTab = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [showChannels, setShowChannels] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Check if user is admin
   const { data: isAdmin } = useQuery({
@@ -38,6 +39,22 @@ export const MessagesTab = () => {
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
+  };
+
+  const scrollToBottom = () => {
+    const chatContainer = document.querySelector('.chat-messages-container');
+    if (chatContainer) {
+      chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
   };
 
   return (
@@ -63,7 +80,17 @@ export const MessagesTab = () => {
           "p-4 relative",
           isFullScreen ? "w-full h-full" : "md:col-span-2"
         )}>
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-10 flex gap-2">
+            {showScrollButton && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={scrollToBottom}
+                className="bg-white/80 hover:bg-white shadow-sm hover:shadow border border-gray-100"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -83,7 +110,7 @@ export const MessagesTab = () => {
               )}
             </Button>
           </div>
-          <Chat channelId={selectedChannelId} />
+          <Chat channelId={selectedChannelId} onScroll={handleScroll} />
         </Card>
       )}
       
