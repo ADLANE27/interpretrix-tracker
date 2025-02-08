@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -87,14 +87,31 @@ export const MessagingTab = () => {
           "hover:shadow-xl rounded-xl",
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
-          <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            {/* Notification Bell */}
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
               onMentionClick={handleMentionClick}
               onMarkAsRead={markMentionAsRead}
               onDelete={deleteMention}
-            />
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "transition-all duration-200",
+                  "bg-white/80 hover:bg-white shadow-sm hover:shadow",
+                  "border border-gray-100",
+                  "rounded-lg",
+                  totalUnreadCount > 0 && "text-purple-500"
+                )}
+              >
+                <Bell className="h-4 w-4" />
+              </Button>
+            </MentionsPopover>
+
+            {/* Fullscreen Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -132,3 +149,4 @@ export const MessagingTab = () => {
     </div>
   );
 };
+
