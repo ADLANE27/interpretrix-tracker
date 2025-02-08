@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -467,9 +468,9 @@ export const InterpreterChat = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-400px)]">
-      <div className="flex items-center justify-between p-2 sm:px-4 sm:py-2 border-b">
-        <h2 className="text-base sm:text-lg font-semibold text-interpreter-navy">Messages</h2>
+    <div className="flex flex-col h-[calc(100vh-300px)]">
+      <div className="flex items-center justify-between p-3 border-b bg-white">
+        <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
         <MentionsPopover
           mentions={unreadMentions}
           totalCount={totalUnreadCount}
@@ -483,7 +484,7 @@ export const InterpreterChat = ({
         onFiltersChange={onFiltersChange}
         users={channelUsers}
         onClearFilters={onClearFilters}
-        className="p-2 sm:p-4"
+        className="p-3 bg-gray-50 border-b"
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -491,38 +492,43 @@ export const InterpreterChat = ({
           "flex-1 flex flex-col",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
-          <ScrollArea className="flex-1 px-2 sm:px-4">
+          <ScrollArea className="flex-1 px-4">
             {filteredMessages.map(message => (
               <div 
                 key={message.id} 
                 id={`message-${message.id}`}
-                className="mb-2 sm:mb-4 group transition-colors duration-300"
+                className="group hover:bg-gray-50 rounded-lg p-3 transition-colors duration-200 mb-2"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm sm:text-base">{message.sender.name}</span>
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-interpreter-navy text-white">
+                      {message.sender.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{message.sender.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {format(message.timestamp, 'HH:mm')}
                       </span>
                     </div>
                     {message.parent_message_id && (
-                      <div className="ml-4 pl-2 border-l-2 border-gray-200 text-xs sm:text-sm text-muted-foreground mb-1">
+                      <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-muted-foreground">
                         <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                       </div>
                     )}
-                    <div className="mt-1 group">
+                    <div className="group">
                       <div className="flex items-start gap-2">
-                        <p className="flex-1 text-sm sm:text-base break-words">{message.content}</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{message.content}</p>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => handleThreadClick(message)}
                         >
-                          <MessageSquare className="h-4 w-4" />
+                          <MessageSquare className="h-4 w-4 mr-1" />
                           {threadCounts[message.id] > 0 && (
-                            <span className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
                               {threadCounts[message.id]}
                             </span>
                           )}
@@ -533,9 +539,9 @@ export const InterpreterChat = ({
                   {currentUserId === message.sender.id && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => deleteMessage(message.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
@@ -545,11 +551,11 @@ export const InterpreterChat = ({
             ))}
           </ScrollArea>
 
-          <div className="border-t p-2 sm:p-4 bg-white">
-            <div className="relative">
+          <div className="border-t p-4 bg-white">
+            <div className="relative rounded-lg border bg-background">
               {replyingTo && (
-                <div className="mb-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                <div className="px-3 py-2 bg-gray-50 border-b rounded-t-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <ArrowRight className="h-4 w-4" />
                     <span>En réponse à {replyingTo.sender.name}</span>
                   </div>
@@ -557,9 +563,8 @@ export const InterpreterChat = ({
                     variant="ghost"
                     size="sm"
                     onClick={cancelReply}
-                    className="text-xs sm:text-sm"
                   >
-                    Annuler
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               )}
@@ -569,7 +574,7 @@ export const InterpreterChat = ({
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
                 placeholder="Écrivez votre message..."
-                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base pr-24"
+                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg"
               />
 
               <MentionSuggestions
@@ -591,7 +596,7 @@ export const InterpreterChat = ({
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:bg-gray-100"
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
@@ -601,7 +606,7 @@ export const InterpreterChat = ({
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 hover:bg-gray-100"
                     >
                       <Smile className="h-4 w-4" />
                     </Button>
@@ -618,7 +623,7 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="text-sm sm:text-base h-8"
+                  className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer
@@ -630,8 +635,8 @@ export const InterpreterChat = ({
 
         {selectedThread && (
           <div className="fixed inset-0 z-50 bg-white lg:static lg:w-1/3 lg:border-l flex flex-col">
-            <div className="p-2 sm:p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold text-sm sm:text-base">Conversation</h3>
+            <div className="p-3 border-b flex items-center justify-between bg-gray-50">
+              <h3 className="font-semibold">Conversation</h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -642,49 +647,65 @@ export const InterpreterChat = ({
               </Button>
             </div>
 
-            <div className="p-2 sm:p-4 bg-gray-50">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold text-sm sm:text-base">{selectedThread.sender.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {format(selectedThread.timestamp, 'HH:mm')}
-                </span>
+            <div className="p-3 bg-gray-50 border-b">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-interpreter-navy text-white">
+                    {selectedThread.sender.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">{selectedThread.sender.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(selectedThread.timestamp, 'HH:mm')}
+                    </span>
+                  </div>
+                  <p className="text-sm mt-1">{selectedThread.content}</p>
+                </div>
               </div>
-              <p className="text-sm sm:text-base">{selectedThread.content}</p>
             </div>
 
-            <ScrollArea className="flex-1 px-3 sm:px-4">
+            <ScrollArea className="flex-1 px-4">
               {threadMessages.map(message => (
-                <div key={message.id} className="py-2">
-                  <div className="flex items-start gap-2">
+                <div key={message.id} className="py-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-interpreter-navy text-white">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm sm:text-base">{message.sender.name}</span>
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
                         <span className="text-xs text-muted-foreground">
                           {format(message.timestamp, 'HH:mm')}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm sm:text-base">{message.content}</p>
+                      <p className="text-sm mt-1">{message.content}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </ScrollArea>
 
-            <div className="p-2 sm:p-4 border-t">
-              <Textarea
-                value={message}
-                onChange={handleMessageChange}
-                placeholder="Répondre dans la conversation..."
-                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base mb-2"
-              />
-              <div className="flex justify-end">
-                <Button 
-                  onClick={handleSendThreadMessage}
-                  className="text-sm sm:text-base"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Répondre
-                </Button>
+            <div className="p-4 border-t bg-white">
+              <div className="relative rounded-lg border bg-background">
+                <Textarea
+                  value={message}
+                  onChange={handleMessageChange}
+                  placeholder="Répondre dans la conversation..."
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
+                />
+                <div className="absolute bottom-2 right-2">
+                  <Button 
+                    onClick={handleSendThreadMessage}
+                    className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Répondre
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
