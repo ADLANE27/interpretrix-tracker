@@ -10,16 +10,11 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     const fileName = `${type}-mission.mp3`;
     
     // Get public URL for the sound file
-    const { data, error: urlError } = supabase
+    const { data } = supabase
       .storage
       .from('notification_sounds')
       .getPublicUrl(fileName);
     
-    if (urlError) {
-      console.error('[notificationSounds] Error getting public URL:', urlError);
-      throw new Error(`Failed to get public URL: ${urlError.message}`);
-    }
-
     if (!data?.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
       throw new Error('No public URL returned for sound file');
@@ -33,7 +28,7 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     audio.crossOrigin = "anonymous";
     
     // Add event listeners before setting src
-    const loadPromise = new Promise((resolve, reject) => {
+    const loadPromise = new Promise<HTMLAudioElement>((resolve, reject) => {
       const onCanPlay = () => {
         console.log(`[notificationSounds] ${type} sound loaded successfully`);
         audio.removeEventListener('canplaythrough', onCanPlay);
