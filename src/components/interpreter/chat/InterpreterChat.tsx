@@ -495,7 +495,7 @@ export const InterpreterChat = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[calc(100vh-300px)]">
       <div className="flex items-center justify-between p-3 border-b bg-white">
         <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
         <MentionsPopover
@@ -513,17 +513,17 @@ export const InterpreterChat = ({
         onClearFilters={onClearFilters}
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative h-full">
         <div className={cn(
-          "flex-1 flex flex-col relative",
+          "flex-1 flex flex-col relative h-full",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1" 
+            className="flex-1 pb-[160px] h-full" 
             onScrollCapture={handleScroll}
           >
-            <div className="p-4 pb-4">
+            <div className="p-4">
               {filteredMessages.map(message => (
                 <div 
                   key={message.id} 
@@ -586,7 +586,7 @@ export const InterpreterChat = ({
           {showScrollButton && (
             <Button
               onClick={scrollToBottom}
-              className="fixed bottom-[180px] right-8 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
               size="icon"
               variant="outline"
             >
@@ -594,8 +594,8 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="sticky bottom-0 left-0 right-0 bg-white border-t shadow-lg mt-auto">
-            <div className="p-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+            <div className="p-4 max-w-[95%] mx-auto">
               <div className="relative rounded-lg border bg-[#F8F9FA] shadow-sm transition-all hover:shadow-md">
                 {replyingTo && (
                   <div className="px-3 py-2 bg-[#F3F4F6] border-b rounded-t-lg flex items-center justify-between">
@@ -619,7 +619,7 @@ export const InterpreterChat = ({
                   onChange={handleMessageChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Écrivez votre message..."
-                  className="min-h-[80px] max-h-[200px] resize-none border-0 focus-visible:ring-0 rounded-lg bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
                 />
 
                 <MentionSuggestions
