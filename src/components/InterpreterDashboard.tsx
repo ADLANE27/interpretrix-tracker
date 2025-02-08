@@ -351,20 +351,24 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <div className="flex items-center gap-2">
-                  <HowToUseGuide isOpen={false} onOpenChange={() => {}} />
-                  <NotificationPermission interpreterId={profile.id} />
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-full sm:w-auto">
+                    <HowToUseGuide isOpen={false} onOpenChange={() => {}} />
+                  </div>
+                  <div className="w-full sm:w-auto">
+                    <NotificationPermission interpreterId={profile.id} />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="w-full sm:w-auto hover:bg-red-50 hover:text-red-600 transition-colors flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="sm:hidden">Se déconnecter</span>
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="ml-2 hover:bg-red-50 hover:text-red-600 transition-colors"
-                  title="Se déconnecter"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </div>
