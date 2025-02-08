@@ -1,10 +1,11 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, Trash2, ArrowDown } from 'lucide-react';
+import { Paperclip, Send, Smile, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -12,7 +13,6 @@ import { MentionSuggestions } from './MentionSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ChatFilters } from './ChatFilters';
-import { cn } from '@/lib/utils';
 
 interface ChatProps {
   channelId: string;
@@ -23,7 +23,6 @@ export const Chat = ({ channelId }: ChatProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
-  const [showScrollButton, setShowScrollButton] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState<Array<{
     id: string;
     name: string;
@@ -41,31 +40,9 @@ export const Chat = ({ channelId }: ChatProps) => {
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
   const [filteredMessages, setFilteredMessages] = useState(messages);
-
-  useEffect(() => {
-    const scrollArea = scrollAreaRef.current;
-    if (!scrollArea) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollArea;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollButton(!isNearBottom);
-    };
-
-    scrollArea.addEventListener('scroll', handleScroll);
-    return () => scrollArea.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToBottom = () => {
-    const scrollArea = scrollAreaRef.current;
-    if (scrollArea) {
-      scrollArea.scrollTop = scrollArea.scrollHeight;
-    }
-  };
 
   useEffect(() => {
     const fetchChannelUsers = async () => {
@@ -362,67 +339,43 @@ export const Chat = ({ channelId }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
-      <div className="relative flex-1">
-        <ScrollArea 
-          ref={scrollAreaRef}
-          className="h-full px-6 py-4"
-        >
-          <div className="space-y-6">
-            {filteredMessages.map(message => (
-              <div 
-                key={message.id} 
-                id={`message-${message.id}`}
-                className="group transition-all duration-300 ease-in-out hover:bg-gray-50/50 rounded-lg p-3"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
-                        {message.sender.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-gray-700 leading-relaxed">
-                      {message.content}
-                    </div>
+      <ScrollArea className="flex-1 px-6 py-4 overflow-y-auto">
+        <div className="space-y-6">
+          {filteredMessages.map(message => (
+            <div 
+              key={message.id} 
+              id={`message-${message.id}`}
+              className="group transition-all duration-300 ease-in-out hover:bg-gray-50/50 rounded-lg p-3"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
+                      {message.sender.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
+                    </span>
                   </div>
-                  {currentUserId === message.sender.id && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteMessage(message.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-all duration-300"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400 hover:text-red-500 transition-colors" />
-                    </Button>
-                  )}
+                  <div className="mt-1 text-gray-700 leading-relaxed">
+                    {message.content}
+                  </div>
                 </div>
+                {currentUserId === message.sender.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteMessage(message.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-all duration-300"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-400 hover:text-red-500 transition-colors" />
+                  </Button>
+                )}
               </div>
-            ))}
-          </div>
-        </ScrollArea>
-
-        {showScrollButton && (
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={scrollToBottom}
-            className={cn(
-              "absolute bottom-4 right-4",
-              "bg-white/80 hover:bg-white",
-              "shadow-lg hover:shadow-xl",
-              "transition-all duration-300",
-              "rounded-full",
-              "border border-gray-200",
-              "z-10"
-            )}
-          >
-            <ArrowDown className="h-4 w-4 text-gray-600" />
-          </Button>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
 
       <div className="border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
         <div className="relative">
