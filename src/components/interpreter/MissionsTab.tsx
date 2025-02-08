@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,15 +38,21 @@ export const MissionsTab = () => {
       console.log('[MissionsTab] Initializing sounds...');
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
         const buffer = audioContext.createBuffer(1, 1, 22050);
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContext.destination);
+        
         source.start(0);
+        source.stop(0.001);
+        
         setSoundInitialized(true);
         
-        playNotificationSound('immediate', true).catch(console.error);
-        playNotificationSound('scheduled', true).catch(console.error);
+        Promise.all([
+          playNotificationSound('immediate', true),
+          playNotificationSound('scheduled', true)
+        ]).catch(console.error);
         
         console.log('[MissionsTab] Sounds initialized successfully');
       } catch (error) {
@@ -131,7 +136,6 @@ export const MissionsTab = () => {
             return;
           }
 
-          // Fetch the mission details
           const { data: mission, error: missionError } = await supabase
             .from('interpretation_missions')
             .select('*')
@@ -145,7 +149,6 @@ export const MissionsTab = () => {
 
           console.log('[MissionsTab] Mission details:', mission);
 
-          // Ensure mission_type is valid before using it
           const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
             ? mission.mission_type 
             : 'scheduled'; // Default to scheduled if invalid type
@@ -298,11 +301,9 @@ export const MissionsTab = () => {
     fetchMissions();
     const cleanup = setupRealtimeSubscription();
 
-    // Initialize sound on first user interaction
     const handleUserInteraction = () => {
       console.log('[MissionsTab] User interaction detected, initializing sound');
       initializeSound();
-      // Remove event listeners after first interaction
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
@@ -315,7 +316,7 @@ export const MissionsTab = () => {
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, [soundEnabled, toast, currentUserId]); // Added back required dependencies
+  }, [soundEnabled, toast, currentUserId]);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
