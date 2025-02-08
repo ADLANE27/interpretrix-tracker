@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -352,18 +351,18 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full sm:w-auto">
-                  <div className="w-full">
+                <div className="flex gap-2 w-full">
+                  <div className="flex-1">
                     <HowToUseGuide isOpen={false} onOpenChange={() => {}} />
                   </div>
-                  <div className="w-full">
+                  <div className="flex-1">
                     <NotificationPermission interpreterId={profile.id} />
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleLogout}
-                    className="w-full hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
                   >
                     <LogOut className="h-4 w-4" />
                     <span className="sm:hidden">Se déconnecter</span>
