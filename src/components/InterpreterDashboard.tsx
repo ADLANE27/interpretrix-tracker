@@ -303,8 +303,8 @@ export const InterpreterDashboard = () => {
 
   if (!authChecked || !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-lg">Chargement de votre profil...</div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="animate-pulse text-lg text-center">Chargement de votre profil...</div>
       </div>
     );
   }
@@ -321,11 +321,11 @@ export const InterpreterDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
           {/* Header Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader
                 firstName={profile.first_name}
                 lastName={profile.last_name}
@@ -334,7 +334,7 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <div className="flex items-center gap-2">
                   <HowToUseGuide />
                   <NotificationPermission interpreterId={profile.id} />
@@ -353,7 +353,7 @@ export const InterpreterDashboard = () => {
           </div>
 
           {/* Status Manager Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
             <StatusManager
               currentStatus={profile.status}
               onStatusChange={handleStatusChange}
@@ -363,36 +363,36 @@ export const InterpreterDashboard = () => {
           {/* Main Content Section */}
           <Card className="shadow-sm">
             <Tabs defaultValue="missions" className="w-full">
-              <div className="border-b">
+              <div className="border-b overflow-x-auto">
                 <TabsList className="w-full justify-start h-12 bg-transparent p-0">
                   <TabsTrigger 
                     value="missions"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                   >
                     Missions
                   </TabsTrigger>
                   <TabsTrigger 
                     value="calendar"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                   >
                     Calendrier
                   </TabsTrigger>
                   <TabsTrigger 
                     value="messaging"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                   >
                     Messagerie
                   </TabsTrigger>
                   <TabsTrigger 
                     value="profile"
-                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-6"
+                    className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                   >
                     Mon Profil
                   </TabsTrigger>
                 </TabsList>
               </div>
 
-              <div className="p-6 min-h-[600px]">
+              <div className="p-2 sm:p-6 min-h-[600px]">
                 <TabsContent value="missions" className="m-0 h-full">
                   <MissionsTab />
                 </TabsContent>
