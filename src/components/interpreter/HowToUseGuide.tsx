@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,9 +10,14 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Info, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
 
-export const HowToUseGuide = () => {
+interface HowToUseGuideProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const HowToUseGuide = ({ isOpen, onOpenChange }: HowToUseGuideProps) => {
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Info className="h-4 w-4" />
