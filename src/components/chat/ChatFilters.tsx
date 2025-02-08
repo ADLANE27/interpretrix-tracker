@@ -52,20 +52,20 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
 
   return (
     <div className="border-b p-2 bg-white">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-muted-foreground"
+          className="text-muted-foreground self-start"
         >
           <Filter className="h-4 w-4 mr-1" />
           Filtres
         </Button>
 
         {isExpanded && (
-          <div className="flex-1 flex items-center space-x-3">
-            <div className="flex-none w-[160px]">
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="w-full sm:w-[160px]">
               <select
                 value={selectedUserId}
                 onChange={handleUserChange}
@@ -80,7 +80,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
               </select>
             </div>
 
-            <div className="flex-none w-[160px]">
+            <div className="w-full sm:w-[160px]">
               <Input
                 value={keyword}
                 onChange={handleKeywordChange}
@@ -89,13 +89,13 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
               />
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`w-[160px] h-9 justify-start text-left truncate ${!date && "text-muted-foreground"}`}
+                    className={`w-full sm:w-[160px] h-9 justify-start text-left truncate ${!date && "text-muted-foreground"}`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                     <span className="truncate">
@@ -117,7 +117,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
-                className="text-muted-foreground h-9 px-3"
+                className="text-muted-foreground h-9 w-full sm:w-auto"
               >
                 <X className="h-4 w-4 mr-1.5" />
                 Effacer
@@ -129,4 +129,3 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
     </div>
   );
 };
-
