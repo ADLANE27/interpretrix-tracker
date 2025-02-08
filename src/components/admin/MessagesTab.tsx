@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -42,20 +41,24 @@ export const MessagesTab = () => {
   const initializeSound = () => {
     if (!soundInitialized) {
       console.log('[MessagesTab] Initializing sounds...');
-      // Create and play a silent buffer to enable audio
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const buffer = audioContext.createBuffer(1, 1, 22050);
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.start(0);
-      setSoundInitialized(true);
-      
-      // Force preload the notification sounds
-      playNotificationSound('immediate', true);
-      playNotificationSound('scheduled', true);
-      
-      console.log('[MessagesTab] Sounds initialized');
+      try {
+        // Create and play a silent buffer to enable audio
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        setSoundInitialized(true);
+        
+        // Force preload the notification sounds
+        playNotificationSound('immediate', true).catch(console.error);
+        playNotificationSound('scheduled', true).catch(console.error);
+        
+        console.log('[MessagesTab] Sounds initialized successfully');
+      } catch (error) {
+        console.error('[MessagesTab] Error initializing sounds:', error);
+      }
     }
   };
 
@@ -129,7 +132,7 @@ export const MessagesTab = () => {
           table: 'interpretation_missions'
         },
         async (payload: any) => {
-          console.log('[MessagesTab] New mission update:', payload);
+          console.log('[MessagesTab] New mission created:', payload);
           
           if (payload.eventType === 'INSERT') {
             const mission = payload.new as any;
@@ -141,34 +144,28 @@ export const MessagesTab = () => {
 
             const isImmediate = mission.mission_type === 'immediate';
             
-            // Show toast notification with longer duration for mobile
             console.log('[MessagesTab] Showing toast notification');
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
               variant: isImmediate ? "destructive" : "default",
-              duration: 10000, // Longer duration for better visibility
+              duration: 10000,
             });
 
-            // Play sound if enabled and initialized
-            if (soundEnabled && soundInitialized) {
+            if (soundEnabled) {
               try {
-                console.log('[MessagesTab] Attempting to play sound for:', mission.mission_type);
+                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                 await playNotificationSound(mission.mission_type);
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
                 // Try to reinitialize sound on error
-                console.log('[MessagesTab] Attempting to reinitialize sound');
                 initializeSound();
-                // Retry playing sound once
                 try {
                   await playNotificationSound(mission.mission_type);
                 } catch (retryError) {
                   console.error('[MessagesTab] Retry failed:', retryError);
                 }
               }
-            } else {
-              console.log('[MessagesTab] Sound not played - enabled:', soundEnabled, 'initialized:', soundInitialized);
             }
           }
         }
@@ -194,7 +191,7 @@ export const MessagesTab = () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, soundInitialized, toast, isMobile]);
+  }, [soundEnabled, toast, isMobile]);
 
   return (
     <div className={cn(
@@ -286,4 +283,3 @@ export const MessagesTab = () => {
     </div>
   );
 };
-
