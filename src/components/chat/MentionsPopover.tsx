@@ -19,6 +19,7 @@ interface MentionsPopoverProps {
   onMentionClick: (mention: UnreadMention) => void;
   onMarkAsRead: (mentionId: string) => void;
   onDelete: (mentionId: string) => void;
+  children: React.ReactNode;
 }
 
 export const MentionsPopover = ({
@@ -27,27 +28,14 @@ export const MentionsPopover = ({
   onMentionClick,
   onMarkAsRead,
   onDelete,
+  children
 }: MentionsPopoverProps) => {
   const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-        >
-          <Bell className="h-5 w-5" />
-          {totalCount > 0 && (
-            <Badge 
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-            >
-              {totalCount}
-            </Badge>
-          )}
-        </Button>
+        {children}
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96">
         <div className="space-y-2">

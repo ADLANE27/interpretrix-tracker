@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
+import { Badge } from "@/components/ui/badge";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -88,7 +88,6 @@ export const MessagingTab = () => {
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-            {/* Notification Bell */}
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -96,22 +95,25 @@ export const MessagingTab = () => {
               onMarkAsRead={markMentionAsRead}
               onDelete={deleteMention}
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  "transition-all duration-200",
-                  "bg-white/80 hover:bg-white shadow-sm hover:shadow",
-                  "border border-gray-100",
-                  "rounded-lg",
-                  totalUnreadCount > 0 && "text-purple-500"
-                )}
-              >
+              <div className={cn(
+                "transition-all duration-200 p-2",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer",
+                "border border-gray-100",
+                "rounded-lg flex items-center justify-center",
+                totalUnreadCount > 0 && "text-purple-500"
+              )}>
                 <Bell className="h-4 w-4" />
-              </Button>
+                {totalUnreadCount > 0 && (
+                  <Badge 
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {totalUnreadCount}
+                  </Badge>
+                )}
+              </div>
             </MentionsPopover>
 
-            {/* Fullscreen Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -149,4 +151,3 @@ export const MessagingTab = () => {
     </div>
   );
 };
-
