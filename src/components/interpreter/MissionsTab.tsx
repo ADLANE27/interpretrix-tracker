@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,12 +117,58 @@ export const MissionsTab = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'interpretation_missions'
+          table: 'mission_notifications'
         },
-        (payload) => {
-          console.log('[MissionsTab] Mission update received:', payload);
+        async (payload) => {
+          console.log('[MissionsTab] New notification received:', payload);
+          
+          const notification = payload.new as any;
+          if (!currentUserId || notification.interpreter_id !== currentUserId) {
+            console.log('[MissionsTab] Notification not for current user');
+            return;
+          }
+
+          // Fetch the mission details
+          const { data: mission, error: missionError } = await supabase
+            .from('interpretation_missions')
+            .select('*')
+            .eq('id', notification.mission_id)
+            .single();
+
+          if (missionError) {
+            console.error('[MissionsTab] Error fetching mission:', missionError);
+            return;
+          }
+
+          console.log('[MissionsTab] Mission details:', mission);
+
+          const isImmediate = mission.mission_type === 'immediate';
+            
+          console.log('[MissionsTab] Showing toast notification');
+          toast({
+            title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+            description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+            variant: isImmediate ? "destructive" : "default",
+            duration: 10000,
+          });
+
+          if (soundEnabled) {
+            try {
+              console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+              await playNotificationSound(mission.mission_type);
+            } catch (error) {
+              console.error('[MissionsTab] Error playing sound:', error);
+              initializeSound();
+              try {
+                await playNotificationSound(mission.mission_type);
+              } catch (retryError) {
+                console.error('[MissionsTab] Retry failed:', retryError);
+              }
+            }
+          }
+
           fetchMissions();
         }
       )
@@ -132,10 +177,10 @@ export const MissionsTab = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'mission_notifications'
+          table: 'interpretation_missions'
         },
         (payload) => {
-          console.log('[MissionsTab] Notification update received:', payload);
+          console.log('[MissionsTab] Mission update received:', payload);
           fetchMissions();
         }
       )
@@ -264,7 +309,7 @@ export const MissionsTab = () => {
       document.removeEventListener('click', handleUserInteraction);
       document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, []);
+  }, [soundEnabled, toast, currentUserId]); // Added back required dependencies
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
