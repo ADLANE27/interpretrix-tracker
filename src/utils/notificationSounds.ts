@@ -11,15 +11,30 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     console.log('[notificationSounds] Attempting to play sound for:', type);
     const sound = type === 'immediate' ? immediateSound : scheduledSound;
     
+    // Log the audio element state
+    console.log('[notificationSounds] Audio state:', {
+      readyState: sound.readyState,
+      paused: sound.paused,
+      networkState: sound.networkState,
+      src: sound.src,
+      error: sound.error
+    });
+
     // Just preload the sound if preloadOnly is true
     if (preloadOnly) {
       console.log('[notificationSounds] Preloading sound');
-      await new Promise((resolve) => {
-        sound.addEventListener('canplaythrough', resolve, { once: true });
-        sound.load();
-      });
-      console.log('[notificationSounds] Sound preloaded successfully');
-      return;
+      try {
+        await new Promise((resolve, reject) => {
+          sound.addEventListener('canplaythrough', resolve, { once: true });
+          sound.addEventListener('error', (e) => reject(new Error(`Failed to load sound: ${e.message}`)), { once: true });
+          sound.load();
+        });
+        console.log('[notificationSounds] Sound preloaded successfully');
+        return;
+      } catch (error) {
+        console.error('[notificationSounds] Preload failed:', error);
+        throw error;
+      }
     }
 
     // Set volume appropriate for mobile (slightly louder)
@@ -33,6 +48,13 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       console.log('[notificationSounds] Starting playback');
       // Force a load before playing
       sound.load();
+      
+      // Check if audio file exists
+      const response = await fetch(sound.src);
+      if (!response.ok) {
+        throw new Error(`Sound file not found: ${sound.src}`);
+      }
+      
       await sound.play();
       console.log('[notificationSounds] Sound played successfully');
     } catch (error: any) {
