@@ -10,7 +10,7 @@ import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
-import { NotificationPermission } from "./interpreter/NotificationPermission";
+import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
@@ -360,14 +360,7 @@ export const InterpreterDashboard = () => {
                   >
                     <BookOpen className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="flex-1 sm:flex-none"
-                    title="Notifications"
-                  >
-                    <Bell className="h-4 w-4" />
-                  </Button>
+                  <NotificationPermission interpreterId={profile.id} />
                   <Button
                     variant="outline"
                     size="icon"
