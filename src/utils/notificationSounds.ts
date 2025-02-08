@@ -7,14 +7,17 @@ let scheduledSound: HTMLAudioElement | null = null;
 const initializeSound = async (type: 'immediate' | 'scheduled') => {
   try {
     console.log(`[notificationSounds] Initializing ${type} sound`);
-    // Remove any leading slash to prevent double slashes
-    const fileName = `${type}-mission.mp3`.replace(/^\/+/, '');
+    
+    // Use exact filenames as they are in storage
+    const fileName = type === 'immediate' 
+      ? 'immediate-mission.mp3.mp3'  // Note the double .mp3 extension as it exists in storage
+      : 'scheduled-mission.mp3';
     
     // Get public URL for the sound file
     const { data } = supabase
       .storage
       .from('notification_sounds')
-      .getPublicUrl(fileName);
+      .getPublicUrl(`/${fileName}`); // Note we're adding the leading slash as it exists in storage
     
     if (!data?.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
