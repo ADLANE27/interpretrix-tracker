@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -21,7 +22,9 @@ export const MessagesTab = () => {
   const [showChannels, setShowChannels] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundInitialized, setSoundInitialized] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Check if user is admin
   const { data: isAdmin } = useQuery({
@@ -36,22 +39,41 @@ export const MessagesTab = () => {
     }
   });
 
+  const initializeSound = () => {
+    if (!soundInitialized) {
+      console.log('[MessagesTab] Initializing sounds...');
+      // Create a silent audio context to enable sound on mobile
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const silentBuffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = silentBuffer;
+      source.connect(audioContext.destination);
+      source.start();
+      setSoundInitialized(true);
+      console.log('[MessagesTab] Sounds initialized');
+    }
+  };
+
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
+    initializeSound(); // Initialize sound on first user interaction
   };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
+    initializeSound(); // Initialize sound on user interaction
   };
 
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
+    initializeSound(); // Initialize sound on user interaction
     toast({
       title: soundEnabled ? "Sons désactivés" : "Sons activés",
       description: soundEnabled 
         ? "Les notifications sonores ont été désactivées" 
         : "Les notifications sonores ont été activées",
+      duration: 3000,
     });
   };
 
@@ -72,6 +94,7 @@ export const MessagesTab = () => {
   };
 
   useEffect(() => {
+    console.log('[MessagesTab] Setting up realtime subscription...');
     const channel = supabase
       .channel('admin-missions')
       .on(
@@ -88,16 +111,23 @@ export const MessagesTab = () => {
             const mission = payload.new as any;
             const isImmediate = mission.mission_type === 'immediate';
             
-            // Show toast notification
+            // Show toast notification with longer duration for mobile
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
               variant: isImmediate ? "destructive" : "default",
+              duration: isMobile ? 5000 : 3000, // Longer duration on mobile
             });
 
-            // Play sound if enabled
-            if (soundEnabled) {
+            // Play sound if enabled and initialized
+            if (soundEnabled && soundInitialized) {
+              console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
               playNotificationSound(mission.mission_type);
+            } else {
+              console.log('[MessagesTab] Sound not played:', { 
+                enabled: soundEnabled, 
+                initialized: soundInitialized 
+              });
             }
           }
         }
@@ -107,9 +137,10 @@ export const MessagesTab = () => {
       });
 
     return () => {
+      console.log('[MessagesTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled]);
+  }, [soundEnabled, soundInitialized]);
 
   return (
     <div className={cn(
