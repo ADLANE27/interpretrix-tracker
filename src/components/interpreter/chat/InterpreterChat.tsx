@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -12,7 +13,8 @@ import {
   ArrowRight,
   MessageSquare,
   X,
-  ArrowDown
+  ArrowDown,
+  Bell
 } from 'lucide-react';
 import { 
   Popover, 
