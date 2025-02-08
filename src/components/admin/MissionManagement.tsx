@@ -94,9 +94,58 @@ export const MissionManagement = () => {
     }
   };
 
+  const setupRealtimeSubscription = () => {
+    console.log('[MissionManagement] Setting up realtime subscription');
+    
+    // Create a single channel for all subscriptions
+    const channel = supabase
+      .channel('admin-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        () => {
+          console.log('[MissionManagement] Received mission update, refreshing...');
+          fetchMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        () => {
+          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
+          if (sourceLanguage && targetLanguage) {
+            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionManagement] Subscription status:', status);
+      });
+
+    // Return cleanup function
+    return () => {
+      console.log('[MissionManagement] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  };
+
   useEffect(() => {
     fetchMissions();
-  }, []);
+    const cleanup = setupRealtimeSubscription();
+    
+    // Cleanup function
+    return () => {
+      cleanup();
+    };
+  }, []); // Only run once on mount
 
   const handleSelectAllInterpreters = () => {
     if (selectedInterpreters.length === availableInterpreters.length) {
@@ -388,58 +437,6 @@ export const MissionManagement = () => {
       setIsProcessing(false);
     }
   };
-
-  // Set up realtime subscription for missions
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        () => {
-          console.log('[MissionManagement] Received mission update, refreshing...');
-          fetchMissions();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionManagement] Subscription status:', status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Set up realtime subscription for interpreter status changes
-  useEffect(() => {
-    const channel = supabase
-      .channel('interpreter-status')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        () => {
-          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
-          if (sourceLanguage && targetLanguage) {
-            findAvailableInterpreters(sourceLanguage, targetLanguage);
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MissionManagement] Interpreter status subscription status:', status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [sourceLanguage, targetLanguage]);
 
   return (
     <div className="space-y-6">
