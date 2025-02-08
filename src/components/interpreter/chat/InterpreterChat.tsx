@@ -14,24 +14,23 @@ import {
   MessageSquare,
   X,
   ArrowDown,
-  Bell,
-  Filter
+  Bell
 } from 'lucide-react';
 import { 
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
-import { format } from 'date-fns';
-import { ChatFilters } from '@/components/chat/ChatFilters';
-import { MentionsPopover } from '@/components/chat/MentionsPopover';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
+import { ChatFilters } from '@/components/chat/ChatFilters';
 import { Message } from '@/types/messaging';
 
 interface InterpreterChatProps {
@@ -46,7 +45,13 @@ interface InterpreterChatProps {
   isFullScreen?: boolean;
 }
 
-export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFilters, isFullScreen = false }: InterpreterChatProps) => {
+export const InterpreterChat = ({ 
+  channelId,
+  filters,
+  onFiltersChange,
+  onClearFilters,
+  isFullScreen = false
+}: InterpreterChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -495,188 +500,290 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
 
   return (
     <div className={cn(
-      "flex flex-col rounded-lg bg-white shadow-lg",
+      "flex flex-col",
       isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]"
     )}>
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold">Messages</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-violet-500 hover:text-violet-600 hover:bg-violet-50"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
-          <MentionsPopover
-            mentions={unreadMentions}
-            totalCount={totalUnreadCount}
-            onMentionClick={handleMentionClick}
-            onMarkAsRead={markMentionAsReadNew}
-            onDelete={deleteMention}
-          >
-            <div className={cn(
-              "transition-all duration-200 p-2",
-              "hover:bg-violet-50 cursor-pointer rounded-full",
-              "flex items-center justify-center relative",
-              totalUnreadCount > 0 && "text-violet-500"
-            )}>
-              <Bell className="h-5 w-5" />
-              {totalUnreadCount > 0 && (
-                <Badge 
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  {totalUnreadCount}
-                </Badge>
-              )}
-            </div>
-          </MentionsPopover>
-        </div>
+      <div className="flex items-center justify-between p-3 border-b bg-white">
+        <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
+        <MentionsPopover
+          mentions={unreadMentions}
+          totalCount={totalUnreadCount}
+          onMentionClick={handleMentionClick}
+          onMarkAsRead={markMentionAsReadNew}
+          onDelete={deleteMention}
+        >
+          <div className={cn(
+            "transition-all duration-200 p-2",
+            "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer",
+            "border border-gray-100",
+            "rounded-lg flex items-center justify-center",
+            totalUnreadCount > 0 && "text-purple-500"
+          )}>
+            <Bell className="h-4 w-4" />
+            {totalUnreadCount > 0 && (
+              <Badge 
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {totalUnreadCount}
+              </Badge>
+            )}
+          </div>
+        </MentionsPopover>
       </div>
 
-      <ScrollArea 
-        ref={scrollAreaRef}
-        className="flex-1 px-4"
-        onScrollCapture={handleScroll}
-      >
-        <div className="space-y-6 py-4">
-          {filteredMessages.map(message => (
-            <div 
-              key={message.id} 
-              id={`message-${message.id}`}
-              className="group flex gap-3 hover:bg-gray-50/50 rounded-lg p-3 transition-all"
-            >
-              <Avatar className="h-10 w-10 shrink-0">
-                <AvatarFallback className="bg-violet-100 text-violet-500">
-                  {message.sender.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-900">
-                    {message.sender.name}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {format(message.timestamp, 'HH:mm')}
-                  </span>
-                </div>
-                <div className="text-gray-800">
-                  {message.content}
-                </div>
-              </div>
-              {currentUserId === message.sender.id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteMessage(message.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+      <ChatFilters
+        onFiltersChange={onFiltersChange}
+        users={channelUsers}
+        onClearFilters={onClearFilters}
+      />
+
+      <div className="flex flex-1 overflow-hidden relative h-full">
+        <div className={cn(
+          "flex-1 flex flex-col relative h-full",
+          selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
+        )}>
+          <ScrollArea 
+            ref={scrollAreaRef}
+            className={cn(
+              "flex-1 h-full",
+              isFullScreen ? "pb-[120px]" : "pb-[160px]"
+            )}
+            onScrollCapture={handleScroll}
+          >
+            <div className="p-4">
+              {filteredMessages.map(message => (
+                <div 
+                  key={message.id} 
+                  id={`message-${message.id}`}
+                  className="group hover:bg-gray-50 rounded-lg p-3 transition-colors duration-200 mb-2"
                 >
-                  <Trash2 className="h-4 w-4 text-red-400 hover:text-red-500" />
-                </Button>
-              )}
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
+                      <AvatarFallback className="bg-interpreter-navy text-white">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
+                      </div>
+                      {message.parent_message_id && (
+                        <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-muted-foreground">
+                          <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                        </div>
+                      )}
+                      <div className="group">
+                        <div className="flex items-start gap-2">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{message.content}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleThreadClick(message)}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            {threadCounts[message.id] > 0 && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                                {threadCounts[message.id]}
+                              </span>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    {currentUserId === message.sender.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteMessage(message.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
 
-      {showScrollButton && (
-        <Button
-          onClick={scrollToBottom}
-          className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-50"
-          size="icon"
-          variant="outline"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </Button>
-      )}
+          {showScrollButton && (
+            <Button
+              onClick={scrollToBottom}
+              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              size="icon"
+              variant="outline"
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          )}
 
-      <div className="p-4 border-t bg-white">
-        <div className="relative rounded-lg bg-gray-50 transition-all">
-          {replyingTo && (
-            <div className="px-3 py-2 bg-gray-100 border-b rounded-t-lg flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <ArrowRight className="h-4 w-4" />
-                <span>Replying to {replyingTo.sender.name}</span>
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+            <div className="p-4 max-w-[95%] mx-auto">
+              <div className="relative rounded-lg border bg-[#F8F9FA] shadow-sm transition-all hover:shadow-md">
+                {replyingTo && (
+                  <div className="px-3 py-2 bg-[#F3F4F6] border-b rounded-t-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ArrowRight className="h-4 w-4" />
+                      <span>En réponse à {replyingTo.sender.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelReply}
+                      className="hover:bg-[#E5E7EB] transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={handleMessageChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Écrivez votre message..."
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                />
+
+                <MentionSuggestions
+                  suggestions={mentionSuggestions}
+                  onSelect={handleMentionSelect}
+                  visible={showMentions}
+                />
+
+                <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
+                  >
+                    <Paperclip className="h-4 w-4 text-gray-600" />
+                  </Button>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
+                      >
+                        <Smile className="h-4 w-4 text-gray-600" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="end">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
+                        theme="light"
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+                    className="h-8 bg-[#9b87f5] hover:bg-[#8B5CF6] text-white rounded-full transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 px-4"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="hidden sm:inline">Envoyer</span>
+                  </Button>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {selectedThread && (
+          <div className="fixed inset-0 z-50 bg-white lg:static lg:w-1/3 lg:border-l flex flex-col">
+            <div className="p-3 border-b flex items-center justify-between bg-gray-50">
+              <h3 className="font-semibold">Conversation</h3>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={cancelReply}
-                className="hover:bg-gray-200/80 h-7 w-7 p-0"
+                onClick={handleCloseThread}
+                className="h-8 w-8"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-          )}
-          
-          <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              value={message}
-              onChange={handleMessageChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Write your message..."
-              className="min-h-[60px] resize-none border-0 bg-transparent focus-visible:ring-0 text-base placeholder:text-gray-500"
-            />
 
-            <MentionSuggestions
-              suggestions={mentionSuggestions}
-              onSelect={handleMentionSelect}
-              visible={showMentions}
-            />
+            <div className="p-3 bg-gray-50 border-b">
+              <div className="flex items-start gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-interpreter-navy text-white">
+                    {selectedThread.sender.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm">{selectedThread.sender.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(selectedThread.timestamp, 'HH:mm')}
+                    </span>
+                  </div>
+                  <p className="text-sm mt-1">{selectedThread.content}</p>
+                </div>
+              </div>
+            </div>
 
-            <div className="absolute bottom-2 right-2 flex items-center gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="h-8 w-8 rounded-full hover:bg-gray-200/80"
-              >
-                <Paperclip className="h-4 w-4 text-gray-600" />
-              </Button>
+            <ScrollArea className="flex-1 px-4">
+              {threadMessages.map(message => (
+                <div key={message.id} className="py-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-interpreter-navy text-white">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1">{message.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </ScrollArea>
 
-              <Popover>
-                <PopoverTrigger asChild>
+            <div className="p-4 border-t bg-white">
+              <div className="relative rounded-lg border bg-background">
+                <Textarea
+                  value={message}
+                  onChange={handleMessageChange}
+                  placeholder="Répondre dans la conversation..."
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
+                />
+                <div className="absolute bottom-2 right-2">
                   <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-8 w-8 rounded-full hover:bg-gray-200/80"
+                    onClick={handleSendThreadMessage}
+                    className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
                   >
-                    <Smile className="h-4 w-4 text-gray-600" />
+                    <Send className="h-4 w-4 mr-2" />
+                    Répondre
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="end">
-                  <Picker
-                    data={data}
-                    onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
-                    theme="light"
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Button 
-                onClick={handleSendMessage}
-                disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                size="icon"
-                className="h-8 w-8 rounded-full bg-violet-500 hover:bg-violet-600 text-white"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
