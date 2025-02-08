@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -47,6 +48,7 @@ export const InterpreterDashboard = () => {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("missions");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -329,6 +331,11 @@ export const InterpreterDashboard = () => {
     { value: "profile", label: "Mon Profil" },
   ];
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setIsSheetOpen(false); // Close the sheet when changing tabs
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
@@ -346,7 +353,7 @@ export const InterpreterDashboard = () => {
               />
               <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <div className="flex items-center gap-2">
-                  <HowToUseGuide />
+                  <HowToUseGuide isOpen={false} onOpenChange={() => {}} />
                   <NotificationPermission interpreterId={profile.id} />
                 </div>
                 <Button
@@ -375,7 +382,7 @@ export const InterpreterDashboard = () => {
             {isMobile ? (
               <div className="flex items-center justify-between p-4 border-b">
                 <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
-                <Sheet>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
                       <Menu className="h-5 w-5" />
@@ -391,9 +398,7 @@ export const InterpreterDashboard = () => {
                           key={tab.value}
                           variant={activeTab === tab.value ? "default" : "ghost"}
                           className="w-full justify-start"
-                          onClick={() => {
-                            setActiveTab(tab.value);
-                          }}
+                          onClick={() => handleTabChange(tab.value)}
                         >
                           {tab.label}
                         </Button>
