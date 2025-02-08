@@ -63,18 +63,20 @@ export const MessagingTab = () => {
           "p-3 sm:p-4 shadow-md border-0 overflow-hidden bg-[#F8F9FA] relative",
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleFullScreen}
-            className="absolute top-4 right-16 z-10 hover:bg-gray-100"
-          >
-            {isFullScreen ? (
-              <Minimize2 className="h-4 w-4 text-gray-500" />
-            ) : (
-              <Maximize2 className="h-4 w-4 text-gray-500" />
-            )}
-          </Button>
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullScreen}
+              className="hover:bg-gray-100"
+            >
+              {isFullScreen ? (
+                <Minimize2 className="h-4 w-4 text-gray-500" />
+              ) : (
+                <Maximize2 className="h-4 w-4 text-gray-500" />
+              )}
+            </Button>
+          </div>
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
