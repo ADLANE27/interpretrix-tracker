@@ -9,20 +9,20 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     console.log(`[notificationSounds] Initializing ${type} sound`);
     const fileName = `${type}-mission.mp3`;
     
-    // Get public URL for the sound file
-    const { data: { publicUrl }, error: urlError } = supabase
+    // Get public URL for the sound file - note that getPublicUrl doesn't return an error
+    const { data } = supabase
       .storage
       .from('notification_sounds')
       .getPublicUrl(fileName);
-      
-    if (urlError) {
-      console.error('[notificationSounds] Error getting public URL:', urlError);
-      throw urlError;
+    
+    if (!data.publicUrl) {
+      console.error('[notificationSounds] No public URL returned');
+      throw new Error('No public URL returned for sound file');
     }
 
-    console.log(`[notificationSounds] Loading sound from URL: ${publicUrl}`);
+    console.log(`[notificationSounds] Loading sound from URL: ${data.publicUrl}`);
     
-    const audio = new Audio(publicUrl);
+    const audio = new Audio(data.publicUrl);
     audio.load();
     
     return audio;
