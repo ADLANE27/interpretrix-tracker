@@ -665,10 +665,9 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="h-8 bg-[#9b87f5] hover:bg-[#8B5CF6] text-white rounded-full transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed px-4"
+                  className="h-8 w-8 bg-[#9b87f5] hover:bg-[#8B5CF6] text-white rounded-full transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send className="h-4 w-4 mr-2" />
-                  Envoyer
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
