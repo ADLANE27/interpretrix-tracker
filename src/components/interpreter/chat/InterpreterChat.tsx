@@ -468,8 +468,8 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-[calc(100vh-400px)]">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
+      <div className="flex items-center justify-between p-2 sm:px-4 sm:py-2 border-b">
+        <h2 className="text-base sm:text-lg font-semibold text-interpreter-navy">Messages</h2>
         <MentionsPopover
           mentions={unreadMentions}
           totalCount={totalUnreadCount}
@@ -488,35 +488,35 @@ export const InterpreterChat = ({
       <div className="flex flex-1 overflow-hidden">
         <div className={cn(
           "flex-1 flex flex-col",
-          selectedThread ? "w-2/3" : "w-full"
+          selectedThread ? "w-full lg:w-2/3" : "w-full"
         )}>
-          <ScrollArea className="flex-1 px-4">
+          <ScrollArea className="flex-1 px-2 sm:px-4">
             {filteredMessages.map(message => (
               <div 
                 key={message.id} 
                 id={`message-${message.id}`}
-                className="mb-4 group transition-colors duration-300"
+                className="mb-3 sm:mb-4 group transition-colors duration-300"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">{message.sender.name}</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm sm:text-base">{message.sender.name}</span>
                       <span className="text-xs text-muted-foreground">
                         {format(message.timestamp, 'HH:mm')}
                       </span>
                     </div>
                     {message.parent_message_id && (
-                      <div className="ml-4 pl-2 border-l-2 border-gray-200 text-sm text-muted-foreground mb-1">
-                        <p>Replying to {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                      <div className="ml-4 pl-2 border-l-2 border-gray-200 text-xs sm:text-sm text-muted-foreground mb-1">
+                        <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                       </div>
                     )}
                     <div className="mt-1 group">
                       <div className="flex items-start gap-2">
-                        <p className="flex-1">{message.content}</p>
+                        <p className="flex-1 text-sm sm:text-base break-words">{message.content}</p>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 shrink-0"
                           onClick={() => handleThreadClick(message)}
                         >
                           <MessageSquare className="h-4 w-4" />
@@ -534,7 +534,7 @@ export const InterpreterChat = ({
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteMessage(message.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     >
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
@@ -544,20 +544,21 @@ export const InterpreterChat = ({
             ))}
           </ScrollArea>
 
-          <div className="border-t p-4 bg-white">
+          <div className="border-t p-2 sm:p-4 bg-white">
             <div className="relative">
               {replyingTo && (
                 <div className="mb-2 p-2 bg-gray-50 rounded-md flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                     <ArrowRight className="h-4 w-4" />
-                    <span>Replying to {replyingTo.sender.name}</span>
+                    <span>En réponse à {replyingTo.sender.name}</span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={cancelReply}
+                    className="text-xs sm:text-sm"
                   >
-                    Cancel
+                    Annuler
                   </Button>
                 </div>
               )}
@@ -566,8 +567,8 @@ export const InterpreterChat = ({
                 value={message}
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
-                placeholder=""
-                className="min-h-[80px]"
+                placeholder="Écrivez votre message..."
+                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base"
               />
 
               <MentionSuggestions
@@ -576,7 +577,7 @@ export const InterpreterChat = ({
                 visible={showMentions}
               />
 
-              <div className="absolute bottom-2 right-2 flex items-center gap-2">
+              <div className="absolute bottom-2 right-2 flex items-center gap-1 sm:gap-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -589,13 +590,18 @@ export const InterpreterChat = ({
                   size="icon"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
+                  className="h-8 w-8 sm:h-10 sm:w-10"
                 >
                   <Paperclip className="h-4 w-4" />
                 </Button>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 sm:h-10 sm:w-10"
+                    >
                       <Smile className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
@@ -611,6 +617,7 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+                  className="text-sm sm:text-base h-8 sm:h-10"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Envoyer
@@ -621,9 +628,9 @@ export const InterpreterChat = ({
         </div>
 
         {selectedThread && (
-          <div className="w-1/3 border-l flex flex-col">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-semibold">Thread</h3>
+          <div className="fixed inset-0 z-50 bg-white lg:static lg:w-1/3 lg:border-l flex flex-col">
+            <div className="p-3 sm:p-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold">Conversation</h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -633,45 +640,48 @@ export const InterpreterChat = ({
               </Button>
             </div>
 
-            <div className="p-4 bg-gray-50">
+            <div className="p-3 sm:p-4 bg-gray-50">
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold">{selectedThread.sender.name}</span>
+                <span className="font-bold text-sm sm:text-base">{selectedThread.sender.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {format(selectedThread.timestamp, 'HH:mm')}
                 </span>
               </div>
-              <p>{selectedThread.content}</p>
+              <p className="text-sm sm:text-base">{selectedThread.content}</p>
             </div>
 
-            <ScrollArea className="flex-1 px-4">
+            <ScrollArea className="flex-1 px-3 sm:px-4">
               {threadMessages.map(message => (
                 <div key={message.id} className="py-2">
                   <div className="flex items-start gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold">{message.sender.name}</span>
+                        <span className="font-bold text-sm sm:text-base">{message.sender.name}</span>
                         <span className="text-xs text-muted-foreground">
                           {format(message.timestamp, 'HH:mm')}
                         </span>
                       </div>
-                      <p className="mt-1">{message.content}</p>
+                      <p className="mt-1 text-sm sm:text-base">{message.content}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </ScrollArea>
 
-            <div className="p-4 border-t">
+            <div className="p-3 sm:p-4 border-t">
               <Textarea
                 value={message}
                 onChange={handleMessageChange}
-                placeholder="Reply in thread..."
-                className="min-h-[80px] mb-2"
+                placeholder="Répondre dans la conversation..."
+                className="min-h-[60px] sm:min-h-[80px] text-sm sm:text-base mb-2"
               />
               <div className="flex justify-end">
-                <Button onClick={handleSendThreadMessage}>
+                <Button 
+                  onClick={handleSendThreadMessage}
+                  className="text-sm sm:text-base"
+                >
                   <Send className="h-4 w-4 mr-2" />
-                  Reply
+                  Répondre
                 </Button>
               </div>
             </div>

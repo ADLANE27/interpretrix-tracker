@@ -23,9 +23,9 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-300px)] min-h-[600px]">
-      <Card className="p-4 md:col-span-1 shadow-md border-0 overflow-hidden">
-        <div className="flex items-center gap-2 mb-4 px-2">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px]">
+      <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4 px-2">
           <MessageSquare className="h-5 w-5 text-interpreter-navy" />
           <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
         </div>
@@ -35,7 +35,7 @@ export const MessagingTab = () => {
       </Card>
       
       {selectedChannelId ? (
-        <Card className="p-4 md:col-span-2 shadow-md border-0 overflow-hidden">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 overflow-hidden">
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
@@ -44,14 +44,13 @@ export const MessagingTab = () => {
           />
         </Card>
       ) : (
-        <Card className="p-4 md:col-span-2 shadow-md border-0 flex items-center justify-center">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-md border-0 flex items-center justify-center">
           <div className="text-center text-muted-foreground">
             <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-20" />
-            <p>Select a channel to start messaging</p>
+            <p>Sélectionnez une conversation pour commencer à discuter</p>
           </div>
         </Card>
       )}
     </div>
   );
 };
-
