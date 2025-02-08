@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 let immediateSound: HTMLAudioElement | null = null;
@@ -8,7 +9,7 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     console.log(`[notificationSounds] Initializing ${type} sound`);
     const fileName = `${type}-mission.mp3`;
     
-    // Get public URL for the sound file - note that getPublicUrl doesn't return an error
+    // Get public URL for the sound file
     const { data } = supabase
       .storage
       .from('notification_sounds')
@@ -21,22 +22,37 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
 
     console.log(`[notificationSounds] Loading sound from URL: ${data.publicUrl}`);
     
-    const audio = new Audio(data.publicUrl);
+    const audio = new Audio();
+    
+    // Set CORS and cache settings
+    audio.crossOrigin = "anonymous";
+    
+    // Add event listeners before setting src
+    const loadPromise = new Promise((resolve, reject) => {
+      const onCanPlay = () => {
+        console.log(`[notificationSounds] ${type} sound loaded successfully`);
+        audio.removeEventListener('canplaythrough', onCanPlay);
+        audio.removeEventListener('error', onError);
+        resolve(true);
+      };
+      
+      const onError = (e: ErrorEvent) => {
+        console.error(`[notificationSounds] Error loading ${type} sound:`, e);
+        audio.removeEventListener('canplaythrough', onCanPlay);
+        audio.removeEventListener('error', onError);
+        reject(new Error(`Failed to load ${type} sound: ${e.message}`));
+      };
+      
+      audio.addEventListener('canplaythrough', onCanPlay);
+      audio.addEventListener('error', onError);
+    });
+    
+    // Set the source after adding event listeners
+    audio.src = data.publicUrl;
+    audio.load();
     
     // Wait for the audio to be loaded
-    await new Promise((resolve, reject) => {
-      audio.addEventListener('canplaythrough', () => {
-        console.log(`[notificationSounds] ${type} sound loaded successfully`);
-        resolve(true);
-      }, { once: true });
-      
-      audio.addEventListener('error', (e) => {
-        console.error(`[notificationSounds] Error loading ${type} sound:`, e);
-        reject(new Error(`Failed to load ${type} sound: ${e.message}`));
-      }, { once: true });
-      
-      audio.load();
-    });
+    await loadPromise;
     
     return audio;
   } catch (error) {
@@ -77,8 +93,20 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       console.log('[notificationSounds] Preloading sound');
       try {
         await new Promise((resolve, reject) => {
-          sound.addEventListener('canplaythrough', resolve, { once: true });
-          sound.addEventListener('error', (e) => reject(new Error(`Failed to load sound: ${e.message}`)), { once: true });
+          const onCanPlay = () => {
+            sound.removeEventListener('canplaythrough', onCanPlay);
+            sound.removeEventListener('error', onError);
+            resolve(true);
+          };
+          
+          const onError = (e: ErrorEvent) => {
+            sound.removeEventListener('canplaythrough', onCanPlay);
+            sound.removeEventListener('error', onError);
+            reject(new Error(`Failed to load sound: ${e.message}`));
+          };
+          
+          sound.addEventListener('canplaythrough', onCanPlay);
+          sound.addEventListener('error', onError);
           sound.load();
         });
         console.log('[notificationSounds] Sound preloaded successfully');
