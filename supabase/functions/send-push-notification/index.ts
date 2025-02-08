@@ -32,7 +32,8 @@ serve(async (req) => {
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.error('[Push Notification] Missing VAPID keys:', { 
         hasPublicKey: !!vapidPublicKey,
-        hasPrivateKey: !!vapidPrivateKey 
+        hasPrivateKey: !!vapidPrivateKey,
+        envVars: Deno.env.toObject() // Log all available env vars (be careful with sensitive data)
       });
       throw new Error('VAPID configuration missing');
     }
@@ -48,7 +49,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
-      console.error('[Push Notification] Missing Supabase configuration');
+      console.error('[Push Notification] Missing Supabase configuration:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+      });
       throw new Error('Supabase configuration missing');
     }
     
