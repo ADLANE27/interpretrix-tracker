@@ -509,7 +509,25 @@ export const InterpreterChat = ({
           onMentionClick={handleMentionClick}
           onMarkAsRead={markMentionAsReadNew}
           onDelete={deleteMention}
-        />
+        >
+          <div className={cn(
+            "transition-all duration-200 p-2",
+            "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer",
+            "border border-gray-100",
+            "rounded-lg flex items-center justify-center",
+            totalUnreadCount > 0 && "text-purple-500"
+          )}>
+            <Bell className="h-4 w-4" />
+            {totalUnreadCount > 0 && (
+              <Badge 
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {totalUnreadCount}
+              </Badge>
+            )}
+          </div>
+        </MentionsPopover>
       </div>
 
       <ChatFilters
