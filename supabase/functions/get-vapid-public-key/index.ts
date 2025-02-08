@@ -8,11 +8,14 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    console.log('[VAPID] Starting VAPID key retrieval process');
+    
     // Initialize Supabase client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -30,7 +33,7 @@ serve(async (req) => {
     
     // If not in environment, try to get from database
     if (!vapidPublicKey) {
-      console.log('VAPID key not found in environment, checking database...')
+      console.log('[VAPID] Key not found in environment, checking database...');
       const { data, error } = await supabaseAdmin
         .from('secrets')
         .select('value')
@@ -38,20 +41,22 @@ serve(async (req) => {
         .single()
 
       if (error) {
-        console.error('Error fetching VAPID key from database:', error)
-        throw error
+        console.error('[VAPID] Error fetching key from database:', error);
+        throw error;
       }
 
       if (data) {
-        vapidPublicKey = data.value
-        console.log('VAPID key retrieved from database')
+        vapidPublicKey = data.value;
+        console.log('[VAPID] Key successfully retrieved from database');
       }
     }
 
     if (!vapidPublicKey) {
-      console.error('VAPID public key not found in environment or database')
-      throw new Error('VAPID public key not configured')
+      console.error('[VAPID] Public key not found in environment or database');
+      throw new Error('VAPID public key not configured');
     }
+    
+    console.log('[VAPID] Successfully retrieved VAPID public key');
     
     return new Response(
       JSON.stringify({ vapidPublicKey }),
@@ -64,7 +69,12 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('Error retrieving VAPID public key:', error)
+    console.error('[VAPID] Error retrieving public key:', error);
+    console.error('[VAPID] Error details:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
     return new Response(
       JSON.stringify({ 
         error: error.message,
