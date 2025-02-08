@@ -4,9 +4,11 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -18,6 +20,13 @@ export const MessagingTab = () => {
     date?: Date;
   }>({});
   const isMobile = useIsMobile();
+  const { 
+    unreadMentions,
+    totalUnreadCount,
+    markMentionAsRead,
+    deleteMention,
+    refreshMentions 
+  } = useUnreadMentions();
 
   const handleFiltersChange = (newFilters: typeof filters) => {
     setFilters(newFilters);
@@ -41,6 +50,17 @@ export const MessagingTab = () => {
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
+  };
+
+  const handleMentionClick = async (mention: any) => {
+    if (mention.channel_id) {
+      setSelectedChannelId(mention.channel_id);
+      if (isMobile) {
+        setShowChannels(false);
+      }
+    }
+    await markMentionAsRead(mention.mention_id);
+    await refreshMentions();
   };
 
   return (
@@ -68,6 +88,13 @@ export const MessagingTab = () => {
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            <MentionsPopover
+              mentions={unreadMentions}
+              totalCount={totalUnreadCount}
+              onMentionClick={handleMentionClick}
+              onMarkAsRead={markMentionAsRead}
+              onDelete={deleteMention}
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -99,3 +126,4 @@ export const MessagingTab = () => {
     </div>
   );
 };
+
