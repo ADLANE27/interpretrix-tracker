@@ -40,7 +40,7 @@ export const MessagingTab = () => {
       {isMobile && selectedChannelId && !showChannels && (
         <button
           onClick={toggleChannels}
-          className="absolute top-2 left-2 z-10 p-2 rounded-full bg-white shadow-md"
+          className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white shadow-md"
         >
           <Menu className="h-5 w-5 text-interpreter-navy" />
         </button>
@@ -48,9 +48,11 @@ export const MessagingTab = () => {
 
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className="p-3 sm:p-4 lg:col-span-1 shadow-md border-0 overflow-hidden bg-[#F8F9FA]">
-          <InterpreterChannelList 
-            onChannelSelect={handleChannelSelect}
-          />
+          <div className="pl-2">
+            <InterpreterChannelList 
+              onChannelSelect={handleChannelSelect}
+            />
+          </div>
         </Card>
       )}
       
