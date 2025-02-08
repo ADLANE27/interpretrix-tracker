@@ -67,7 +67,7 @@ export const MessagingTab = () => {
           "hover:shadow-xl rounded-xl",
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
