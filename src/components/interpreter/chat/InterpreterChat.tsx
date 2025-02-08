@@ -500,10 +500,13 @@ export const InterpreterChat = ({
   return (
     <div className={cn(
       "flex flex-col",
-      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]"
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
+      "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
-      <div className="flex items-center justify-between p-3 border-b bg-white">
-        <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
+      <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
+        <h2 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6]">
+          Messages
+        </h2>
       </div>
 
       <ChatFilters
@@ -525,16 +528,16 @@ export const InterpreterChat = ({
             )}
             onScrollCapture={handleScroll}
           >
-            <div className="p-4">
+            <div className="p-4 space-y-6">
               {filteredMessages.map(message => (
                 <div 
                   key={message.id} 
                   id={`message-${message.id}`}
-                  className="group hover:bg-gray-50 rounded-lg p-3 transition-colors duration-200 mb-2"
+                  className="group message-appear"
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarFallback className="bg-interpreter-navy text-white">
+                    <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg">
+                      <AvatarFallback className="bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]">
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -546,39 +549,46 @@ export const InterpreterChat = ({
                         </span>
                       </div>
                       {message.parent_message_id && (
-                        <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-muted-foreground">
+                        <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
                           <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                         </div>
                       )}
                       <div className="group">
-                        <div className="flex items-start gap-2">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{message.content}</p>
+                        <div className={cn(
+                          "chat-bubble chat-bubble-tail",
+                          message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
+                        )}>
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {message.content}
+                          </p>
+                        </div>
+                        <div className="flex justify-end mt-2 gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
                             onClick={() => handleThreadClick(message)}
                           >
-                            <MessageSquare className="h-4 w-4 mr-1" />
+                            <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
                             {threadCounts[message.id] > 0 && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                              <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
                                 {threadCounts[message.id]}
                               </span>
                             )}
                           </Button>
+                          {currentUserId === message.sender.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteMessage(message.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
-                    {currentUserId === message.sender.id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteMessage(message.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    )}
                   </div>
                 </div>
               ))}
@@ -588,7 +598,7 @@ export const InterpreterChat = ({
           {showScrollButton && (
             <Button
               onClick={scrollToBottom}
-              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce"
               size="icon"
               variant="outline"
             >
@@ -596,12 +606,12 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
             <div className="p-4 max-w-[95%] mx-auto">
-              <div className="relative rounded-lg border bg-[#F8F9FA] shadow-sm transition-all hover:shadow-md">
+              <div className="chat-input-container">
                 {replyingTo && (
-                  <div className="px-3 py-2 bg-[#F3F4F6] border-b rounded-t-lg flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-purple-700">
                       <ArrowRight className="h-4 w-4" />
                       <span>En réponse à {replyingTo.sender.name}</span>
                     </div>
@@ -609,7 +619,7 @@ export const InterpreterChat = ({
                       variant="ghost"
                       size="sm"
                       onClick={cancelReply}
-                      className="hover:bg-[#E5E7EB] transition-colors"
+                      className="hover:bg-purple-100 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -621,7 +631,7 @@ export const InterpreterChat = ({
                   onChange={handleMessageChange}
                   onKeyPress={handleKeyPress}
                   placeholder="Écrivez votre message..."
-                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-lg bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
                 />
 
                 <MentionSuggestions
@@ -643,9 +653,9 @@ export const InterpreterChat = ({
                     size="icon"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
+                    className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
                   >
-                    <Paperclip className="h-4 w-4 text-gray-600" />
+                    <Paperclip className="h-4 w-4 text-purple-500" />
                   </Button>
 
                   <Popover>
@@ -653,9 +663,9 @@ export const InterpreterChat = ({
                       <Button 
                         variant="ghost" 
                         size="icon"
-                        className="h-8 w-8 hover:bg-[#E5E7EB] rounded-full transition-colors"
+                        className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
                       >
-                        <Smile className="h-4 w-4 text-gray-600" />
+                        <Smile className="h-4 w-4 text-purple-500" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-full p-0" align="end">
@@ -670,7 +680,12 @@ export const InterpreterChat = ({
                   <Button 
                     onClick={handleSendMessage}
                     disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                    className="h-8 bg-[#9b87f5] hover:bg-[#8B5CF6] text-white rounded-full transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 px-4"
+                    className={cn(
+                      "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
+                      "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
+                      "text-white flex items-center gap-2 px-4",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
                   >
                     <Send className="h-4 w-4" />
                     <span className="hidden sm:inline">Envoyer</span>
@@ -682,7 +697,7 @@ export const InterpreterChat = ({
         </div>
 
         {selectedThread && (
-          <div className="fixed inset-0 z-50 bg-white lg:static lg:w-1/3 lg:border-l flex flex-col">
+          <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm lg:static lg:w-1/3 lg:border-l flex flex-col">
             <div className="p-3 border-b flex items-center justify-between bg-gray-50">
               <h3 className="font-semibold">Conversation</h3>
               <Button
