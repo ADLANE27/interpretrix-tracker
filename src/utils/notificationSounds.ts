@@ -9,12 +9,17 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     console.log(`[notificationSounds] Initializing ${type} sound`);
     const fileName = `${type}-mission.mp3`;
     
-    // Get public URL for the sound file - note that getPublicUrl doesn't return an error
-    const { data } = supabase
+    // Get public URL for the sound file
+    const { data, error } = supabase
       .storage
       .from('notification_sounds')
       .getPublicUrl(fileName);
     
+    if (error) {
+      console.error('[notificationSounds] Error getting public URL:', error);
+      throw error;
+    }
+
     if (!data.publicUrl) {
       console.error('[notificationSounds] No public URL returned');
       throw new Error('No public URL returned for sound file');
@@ -23,7 +28,21 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     console.log(`[notificationSounds] Loading sound from URL: ${data.publicUrl}`);
     
     const audio = new Audio(data.publicUrl);
-    audio.load();
+    
+    // Wait for the audio to be loaded
+    await new Promise((resolve, reject) => {
+      audio.addEventListener('canplaythrough', () => {
+        console.log(`[notificationSounds] ${type} sound loaded successfully`);
+        resolve(true);
+      }, { once: true });
+      
+      audio.addEventListener('error', (e) => {
+        console.error(`[notificationSounds] Error loading ${type} sound:`, e);
+        reject(new Error(`Failed to load ${type} sound: ${e.message}`));
+      }, { once: true });
+      
+      audio.load();
+    });
     
     return audio;
   } catch (error) {
