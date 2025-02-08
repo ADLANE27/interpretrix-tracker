@@ -117,6 +117,8 @@ serve(async (req) => {
             }
           };
 
+          console.log(`[Push Notification] Subscription details:`, subscription);
+
           const maxAttempts = 3;
           let attempt = 0;
           let lastError;
