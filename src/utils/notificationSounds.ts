@@ -7,6 +7,9 @@ let audioInitialized = false;
 let immediateSound: HTMLAudioElement | null = null;
 let scheduledSound: HTMLAudioElement | null = null;
 
+// Pour iOS, on doit garder une référence aux éléments audio
+const audioElements: HTMLAudioElement[] = [];
+
 // Initialisation de l'AudioContext avec gestion des interactions utilisateur
 const initializeAudioContext = () => {
   if (!audioContext) {
@@ -21,21 +24,85 @@ const initializeAudioContext = () => {
   return audioContext;
 };
 
+// Gestion spécifique pour iOS
+const handleIOSAudio = async () => {
+  console.log('[notificationSounds] Initializing iOS audio');
+  
+  // Créer de nouveaux éléments audio pour iOS
+  const immediate = new Audio();
+  const scheduled = new Audio();
+  
+  // Ajouter au tableau global pour maintenir les références
+  audioElements.push(immediate, scheduled);
+  
+  try {
+    // Charger les sons
+    const { data: immediateData } = supabase.storage
+      .from('notification_sounds')
+      .getPublicUrl('/immediate-mission.mp3');
+      
+    const { data: scheduledData } = supabase.storage
+      .from('notification_sounds')
+      .getPublicUrl('/scheduled-mission.mp3');
+
+    if (immediateData?.publicUrl && scheduledData?.publicUrl) {
+      immediate.src = immediateData.publicUrl;
+      scheduled.src = scheduledData.publicUrl;
+      
+      // Charger les sons
+      await immediate.load();
+      await scheduled.load();
+      
+      // Jouer et mettre immédiatement en pause pour iOS
+      immediate.volume = 0;
+      scheduled.volume = 0;
+      await immediate.play();
+      await scheduled.play();
+      immediate.pause();
+      scheduled.pause();
+      immediate.volume = 1;
+      scheduled.volume = 1;
+      
+      console.log('[notificationSounds] iOS audio initialized successfully');
+      return true;
+    }
+  } catch (error) {
+    console.error('[notificationSounds] iOS audio initialization failed:', error);
+    return false;
+  }
+  return false;
+};
+
 // Gestion de l'interaction utilisateur pour iOS
-const handleUserInteraction = () => {
-  if (!audioInitialized && audioContext) {
-    // Créer et jouer un buffer silencieux pour débloquer l'audio
-    const buffer = audioContext.createBuffer(1, 1, 22050);
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-    audioInitialized = true;
-    console.log('[notificationSounds] Audio initialized through user interaction');
+const handleUserInteraction = async () => {
+  if (!audioInitialized) {
+    console.log('[notificationSounds] Handling user interaction for audio');
     
-    // Précharger les sons après l'initialisation
-    playNotificationSound('immediate', true).catch(console.error);
-    playNotificationSound('scheduled', true).catch(console.error);
+    // Initialiser l'AudioContext
+    initializeAudioContext();
+    
+    // Créer et jouer un buffer silencieux pour débloquer l'audio
+    if (audioContext) {
+      const buffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+      
+      // Initialiser spécifiquement pour iOS
+      const iosInitialized = await handleIOSAudio();
+      
+      if (iosInitialized) {
+        audioInitialized = true;
+        console.log('[notificationSounds] Audio initialized through user interaction');
+        
+        // Précharger les sons
+        await Promise.all([
+          playNotificationSound('immediate', true),
+          playNotificationSound('scheduled', true)
+        ]).catch(console.error);
+      }
+    }
     
     // Nettoyer les listeners une fois initialisé
     document.removeEventListener('touchstart', handleUserInteraction);
@@ -101,6 +168,10 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
     
     const loadedAudio = await loadPromise;
     console.log(`[notificationSounds] ${type} sound ready to play`);
+    
+    // Ajouter à la liste des éléments audio pour iOS
+    audioElements.push(loadedAudio);
+    
     return loadedAudio;
   } catch (error) {
     console.error(`[notificationSounds] Error initializing ${type} sound:`, error);
@@ -136,7 +207,8 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       paused: sound.paused,
       networkState: sound.networkState,
       src: sound.src,
-      error: sound.error
+      error: sound.error,
+      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent)
     });
 
     if (preloadOnly) {
@@ -181,33 +253,30 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       });
       
       if (error.name === 'NotAllowedError') {
-        console.log('[notificationSounds] Sound blocked - attempting recovery');
-        // Forcer l'initialisation audio
+        console.log('[notificationSounds] NotAllowedError - attempting recovery');
+        
+        // Forcer la réinitialisation pour iOS
         audioInitialized = false;
-        handleUserInteraction();
+        await handleUserInteraction();
         
         // Retry after a short delay
         await new Promise(resolve => setTimeout(resolve, 100));
         try {
+          sound.volume = 1.0;
+          sound.currentTime = 0;
           await sound.play();
-          console.log('[notificationSounds] Retry successful');
+          console.log('[notificationSounds] Recovery successful');
         } catch (retryError) {
-          console.log('[notificationSounds] Retry failed, falling back to vibration');
+          console.error('[notificationSounds] Recovery failed:', retryError);
+          // Dernier recours : vibration
           if ('vibrate' in navigator) {
             navigator.vibrate([200, 100, 200]);
           }
         }
       }
-      
-      if (error.name === 'AbortError') {
-        console.log('[notificationSounds] Sound play was aborted - retrying...');
-        await sound.play();
-      }
-      
-      throw error;
     }
   } catch (error) {
-    console.error('[notificationSounds] Error with audio:', error);
+    console.error('[notificationSounds] Critical error with audio:', error);
     throw error;
   }
 };
