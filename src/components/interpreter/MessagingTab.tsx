@@ -87,7 +87,7 @@ export const MessagingTab = () => {
           "hover:shadow-xl rounded-xl",
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
-          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -99,12 +99,18 @@ export const MessagingTab = () => {
               variant="ghost"
               size="icon"
               onClick={toggleFullScreen}
-              className="hover:bg-white/50 transition-colors duration-200"
+              className={cn(
+                "transition-all duration-200",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow",
+                "border border-gray-100",
+                "rounded-lg",
+                isFullScreen ? "hover:bg-red-50 hover:text-red-500" : "hover:bg-purple-50 hover:text-purple-500"
+              )}
             >
               {isFullScreen ? (
-                <Minimize2 className="h-4 w-4 text-gray-500" />
+                <Minimize2 className="h-4 w-4" />
               ) : (
-                <Maximize2 className="h-4 w-4 text-gray-500" />
+                <Maximize2 className="h-4 w-4" />
               )}
             </Button>
           </div>
@@ -126,4 +132,3 @@ export const MessagingTab = () => {
     </div>
   );
 };
-
