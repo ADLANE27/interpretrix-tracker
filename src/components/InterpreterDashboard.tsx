@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +14,7 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "./interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, ChevronLeft } from "lucide-react";
+import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -350,22 +351,33 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-                <div className="flex gap-2 w-full">
-                  <div className="flex-1">
-                    <HowToUseGuide isOpen={false} onOpenChange={() => {}} />
-                  </div>
-                  <div className="flex-1">
-                    <NotificationPermission interpreterId={profile.id} />
-                  </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    onClick={() => {}}
+                    className="flex-1 sm:flex-none"
+                    title="Guide d'utilisation"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="flex-1 sm:flex-none"
+                    title="Notifications"
+                  >
+                    <Bell className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
                     onClick={handleLogout}
-                    className="flex-1 hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+                    className="flex-1 sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors"
+                    title="Se déconnecter"
                   >
                     <LogOut className="h-4 w-4" />
-                    <span className="sm:hidden">Se déconnecter</span>
                   </Button>
                 </div>
               </div>
