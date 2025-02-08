@@ -1,6 +1,6 @@
 
 // Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.4';
+const SW_VERSION = '1.0.5';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling with detailed logging
@@ -139,10 +139,9 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-// Enhanced installation handling with version logging
 self.addEventListener('install', event => {
   console.log(`[Service Worker ${SW_VERSION}] Installing`);
-  self.skipWaiting(); // Ensure service worker activates immediately
+  self.skipWaiting();
   event.waitUntil(
     caches.open('v1').then(cache => {
       return cache.addAll([
@@ -154,14 +153,11 @@ self.addEventListener('install', event => {
   );
 });
 
-// Enhanced activation handling with client claim
 self.addEventListener('activate', event => {
   console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  // Claim all clients immediately
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      // Clean up old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {

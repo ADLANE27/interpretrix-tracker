@@ -5,11 +5,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       headers: corsHeaders,
@@ -18,9 +16,8 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[VAPID] Starting VAPID key retrieval process');
+    console.log('[VAPID] Starting VAPID key retrieval process')
     
-    // Initialize Supabase client with proper error handling
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -34,11 +31,11 @@ serve(async (req) => {
 
     // First try to get from environment
     let vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    console.log('[VAPID] Checking environment variable:', vapidPublicKey ? 'Found' : 'Not found');
+    console.log('[VAPID] Checking environment variable:', vapidPublicKey ? 'Found' : 'Not found')
     
     // If not in environment, try to get from database
     if (!vapidPublicKey) {
-      console.log('[VAPID] Key not found in environment, checking database...');
+      console.log('[VAPID] Key not found in environment, checking database...')
       const { data, error } = await supabaseAdmin
         .from('secrets')
         .select('value')
@@ -46,22 +43,28 @@ serve(async (req) => {
         .single()
 
       if (error) {
-        console.error('[VAPID] Error fetching key from database:', error);
-        throw error;
+        console.error('[VAPID] Error fetching key from database:', error)
+        throw error
       }
 
       if (data) {
-        vapidPublicKey = data.value;
-        console.log('[VAPID] Key successfully retrieved from database');
+        vapidPublicKey = data.value
+        console.log('[VAPID] Key successfully retrieved from database')
       }
     }
 
     if (!vapidPublicKey) {
-      console.error('[VAPID] Public key not found in environment or database');
-      throw new Error('VAPID public key not configured');
+      console.error('[VAPID] Public key not found in environment or database')
+      throw new Error('VAPID public key not configured')
+    }
+
+    // Validate key format
+    if (!/^[A-Za-z0-9\-_]+$/.test(vapidPublicKey)) {
+      console.error('[VAPID] Invalid key format detected')
+      throw new Error('Invalid VAPID public key format')
     }
     
-    console.log('[VAPID] Successfully retrieved VAPID public key');
+    console.log('[VAPID] Successfully retrieved and validated VAPID public key')
     
     return new Response(
       JSON.stringify({ vapidPublicKey }),
@@ -77,11 +80,11 @@ serve(async (req) => {
       },
     )
   } catch (error) {
-    console.error('[VAPID] Error retrieving public key:', error);
+    console.error('[VAPID] Error retrieving public key:', error)
     console.error('[VAPID] Error details:', {
       message: error.message,
       stack: error.stack
-    });
+    })
     
     return new Response(
       JSON.stringify({ 

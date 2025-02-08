@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import webPush from 'npm:web-push'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -8,7 +9,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -16,9 +16,16 @@ serve(async (req) => {
   try {
     console.log('Generating VAPID keys...')
     const vapidKeys = webPush.generateVAPIDKeys()
-    console.log('VAPID keys generated:', vapidKeys)
+    console.log('Raw VAPID keys generated:', vapidKeys)
 
-    // Initialize Supabase client with service role key
+    // Validate key format
+    if (!vapidKeys.publicKey || !vapidKeys.privateKey || 
+        !/^[A-Za-z0-9\-_]+$/.test(vapidKeys.publicKey) || 
+        !/^[A-Za-z0-9\-_]+$/.test(vapidKeys.privateKey)) {
+      throw new Error('Generated VAPID keys are not in valid URL-safe base64 format')
+    }
+
+    // Initialize Supabase client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -63,7 +70,10 @@ serve(async (req) => {
     console.log('VAPID keys stored successfully')
     
     return new Response(
-      JSON.stringify(vapidKeys),
+      JSON.stringify({
+        publicKey: vapidKeys.publicKey,
+        privateKey: vapidKeys.privateKey
+      }),
       { 
         headers: { 
           ...corsHeaders,
