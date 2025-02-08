@@ -14,12 +14,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[Push Notification] Starting push notification service');
+    
     const { message } = await req.json();
     console.log('[Push Notification] Received request with message:', { 
       title: message.title,
       body: message.body,
       interpreterIds: message.interpreterIds,
-      type: message.data?.type 
+      type: message.data?.type,
+      mission_id: message.data?.mission_id 
     });
     
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
@@ -83,14 +86,20 @@ serve(async (req) => {
     const notificationPayload = {
       title: message.title || 'Nouvelle mission disponible',
       body: message.body || `${message.data?.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${message.data?.source_language} → ${message.data?.target_language} (${message.data?.estimated_duration} min)`,
-      mission_id: message.data?.mission_id,
-      mission_type: message.data?.mission_type,
-      source_language: message.data?.source_language,
-      target_language: message.data?.target_language,
-      estimated_duration: message.data?.estimated_duration,
+      data: {
+        mission_id: message.data?.mission_id,
+        mission_type: message.data?.mission_type,
+        source_language: message.data?.source_language,
+        target_language: message.data?.target_language,
+        estimated_duration: message.data?.estimated_duration,
+        url: '/',
+        timestamp: Date.now()
+      },
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       vibrate: [200, 100, 200],
+      tag: `mission-${message.data?.mission_id}`,
+      renotify: true,
       requireInteraction: true,
       actions: [
         { action: 'accept', title: 'Accepter' },
@@ -104,7 +113,7 @@ serve(async (req) => {
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
-          console.log(`[Push Notification] Sending to subscription ${sub.id}`);
+          console.log(`[Push Notification] Preparing to send to subscription ${sub.id}`);
           
           const subscription = {
             endpoint: sub.endpoint,
@@ -120,6 +129,7 @@ serve(async (req) => {
           
           while (attempt < maxAttempts) {
             try {
+              console.log(`[Push Notification] Attempt ${attempt + 1} for subscription ${sub.id}`);
               await webPush.sendNotification(
                 subscription,
                 JSON.stringify(notificationPayload)
@@ -140,20 +150,24 @@ serve(async (req) => {
             } catch (error) {
               lastError = error;
               console.error(`[Push Notification] Attempt ${attempt + 1} failed for ${sub.id}:`, error);
+              
+              if (error.statusCode === 410 || error.statusCode === 404) {
+                console.log(`[Push Notification] Subscription ${sub.id} is expired or invalid`);
+                break; // No need to retry for invalid subscriptions
+              }
+              
               attempt++;
               if (attempt < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                const delay = Math.pow(2, attempt) * 1000;
+                console.log(`[Push Notification] Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
               }
             }
           }
           
           // If we get here, all attempts failed
-          throw lastError;
-        } catch (error) {
-          console.error(`[Push Notification] Failed for subscription ${sub.id}:`, error);
-          
-          if (error.statusCode === 410 || error.statusCode === 404) {
-            console.log(`[Push Notification] Subscription ${sub.id} expired, updating status`);
+          if (lastError?.statusCode === 410 || lastError?.statusCode === 404) {
+            console.log(`[Push Notification] Marking subscription ${sub.id} as expired`);
             await supabase
               .from('push_subscriptions')
               .update({ 
@@ -163,10 +177,14 @@ serve(async (req) => {
               .eq('id', sub.id);
           }
           
+          throw lastError;
+        } catch (error) {
+          console.error(`[Push Notification] Final error for subscription ${sub.id}:`, error);
           return { 
             success: false, 
             subscriptionId: sub.id, 
-            error: error.message 
+            error: error.message,
+            statusCode: error.statusCode 
           };
         }
       })
