@@ -15,8 +15,22 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   }, []);
 
   const checkNotificationPermission = () => {
+    // Detailed environment logging
+    console.log('[Notifications] Environment check:', {
+      hasNotificationAPI: 'Notification' in window,
+      hasServiceWorkerAPI: 'serviceWorker' in navigator,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      vendor: navigator.vendor
+    });
+
     if (!('Notification' in window)) {
-      console.warn('[Notifications] Notifications not supported');
+      console.warn('[Notifications] Notifications API not supported');
+      return;
+    }
+
+    if (!('serviceWorker' in navigator)) {
+      console.warn('[Notifications] Service Worker API not supported');
       return;
     }
 
@@ -88,13 +102,15 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     }
   };
 
-  if (!('Notification' in window)) {
+  // If either Notifications or Service Workers are not supported
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     return (
       <Button 
         variant="outline" 
         size="sm"
         disabled
         className="flex items-center gap-2"
+        title="Pour recevoir des notifications, veuillez utiliser Safari (iOS 16.4+) ou ajouter l'application à votre écran d'accueil"
       >
         <Bell className="h-4 w-4" />
         Notifications non supportées
@@ -149,3 +165,4 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     </Button>
   );
 };
+
