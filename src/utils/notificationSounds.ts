@@ -7,7 +7,8 @@ let scheduledSound: HTMLAudioElement | null = null;
 const initializeSound = async (type: 'immediate' | 'scheduled') => {
   try {
     console.log(`[notificationSounds] Initializing ${type} sound`);
-    const fileName = `${type}-mission.mp3`;
+    // Remove any leading slash to prevent double slashes
+    const fileName = `${type}-mission.mp3`.replace(/^\/+/, '');
     
     // Get public URL for the sound file
     const { data } = supabase
@@ -42,7 +43,8 @@ const initializeSound = async (type: 'immediate' | 'scheduled') => {
           code: error?.code,
           message: error?.message,
           networkState: audio.networkState,
-          readyState: audio.readyState
+          readyState: audio.readyState,
+          url: data.publicUrl // Log the URL for debugging
         });
         audio.removeEventListener('canplaythrough', onCanPlay);
         audio.removeEventListener('error', onError);
