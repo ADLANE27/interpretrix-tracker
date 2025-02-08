@@ -40,13 +40,15 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: InterpreterChatProps['filters']) => void;
   onClearFilters: () => void;
+  isFullScreen?: boolean;
 }
 
 export const InterpreterChat = ({ 
   channelId,
   filters,
   onFiltersChange,
-  onClearFilters
+  onClearFilters,
+  isFullScreen = false
 }: InterpreterChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -495,7 +497,10 @@ export const InterpreterChat = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-300px)]">
+    <div className={cn(
+      "flex flex-col",
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]"
+    )}>
       <div className="flex items-center justify-between p-3 border-b bg-white">
         <h2 className="text-lg font-semibold text-interpreter-navy">Messages</h2>
         <MentionsPopover
@@ -520,7 +525,10 @@ export const InterpreterChat = ({
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 pb-[160px] h-full" 
+            className={cn(
+              "flex-1 h-full",
+              isFullScreen ? "pb-[120px]" : "pb-[160px]"
+            )}
             onScrollCapture={handleScroll}
           >
             <div className="p-4">
