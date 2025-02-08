@@ -54,73 +54,29 @@ export const isInterpreterAvailableForScheduledMission = async (
   });
 
   try {
-    const { data: interpreter, error: interpreterError } = await supabase
-      .from('interpreter_profiles')
-      .select('status, first_name, last_name')
-      .eq('id', interpreterId)
-      .single();
-
-    if (interpreterError) {
-      console.error('[missionUtils] Error fetching interpreter:', interpreterError);
-      return false;
-    }
-
-    if (!interpreter) {
-      console.error('[missionUtils] Interpreter not found');
-      return false;
-    }
-
-    const missionStart = new Date(startTime);
-    const missionEnd = new Date(endTime);
-    const now = new Date();
-
-    if (isNaN(missionStart.getTime()) || isNaN(missionEnd.getTime())) {
-      console.error('[missionUtils] Invalid mission dates');
-      return false;
-    }
-
-    // Only check if the date part is in the past, not the time
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const missionDate = new Date(missionStart.getFullYear(), missionStart.getMonth(), missionStart.getDate());
-
-    if (missionDate < todayStart) {
-      console.error('[missionUtils] Mission date is in the past');
-      return false;
-    }
-
-    if (missionEnd <= missionStart) {
-      console.error('[missionUtils] Mission end time is before or equal to start time');
-      return false;
-    }
-
+    // Get all accepted or in-progress missions for this interpreter
     const { data: existingMissions, error: missionsError } = await supabase
       .from('interpretation_missions')
       .select('scheduled_start_time, scheduled_end_time, mission_type, status')
       .eq('assigned_interpreter_id', interpreterId)
-      .in('status', ['accepted', 'in_progress'])
-      .neq('status', 'deleted'); // Add this line to exclude deleted missions
+      .in('status', ['accepted', 'in_progress']) // Only check against accepted and in-progress missions
+      .neq('status', 'deleted');
 
     if (missionsError) {
       console.error('[missionUtils] Error checking existing missions:', missionsError);
       return false;
     }
 
-    const hasScheduledMissionConflict = existingMissions?.some(mission => {
-      if (mission.mission_type !== 'scheduled' || !mission.scheduled_start_time || !mission.scheduled_end_time) {
+    if (!existingMissions || existingMissions.length === 0) {
+      console.log('[missionUtils] No existing missions found, interpreter is available');
+      return true;
+    }
+
+    // Check for overlap with any existing accepted or in-progress missions
+    const hasConflict = existingMissions.some(mission => {
+      if (!mission.scheduled_start_time || !mission.scheduled_end_time) {
         return false;
       }
-
-      // Log the missions being compared for debugging
-      console.log('[missionUtils] Comparing with existing mission:', {
-        existingMission: {
-          start: mission.scheduled_start_time,
-          end: mission.scheduled_end_time
-        },
-        newMission: {
-          start: startTime,
-          end: endTime
-        }
-      });
 
       const overlap = hasTimeOverlap(
         mission.scheduled_start_time,
@@ -130,19 +86,14 @@ export const isInterpreterAvailableForScheduledMission = async (
       );
 
       if (overlap) {
-        console.log('[missionUtils] Found overlapping mission:', mission);
+        console.log('[missionUtils] Found conflicting mission:', mission);
       }
 
       return overlap;
     });
 
-    if (hasScheduledMissionConflict) {
-      console.log('[missionUtils] Conflict with scheduled mission detected');
-      return false;
-    }
-
-    console.log('[missionUtils] Interpreter is available for scheduled mission');
-    return true;
+    console.log('[missionUtils] Availability check result:', !hasConflict);
+    return !hasConflict;
   } catch (error) {
     console.error('[missionUtils] Error in availability check:', error);
     return false;
