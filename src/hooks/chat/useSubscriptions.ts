@@ -2,9 +2,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 
-const RETRY_DELAY = 2000; // 2 secondes entre les tentatives
+// Constants for reconnection
+const INITIAL_RETRY_DELAY = 2000; // 2 seconds
+const MAX_RETRY_DELAY = 30000; // 30 seconds
+const MAX_SILENT_RETRIES = 3; // Number of retries before showing toast
 
 export const useSubscriptions = (
   channelId: string,
@@ -14,93 +17,91 @@ export const useSubscriptions = (
   fetchMessages: () => Promise<void>
 ) => {
   const { toast } = useToast();
-  const messageChannelRef = useRef<RealtimeChannel | null>(null);
-  const mentionChannelRef = useRef<RealtimeChannel | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
   const isReconnectingRef = useRef(false);
-  const [messageChannelStatus, setMessageChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
-  const [mentionChannelStatus, setMentionChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
+  const [channelStatus, setChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
+  const silentRetryCountRef = useRef(0);
+  const lastActiveRef = useRef(Date.now());
+  const isBackgroundRef = useRef(false);
 
-  const cleanupChannel = useCallback((channel: RealtimeChannel | null) => {
-    if (channel) {
+  const cleanupChannel = useCallback(() => {
+    if (channelRef.current) {
       try {
-        channel.unsubscribe();
+        console.log('[Chat] Cleaning up channel');
+        channelRef.current.unsubscribe();
+        channelRef.current = null;
       } catch (error) {
         console.error('[Chat] Error cleaning up channel:', error);
       }
     }
   }, []);
 
-  const handleVisibilityChange = useCallback((channel: RealtimeChannel | null, status: REALTIME_SUBSCRIBE_STATES | null) => {
-    if (!channel) return;
-
-    if (document.visibilityState === 'visible' && status !== 'SUBSCRIBED') {
-      console.log('[Chat] Page visible, resubscribing to channel');
-      channel.subscribe();
-    }
-  }, []);
-
-  const setupVisibilityListener = useCallback((channel: RealtimeChannel, type: 'messages' | 'mentions') => {
-    const listener = () => {
-      if (type === 'messages') {
-        handleVisibilityChange(channel, messageChannelStatus);
-      } else {
-        handleVisibilityChange(channel, mentionChannelStatus);
+  const handleVisibilityChange = useCallback(() => {
+    const isVisible = document.visibilityState === 'visible';
+    console.log('[Chat] Visibility changed:', isVisible ? 'visible' : 'hidden');
+    
+    isBackgroundRef.current = !isVisible;
+    
+    if (isVisible) {
+      lastActiveRef.current = Date.now();
+      if (channelStatus !== 'SUBSCRIBED' && channelRef.current) {
+        console.log('[Chat] Page visible, resubscribing to channel');
+        channelRef.current.subscribe();
       }
-    };
-    
-    document.addEventListener('visibilitychange', listener);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', listener);
-    };
-  }, [handleVisibilityChange, messageChannelStatus, mentionChannelStatus]);
+    }
+  }, [channelStatus]);
 
   const handleSubscriptionError = useCallback(() => {
-    if (isReconnectingRef.current) return;
+    if (isReconnectingRef.current || isBackgroundRef.current) return;
+    
     isReconnectingRef.current = true;
+    const now = Date.now();
+    const timeSinceLastActive = now - lastActiveRef.current;
 
     // Clear any existing retry timeout
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
     }
 
-    // Exponential backoff for retries
-    const delay = Math.min(RETRY_DELAY * Math.pow(2, retryCount), 30000);
+    // Calculate delay with exponential backoff
+    const delay = Math.min(
+      INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+      MAX_RETRY_DELAY
+    );
+
+    console.log(`[Chat] Planning reconnection in ${delay}ms (retry #${retryCount})`);
 
     retryTimeoutRef.current = setTimeout(() => {
-      console.log('[Chat] Attempting to reconnect...');
-      setRetryCount(retryCount + 1);
-      
-      // Réessayer de se connecter
-      if (messageChannelRef.current) {
-        messageChannelRef.current.subscribe();
-      }
-      if (mentionChannelRef.current) {
-        mentionChannelRef.current.subscribe();
+      if (channelRef.current && !isBackgroundRef.current) {
+        console.log('[Chat] Attempting to reconnect...');
+        setRetryCount(retryCount + 1);
+        silentRetryCountRef.current++;
+        
+        channelRef.current.subscribe();
+        
+        // Only show toast after MAX_SILENT_RETRIES and if app is active
+        if (silentRetryCountRef.current > MAX_SILENT_RETRIES && timeSinceLastActive < 5000) {
+          toast({
+            title: "Problème de connexion",
+            description: "Tentative de reconnexion en cours...",
+            variant: "destructive",
+          });
+        }
       }
       
       isReconnectingRef.current = false;
     }, delay);
 
-    // Only show toast on first error
-    if (retryCount === 0) {
-      toast({
-        title: "Problème de connexion",
-        description: "Tentative de reconnexion en cours...",
-        variant: "destructive",
-      });
-    }
   }, [retryCount, setRetryCount, toast]);
 
-  const subscribeToMessages = useCallback(() => {
-    console.log('[Chat] Setting up real-time subscription for channel:', channelId);
+  const setupChannel = useCallback(() => {
+    console.log('[Chat] Setting up realtime subscription for channel:', channelId);
     
-    // Cleanup existing channel if any
-    cleanupChannel(messageChannelRef.current);
+    cleanupChannel();
     
     const channel = supabase
-      .channel(`messages:${channelId}`)
+      .channel(`room_${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -121,36 +122,6 @@ export const useSubscriptions = (
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[Chat] Subscription status:', status);
-        setMessageChannelStatus(status);
-        if (status === 'SUBSCRIBED') {
-          console.log('[Chat] Successfully subscribed to messages');
-          setRetryCount(0);
-          isReconnectingRef.current = false;
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[Chat] Channel error occurred');
-          handleSubscriptionError();
-        }
-      });
-
-    messageChannelRef.current = channel;
-    const cleanup = setupVisibilityListener(channel, 'messages');
-
-    return () => {
-      cleanup();
-      cleanupChannel(channel);
-    };
-  }, [channelId, currentUserId, fetchMessages, handleSubscriptionError, setRetryCount, setupVisibilityListener, cleanupChannel, toast]);
-
-  const subscribeToMentions = useCallback(() => {
-    console.log('[Chat] Setting up mentions subscription');
-    
-    // Cleanup existing channel if any
-    cleanupChannel(mentionChannelRef.current);
-    
-    const channel = supabase
-      .channel(`mentions:${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -169,35 +140,55 @@ export const useSubscriptions = (
           }
         }
       )
+      .on('system', { event: '*' }, (payload) => {
+        console.log('[Chat] System event:', payload);
+      })
       .subscribe((status) => {
-        console.log('[Chat] Mentions subscription status:', status);
-        setMentionChannelStatus(status);
-        if (status === 'CHANNEL_ERROR') {
+        console.log('[Chat] Subscription status:', status);
+        setChannelStatus(status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[Chat] Successfully subscribed to channel');
+          setRetryCount(0);
+          silentRetryCountRef.current = 0;
+          isReconnectingRef.current = false;
+          lastActiveRef.current = Date.now();
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Chat] Channel error occurred');
           handleSubscriptionError();
         }
       });
 
-    mentionChannelRef.current = channel;
-    const cleanup = setupVisibilityListener(channel, 'mentions');
+    channelRef.current = channel;
+    lastActiveRef.current = Date.now();
 
     return () => {
-      cleanup();
-      cleanupChannel(channel);
+      cleanupChannel();
     };
-  }, [channelId, currentUserId, handleSubscriptionError, setupVisibilityListener, cleanupChannel, toast]);
+  }, [channelId, currentUserId, fetchMessages, handleSubscriptionError, setRetryCount, cleanupChannel, toast]);
+
+  useEffect(() => {
+    console.log('[Chat] Setting up visibility change listener');
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [handleVisibilityChange]);
+
+  useEffect(() => {
+    if (channelId) {
+      return setupChannel();
+    }
+  }, [channelId, setupChannel]);
 
   return {
-    handleSubscriptionError,
-    subscribeToMessages,
-    subscribeToMentions,
+    channelStatus,
     cleanup: useCallback(() => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      cleanupChannel(messageChannelRef.current);
-      cleanupChannel(mentionChannelRef.current);
-      messageChannelRef.current = null;
-      mentionChannelRef.current = null;
+      cleanupChannel();
     }, [cleanupChannel])
   };
 };
