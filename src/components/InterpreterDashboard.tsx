@@ -313,6 +313,13 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (isMobile) {
+      setIsSheetOpen(false);
+    }
+  };
+
   const tabItems = [
     { 
       value: "missions", 
