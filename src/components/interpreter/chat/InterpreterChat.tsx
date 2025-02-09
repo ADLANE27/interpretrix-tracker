@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -15,11 +16,11 @@ import {
   X,
   ArrowDown,
   Bell,
-  Bold as BoldIcon,
-  Italic as ItalicIcon,
-  List as ListIcon,
-  ListOrdered as ListOrderedIcon,
-  Link2 as Link2Icon
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Link2
 } from 'lucide-react';
 import { 
   Popover, 
@@ -502,61 +503,10 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
-  const applyTextFormatting = (format: 'bold' | 'italic' | 'list' | 'orderedList' | 'link') => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = message.substring(start, end);
-
-    let formattedText = '';
-    let cursorOffset = 2;
-
-    switch (format) {
-      case 'bold':
-        formattedText = `**${selectedText}**`;
-        break;
-      case 'italic':
-        formattedText = `_${selectedText}_`;
-        break;
-      case 'list':
-        formattedText = selectedText
-          .split('\n')
-          .map(line => `• ${line}`)
-          .join('\n');
-        cursorOffset = 2;
-        break;
-      case 'orderedList':
-        formattedText = selectedText
-          .split('\n')
-          .map((line, i) => `${i + 1}. ${line}`)
-          .join('\n');
-        cursorOffset = 3;
-        break;
-      case 'link':
-        formattedText = `[${selectedText}](url)`;
-        cursorOffset = 1;
-        break;
-      default:
-        return;
-    }
-
-    const newMessage = message.substring(0, start) + formattedText + message.substring(end);
-    setMessage(newMessage);
-
-    // Set cursor position after formatting
-    setTimeout(() => {
-      textarea.focus();
-      const newPosition = start + formattedText.length;
-      textarea.setSelectionRange(newPosition, newPosition);
-    }, 0);
-  };
-
   return (
     <div className={cn(
       "flex flex-col relative",
-      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-200px)]",
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
       "bg-white"
     )}>
       <div className="flex items-center justify-between p-4 border-b">
@@ -642,19 +592,19 @@ export const InterpreterChat = ({
 
               <div className="chat-toolbar">
                 <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <BoldIcon className="h-4 w-4" />
+                  <Bold className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <ItalicIcon className="h-4 w-4" />
+                  <Italic className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <ListIcon className="h-4 w-4" />
+                  <List className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <ListOrderedIcon className="h-4 w-4" />
+                  <ListOrdered className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Link2Icon className="h-4 w-4" />
+                  <Link2 className="h-4 w-4" />
                 </Button>
               </div>
 
