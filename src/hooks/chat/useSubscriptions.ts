@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { useRef, useCallback, useState } from 'react';
 
 const RETRY_DELAY = 2000; // 2 secondes entre les tentatives
@@ -18,8 +18,8 @@ export const useSubscriptions = (
   const mentionChannelRef = useRef<RealtimeChannel | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
   const isReconnectingRef = useRef(false);
-  const [messageChannelStatus, setMessageChannelStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null>(null);
-  const [mentionChannelStatus, setMentionChannelStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null>(null);
+  const [messageChannelStatus, setMessageChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
+  const [mentionChannelStatus, setMentionChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
 
   const cleanupChannel = useCallback((channel: RealtimeChannel | null) => {
     if (channel) {
@@ -31,7 +31,7 @@ export const useSubscriptions = (
     }
   }, []);
 
-  const handleVisibilityChange = useCallback((channel: RealtimeChannel | null, status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null) => {
+  const handleVisibilityChange = useCallback((channel: RealtimeChannel | null, status: REALTIME_SUBSCRIBE_STATES | null) => {
     if (!channel) return;
 
     if (document.visibilityState === 'visible' && status !== 'SUBSCRIBED') {
