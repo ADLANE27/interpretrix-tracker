@@ -562,28 +562,31 @@ export const InterpreterChat = ({
     let listCounter = 1;
     
     const formattedLines = lines.map(line => {
-      // Check for bullet points
-      if (line.trim().startsWith('• ')) {
+      const trimmedLine = line.trim();
+      
+      // Check for bullet points (only if • is followed by text)
+      if (trimmedLine.startsWith('• ') && trimmedLine.length > 2) {
         inList = true;
-        return `<li>${line.trim().substring(2)}</li>`;
+        return `<li>${trimmedLine.substring(2)}</li>`;
       }
-      // Check for numbered lists
-      const numberedMatch = line.trim().match(/^\d+\.\s(.+)/);
+      
+      // Check for numbered lists (auto-numbering if line starts with a number or just a dot)
+      const numberedMatch = trimmedLine.match(/^(\d+\.|\.) (.+)/);
       if (numberedMatch) {
         inList = true;
-        return `<li>${numberedMatch[1]}</li>`;
+        return `<li>${numberedMatch[2]}</li>`;
       }
       
       // If we were in a list but this line isn't a list item, close the list
-      if (inList && !line.trim().startsWith('• ') && !line.trim().match(/^\d+\.\s/)) {
+      if (inList && !trimmedLine.startsWith('• ') && !trimmedLine.match(/^(\d+\.|\.) /)) {
         inList = false;
         listCounter = 1;
       }
       
-      // Format bold and italic
+      // Format bold and italic - only if there's content between the symbols
       return line
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
-        .replace(/_(.*?)_/g, '<em>$1</em>');              // Italic
+        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')  // Bold
+        .replace(/_([^_\n]+)_/g, '<em>$1</em>');              // Italic
     });
 
     // Join lines back together with proper list wrapping
@@ -594,8 +597,8 @@ export const InterpreterChat = ({
 
     formattedLines.forEach(line => {
       if (line.startsWith('<li>')) {
-        // Check if it's coming from a bullet point or number
-        const isUnordered = line.includes('• ');
+        // Check if it's coming from a bullet point
+        const isUnordered = line.includes('•');
         
         if (isUnordered && !inUnorderedList) {
           if (inOrderedList) {
