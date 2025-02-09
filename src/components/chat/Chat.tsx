@@ -4,7 +4,23 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, Trash2 } from 'lucide-react';
+import { 
+  AtSign,
+  Bold,
+  Image as ImageIcon,
+  Italic,
+  Link,
+  List,
+  ListOrdered,
+  Mic,
+  Paperclip,
+  Plus,
+  Send,
+  Smile,
+  Trash2,
+  Strikethrough,
+  Underline
+} from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -339,6 +355,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
+      
       <ScrollArea 
         className="flex-1 px-6 py-4 overflow-y-auto chat-messages-container"
         onScroll={onScroll}
@@ -381,13 +398,52 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
       </ScrollArea>
 
       <div className="chat-input-container">
-        <div className="relative">
+        <div className="chat-input-wrapper">
+          <div className="chat-formatting-toolbar">
+            <button className="formatting-button">
+              <Plus className="h-4 w-4" />
+            </button>
+            <div className="h-4 border-r border-slack-border mx-1" />
+            <button className="formatting-button">
+              <Bold className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <Italic className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <Underline className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <Strikethrough className="h-4 w-4" />
+            </button>
+            <div className="h-4 border-r border-slack-border mx-1" />
+            <button className="formatting-button">
+              <List className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <ListOrdered className="h-4 w-4" />
+            </button>
+            <div className="h-4 border-r border-slack-border mx-1" />
+            <button className="formatting-button">
+              <Link className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <ImageIcon className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <Mic className="h-4 w-4" />
+            </button>
+            <button className="formatting-button">
+              <AtSign className="h-4 w-4" />
+            </button>
+          </div>
+
           <Textarea
             ref={textareaRef}
             value={message}
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
-            placeholder="Écrivez votre message..."
+            placeholder="Message #general"
             className="chat-input"
           />
 
@@ -397,7 +453,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
             visible={showMentions}
           />
 
-          <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          <div className="chat-toolbar">
             <input
               type="file"
               ref={fileInputRef}

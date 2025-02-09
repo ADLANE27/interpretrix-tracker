@@ -37,7 +37,7 @@
     /* Slack-specific variables */
     --slack-text-primary: #1D1C1D;
     --slack-text-secondary: #616061;
-    --slack-blue: #0B57D0;
+    --slack-blue: #1264A3;
     --slack-hover-bg: rgba(248, 248, 248, 1);
     --slack-border: rgba(230, 230, 230, 1);
   }
@@ -75,7 +75,7 @@
 
 @layer base {
   * {
-    @apply border-[#e5e7eb];
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -84,19 +84,19 @@
 
 @layer components {
   .message-row {
-    @apply px-4 py-0.5 hover:bg-[#F8F8F8] transition-colors duration-150 ease-in-out group;
+    @apply px-4 py-0.5 hover:bg-slack-hover-bg transition-colors duration-150 ease-in-out group;
   }
 
   .message-time {
-    @apply text-xs text-[#616061] ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150;
+    @apply text-xs text-slack-text-secondary ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150;
   }
 
   .message-sender {
-    @apply font-semibold text-[#1D1C1D] text-[15px];
+    @apply font-semibold text-slack-text-primary text-[15px];
   }
 
   .message-content {
-    @apply text-[15px] leading-[1.46668] text-[#1D1C1D] break-words;
+    @apply text-[15px] leading-[1.46668] text-slack-text-primary break-words;
   }
 
   .chat-bubble {
@@ -112,51 +112,35 @@
   }
 
   .chat-input-container {
-    @apply bg-white border-t border-[#DDDDDD] shadow-sm p-4;
+    @apply bg-white border-t border-slack-border p-4;
+  }
+
+  .chat-input-wrapper {
+    @apply relative;
   }
 
   .chat-input {
-    @apply w-full min-h-[44px] max-h-[300px] rounded-md border border-[#DDDDDD] bg-white px-3 py-2 text-[15px] leading-[1.46668] placeholder-[#616061] focus:ring-2 focus:ring-[#0B57D0]/30 focus:border-[#0B57D0] transition-all duration-150;
+    @apply w-full min-h-[44px] max-h-[300px] rounded-lg border border-slack-border bg-white px-3 py-2 text-[15px] leading-[1.46668] placeholder-slack-text-secondary focus:ring-2 focus:ring-slack-blue/30 focus:border-slack-blue transition-all duration-150;
   }
 
-  .date-separator {
-    @apply flex items-center gap-4 py-3 px-4;
-  }
-
-  .date-separator-line {
-    @apply flex-1 border-t border-[#DDDDDD];
-  }
-
-  .date-separator-text {
-    @apply text-sm text-[#616061] font-medium px-4;
-  }
-
-  .message-actions {
-    @apply opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1;
-  }
-
-  .message-action-button {
-    @apply h-7 w-7 rounded hover:bg-[#F8F8F8] text-[#616061] hover:text-[#1D1C1D] transition-colors duration-150 flex items-center justify-center;
-  }
-
-  .thread-panel {
-    @apply bg-white border-l border-[#DDDDDD] w-[40%] max-w-[640px] overflow-hidden flex flex-col;
-  }
-
-  .thread-header {
-    @apply px-4 py-3 border-b border-[#DDDDDD] flex items-center justify-between;
-  }
-
-  .thread-messages {
-    @apply flex-1 overflow-y-auto p-4 space-y-3;
+  .chat-toolbar {
+    @apply absolute bottom-2 right-2 flex items-center gap-2;
   }
 
   .chat-action-button {
-    @apply h-8 w-8 flex items-center justify-center rounded hover:bg-[#F8F8F8] text-[#616061] hover:text-[#1D1C1D] transition-colors duration-150;
+    @apply h-8 w-8 flex items-center justify-center rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150;
   }
 
   .chat-send-button {
-    @apply h-8 px-4 rounded-md bg-[#0B57D0] hover:bg-[#0B57D0]/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply h-8 px-4 rounded-lg bg-slack-blue hover:bg-slack-blue/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .chat-formatting-toolbar {
+    @apply flex items-center gap-0.5 px-2 py-1 border-b border-slack-border;
+  }
+
+  .formatting-button {
+    @apply h-7 w-7 rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150 flex items-center justify-center;
   }
 
   .message-appear {
