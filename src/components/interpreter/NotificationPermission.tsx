@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +14,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   }, []);
 
   const checkNotificationPermission = () => {
-    // Detailed environment logging
     console.log('[Notifications] Environment check:', {
       hasNotificationAPI: 'Notification' in window,
       hasServiceWorkerAPI: 'serviceWorker' in navigator,
@@ -43,7 +41,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
 
-      // First request notification permission
       const permission = await Notification.requestPermission();
       console.log('[Notifications] Permission result:', permission);
 
@@ -51,13 +48,11 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         throw new Error('Notification permission denied');
       }
 
-      // Then register service worker and subscribe to push
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
       
       toast({
         title: "Notifications activées",
-        description: "Vous recevrez des notifications pour les nouvelles missions",
       });
     } catch (error) {
       console.error('[Notifications] Error:', error);
@@ -66,13 +61,13 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         if (error.message === 'Notification permission denied') {
           toast({
             title: "Notifications bloquées",
-            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
+            description: "Autorisation requise dans les paramètres",
             variant: "destructive",
           });
         } else {
           toast({
             title: "Erreur",
-            description: "Impossible d'activer les notifications. Veuillez réessayer.",
+            description: "Impossible d'activer les notifications",
             variant: "destructive",
           });
         }
@@ -90,7 +85,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       
       toast({
         title: "Notifications désactivées",
-        description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
       });
     } catch (error) {
       console.error('[Notifications] Error disabling:', error);
@@ -102,18 +96,16 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     }
   };
 
-  // If either Notifications or Service Workers are not supported
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     return (
       <Button 
         variant="outline" 
-        size="sm"
+        size="icon"
         disabled
-        className="flex items-center gap-2"
-        title="Pour recevoir des notifications, veuillez utiliser Safari (iOS 16.4+) ou ajouter l'application à votre écran d'accueil"
+        className="h-9 w-9"
+        title="Notifications non supportées sur ce navigateur"
       >
         <Bell className="h-4 w-4" />
-        Notifications non supportées
       </Button>
     );
   }
@@ -122,12 +114,12 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     return (
       <Button 
         variant="outline" 
-        size="sm"
+        size="icon"
         onClick={handleDisableNotifications}
-        className="flex items-center gap-2"
+        className="h-9 w-9"
+        title="Désactiver les notifications"
       >
         <BellOff className="h-4 w-4" />
-        Désactiver les notifications
       </Button>
     );
   }
@@ -136,18 +128,18 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     return (
       <Button 
         variant="outline" 
-        size="sm"
-        className="flex items-center gap-2 text-red-600 hover:text-red-700"
+        size="icon"
+        className="h-9 w-9 text-red-600 hover:text-red-700"
         onClick={() => {
           toast({
             title: "Notifications bloquées",
-            description: "Pour activer les notifications, veuillez les autoriser dans les paramètres de votre navigateur",
+            description: "Autorisation requise dans les paramètres",
             variant: "destructive",
           });
         }}
+        title="Notifications bloquées"
       >
         <Bell className="h-4 w-4" />
-        Notifications bloquées
       </Button>
     );
   }
@@ -156,13 +148,12 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     <Button 
       onClick={handleEnableNotifications}
       variant="outline"
-      size="sm"
+      size="icon"
       disabled={isSubscribing}
-      className="flex items-center gap-2"
+      className="h-9 w-9"
+      title="Activer les notifications"
     >
       <Bell className="h-4 w-4" />
-      {isSubscribing ? 'Activation...' : 'Activer les notifications'}
     </Button>
   );
 };
-
