@@ -1,5 +1,5 @@
 
-const SW_VERSION = '1.0.11';
+const SW_VERSION = '1.0.12';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 self.addEventListener('error', event => {
@@ -31,12 +31,12 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
-  // Ensure we have the correct path and force HTTPS
-  const urlToOpen = new URL('/', self.location.origin).href.replace('http:', 'https:');
-
   event.waitUntil(
     (async () => {
       try {
+        // Always use HTTPS for the URL
+        const urlToOpen = self.location.origin.replace('http:', 'https:') + '/';
+
         const windowClients = await clients.matchAll({
           type: 'window',
           includeUncontrolled: true

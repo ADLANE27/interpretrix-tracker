@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from "@/utils/notificationSounds";
 
-// Initialize service worker early
 async function initializeServiceWorker() {
   if (!('serviceWorker' in navigator)) {
     console.error('[Notifications] Service Worker not supported');
@@ -10,7 +9,11 @@ async function initializeServiceWorker() {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
+    // Force HTTPS for service worker registration
+    const swUrl = new URL('/sw.js', window.location.origin);
+    swUrl.protocol = 'https:';
+
+    const registration = await navigator.serviceWorker.register(swUrl.href, {
       type: 'module',
       updateViaCache: 'none',
       scope: '/'
@@ -34,16 +37,19 @@ async function showNotification(missionData: any) {
     const registration = await navigator.serviceWorker.ready;
     console.log('[Notifications] Showing notification for mission:', missionData);
     
-    // Explicitly validate mission type
-    const validatedMissionType = missionData.mission_type === 'immediate' ? 'immediate' : 'scheduled';
+    // Strictly validate mission type
+    if (missionData.mission_type !== 'immediate' && missionData.mission_type !== 'scheduled') {
+      console.error('[Notifications] Invalid mission type:', missionData.mission_type);
+      throw new Error('Invalid mission type');
+    }
     
     const options = {
       body: `${missionData.source_language} → ${missionData.target_language} - ${missionData.estimated_duration} minutes`,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      data: { ...missionData, mission_type: validatedMissionType },
-      vibrate: /android/i.test(navigator.userAgent) ? [100, 50, 100] : [200, 100, 200],
-      tag: `mission-${validatedMissionType}-${missionData.id}`,
+      data: missionData,
+      vibrate: [200],
+      tag: `mission-${missionData.mission_type}-${missionData.id}`,
       renotify: true,
       requireInteraction: true,
       actions: [
@@ -55,7 +61,7 @@ async function showNotification(missionData: any) {
     };
 
     await registration.showNotification(
-      validatedMissionType === 'immediate' ? 
+      missionData.mission_type === 'immediate' ? 
         '🚨 Nouvelle mission immédiate' : 
         '📅 Nouvelle mission programmée',
       options
@@ -63,8 +69,8 @@ async function showNotification(missionData: any) {
 
     // Play sound based on validated mission type
     try {
-      console.log('[Notifications] Playing sound for mission type:', validatedMissionType);
-      await playNotificationSound(validatedMissionType);
+      console.log('[Notifications] Playing sound for mission type:', missionData.mission_type);
+      await playNotificationSound(missionData.mission_type);
     } catch (soundError) {
       console.error('[Notifications] Error playing sound:', soundError);
       // Don't throw here - we still want to show the notification even if sound fails
@@ -89,6 +95,7 @@ export async function setupNotifications(interpreterId: string) {
       throw new Error('Notifications not supported');
     }
 
+    // Force permission request on user interaction
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
       console.error('[Notifications] Permission denied');
@@ -126,7 +133,7 @@ export async function setupNotifications(interpreterId: string) {
                 .from('interpretation_missions')
                 .select('*')
                 .eq('id', payload.new.mission_id)
-                .single();
+                .maybeSingle();
 
               if (error) {
                 console.error('[Notifications] Error fetching mission:', error);

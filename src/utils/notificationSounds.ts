@@ -10,14 +10,30 @@ const audioElements: HTMLAudioElement[] = [];
 const initializeAudioContext = () => {
   if (!audioContext) {
     try {
+      // Force new AudioContext creation on each initialization attempt
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       audioContext = new AudioContextClass();
-      console.log('[notificationSounds] AudioContext created');
+      console.log('[notificationSounds] New AudioContext created');
     } catch (error) {
       console.error('[notificationSounds] Failed to create AudioContext:', error);
     }
   }
   return audioContext;
+};
+
+const createAndPlaySilentBuffer = async () => {
+  try {
+    const silentContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const buffer = silentContext.createBuffer(1, 1, 22050);
+    const source = silentContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(silentContext.destination);
+    source.start(0);
+    source.stop(0.001);
+    console.log('[notificationSounds] Silent buffer played successfully');
+  } catch (error) {
+    console.error('[notificationSounds] Error playing silent buffer:', error);
+  }
 };
 
 const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElement> => {
@@ -33,7 +49,7 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
 
   const audio = new Audio();
   audio.crossOrigin = "anonymous";
-  audio.preload = "auto"; // Force preloading
+  audio.preload = "auto";
   
   return new Promise((resolve, reject) => {
     const onLoad = () => {
@@ -49,7 +65,6 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
     audio.addEventListener('canplaythrough', onLoad, { once: true });
     audio.addEventListener('error', onError, { once: true });
     
-    // Set source and load after adding event listeners
     audio.src = data.publicUrl;
     audio.load();
 
@@ -78,16 +93,10 @@ const ensureSoundLoaded = async (type: 'immediate' | 'scheduled'): Promise<HTMLA
       }
       audioElements.push(sound);
       
-      // Create a silent buffer and play it to initialize audio on mobile
-      const silentContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const buffer = silentContext.createBuffer(1, 1, 22050);
-      const source = silentContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(silentContext.destination);
-      source.start(0);
-      source.stop(0.001);
+      // Initialize audio context and play silent buffer
+      await createAndPlaySilentBuffer();
       
-      console.log(`[notificationSounds] ${type} sound initialized for mobile`);
+      console.log(`[notificationSounds] ${type} sound initialized`);
     } catch (error) {
       console.error(`[notificationSounds] Failed to load ${type} sound:`, error);
       throw error;
@@ -124,32 +133,42 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     // Attempt vibration for mobile devices
     try {
       if ('vibrate' in navigator) {
-        navigator.vibrate(200);
+        navigator.vibrate([200]);
       }
     } catch (error) {
       console.log('[notificationSounds] Vibration not supported:', error);
     }
 
     // Play sound with retry mechanism
-    try {
-      const playPromise = sound.play();
-      if (playPromise !== undefined) {
-        await playPromise;
-        console.log(`[notificationSounds] ${type} sound played successfully`);
-      }
-    } catch (playError) {
-      console.error('[notificationSounds] Error playing sound:', playError);
-      
-      if (playError instanceof Error && playError.name === 'NotAllowedError') {
-        // Force audio initialization and retry
-        audioInitialized = false;
-        await new Promise(resolve => setTimeout(resolve, 100));
-        sound.volume = 1.0;
-        sound.currentTime = 0;
-        await sound.play();
-        console.log('[notificationSounds] Sound played after retry');
-      } else {
-        throw playError;
+    let playAttempts = 0;
+    const maxAttempts = 3;
+
+    while (playAttempts < maxAttempts) {
+      try {
+        playAttempts++;
+        const playPromise = sound.play();
+        
+        if (playPromise !== undefined) {
+          await playPromise;
+          console.log(`[notificationSounds] ${type} sound played successfully on attempt ${playAttempts}`);
+          return;
+        }
+      } catch (playError) {
+        console.error(`[notificationSounds] Error playing sound (attempt ${playAttempts}):`, playError);
+        
+        if (playError instanceof Error && playError.name === 'NotAllowedError') {
+          // Force audio initialization and retry
+          audioInitialized = false;
+          await createAndPlaySilentBuffer();
+          await new Promise(resolve => setTimeout(resolve, 100 * playAttempts));
+          sound.volume = 1.0;
+          sound.currentTime = 0;
+          continue;
+        }
+        
+        if (playAttempts === maxAttempts) {
+          throw playError;
+        }
       }
     }
   } catch (error) {
