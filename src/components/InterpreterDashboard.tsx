@@ -12,7 +12,7 @@ import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, Bell } from 'lucide-react';
+import { LogOut, Menu, HelpCircle } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,6 +21,8 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { useUnreadMissions } from "@/hooks/useUnreadMissions";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { InterpreterGuideContent } from "./interpreter/InterpreterGuideContent";
 
 interface Profile {
   id: string;
@@ -376,6 +378,21 @@ export const InterpreterDashboard = () => {
                 <ConnectionStatus status={connectionStatus.status} />
                 <div className="flex items-center justify-center gap-2">
                   <NotificationPermission interpreterId={profile.id} />
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-9 w-9"
+                        title="Guide d'utilisation"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl h-[80vh]">
+                      <InterpreterGuideContent />
+                    </DialogContent>
+                  </Dialog>
                   <Button
                     variant="outline"
                     size="icon"
