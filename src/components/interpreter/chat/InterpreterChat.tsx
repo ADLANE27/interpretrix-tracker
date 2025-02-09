@@ -42,12 +42,6 @@ import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 import { ChatFilters } from '@/components/chat/ChatFilters';
 import { Message } from '@/types/messaging';
 
-interface FormattedTextRange {
-  start: number;
-  end: number;
-  type: 'bold' | 'italic';
-}
-
 interface InterpreterChatProps {
   channelId: string;
   filters: {
@@ -95,7 +89,6 @@ export const InterpreterChat = ({
     markMentionAsRead: markMentionAsReadNew, 
     deleteMention 
   } = useUnreadMentions();
-  const [formattedRanges, setFormattedRanges] = useState<FormattedTextRange[]>([]);
 
   const fetchMentionSuggestions = async (search: string) => {
     try {
@@ -285,23 +278,9 @@ export const InterpreterChat = ({
     if (!message.trim() && !fileInputRef.current?.files?.length) return;
 
     try {
-      // Convert formatted ranges to markdown before sending
-      let finalMessage = message;
-      const sortedRanges = [...formattedRanges].sort((a, b) => b.start - a.start);
-      
-      sortedRanges.forEach(range => {
-        const symbols = range.type === 'bold' ? '**' : '_';
-        finalMessage = 
-          finalMessage.substring(0, range.start) + 
-          symbols + 
-          finalMessage.substring(range.start, range.end) + 
-          symbols + 
-          finalMessage.substring(range.end);
-      });
-
-      await sendMessage(finalMessage);
+      await sendMessage(message, replyingTo?.id);
       setMessage('');
-      setFormattedRanges([]);
+      setReplyingTo(null);
     } catch (error) {
       console.error('[InterpreterChat] Error sending message:', error);
       toast({
@@ -536,93 +515,150 @@ export const InterpreterChat = ({
     const end = textarea.selectionEnd;
     const selectedText = message.substring(start, end);
 
-    if (type === 'bold' || type === 'italic') {
-      // Add the range to formattedRanges
-      setFormattedRanges(prev => [...prev, { start, end, type }]);
-      setMessage(message); // Trigger re-render
-    } else {
-      // Handle lists as before
-      let formattedText = '';
-      if (type === 'list') {
+    let formattedText = '';
+    let cursorOffset = 2;
+
+    switch (type) {
+      case 'bold':
+        formattedText = `**${selectedText}**`;
+        break;
+      case 'italic':
+        formattedText = `_${selectedText}_`;
+        cursorOffset = 1;
+        break;
+      case 'list':
         formattedText = selectedText
           .split('\n')
           .map(line => `• ${line}`)
           .join('\n');
-      } else if (type === 'orderedList') {
+        cursorOffset = 2;
+        break;
+      case 'orderedList':
         formattedText = selectedText
           .split('\n')
           .map((line, index) => `${index + 1}. ${line}`)
           .join('\n');
-      }
-      
-      const newMessage = 
-        message.substring(0, start) + 
-        formattedText + 
-        message.substring(end);
-
-      setMessage(newMessage);
+        cursorOffset = 3;
+        break;
     }
+
+    const newMessage = 
+      message.substring(0, start) + 
+      formattedText + 
+      message.substring(end);
+
+    setMessage(newMessage);
 
     // Restore focus and selection
     textarea.focus();
-    textarea.setSelectionRange(end, end);
+    const newCursorPosition = start + formattedText.length;
+    textarea.setSelectionRange(newCursorPosition, newCursorPosition);
   };
 
   const formatMessageContent = (content: string): string => {
-    // Apply formatting from formattedRanges
-    let html = content;
-    const sortedRanges = [...formattedRanges].sort((a, b) => b.start - a.start);
-
-    // Apply formatting from the end to avoid index shifting
-    sortedRanges.forEach(range => {
-      const textToFormat = content.substring(range.start, range.end);
-      const formattedText = range.type === 'bold' 
-        ? `<strong>${textToFormat}</strong>` 
-        : `<em>${textToFormat}</em>`;
-      html = html.substring(0, range.start) + formattedText + html.substring(range.end);
-    });
-
-    // Handle lists
-    const lines = html.split(/\r?\n/);
+    // Split by newlines while preserving empty lines
+    const lines = content.split(/\r?\n/);
     let inList = false;
+    let listCounter = 1;
     let currentListType: 'ordered' | 'unordered' | null = null;
-
-    const formattedLines = lines.map(line => {
+    
+    const formattedLines = lines.map((line, index) => {
       const trimmedLine = line.trim();
-
+      
+      // Handle empty lines
       if (!trimmedLine) {
-        currentListType = null;
-        inList = false;
+        if (currentListType) {
+          // Close current list
+          currentListType = null;
+          inList = false;
+          listCounter = 1;
+        }
         return '<br/>';
       }
 
-      if (trimmedLine.startsWith('• ')) {
+      // Detect the start of a new list
+      if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('* ')) {
+        // Start or continue unordered list
         if (currentListType !== 'unordered') {
+          if (currentListType === 'ordered') {
+            // Close ordered list before starting unordered
+            html += '</ol>';
+          }
           currentListType = 'unordered';
-          return `<ul><li>${trimmedLine.substring(2)}</li>`;
         }
         return `<li>${trimmedLine.substring(2)}</li>`;
       }
 
-      const numberedMatch = trimmedLine.match(/^\d+\.\s(.+)/);
+      // Check for numbered list (either explicit number or just a dot)
+      const numberedMatch = trimmedLine.match(/^(\d+\.|\.) (.+)/);
       if (numberedMatch) {
+        // Start or continue ordered list
         if (currentListType !== 'ordered') {
+          if (currentListType === 'unordered') {
+            // Close unordered list before starting ordered
+            html += '</ul>';
+          }
           currentListType = 'ordered';
-          return `<ol><li>${numberedMatch[1]}</li>`;
         }
-        return `<li>${numberedMatch[1]}</li>`;
+        return `<li>${numberedMatch[2]}</li>`;
       }
 
+      // If we were in a list but this line isn't a list item
       if (currentListType) {
+        const prevListType = currentListType;
         currentListType = null;
         inList = false;
-        return `${currentListType === 'ordered' ? '</ol>' : '</ul>'}<p>${line}</p>`;
+        listCounter = 1;
+        return `${prevListType === 'ordered' ? '</ol>' : '</ul>'}<p>${line}</p>`;
       }
 
-      return `<p>${line}</p>`;
+      // Format text styling - only if there's content between the symbols
+      // and the symbols are not part of the content
+      let formattedText = line;
+
+      // Handle bold text (both ** and __ syntax)
+      formattedText = formattedText.replace(/(\*\*|__)(?=\S)([^\*\n]+?\S)\1/g, '<strong>$2</strong>');
+
+      // Handle italic text (both * and _ syntax)
+      formattedText = formattedText.replace(/(\*|_)(?=\S)([^\*\n]+?\S)\1/g, '<em>$2</em>');
+
+      // Handle strikethrough text
+      formattedText = formattedText.replace(/~~(?=\S)([^~\n]+?\S)~~/g, '<del>$1</del>');
+
+      // Handle code blocks
+      formattedText = formattedText.replace(/`(?=\S)([^`\n]+?\S)`/g, '<code>$1</code>');
+
+      return `<p>${formattedText}</p>`;
     });
 
-    return formattedLines.join('');
+    // Combine all lines and handle list wrapping
+    let html = '';
+    let currentHtml = '';
+
+    formattedLines.forEach((line, index) => {
+      if (line.startsWith('<li>')) {
+        if (!currentListType) {
+          // Start a new list
+          currentListType = line.includes('• ') ? 'unordered' : 'ordered';
+          html += currentListType === 'unordered' ? '<ul>' : '<ol>';
+        }
+        html += line;
+      } else {
+        if (currentListType) {
+          // Close current list
+          html += currentListType === 'unordered' ? '</ul>' : '</ol>';
+          currentListType = null;
+        }
+        html += line;
+      }
+    });
+
+    // Close any remaining open list
+    if (currentListType) {
+      html += currentListType === 'unordered' ? '</ul>' : '</ol>';
+    }
+
+    return html;
   };
 
   return (
