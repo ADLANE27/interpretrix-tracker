@@ -425,7 +425,7 @@ export const MissionsTab = () => {
                 </div>
               </div>
               {mission.status === 'awaiting_acceptance' && !isProcessing && (
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-center gap-2">
                   <Button
                     variant="outline"
                     className="flex items-center gap-2"
