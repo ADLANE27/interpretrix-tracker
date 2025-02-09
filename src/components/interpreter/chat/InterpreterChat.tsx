@@ -15,12 +15,22 @@ import {
   X,
   ArrowDown,
   Bell,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
 } from 'lucide-react';
 import { 
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
@@ -497,6 +507,71 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
+  const applyFormatting = (type: 'bold' | 'italic' | 'list' | 'orderedList') => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = message.substring(start, end);
+
+    let formattedText = '';
+    let cursorOffset = 2;
+
+    switch (type) {
+      case 'bold':
+        formattedText = `**${selectedText}**`;
+        break;
+      case 'italic':
+        formattedText = `_${selectedText}_`;
+        cursorOffset = 1;
+        break;
+      case 'list':
+        formattedText = selectedText
+          .split('\n')
+          .map(line => `• ${line}`)
+          .join('\n');
+        cursorOffset = 2;
+        break;
+      case 'orderedList':
+        formattedText = selectedText
+          .split('\n')
+          .map((line, index) => `${index + 1}. ${line}`)
+          .join('\n');
+        cursorOffset = 3;
+        break;
+    }
+
+    const newMessage = 
+      message.substring(0, start) + 
+      formattedText + 
+      message.substring(end);
+
+    setMessage(newMessage);
+
+    // Restore focus and selection
+    textarea.focus();
+    const newCursorPosition = start + formattedText.length;
+    textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+  };
+
+  const formatMessageContent = (content: string): string => {
+    // Convert markdown-style formatting to HTML
+    return content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
+      .replace(/^• (.*)/gm, '<li>$1</li>')
+      .replace(/^\d+\. (.*)/gm, '<li>$1</li>')
+      .split('\n')
+      .map(line => {
+        if (line.startsWith('<li>')) {
+          return `<ul>${line}</ul>`;
+        }
+        return line;
+      })
+      .join('<br/>');
+  };
+
   return (
     <div className={cn(
       "flex flex-col relative",
@@ -547,7 +622,10 @@ export const InterpreterChat = ({
                         <p>Reply to {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                       </div>
                     )}
-                    <p className="chat-message-content">{message.content}</p>
+                    <div 
+                      className="chat-message-content"
+                      dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content) }}
+                    />
                   </div>
                 </div>
               ))}
@@ -583,6 +661,74 @@ export const InterpreterChat = ({
                   </Button>
                 </div>
               )}
+
+              <div className="flex items-center gap-1 p-2 border-b">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => applyFormatting('bold')}
+                      >
+                        <Bold className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bold</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => applyFormatting('italic')}
+                      >
+                        <Italic className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Italic</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => applyFormatting('list')}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bullet List</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => applyFormatting('orderedList')}
+                      >
+                        <ListOrdered className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Numbered List</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
 
               <Textarea
                 ref={textareaRef}
