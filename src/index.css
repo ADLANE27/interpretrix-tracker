@@ -154,11 +154,11 @@
 
   /* Chat action buttons (attachment, emoji, send) */
   .chat-action-button {
-    @apply h-8 w-8 flex items-center justify-center rounded-full text-[#616061] hover:bg-[#F8F8F8] transition-colors duration-150;
+    @apply h-8 w-8 flex items-center justify-center rounded hover:bg-[#F8F8F8] text-[#616061] hover:text-[#1D1C1D] transition-colors duration-150;
   }
 
   .chat-send-button {
-    @apply h-8 px-4 rounded-full bg-[#0B57D0] hover:bg-[#0B57D0]/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply h-8 px-4 rounded bg-[#0B57D0] hover:bg-[#0B57D0]/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .message-appear {
