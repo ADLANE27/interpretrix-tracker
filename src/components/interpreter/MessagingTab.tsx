@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -80,29 +79,28 @@ export const MessagingTab = () => {
       )}
     >
       {(!selectedChannelId || showChannels || !isMobile) && !isFullScreen && (
-        <div className="flex items-start">
-          <Collapsible
-            open={!isCollapsed}
-            onOpenChange={setIsCollapsed}
-          >
-            <CollapsibleContent className="w-[300px] lg:w-[350px] transition-all duration-300">
-              <Card className="p-3 sm:p-4 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl h-full">
-                <InterpreterChannelList 
-                  onChannelSelect={handleChannelSelect}
-                />
-              </Card>
-            </CollapsibleContent>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10 mt-4"
-              >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
-        </div>
+        <Collapsible
+          open={!isCollapsed}
+          onOpenChange={setIsCollapsed}
+          className="relative"
+        >
+          <CollapsibleContent className="w-[300px] lg:w-[350px] transition-all duration-300">
+            <Card className="p-3 sm:p-4 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl h-full">
+              <InterpreterChannelList 
+                onChannelSelect={handleChannelSelect}
+              />
+            </Card>
+          </CollapsibleContent>
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10"
+            >
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+        </Collapsible>
       )}
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
@@ -177,4 +175,3 @@ export const MessagingTab = () => {
     </div>
   );
 };
-
