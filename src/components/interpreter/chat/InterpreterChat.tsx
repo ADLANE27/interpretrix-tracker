@@ -558,6 +558,41 @@ export const InterpreterChat = ({
                           <p className="text-sm whitespace-pre-wrap break-words">
                             {message.content}
                           </p>
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {message.attachments.map((attachment, index) => (
+                                <div 
+                                  key={index}
+                                  className={cn(
+                                    "rounded-lg p-3 transition-all duration-300",
+                                    "bg-white/10 backdrop-blur-sm",
+                                    "hover:bg-white/20",
+                                    "border border-white/20",
+                                    "animate-fade-in"
+                                  )}
+                                >
+                                  <a 
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 group/attachment"
+                                  >
+                                    <div className="p-2 rounded-lg bg-white/20">
+                                      <Paperclip className="h-4 w-4 text-white" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-white truncate group-hover/attachment:underline">
+                                        {attachment.filename}
+                                      </p>
+                                      <p className="text-xs text-white/70">
+                                        {(attachment.size / 1024).toFixed(1)} KB • {attachment.type}
+                                      </p>
+                                    </div>
+                                  </a>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex justify-end mt-2 gap-2">
                           <Button
