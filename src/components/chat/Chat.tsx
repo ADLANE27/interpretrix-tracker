@@ -333,7 +333,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
   };
 
   return (
-    <div className="flex flex-col h-[600px]">
+    <div className="flex flex-col h-full">
       <ChatFilters
         onFiltersChange={handleFiltersChange}
         users={channelUsers}
@@ -380,7 +380,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
         </div>
       </ScrollArea>
 
-      <div className="border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
+      <div className="mt-auto border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
         <div className="relative">
           <Textarea
             ref={textareaRef}

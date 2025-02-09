@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -197,7 +198,7 @@ export const MessagesTab = () => {
     <div className={cn(
       "transition-all duration-500 ease-in-out",
       isFullScreen 
-        ? "fixed inset-0 z-50 bg-gradient-to-br from-white to-[#F8F9FA] p-4" 
+        ? "fixed inset-0 z-50 bg-gradient-to-br from-white to-[#F8F9FA]" 
         : "grid grid-cols-1 md:grid-cols-3 gap-4"
     )}>
       {(!selectedChannelId || showChannels || !isFullScreen) && (
@@ -213,10 +214,15 @@ export const MessagesTab = () => {
       
       {selectedChannelId && (
         <Card className={cn(
-          "p-4 relative",
-          isFullScreen ? "w-full h-full" : "md:col-span-2"
+          "relative flex flex-col",
+          isFullScreen 
+            ? "w-full h-full p-0 rounded-none" 
+            : "md:col-span-2 p-4"
         )}>
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <div className={cn(
+            "absolute top-4 right-4 z-10 flex gap-2",
+            isFullScreen && "top-6 right-6"
+          )}>
             {showScrollButton && (
               <Button
                 variant="outline"
