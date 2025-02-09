@@ -556,82 +556,107 @@ export const InterpreterChat = ({
   };
 
   const formatMessageContent = (content: string): string => {
-    // First split by newlines and handle lists
-    const lines = content.split('\n');
+    // Split by newlines while preserving empty lines
+    const lines = content.split(/\r?\n/);
     let inList = false;
     let listCounter = 1;
+    let currentListType: 'ordered' | 'unordered' | null = null;
     
-    const formattedLines = lines.map(line => {
+    const formattedLines = lines.map((line, index) => {
       const trimmedLine = line.trim();
       
-      // Check for bullet points (only if • is followed by text)
-      if (trimmedLine.startsWith('• ') && trimmedLine.length > 2) {
-        inList = true;
+      // Handle empty lines
+      if (!trimmedLine) {
+        if (currentListType) {
+          // Close current list
+          currentListType = null;
+          inList = false;
+          listCounter = 1;
+        }
+        return '<br/>';
+      }
+
+      // Detect the start of a new list
+      if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('* ')) {
+        // Start or continue unordered list
+        if (currentListType !== 'unordered') {
+          if (currentListType === 'ordered') {
+            // Close ordered list before starting unordered
+            html += '</ol>';
+          }
+          currentListType = 'unordered';
+        }
         return `<li>${trimmedLine.substring(2)}</li>`;
       }
-      
-      // Check for numbered lists (auto-numbering if line starts with a number or just a dot)
+
+      // Check for numbered list (either explicit number or just a dot)
       const numberedMatch = trimmedLine.match(/^(\d+\.|\.) (.+)/);
       if (numberedMatch) {
-        inList = true;
+        // Start or continue ordered list
+        if (currentListType !== 'ordered') {
+          if (currentListType === 'unordered') {
+            // Close unordered list before starting ordered
+            html += '</ul>';
+          }
+          currentListType = 'ordered';
+        }
         return `<li>${numberedMatch[2]}</li>`;
       }
-      
-      // If we were in a list but this line isn't a list item, close the list
-      if (inList && !trimmedLine.startsWith('• ') && !trimmedLine.match(/^(\d+\.|\.) /)) {
+
+      // If we were in a list but this line isn't a list item
+      if (currentListType) {
+        const prevListType = currentListType;
+        currentListType = null;
         inList = false;
         listCounter = 1;
+        return `${prevListType === 'ordered' ? '</ol>' : '</ul>'}<p>${line}</p>`;
       }
-      
-      // Format bold and italic - only if there's content between the symbols
-      return line
-        .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')  // Bold
-        .replace(/_([^_\n]+)_/g, '<em>$1</em>');              // Italic
+
+      // Format text styling - only if there's content between the symbols
+      // and the symbols are not part of the content
+      let formattedText = line;
+
+      // Handle bold text (both ** and __ syntax)
+      formattedText = formattedText.replace(/(\*\*|__)(?=\S)([^\*\n]+?\S)\1/g, '<strong>$2</strong>');
+
+      // Handle italic text (both * and _ syntax)
+      formattedText = formattedText.replace(/(\*|_)(?=\S)([^\*\n]+?\S)\1/g, '<em>$2</em>');
+
+      // Handle strikethrough text
+      formattedText = formattedText.replace(/~~(?=\S)([^~\n]+?\S)~~/g, '<del>$1</del>');
+
+      // Handle code blocks
+      formattedText = formattedText.replace(/`(?=\S)([^`\n]+?\S)`/g, '<code>$1</code>');
+
+      return `<p>${formattedText}</p>`;
     });
 
-    // Join lines back together with proper list wrapping
+    // Combine all lines and handle list wrapping
     let html = '';
-    let currentList = '';
-    let inUnorderedList = false;
-    let inOrderedList = false;
+    let currentHtml = '';
 
-    formattedLines.forEach(line => {
+    formattedLines.forEach((line, index) => {
       if (line.startsWith('<li>')) {
-        // Check if it's coming from a bullet point
-        const isUnordered = line.includes('•');
-        
-        if (isUnordered && !inUnorderedList) {
-          if (inOrderedList) {
-            html += '</ol>';
-            inOrderedList = false;
-          }
-          html += '<ul>';
-          inUnorderedList = true;
-        } else if (!isUnordered && !inOrderedList) {
-          if (inUnorderedList) {
-            html += '</ul>';
-            inUnorderedList = false;
-          }
-          html += '<ol>';
-          inOrderedList = true;
+        if (!currentListType) {
+          // Start a new list
+          currentListType = line.includes('• ') ? 'unordered' : 'ordered';
+          html += currentListType === 'unordered' ? '<ul>' : '<ol>';
         }
         html += line;
       } else {
-        if (inUnorderedList) {
-          html += '</ul>';
-          inUnorderedList = false;
+        if (currentListType) {
+          // Close current list
+          html += currentListType === 'unordered' ? '</ul>' : '</ol>';
+          currentListType = null;
         }
-        if (inOrderedList) {
-          html += '</ol>';
-          inOrderedList = false;
-        }
-        html += line + '<br/>';
+        html += line;
       }
     });
 
-    // Close any open lists
-    if (inUnorderedList) html += '</ul>';
-    if (inOrderedList) html += '</ol>';
+    // Close any remaining open list
+    if (currentListType) {
+      html += currentListType === 'unordered' ? '</ul>' : '</ol>';
+    }
 
     return html;
   };
