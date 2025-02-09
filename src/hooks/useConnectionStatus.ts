@@ -4,11 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const HEARTBEAT_INTERVAL = 30000; // 30 secondes
-const INACTIVITY_TIMEOUT = 300000; // 5 minutes
 
 interface ConnectionStatus {
   isOnline: boolean;
-  status: 'connected' | 'connecting' | 'disconnected' | 'inactive';
+  status: 'connected' | 'connecting' | 'disconnected';
   lastHeartbeat: Date;
 }
 
@@ -20,34 +19,17 @@ export const useConnectionStatus = (interpreterId: string) => {
   });
   const { toast } = useToast();
   const heartbeatInterval = useRef<number>();
-  const inactivityTimeout = useRef<number>();
-  const lastActivityTime = useRef(new Date());
+  const reconnectTimeout = useRef<number>();
+  const reconnectAttempts = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const BASE_RECONNECT_DELAY = 2000;
 
-  const updateLastActivity = () => {
-    lastActivityTime.current = new Date();
-  };
-
-  const handleInactivity = async () => {
-    const now = new Date();
-    const timeSinceLastActivity = now.getTime() - lastActivityTime.current.getTime();
-
-    if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
-      console.log('[ConnectionStatus] Utilisateur inactif depuis 5 minutes');
-      setConnectionStatus(prev => ({ ...prev, status: 'inactive' }));
-      
-      try {
-        await supabase
-          .from('interpreter_connection_status')
-          .upsert({
-            interpreter_id: interpreterId,
-            is_online: false,
-            connection_status: 'inactive',
-            last_seen_at: new Date().toISOString(),
-          });
-      } catch (error) {
-        console.error('[ConnectionStatus] Erreur lors de la mise à jour du statut inactif:', error);
-      }
-    }
+  const calculateReconnectDelay = () => {
+    // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+    return Math.min(
+      BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts.current),
+      32000
+    );
   };
 
   const sendHeartbeat = async () => {
@@ -65,6 +47,7 @@ export const useConnectionStatus = (interpreterId: string) => {
 
       if (error) throw error;
 
+      reconnectAttempts.current = 0;
       setConnectionStatus({
         isOnline: true,
         status: 'connected',
@@ -72,11 +55,36 @@ export const useConnectionStatus = (interpreterId: string) => {
       });
     } catch (error) {
       console.error('[ConnectionStatus] Erreur lors du heartbeat:', error);
-      setConnectionStatus(prev => ({ ...prev, status: 'disconnected' }));
+      handleConnectionError();
+    }
+  };
+
+  const handleConnectionError = () => {
+    setConnectionStatus(prev => ({ ...prev, status: 'disconnected' }));
+    
+    if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+      const delay = calculateReconnectDelay();
+      console.log(`[ConnectionStatus] Tentative de reconnexion dans ${delay}ms (tentative ${reconnectAttempts.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
       
       toast({
         title: "Connexion perdue",
-        description: "Tentative de reconnexion en cours...",
+        description: `Tentative de reconnexion dans ${delay / 1000} secondes...`,
+      });
+
+      if (reconnectTimeout.current) {
+        window.clearTimeout(reconnectTimeout.current);
+      }
+
+      reconnectTimeout.current = window.setTimeout(async () => {
+        reconnectAttempts.current++;
+        await sendHeartbeat();
+      }, delay);
+    } else {
+      console.log('[ConnectionStatus] Nombre maximum de tentatives de reconnexion atteint');
+      toast({
+        title: "Erreur de connexion",
+        description: "Impossible de rétablir la connexion. Veuillez rafraîchir la page.",
+        variant: "destructive",
       });
     }
   };
@@ -104,26 +112,19 @@ export const useConnectionStatus = (interpreterId: string) => {
         });
       } catch (error) {
         console.error('[ConnectionStatus] Erreur lors de l\'initialisation:', error);
+        handleConnectionError();
       }
     };
 
     initConnectionStatus();
 
-    // Mettre en place les écouteurs d'événements pour détecter l'activité
-    const events = ['mousedown', 'keydown', 'touchstart', 'mousemove'];
-    events.forEach(event => {
-      document.addEventListener(event, updateLastActivity);
-    });
-
-    // Mettre en place les intervalles de vérification
+    // Mettre en place l'intervalle de heartbeat
     heartbeatInterval.current = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
-    inactivityTimeout.current = window.setInterval(handleInactivity, 60000); // Vérifier l'inactivité toutes les minutes
 
     // Gérer les changements de visibilité de la page
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         console.log('[ConnectionStatus] Page visible - réinitialisation de la connexion');
-        updateLastActivity();
         await sendHeartbeat();
       } else {
         console.log('[ConnectionStatus] Page masquée');
@@ -153,10 +154,7 @@ export const useConnectionStatus = (interpreterId: string) => {
     // Nettoyage
     return () => {
       if (heartbeatInterval.current) clearInterval(heartbeatInterval.current);
-      if (inactivityTimeout.current) clearInterval(inactivityTimeout.current);
-      events.forEach(event => {
-        document.removeEventListener(event, updateLastActivity);
-      });
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };

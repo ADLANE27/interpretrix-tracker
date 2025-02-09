@@ -3,7 +3,7 @@ import { Wifi, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConnectionStatusProps {
-  status: 'connected' | 'connecting' | 'disconnected' | 'inactive';
+  status: 'connected' | 'connecting' | 'disconnected';
 }
 
 export const ConnectionStatus = ({ status }: ConnectionStatusProps) => {
@@ -22,11 +22,6 @@ export const ConnectionStatus = ({ status }: ConnectionStatusProps) => {
       icon: WifiOff,
       label: 'Déconnecté',
       className: 'text-red-500',
-    },
-    inactive: {
-      icon: WifiOff,
-      label: 'Inactif',
-      className: 'text-gray-500',
     },
   };
 
