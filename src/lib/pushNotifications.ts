@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -196,3 +197,4 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
     throw error;
   }
 }
+

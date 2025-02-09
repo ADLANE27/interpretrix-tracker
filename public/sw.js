@@ -1,4 +1,3 @@
-
 // Enhanced service worker with comprehensive browser support and logging
 const SW_VERSION = '1.0.8';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
