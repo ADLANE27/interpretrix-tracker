@@ -526,7 +526,7 @@ export const InterpreterChat = ({
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 h-full pb-[200px]"
+            className="flex-1 h-full"
             onScrollCapture={handleScroll}
           >
             <div className="py-4">
