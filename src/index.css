@@ -78,45 +78,63 @@
 
 @layer components {
   .chat-bubble {
-    @apply relative p-4 rounded-2xl transition-all duration-300;
+    @apply relative p-3 rounded-lg transition-all duration-300;
   }
 
-  .chat-bubble-tail {
-    @apply relative;
+  .chat-message-container {
+    @apply flex items-start gap-3 px-4 py-2 hover:bg-gray-50/80 transition-all duration-200 group;
   }
 
-  .chat-bubble-tail::after {
-    content: '';
-    @apply absolute bottom-0 w-4 h-4 transform;
-    clip-path: polygon(0 0, 100% 100%, 100% 0);
+  .chat-message-header {
+    @apply flex items-center gap-2 mb-1;
   }
 
-  .chat-bubble-right {
-    @apply bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white;
-    border-bottom-right-radius: 0;
+  .chat-message-sender {
+    @apply font-semibold text-gray-900 hover:underline cursor-pointer;
   }
 
-  .chat-bubble-right.chat-bubble-tail::after {
-    @apply right-0 translate-x-full;
-    background: linear-gradient(135deg, #8B5CF6 0%, #9b87f5 100%);
+  .chat-message-time {
+    @apply text-xs text-gray-500;
   }
 
-  .chat-bubble-left {
-    @apply bg-white/90 backdrop-blur-sm;
-    border-bottom-left-radius: 0;
+  .chat-message-content {
+    @apply text-gray-700 text-[15px] leading-relaxed;
   }
 
-  .chat-bubble-left.chat-bubble-tail::after {
-    @apply left-0 -translate-x-full rotate-90;
-    background: white;
-  }
-
-  .chat-gradient-avatar {
-    @apply rounded-full bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white shadow-md;
+  .chat-input-wrapper {
+    @apply relative p-4 bg-white border-t;
   }
 
   .chat-input-container {
-    @apply bg-white/80 backdrop-blur-md rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl border border-gray-100;
+    @apply relative rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200;
+  }
+
+  .chat-input-container:focus-within {
+    @apply border-blue-500 shadow-md ring-2 ring-blue-500/10;
+  }
+
+  .chat-toolbar {
+    @apply flex items-center gap-1 p-2 border-b border-gray-100;
+  }
+
+  .chat-toolbar-button {
+    @apply p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors;
+  }
+
+  .chat-input-field {
+    @apply w-full p-3 focus:outline-none resize-none text-[15px] leading-relaxed placeholder:text-gray-500;
+  }
+
+  .chat-input-actions {
+    @apply absolute bottom-2 right-2 flex items-center gap-2;
+  }
+
+  .chat-action-button {
+    @apply p-1.5 rounded-full hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors;
+  }
+
+  .chat-send-button {
+    @apply flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#007a5a] hover:bg-[#006c4f] text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .message-appear {
