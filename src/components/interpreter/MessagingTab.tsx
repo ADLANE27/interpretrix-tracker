@@ -90,10 +90,17 @@ export const MessagingTab = () => {
               </Card>
             </div>
             <Button
-              variant="ghost"
-              size="icon"
+              variant="outline"
+              size="sm"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="absolute right-[-16px] top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 z-10 rounded-full"
+              className={cn(
+                "absolute right-[-12px] top-4",
+                "bg-white/95 hover:bg-gray-50",
+                "border border-gray-200 shadow-sm",
+                "px-1.5 py-4 h-auto",
+                "transition-all duration-200",
+                "rounded-l-none rounded-r-lg"
+              )}
             >
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>
