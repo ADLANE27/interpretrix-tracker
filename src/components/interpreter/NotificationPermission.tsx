@@ -45,33 +45,16 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
     console.log('[Notifications] Environment detected:', info);
     setDeviceInfo(info);
-
-    // Show initial environment info toast
-    toast({
-      title: "Environnement détecté",
-      description: `${info.platform} - ${info.browser}`,
-    });
   };
 
   const checkNotificationPermission = () => {
     if (!('Notification' in window)) {
       console.warn('[Notifications] Notifications API not supported');
-      toast({
-        title: "Notifications non supportées",
-        description: "Votre navigateur ne supporte pas les notifications",
-        variant: "destructive",
-      });
       return;
     }
 
     console.log('[Notifications] Current permission:', Notification.permission);
     setPermission(Notification.permission);
-
-    // Show current permission state toast
-    toast({
-      title: "État des notifications",
-      description: `Permission actuelle: ${Notification.permission}`,
-    });
   };
 
   const showChromeInstructions = () => {
