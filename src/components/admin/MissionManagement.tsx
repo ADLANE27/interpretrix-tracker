@@ -209,17 +209,16 @@ export const MissionManagement = () => {
         last_heartbeat: interpreter.interpreter_connection_status?.last_heartbeat
       }));
 
-      // Filter out interpreters whose last heartbeat is more than 1 minute old
-      const activeInterpreters = availableInterps.filter(interpreter => {
-        if (!interpreter.last_heartbeat) return false;
-        const heartbeatTime = new Date(interpreter.last_heartbeat);
-        const now = new Date();
-        const diffInSeconds = (now.getTime() - heartbeatTime.getTime()) / 1000;
-        return diffInSeconds <= 60;
-      });
+      // For immediate missions, filter based on connection status
+      const filteredInterpreters = missionType === 'immediate' 
+        ? availableInterps.filter(interpreter => 
+            interpreter.connection_status === 'connected' || 
+            interpreter.connection_status === 'background'
+          )
+        : availableInterps;
 
       // Filter out duplicates based on interpreter ID
-      const uniqueInterpreters = activeInterpreters.filter((interpreter, index, self) =>
+      const uniqueInterpreters = filteredInterpreters.filter((interpreter, index, self) =>
         index === self.findIndex((t) => t.id === interpreter.id)
       );
 
