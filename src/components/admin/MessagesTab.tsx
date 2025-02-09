@@ -76,6 +76,17 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
+    
+    // Pre-initialize sounds
+    if (soundEnabled) {
+      Promise.all([
+        playNotificationSound('immediate', true),
+        playNotificationSound('scheduled', true)
+      ]).catch(error => {
+        console.error('[MessagesTab] Error pre-initializing sounds:', error);
+      });
+    }
+
     const channel = supabase
       .channel('realtime-mission-updates')
       .on(

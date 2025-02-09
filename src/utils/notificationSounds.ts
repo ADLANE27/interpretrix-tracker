@@ -14,6 +14,7 @@ const initializeAudioContext = () => {
       console.log('[notificationSounds] AudioContext initialized');
     } catch (error) {
       console.error('[notificationSounds] Failed to create AudioContext:', error);
+      throw error;
     }
   }
   return audioContext;
@@ -115,7 +116,6 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     }
   } catch (error) {
     console.error('[notificationSounds] Error playing sound:', error);
-    // Don't throw the error to prevent blocking the app flow
-    // Just log it for debugging purposes
+    throw error;
   }
 };
