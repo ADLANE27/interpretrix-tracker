@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -34,6 +33,13 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
+
+    /* Slack-specific variables */
+    --slack-text-primary: #1D1C1D;
+    --slack-text-secondary: #616061;
+    --slack-blue: #1264A3;
+    --slack-hover-bg: rgba(248, 248, 248, 1);
+    --slack-border: rgba(230, 230, 230, 1);
   }
 
   .dark {
@@ -69,7 +75,7 @@
 
 @layer base {
   * {
-    @apply border-[#e5e7eb];
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -77,74 +83,74 @@
 }
 
 @layer components {
+  .message-row {
+    @apply px-4 py-0.5 hover:bg-slack-hover-bg transition-colors duration-150 ease-in-out group;
+  }
+
+  .message-time {
+    @apply text-xs text-slack-text-secondary ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150;
+  }
+
+  .message-sender {
+    @apply font-semibold text-slack-text-primary text-[15px];
+  }
+
+  .message-content {
+    @apply text-[15px] leading-[1.46668] text-slack-text-primary break-words;
+  }
+
   .chat-bubble {
-    @apply relative p-3 rounded-lg transition-all duration-300;
+    @apply relative p-2 transition-all duration-150 rounded-md;
   }
 
-  .chat-message-container {
-    @apply flex items-start gap-3 px-4 py-2 hover:bg-gray-50/80 transition-all duration-200;
+  .chat-bubble-right {
+    @apply bg-[#0B57D0] text-white;
   }
 
-  .chat-message-header {
-    @apply flex items-center gap-2 mb-1;
-  }
-
-  .chat-message-sender {
-    @apply font-semibold text-gray-900 hover:underline cursor-pointer;
-  }
-
-  .chat-message-time {
-    @apply text-xs text-gray-500;
-  }
-
-  .chat-message-content {
-    @apply text-gray-700 text-[15px] leading-relaxed;
-  }
-
-  .chat-input-wrapper {
-    @apply relative p-4 bg-white border-t;
+  .chat-bubble-left {
+    @apply bg-[#F8F8F8] text-[#1D1C1D];
   }
 
   .chat-input-container {
-    @apply relative rounded-lg border border-gray-200 bg-white shadow-sm transition-all duration-200;
+    @apply bg-white border-t border-slack-border p-4;
   }
 
-  .chat-input-container:focus-within {
-    @apply border-blue-500 shadow-md ring-2 ring-blue-500/10;
+  .chat-input-wrapper {
+    @apply relative;
+  }
+
+  .chat-input {
+    @apply w-full min-h-[44px] max-h-[300px] rounded-lg border border-slack-border bg-white px-3 py-2 text-[15px] leading-[1.46668] placeholder-slack-text-secondary focus:ring-2 focus:ring-slack-blue/30 focus:border-slack-blue transition-all duration-150;
   }
 
   .chat-toolbar {
-    @apply flex items-center gap-1 p-2 border-b border-gray-100;
-  }
-
-  .chat-toolbar-button {
-    @apply p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors;
-  }
-
-  .chat-input-field {
-    @apply w-full p-3 focus:outline-none resize-none text-[15px] leading-relaxed placeholder:text-gray-500;
-  }
-
-  .chat-input-actions {
     @apply absolute bottom-2 right-2 flex items-center gap-2;
   }
 
   .chat-action-button {
-    @apply p-1.5 rounded-full hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors;
+    @apply h-8 w-8 flex items-center justify-center rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150;
   }
 
   .chat-send-button {
-    @apply flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#007a5a] hover:bg-[#006c4f] text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply h-8 px-4 rounded-lg bg-slack-blue hover:bg-slack-blue/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .chat-formatting-toolbar {
+    @apply flex items-center gap-0.5 px-2 py-1 border-b border-slack-border;
+  }
+
+  .formatting-button {
+    @apply h-7 w-7 rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150 flex items-center justify-center;
   }
 
   .message-appear {
-    animation: messageAppear 0.3s ease-out forwards;
+    animation: messageAppear 0.15s ease-out forwards;
   }
 
   @keyframes messageAppear {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;

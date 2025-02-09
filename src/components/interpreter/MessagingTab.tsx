@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -70,7 +69,7 @@ export const MessagingTab = () => {
         "transition-all duration-500 ease-in-out",
         isFullScreen 
           ? "fixed inset-0 z-50 bg-gradient-to-br from-white to-[#F8F9FA]" 
-          : "grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-200px)] min-h-[700px] relative"
+          : "grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative"
       )}
     >
       {(!selectedChannelId || showChannels || !isMobile) && !isFullScreen && (

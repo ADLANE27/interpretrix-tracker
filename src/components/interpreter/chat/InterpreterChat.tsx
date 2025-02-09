@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -15,12 +14,7 @@ import {
   MessageSquare,
   X,
   ArrowDown,
-  Bell,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Link2
+  Bell
 } from 'lucide-react';
 import { 
   Popover, 
@@ -507,10 +501,12 @@ export const InterpreterChat = ({
     <div className={cn(
       "flex flex-col relative",
       isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
-      "bg-white"
+      "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+      <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
+        <h2 className="text-lg font-semibold bg-clip-text text-transparent bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6]">
+          Messages
+        </h2>
       </div>
 
       <ChatFilters
@@ -526,34 +522,73 @@ export const InterpreterChat = ({
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 h-full pb-[200px]"
+            className="flex-1 h-full pb-[120px]"
             onScrollCapture={handleScroll}
           >
-            <div className="py-4">
+            <div className="p-4 space-y-6">
               {filteredMessages.map(message => (
                 <div 
                   key={message.id} 
                   id={`message-${message.id}`}
-                  className="chat-message-container message-appear"
+                  className="group message-appear"
                 >
-                  <Avatar className="h-9 w-9 flex-shrink-0">
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      {message.sender.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="chat-message-header">
-                      <span className="chat-message-sender">{message.sender.name}</span>
-                      <span className="chat-message-time">
-                        {format(message.timestamp, 'HH:mm')}
-                      </span>
-                    </div>
-                    {message.parent_message_id && (
-                      <div className="ml-0 pl-2 border-l-2 border-gray-200 text-xs text-gray-500 mb-1">
-                        <p>Reply to {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-10 w-10 flex-shrink-0 shadow-lg">
+                      <AvatarFallback 
+                        style={{ backgroundColor: getUserColor(message.sender.id) }}
+                        className="text-white"
+                      >
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
                       </div>
-                    )}
-                    <p className="chat-message-content">{message.content}</p>
+                      {message.parent_message_id && (
+                        <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
+                          <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                        </div>
+                      )}
+                      <div className="group">
+                        <div className={cn(
+                          "chat-bubble chat-bubble-tail",
+                          message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
+                        )}>
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {message.content}
+                          </p>
+                        </div>
+                        <div className="flex justify-end mt-2 gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                            onClick={() => handleThreadClick(message)}
+                          >
+                            <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
+                            {threadCounts[message.id] > 0 && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                {threadCounts[message.id]}
+                              </span>
+                            )}
+                          </Button>
+                          {currentUserId === message.sender.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteMessage(message.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -563,7 +598,7 @@ export const InterpreterChat = ({
           {showScrollButton && (
             <Button
               onClick={scrollToBottom}
-              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10"
+              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce"
               size="icon"
               variant="outline"
             >
@@ -571,103 +606,91 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="chat-input-wrapper">
-            <div className="chat-input-container">
-              {replyingTo && (
-                <div className="px-3 py-2 bg-blue-50 border-b rounded-t-lg flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-blue-700">
-                    <ArrowRight className="h-4 w-4" />
-                    <span>Replying to {replyingTo.sender.name}</span>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
+            <div className="p-4 max-w-[95%] mx-auto">
+              <div className="chat-input-container">
+                {replyingTo && (
+                  <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-purple-700">
+                      <ArrowRight className="h-4 w-4" />
+                      <span>En réponse à {replyingTo.sender.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelReply}
+                      className="hover:bg-purple-100 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
+                )}
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={handleMessageChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Écrivez votre message..."
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                />
+
+                <MentionSuggestions
+                  suggestions={mentionSuggestions}
+                  onSelect={handleMentionSelect}
+                  visible={showMentions}
+                />
+
+                <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={cancelReply}
-                    className="hover:bg-blue-100 transition-colors h-7 w-7"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <Paperclip className="h-4 w-4 text-purple-500" />
+                  </Button>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
+                      >
+                        <Smile className="h-4 w-4 text-purple-500" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="end">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
+                        theme="light"
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+                    className={cn(
+                      "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
+                      "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
+                      "text-white flex items-center gap-2 px-4",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="hidden sm:inline">Envoyer</span>
                   </Button>
                 </div>
-              )}
-
-              <div className="chat-toolbar">
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Bold className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Italic className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <ListOrdered className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Link2 className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <Textarea
-                ref={textareaRef}
-                value={message}
-                onChange={handleMessageChange}
-                onKeyPress={handleKeyPress}
-                placeholder="Message #general"
-                className="chat-input-field"
-              />
-
-              <MentionSuggestions
-                suggestions={mentionSuggestions}
-                onSelect={handleMentionSelect}
-                visible={showMentions}
-              />
-
-              <div className="chat-input-actions">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="chat-action-button"
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="chat-action-button"
-                    >
-                      <Smile className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="end">
-                    <Picker
-                      data={data}
-                      onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
-                      theme="light"
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="chat-send-button"
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Send</span>
-                </Button>
               </div>
             </div>
           </div>
@@ -690,7 +713,10 @@ export const InterpreterChat = ({
             <div className="p-3 bg-gray-50 border-b">
               <div className="flex items-start gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-interpreter-navy text-white">
+                  <AvatarFallback 
+                    style={{ backgroundColor: getUserColor(selectedThread.sender.id) }}
+                    className="text-white"
+                  >
                     {selectedThread.sender.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -711,7 +737,10 @@ export const InterpreterChat = ({
                 <div key={message.id} className="py-3">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-interpreter-navy text-white">
+                      <AvatarFallback 
+                        style={{ backgroundColor: getUserColor(message.sender.id) }}
+                        className="text-white"
+                      >
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -737,7 +766,7 @@ export const InterpreterChat = ({
                   placeholder="Répondre dans la conversation..."
                   className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
                 />
-                <div className="absolute bottom-2 right-2">
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
                   <Button 
                     onClick={handleSendThreadMessage}
                     className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
@@ -753,4 +782,9 @@ export const InterpreterChat = ({
       </div>
     </div>
   );
+};
+
+const getUserColor = (userId: string) => {
+  // Implement logic to get user color based on userId
+  return '#000000'; // Default color
 };
