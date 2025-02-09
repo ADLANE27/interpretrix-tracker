@@ -165,16 +165,18 @@ export const usePresence = (userId: string, roomId: string) => {
 
       // Update connection status to disconnected
       if (userId) {
-        supabase
-          .from('interpreter_connection_status')
-          .update({
-            is_online: false,
-            connection_status: 'disconnected',
-            last_seen_at: new Date().toISOString()
-          })
-          .eq('interpreter_id', userId)
+        Promise.resolve(
+          supabase
+            .from('interpreter_connection_status')
+            .update({
+              is_online: false,
+              connection_status: 'disconnected',
+              last_seen_at: new Date().toISOString()
+            })
+            .eq('interpreter_id', userId)
+        )
           .then(() => console.log('[Presence] Updated connection status to disconnected'))
-          .catch(error => console.error('[Presence] Error updating disconnected status:', error));
+          .catch((error: Error) => console.error('[Presence] Error updating disconnected status:', error));
       }
     };
   }, [userId, roomId]);
