@@ -1,5 +1,6 @@
+
 // Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.7';
+const SW_VERSION = '1.0.8';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Enhanced error handling with detailed logging
@@ -16,7 +17,7 @@ self.addEventListener('unhandledrejection', event => {
   }
 });
 
-// Enhanced push event handler with better debugging
+// Enhanced push event handler with better debugging and platform-specific handling
 self.addEventListener('push', event => {
   console.log('[Service Worker] Push received at:', new Date().toISOString());
   console.log('[Service Worker] Raw push data:', event.data ? event.data.text() : 'No data');
@@ -29,8 +30,13 @@ self.addEventListener('push', event => {
   try {
     const data = event.data.json();
     console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
+
+    // Platform detection for better compatibility
+    const userAgent = self.navigator.userAgent.toLowerCase();
+    const isAndroid = /android/.test(userAgent);
+    const isWindows = /windows/.test(userAgent);
     
-    // Enhanced notification options for better mobile support
+    // Enhanced notification options with platform-specific tweaks
     const options = {
       body: data.body,
       icon: data.icon || '/favicon.ico',
@@ -39,15 +45,15 @@ self.addEventListener('push', event => {
         ...data.data,
         timestamp: Date.now()
       },
-      // Customized vibration pattern for better attention
-      vibrate: [100, 50, 100],
+      // Platform-specific vibration patterns
+      vibrate: isAndroid ? [100, 50, 100] : [200, 100, 200],
       // Use unique tag per mission type to prevent notification spam
       tag: `mission-${data.data?.mission_type}-${data.data?.mission_id}`,
       // Always renotify even if using same tag
       renotify: true,
       // Keep notification visible until user interaction
       requireInteraction: true,
-      // Simplified actions for mobile
+      // Simplified actions for better cross-platform support
       actions: [
         { action: 'accept', title: '✓' },
         { action: 'decline', title: '✗' }
@@ -59,11 +65,13 @@ self.addEventListener('push', event => {
     };
 
     // Platform-specific customizations
-    const isIOS = /iPad|iPhone|iPod/.test(self.registration.platform);
-    if (isIOS) {
-      // iOS specific tweaks
-      options.actions = options.actions.slice(0, 2); // iOS only supports 2 actions
-      delete options.requireInteraction; // Not supported on iOS
+    if (isAndroid) {
+      options.priority = 'high';
+      options.importance = 'high';
+    }
+    
+    if (isWindows) {
+      options.requireInteraction = true; // Windows supports this well
     }
 
     event.waitUntil(
@@ -98,7 +106,7 @@ self.addEventListener('push', event => {
   }
 });
 
-// Enhanced notification click handling with debugging
+// Enhanced notification click handling with better navigation
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
     action: event.action,
@@ -127,6 +135,7 @@ self.addEventListener('notificationclick', event => {
 
         console.log('[Service Worker] Found window clients:', windowClients.length);
 
+        // Try to focus an existing window first
         for (const client of windowClients) {
           if (client.url === urlToOpen && 'focus' in client) {
             console.log('[Service Worker] Focusing existing window');
@@ -135,6 +144,7 @@ self.addEventListener('notificationclick', event => {
           }
         }
 
+        // If no existing window, open a new one
         if (clients.openWindow) {
           console.log('[Service Worker] Opening new window:', urlToOpen);
           await clients.openWindow(urlToOpen);
@@ -157,6 +167,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
+      // Clean up old caches
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
