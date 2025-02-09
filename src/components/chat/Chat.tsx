@@ -4,23 +4,7 @@ import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  AtSign,
-  Bold,
-  Image as ImageIcon,
-  Italic,
-  Link,
-  List,
-  ListOrdered,
-  Mic,
-  Paperclip,
-  Plus,
-  Send,
-  Smile,
-  Trash2,
-  Strikethrough,
-  Underline
-} from 'lucide-react';
+import { Paperclip, Send, Smile, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
@@ -355,7 +339,6 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
         users={channelUsers}
         onClearFilters={handleClearFilters}
       />
-      
       <ScrollArea 
         className="flex-1 px-6 py-4 overflow-y-auto chat-messages-container"
         onScroll={onScroll}
@@ -370,14 +353,14 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-[#1D1C1D]">
+                    <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
                       {message.sender.name}
                     </span>
-                    <span className="text-xs text-[#616061]">
+                    <span className="text-xs text-muted-foreground">
                       {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
                     </span>
                   </div>
-                  <div className="mt-1 text-[#1D1C1D] leading-relaxed">
+                  <div className="mt-1 text-gray-700 leading-relaxed">
                     {message.content}
                   </div>
                 </div>
@@ -397,54 +380,15 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
         </div>
       </ScrollArea>
 
-      <div className="chat-input-container">
-        <div className="chat-input-wrapper">
-          <div className="chat-formatting-toolbar">
-            <button className="formatting-button">
-              <Plus className="h-4 w-4" />
-            </button>
-            <div className="h-4 border-r border-slack-border mx-1" />
-            <button className="formatting-button">
-              <Bold className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <Italic className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <Underline className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <Strikethrough className="h-4 w-4" />
-            </button>
-            <div className="h-4 border-r border-slack-border mx-1" />
-            <button className="formatting-button">
-              <List className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <ListOrdered className="h-4 w-4" />
-            </button>
-            <div className="h-4 border-r border-slack-border mx-1" />
-            <button className="formatting-button">
-              <Link className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <ImageIcon className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <Mic className="h-4 w-4" />
-            </button>
-            <button className="formatting-button">
-              <AtSign className="h-4 w-4" />
-            </button>
-          </div>
-
+      <div className="border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
+        <div className="relative">
           <Textarea
             ref={textareaRef}
             value={message}
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
-            placeholder="Message #general"
-            className="chat-input"
+            placeholder="Écrivez votre message..."
+            className="min-h-[80px] bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
           />
 
           <MentionSuggestions
@@ -453,7 +397,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
             visible={showMentions}
           />
 
-          <div className="chat-toolbar">
+          <div className="absolute bottom-3 right-3 flex items-center gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -461,19 +405,25 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               className="hidden"
             />
             
-            <button
-              className="chat-action-button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
+              className="hover:bg-gray-100/80 transition-colors duration-200"
             >
-              <Paperclip className="h-4 w-4" />
-            </button>
+              <Paperclip className="h-4 w-4 text-gray-500" />
+            </Button>
 
             <Popover>
               <PopoverTrigger asChild>
-                <button className="chat-action-button">
-                  <Smile className="h-4 w-4" />
-                </button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="hover:bg-gray-100/80 transition-colors duration-200"
+                >
+                  <Smile className="h-4 w-4 text-gray-500" />
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="end">
                 <Picker
@@ -484,14 +434,14 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               </PopoverContent>
             </Popover>
 
-            <button 
-              className="chat-send-button"
+            <Button 
               onClick={handleSendMessage}
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+              className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4 mr-2" />
               Envoyer
-            </button>
+            </Button>
           </div>
         </div>
       </div>
