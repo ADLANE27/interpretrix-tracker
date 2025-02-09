@@ -40,13 +40,13 @@ export const MentionsPopover = ({
         {children}
       </PopoverTrigger>
       <PopoverContent 
-        align="end" 
+        align="center" 
         side="bottom"
         sideOffset={5}
         avoidCollisions={false}
         collisionPadding={0}
         sticky="always"
-        className={`${isMobile ? 'w-[calc(100vw-32px)] right-4' : 'w-96'} !absolute !bottom-auto !top-[100%]`}
+        className={`${isMobile ? 'w-[calc(100vw-32px)]' : 'w-96'} !absolute !bottom-auto !top-[100%]`}
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
