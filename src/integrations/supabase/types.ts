@@ -188,6 +188,51 @@ export type Database = {
           },
         ]
       }
+      interpreter_connection_status: {
+        Row: {
+          connection_status: string | null
+          created_at: string
+          interpreter_id: string
+          is_online: boolean | null
+          last_heartbeat: string | null
+          last_seen_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          connection_status?: string | null
+          created_at?: string
+          interpreter_id: string
+          is_online?: boolean | null
+          last_heartbeat?: string | null
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          connection_status?: string | null
+          created_at?: string
+          interpreter_id?: string
+          is_online?: boolean | null
+          last_heartbeat?: string | null
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: true
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: true
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interpreter_languages: {
         Row: {
           created_at: string
