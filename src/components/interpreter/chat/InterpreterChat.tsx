@@ -525,7 +525,7 @@ export const InterpreterChat = ({
             className="flex-1"
             onScrollCapture={handleScroll}
           >
-            <div className="p-4 space-y-6 pb-32">
+            <div className="p-4 space-y-6 pb-40">
               {filteredMessages.map(message => (
                 <div 
                   key={message.id} 
@@ -606,7 +606,7 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="absolute bottom-6 left-0 right-0 px-4">
             <div className="chat-input-container">
               {replyingTo && (
                 <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
@@ -783,6 +783,5 @@ export const InterpreterChat = ({
 };
 
 const getUserColor = (userId: string) => {
-  // Implement logic to get user color based on userId
-  return '#000000'; // Default color
+  return '#000000';
 };
