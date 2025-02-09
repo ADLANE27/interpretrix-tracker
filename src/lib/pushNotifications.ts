@@ -12,7 +12,8 @@ async function initializeServiceWorker() {
   try {
     const registration = await navigator.serviceWorker.register('/sw.js', {
       type: 'module',
-      updateViaCache: 'none'
+      updateViaCache: 'none',
+      scope: '/'
     });
     console.log('[Notifications] ServiceWorker registered:', registration);
     return registration;
@@ -94,13 +95,17 @@ export async function setupNotifications(interpreterId: string) {
       throw new Error('Notification permission denied');
     }
 
-    // Pre-initialize sounds
-    await Promise.all([
-      playNotificationSound('immediate', true),
-      playNotificationSound('scheduled', true)
-    ]).catch(error => {
+    // Pre-initialize sounds with better error handling
+    try {
+      await Promise.all([
+        playNotificationSound('immediate', true),
+        playNotificationSound('scheduled', true)
+      ]);
+      console.log('[Notifications] Sounds pre-initialized successfully');
+    } catch (error) {
       console.error('[Notifications] Error pre-initializing sounds:', error);
-    });
+      // Continue setup even if sound initialization fails
+    }
     
     // Subscribe to mission notifications with better error handling
     const channel = supabase.channel('mission-notifications')

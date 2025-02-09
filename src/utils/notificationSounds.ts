@@ -33,12 +33,34 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
 
   const audio = new Audio();
   audio.crossOrigin = "anonymous";
+  audio.preload = "auto"; // Force preloading
   
   return new Promise((resolve, reject) => {
-    audio.addEventListener('canplaythrough', () => resolve(audio), { once: true });
-    audio.addEventListener('error', reject, { once: true });
+    const onLoad = () => {
+      console.log(`[notificationSounds] ${type} sound loaded successfully`);
+      resolve(audio);
+    };
+
+    const onError = (error: ErrorEvent) => {
+      console.error(`[notificationSounds] Error loading ${type} sound:`, error);
+      reject(error);
+    };
+
+    audio.addEventListener('canplaythrough', onLoad, { once: true });
+    audio.addEventListener('error', onError, { once: true });
+    
+    // Set source and load after adding event listeners
     audio.src = data.publicUrl;
     audio.load();
+
+    // Set a timeout to reject if loading takes too long
+    setTimeout(() => {
+      if (!audio.readyState) {
+        const timeoutError = new Error(`Timeout loading ${type} sound`);
+        console.error('[notificationSounds]', timeoutError);
+        reject(timeoutError);
+      }
+    }, 10000);
   });
 };
 
@@ -47,13 +69,29 @@ const ensureSoundLoaded = async (type: 'immediate' | 'scheduled'): Promise<HTMLA
   
   if (!sound || sound.error) {
     console.log(`[notificationSounds] Loading ${type} sound`);
-    sound = await loadSound(type);
-    if (type === 'immediate') {
-      immediateSound = sound;
-    } else {
-      scheduledSound = sound;
+    try {
+      sound = await loadSound(type);
+      if (type === 'immediate') {
+        immediateSound = sound;
+      } else {
+        scheduledSound = sound;
+      }
+      audioElements.push(sound);
+      
+      // Create a silent buffer and play it to initialize audio on mobile
+      const silentContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const buffer = silentContext.createBuffer(1, 1, 22050);
+      const source = silentContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(silentContext.destination);
+      source.start(0);
+      source.stop(0.001);
+      
+      console.log(`[notificationSounds] ${type} sound initialized for mobile`);
+    } catch (error) {
+      console.error(`[notificationSounds] Failed to load ${type} sound:`, error);
+      throw error;
     }
-    audioElements.push(sound);
   }
   
   return sound;
@@ -79,12 +117,12 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       await audioContext.resume();
     }
 
-    // Reset sound to start
+    // Reset sound to start and ensure volume is set
     sound.currentTime = 0;
     sound.volume = 1.0;
 
+    // Attempt vibration for mobile devices
     try {
-      // Attempt vibration
       if ('vibrate' in navigator) {
         navigator.vibrate(200);
       }
@@ -92,10 +130,13 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
       console.log('[notificationSounds] Vibration not supported:', error);
     }
 
-    // Play sound
+    // Play sound with retry mechanism
     try {
-      await sound.play();
-      console.log(`[notificationSounds] ${type} sound played successfully`);
+      const playPromise = sound.play();
+      if (playPromise !== undefined) {
+        await playPromise;
+        console.log(`[notificationSounds] ${type} sound played successfully`);
+      }
     } catch (playError) {
       console.error('[notificationSounds] Error playing sound:', playError);
       
