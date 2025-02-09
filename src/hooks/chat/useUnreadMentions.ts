@@ -100,13 +100,19 @@ export const useUnreadMentions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log('[Mentions Debug] Marking mention as read:', mentionId);
       const { error } = await supabase
         .from('message_mentions')
         .update({ status: 'read' })
         .eq('id', mentionId)
-        .eq('mentioned_user_id', user.id); // Add this line for security
+        .eq('mentioned_user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Mentions Debug] Error marking mention as read:', error);
+        throw error;
+      }
+      
+      console.log('[Mentions Debug] Successfully marked mention as read');
       await fetchUnreadMentions();
     } catch (error) {
       console.error('[Mentions Debug] Error marking mention as read:', error);
@@ -118,13 +124,19 @@ export const useUnreadMentions = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log('[Mentions Debug] Deleting mention:', mentionId);
       const { error } = await supabase
         .from('message_mentions')
         .update({ status: 'deleted' })
         .eq('id', mentionId)
-        .eq('mentioned_user_id', user.id); // Add this line for security
+        .eq('mentioned_user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Mentions Debug] Error deleting mention:', error);
+        throw error;
+      }
+
+      console.log('[Mentions Debug] Successfully deleted mention');
       await fetchUnreadMentions();
     } catch (error) {
       console.error('[Mentions Debug] Error deleting mention:', error);
@@ -170,3 +182,4 @@ export const useUnreadMentions = () => {
     refreshMentions: fetchUnreadMentions 
   };
 };
+
