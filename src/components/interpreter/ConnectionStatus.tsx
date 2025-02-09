@@ -8,8 +8,8 @@ interface ConnectionStatusProps {
 export const ConnectionStatus = ({ status }: ConnectionStatusProps) => {
   const statusConfig = {
     connected: {
-      label: 'Connecté',
-      className: 'text-green-500',
+      label: '',
+      className: '',
     },
     connecting: {
       label: 'Connexion en cours...',
