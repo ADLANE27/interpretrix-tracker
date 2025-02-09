@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { MessageSquare, X, Check, Bell } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MentionsPopoverProps {
   mentions: UnreadMention[];
@@ -31,6 +32,7 @@ export const MentionsPopover = ({
   children
 }: MentionsPopoverProps) => {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -44,7 +46,7 @@ export const MentionsPopover = ({
         avoidCollisions={false}
         collisionPadding={0}
         sticky="always"
-        className="w-96 !absolute !bottom-auto !top-[100%]"
+        className={`${isMobile ? 'w-[calc(100vw-32px)] right-4' : 'w-96'} !absolute !bottom-auto !top-[100%]`}
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
