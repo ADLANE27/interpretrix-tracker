@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -10,11 +9,6 @@ import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -81,7 +75,7 @@ export const MessagingTab = () => {
     >
       {(!selectedChannelId || showChannels || !isMobile) && !isFullScreen && (
         <div className={cn(
-          "flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden",
+          "flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden relative",
           isCollapsed ? "w-[48px]" : "w-[300px] lg:w-[350px]"
         )}>
           <div className="relative h-full">
@@ -99,7 +93,7 @@ export const MessagingTab = () => {
               variant="ghost"
               size="icon"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="absolute right-0 top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10"
+              className="absolute right-[-16px] top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 z-10 rounded-full"
             >
               {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </Button>
