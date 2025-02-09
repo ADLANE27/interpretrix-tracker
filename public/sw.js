@@ -1,9 +1,7 @@
 
-// Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.9';
+const SW_VERSION = '1.0.10';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
-// Enhanced error handling with detailed logging
 self.addEventListener('error', event => {
   console.error('[Service Worker] Uncaught error:', event.error);
   console.error('[Service Worker] Stack:', event.error.stack);
@@ -17,7 +15,6 @@ self.addEventListener('unhandledrejection', event => {
   }
 });
 
-// Enhanced notification click handling with better navigation
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
     action: event.action,
@@ -34,6 +31,7 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
+  // Ensure we have the correct path
   const urlToOpen = new URL('/', self.location.origin).href;
 
   event.waitUntil(
@@ -44,12 +42,9 @@ self.addEventListener('notificationclick', event => {
           includeUncontrolled: true
         });
 
-        console.log('[Service Worker] Found window clients:', windowClients.length);
-
         // Try to focus an existing window first
         for (const client of windowClients) {
           if (client.url === urlToOpen && 'focus' in client) {
-            console.log('[Service Worker] Focusing existing window');
             await client.focus();
             return;
           }
@@ -57,12 +52,10 @@ self.addEventListener('notificationclick', event => {
 
         // If no existing window, open a new one
         if (clients.openWindow) {
-          console.log('[Service Worker] Opening new window:', urlToOpen);
           await clients.openWindow(urlToOpen);
         }
       } catch (error) {
         console.error('[Service Worker] Error handling notification click:', error);
-        console.error('[Service Worker] Stack:', error.stack);
       }
     })()
   );
@@ -75,19 +68,5 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      // Clean up old caches
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== 'v1') {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
-  );
+  event.waitUntil(self.clients.claim());
 });

@@ -1,16 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-// Gestion de l'état de l'audio au niveau global
 let audioContext: AudioContext | null = null;
 let audioInitialized = false;
 let immediateSound: HTMLAudioElement | null = null;
 let scheduledSound: HTMLAudioElement | null = null;
-
-// Pour iOS, on doit garder une référence aux éléments audio
 const audioElements: HTMLAudioElement[] = [];
 
-// Initialisation de l'AudioContext avec gestion des interactions utilisateur
 const initializeAudioContext = () => {
   if (!audioContext) {
     try {
@@ -24,255 +20,95 @@ const initializeAudioContext = () => {
   return audioContext;
 };
 
-// Gestion spécifique pour iOS
-const handleIOSAudio = async () => {
-  console.log('[notificationSounds] Initializing iOS audio');
+const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElement> => {
+  const fileName = type === 'immediate' ? 'immediate-mission.mp3' : 'scheduled-mission.mp3';
   
-  // Créer de nouveaux éléments audio pour iOS
-  const immediate = new Audio();
-  const scheduled = new Audio();
+  const { data } = supabase.storage
+    .from('notification_sounds')
+    .getPublicUrl(`/${fileName}`);
   
-  // Ajouter au tableau global pour maintenir les références
-  audioElements.push(immediate, scheduled);
-  
-  try {
-    // Charger les sons
-    const { data: immediateData } = supabase.storage
-      .from('notification_sounds')
-      .getPublicUrl('/immediate-mission.mp3');
-      
-    const { data: scheduledData } = supabase.storage
-      .from('notification_sounds')
-      .getPublicUrl('/scheduled-mission.mp3');
-
-    if (immediateData?.publicUrl && scheduledData?.publicUrl) {
-      immediate.src = immediateData.publicUrl;
-      scheduled.src = scheduledData.publicUrl;
-      
-      // Charger les sons
-      await immediate.load();
-      await scheduled.load();
-      
-      // Jouer et mettre immédiatement en pause pour iOS
-      immediate.volume = 0;
-      scheduled.volume = 0;
-      await immediate.play();
-      await scheduled.play();
-      immediate.pause();
-      scheduled.pause();
-      immediate.volume = 1;
-      scheduled.volume = 1;
-      
-      console.log('[notificationSounds] iOS audio initialized successfully');
-      return true;
-    }
-  } catch (error) {
-    console.error('[notificationSounds] iOS audio initialization failed:', error);
-    return false;
+  if (!data?.publicUrl) {
+    throw new Error('No public URL returned for sound file');
   }
-  return false;
-};
 
-// Gestion de l'interaction utilisateur pour iOS
-const handleUserInteraction = async () => {
-  if (!audioInitialized) {
-    console.log('[notificationSounds] Handling user interaction for audio');
-    
-    // Initialiser l'AudioContext
-    initializeAudioContext();
-    
-    // Créer et jouer un buffer silencieux pour débloquer l'audio
-    if (audioContext) {
-      const buffer = audioContext.createBuffer(1, 1, 22050);
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.start(0);
-      
-      // Initialiser spécifiquement pour iOS
-      const iosInitialized = await handleIOSAudio();
-      
-      if (iosInitialized) {
-        audioInitialized = true;
-        console.log('[notificationSounds] Audio initialized through user interaction');
-        
-        // Précharger les sons
-        await Promise.all([
-          playNotificationSound('immediate', true),
-          playNotificationSound('scheduled', true)
-        ]).catch(console.error);
-      }
-    }
-    
-    // Nettoyer les listeners une fois initialisé
-    document.removeEventListener('touchstart', handleUserInteraction);
-    document.removeEventListener('click', handleUserInteraction);
-  }
-};
-
-// Ajouter les listeners pour l'interaction utilisateur
-document.addEventListener('touchstart', handleUserInteraction);
-document.addEventListener('click', handleUserInteraction);
-
-const initializeSound = async (type: 'immediate' | 'scheduled') => {
-  try {
-    console.log(`[notificationSounds] Initializing ${type} sound`);
-    
-    const fileName = type === 'immediate' 
-      ? 'immediate-mission.mp3'
-      : 'scheduled-mission.mp3';
-    
-    const { data } = supabase
-      .storage
-      .from('notification_sounds')
-      .getPublicUrl(`/${fileName}`);
-    
-    if (!data?.publicUrl) {
-      console.error('[notificationSounds] No public URL returned');
-      throw new Error('No public URL returned for sound file');
-    }
-
-    console.log(`[notificationSounds] Loading sound from URL: ${data.publicUrl}`);
-    
-    const audio = new Audio();
-    audio.crossOrigin = "anonymous";
-    
-    const loadPromise = new Promise<HTMLAudioElement>((resolve, reject) => {
-      const onCanPlay = () => {
-        console.log(`[notificationSounds] ${type} sound loaded successfully`);
-        audio.removeEventListener('canplaythrough', onCanPlay);
-        audio.removeEventListener('error', onError);
-        resolve(audio);
-      };
-      
-      const onError = (e: Event) => {
-        const error = (e.target as HTMLAudioElement).error;
-        console.error(`[notificationSounds] Error loading ${type} sound:`, {
-          code: error?.code,
-          message: error?.message,
-          networkState: audio.networkState,
-          readyState: audio.readyState,
-          url: data.publicUrl
-        });
-        audio.removeEventListener('canplaythrough', onCanPlay);
-        audio.removeEventListener('error', onError);
-        reject(new Error(`Failed to load ${type} sound: ${error?.message || 'Unknown error'}`));
-      };
-      
-      audio.addEventListener('canplaythrough', onCanPlay);
-      audio.addEventListener('error', onError);
-    });
-    
+  const audio = new Audio();
+  audio.crossOrigin = "anonymous";
+  
+  return new Promise((resolve, reject) => {
+    audio.addEventListener('canplaythrough', () => resolve(audio), { once: true });
+    audio.addEventListener('error', reject, { once: true });
     audio.src = data.publicUrl;
     audio.load();
-    
-    const loadedAudio = await loadPromise;
-    console.log(`[notificationSounds] ${type} sound ready to play`);
-    
-    // Ajouter à la liste des éléments audio pour iOS
-    audioElements.push(loadedAudio);
-    
-    return loadedAudio;
-  } catch (error) {
-    console.error(`[notificationSounds] Error initializing ${type} sound:`, error);
-    throw error;
+  });
+};
+
+const ensureSoundLoaded = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElement> => {
+  let sound = type === 'immediate' ? immediateSound : scheduledSound;
+  
+  if (!sound || sound.error) {
+    console.log(`[notificationSounds] Loading ${type} sound`);
+    sound = await loadSound(type);
+    if (type === 'immediate') {
+      immediateSound = sound;
+    } else {
+      scheduledSound = sound;
+    }
+    audioElements.push(sound);
   }
+  
+  return sound;
 };
 
 export const playNotificationSound = async (type: 'immediate' | 'scheduled', preloadOnly: boolean = false) => {
   try {
     console.log('[notificationSounds] Attempting to play sound for:', type, 'preloadOnly:', preloadOnly);
     
-    // Initialiser l'AudioContext si ce n'est pas déjà fait
+    // Initialize audio context first
     initializeAudioContext();
     
-    let sound = type === 'immediate' ? immediateSound : scheduledSound;
+    // Ensure sound is loaded
+    const sound = await ensureSoundLoaded(type);
     
-    // Initialize sound if not already done or if previous initialization failed
-    if (!sound || sound.error) {
-      console.log(`[notificationSounds] ${type} sound needs initialization`);
-      sound = await initializeSound(type);
-      if (type === 'immediate') {
-        immediateSound = sound;
-      } else {
-        scheduledSound = sound;
-      }
-    }
-    
-    // Log audio state for debugging
-    console.log('[notificationSounds] Audio state:', {
-      contextState: audioContext?.state,
-      audioInitialized,
-      readyState: sound.readyState,
-      paused: sound.paused,
-      networkState: sound.networkState,
-      src: sound.src,
-      error: sound.error,
-      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent)
-    });
-
     if (preloadOnly) {
-      console.log('[notificationSounds] Preloading sound only');
+      console.log('[notificationSounds] Preloading only, skipping playback');
       return;
     }
 
-    // Réveiller l'AudioContext si nécessaire
+    // Resume AudioContext if suspended
     if (audioContext?.state === 'suspended') {
       await audioContext.resume();
-      console.log('[notificationSounds] AudioContext resumed');
     }
 
-    // Set appropriate volume for mobile
-    sound.volume = 1.0;
+    // Reset sound to start
     sound.currentTime = 0;
-    
+    sound.volume = 1.0;
+
     try {
+      // Attempt vibration
       if ('vibrate' in navigator) {
         navigator.vibrate(200);
       }
     } catch (error) {
       console.log('[notificationSounds] Vibration not supported:', error);
     }
-    
+
+    // Play sound
     try {
-      console.log('[notificationSounds] Starting playback');
       await sound.play();
-      console.log('[notificationSounds] Sound played successfully');
-    } catch (error: any) {
-      console.error('[notificationSounds] Error playing sound:', {
-        error,
-        name: error.name,
-        message: error.message,
-        audioState: {
-          contextState: audioContext?.state,
-          audioInitialized,
-          readyState: sound.readyState,
-          networkState: sound.networkState,
-          error: sound.error
-        }
-      });
+      console.log(`[notificationSounds] ${type} sound played successfully`);
+    } catch (playError) {
+      console.error('[notificationSounds] Error playing sound:', playError);
       
-      if (error.name === 'NotAllowedError') {
-        console.log('[notificationSounds] NotAllowedError - attempting recovery');
-        
-        // Forcer la réinitialisation pour iOS
+      if (playError instanceof Error && playError.name === 'NotAllowedError') {
+        // Force audio initialization and retry
         audioInitialized = false;
-        await handleUserInteraction();
-        
-        // Retry after a short delay
         await new Promise(resolve => setTimeout(resolve, 100));
-        try {
-          sound.volume = 1.0;
-          sound.currentTime = 0;
-          await sound.play();
-          console.log('[notificationSounds] Recovery successful');
-        } catch (retryError) {
-          console.error('[notificationSounds] Recovery failed:', retryError);
-          // Dernier recours : vibration
-          if ('vibrate' in navigator) {
-            navigator.vibrate([200, 100, 200]);
-          }
-        }
+        sound.volume = 1.0;
+        sound.currentTime = 0;
+        await sound.play();
+        console.log('[notificationSounds] Sound played after retry');
+      } else {
+        throw playError;
       }
     }
   } catch (error) {
