@@ -8,16 +8,16 @@ interface ConnectionStatusProps {
 export const ConnectionStatus = ({ status }: ConnectionStatusProps) => {
   const statusConfig = {
     connected: {
-      label: '',
-      className: '',
+      label: 'Connecté',
+      className: 'text-green-500',
     },
     connecting: {
       label: 'Connexion en cours...',
       className: 'text-yellow-500 animate-pulse',
     },
     disconnected: {
-      label: 'Déconnecté',
-      className: 'text-red-500',
+      label: 'Connexion en cours...',
+      className: 'text-yellow-500 animate-pulse',
     },
   };
 
