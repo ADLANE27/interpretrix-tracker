@@ -587,8 +587,8 @@ export const InterpreterChat = ({
                           <div className={cn(
                             "chat-bubble chat-bubble-tail",
                             isCurrentUser 
-                              ? "chat-bubble-right bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]" 
-                              : "chat-bubble-left bg-gradient-to-br from-[#FFF] to-[#F8F9FA] border border-gray-100"
+                              ? "chat-bubble-right bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white" 
+                              : "chat-bubble-left bg-white border border-gray-100 shadow-sm"
                           )}>
                             <p className={cn(
                               "text-sm whitespace-pre-wrap break-words",
@@ -608,15 +608,12 @@ export const InterpreterChat = ({
                               className={cn(
                                 "opacity-0 group-hover:opacity-100 transition-opacity",
                                 isCurrentUser 
-                                  ? "hover:bg-purple-50" 
-                                  : "hover:bg-orange-50"
+                                  ? "hover:bg-purple-50 text-purple-600" 
+                                  : "hover:bg-orange-50 text-orange-600"
                               )}
                               onClick={() => handleThreadClick(message)}
                             >
-                              <MessageSquare className={cn(
-                                "h-4 w-4 mr-1",
-                                isCurrentUser ? "text-purple-500" : "text-orange-500"
-                              )} />
+                              <MessageSquare className="h-4 w-4 mr-1" />
                               {threadCounts[message.id] > 0 && (
                                 <span className={cn(
                                   "text-xs px-1.5 py-0.5 rounded-full",
@@ -633,9 +630,9 @@ export const InterpreterChat = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => deleteMessage(message.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 text-red-500"
                               >
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
