@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 import { ChatFilters } from '@/components/chat/ChatFilters';
 import { Message } from '@/types/messaging';
+import { getUserColors } from '@/utils/colorUtils';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -526,104 +527,116 @@ export const InterpreterChat = ({
             onScrollCapture={handleScroll}
           >
             <div className="p-4 space-y-6">
-              {filteredMessages.map(message => (
-                <div 
-                  key={message.id} 
-                  id={`message-${message.id}`}
-                  className="group message-appear"
-                >
-                  <div className="flex items-start gap-3">
-                    <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg">
-                      <AvatarFallback className="bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]">
-                        {message.sender.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{message.sender.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(message.timestamp, 'HH:mm')}
-                        </span>
-                      </div>
-                      {message.parent_message_id && (
-                        <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
-                          <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+              {filteredMessages.map(message => {
+                const userColors = getUserColors(message.sender.id);
+                const avatarStyle = {
+                  background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
+                };
+                const messageStyle = message.sender.id === currentUserId ? {
+                  background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
+                } : {};
+
+                return (
+                  <div 
+                    key={message.id} 
+                    id={`message-${message.id}`}
+                    className="group message-appear"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg" style={avatarStyle}>
+                        <AvatarFallback style={avatarStyle}>
+                          {message.sender.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm" style={{ color: userColors.from }}>
+                            {message.sender.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(message.timestamp, 'HH:mm')}
+                          </span>
                         </div>
-                      )}
-                      <div className="group">
-                        <div className={cn(
-                          "chat-bubble chat-bubble-tail",
-                          message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
-                        )}>
-                          <p className="text-sm whitespace-pre-wrap break-words">
-                            {message.content}
-                          </p>
-                          {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {message.attachments.map((attachment, index) => (
-                                <div 
-                                  key={index}
-                                  className={cn(
-                                    "rounded-lg p-3 transition-all duration-300",
-                                    "bg-white/10 backdrop-blur-sm",
-                                    "hover:bg-white/20",
-                                    "border border-white/20",
-                                    "animate-fade-in"
-                                  )}
-                                >
-                                  <a 
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-3 group/attachment"
+                        {message.parent_message_id && (
+                          <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
+                            <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                          </div>
+                        )}
+                        <div className="group">
+                          <div className={cn(
+                            "chat-bubble",
+                            message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
+                          )} style={messageStyle}>
+                            <p className="text-sm whitespace-pre-wrap break-words">
+                              {message.content}
+                            </p>
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="mt-3 space-y-2">
+                                {message.attachments.map((attachment, index) => (
+                                  <div 
+                                    key={index}
+                                    className={cn(
+                                      "rounded-lg p-3 transition-all duration-300",
+                                      "bg-white/10 backdrop-blur-sm",
+                                      "hover:bg-white/20",
+                                      "border border-white/20",
+                                      "animate-fade-in"
+                                    )}
                                   >
-                                    <div className="p-2 rounded-lg bg-white/20">
-                                      <Paperclip className="h-4 w-4 text-white" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-white truncate group-hover/attachment:underline">
-                                        {attachment.filename}
-                                      </p>
-                                      <p className="text-xs text-white/70">
-                                        {(attachment.size / 1024).toFixed(1)} KB • {attachment.type}
-                                      </p>
-                                    </div>
-                                  </a>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-end mt-2 gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
-                            onClick={() => handleThreadClick(message)}
-                          >
-                            <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
-                            {threadCounts[message.id] > 0 && (
-                              <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
-                                {threadCounts[message.id]}
-                              </span>
+                                    <a 
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-3 group/attachment"
+                                    >
+                                      <div className="p-2 rounded-lg bg-white/20">
+                                        <Paperclip className="h-4 w-4 text-white" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white truncate group-hover/attachment:underline">
+                                          {attachment.filename}
+                                        </p>
+                                        <p className="text-xs text-white/70">
+                                          {(attachment.size / 1024).toFixed(1)} KB • {attachment.type}
+                                        </p>
+                                      </div>
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
                             )}
-                          </Button>
-                          {currentUserId === message.sender.id && (
+                          </div>
+                          <div className="flex justify-end mt-2 gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => deleteMessage(message.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                              onClick={() => handleThreadClick(message)}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
+                              {threadCounts[message.id] > 0 && (
+                                <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                  {threadCounts[message.id]}
+                                </span>
+                              )}
                             </Button>
-                          )}
+                            {currentUserId === message.sender.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteMessage(message.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
 

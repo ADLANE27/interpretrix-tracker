@@ -82,7 +82,7 @@
   }
 
   .chat-bubble-right {
-    @apply bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white;
+    @apply text-white;
   }
 
   .chat-bubble-left {
@@ -90,7 +90,7 @@
   }
 
   .chat-gradient-avatar {
-    @apply rounded-full bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white shadow-md;
+    @apply rounded-full shadow-md;
   }
 
   .chat-input-container {
