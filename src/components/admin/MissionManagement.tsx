@@ -177,7 +177,6 @@ export const MissionManagement = () => {
             last_heartbeat
           )
         `)
-        .contains('languages', [`${sourceLang} → ${targetLang}`])
         .eq('status', 'available');
 
       if (error) {
@@ -185,9 +184,35 @@ export const MissionManagement = () => {
         throw error;
       }
 
-      console.log('[MissionManagement] Found interpreters:', interpreters);
+      console.log('[MissionManagement] All available interpreters:', interpreters);
       
-      if (!interpreters || interpreters.length === 0) {
+      // Log each interpreter's language pairs for debugging
+      interpreters?.forEach(interpreter => {
+        console.log(`[MissionManagement] Interpreter ${interpreter.first_name} languages:`, interpreter.languages);
+      });
+
+      // Filter interpreters with matching language pair
+      const matchingInterpreters = interpreters?.filter(interpreter => {
+        const hasMatchingPair = interpreter.languages.some(lang => {
+          const pair = `${sourceLang} → ${targetLang}`;
+          console.log(`[MissionManagement] Comparing ${lang} with ${pair}`);
+          return lang === pair;
+        });
+        
+        if (hasMatchingPair) {
+          console.log(`[MissionManagement] Found matching interpreter:`, {
+            name: `${interpreter.first_name} ${interpreter.last_name}`,
+            status: interpreter.status,
+            connection_status: interpreter.interpreter_connection_status?.connection_status
+          });
+        }
+        
+        return hasMatchingPair;
+      });
+
+      console.log('[MissionManagement] Matching interpreters before status filter:', matchingInterpreters);
+
+      if (!matchingInterpreters || matchingInterpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
         toast({
           title: "Aucun interprète trouvé",
@@ -198,7 +223,7 @@ export const MissionManagement = () => {
       }
 
       // Transform the data to match the Interpreter interface
-      const availableInterps: Interpreter[] = interpreters.map(interpreter => ({
+      const availableInterps: Interpreter[] = matchingInterpreters.map(interpreter => ({
         id: interpreter.id,
         first_name: interpreter.first_name,
         last_name: interpreter.last_name,
@@ -209,13 +234,22 @@ export const MissionManagement = () => {
         last_heartbeat: interpreter.interpreter_connection_status?.last_heartbeat
       }));
 
+      console.log('[MissionManagement] Available interpreters after transformation:', availableInterps);
+
       // For immediate missions, filter based on connection status
       const filteredInterpreters = missionType === 'immediate' 
-        ? availableInterps.filter(interpreter => 
-            interpreter.connection_status === 'connected' || 
-            interpreter.connection_status === 'background'
-          )
+        ? availableInterps.filter(interpreter => {
+            const isAvailable = interpreter.connection_status === 'connected' || 
+                              interpreter.connection_status === 'background';
+            console.log(`[MissionManagement] Interpreter ${interpreter.first_name} availability for immediate mission:`, {
+              connection_status: interpreter.connection_status,
+              isAvailable
+            });
+            return isAvailable;
+          })
         : availableInterps;
+
+      console.log('[MissionManagement] Final filtered interpreters:', filteredInterpreters);
 
       // Filter out duplicates based on interpreter ID
       const uniqueInterpreters = filteredInterpreters.filter((interpreter, index, self) =>
