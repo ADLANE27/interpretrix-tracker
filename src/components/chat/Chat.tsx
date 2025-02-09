@@ -353,14 +353,14 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
+                    <span className="font-medium text-[#1D1C1D]">
                       {message.sender.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#616061]">
                       {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
                     </span>
                   </div>
-                  <div className="mt-1 text-gray-700 leading-relaxed">
+                  <div className="mt-1 text-[#1D1C1D] leading-relaxed">
                     {message.content}
                   </div>
                 </div>
@@ -380,7 +380,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
         </div>
       </ScrollArea>
 
-      <div className="border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
+      <div className="chat-input-container">
         <div className="relative">
           <Textarea
             ref={textareaRef}
@@ -388,7 +388,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
             onChange={handleMessageChange}
             onKeyPress={handleKeyPress}
             placeholder="Écrivez votre message..."
-            className="min-h-[80px] bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+            className="chat-input"
           />
 
           <MentionSuggestions
@@ -397,7 +397,7 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
             visible={showMentions}
           />
 
-          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          <div className="absolute bottom-2 right-2 flex items-center gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -405,25 +405,19 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               className="hidden"
             />
             
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
+              className="chat-action-button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="hover:bg-gray-100/80 transition-colors duration-200"
             >
-              <Paperclip className="h-4 w-4 text-gray-500" />
-            </Button>
+              <Paperclip className="h-4 w-4" />
+            </button>
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="hover:bg-gray-100/80 transition-colors duration-200"
-                >
-                  <Smile className="h-4 w-4 text-gray-500" />
-                </Button>
+                <button className="chat-action-button">
+                  <Smile className="h-4 w-4" />
+                </button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="end">
                 <Picker
@@ -434,14 +428,14 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
               </PopoverContent>
             </Popover>
 
-            <Button 
+            <button 
+              className="chat-send-button"
               onClick={handleSendMessage}
               disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg"
             >
-              <Send className="h-4 w-4 mr-2" />
+              <Send className="h-4 w-4" />
               Envoyer
-            </Button>
+            </button>
           </div>
         </div>
       </div>
