@@ -17,6 +17,8 @@ import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ConnectionStatus } from '@/components/interpreter/ConnectionStatus';
+import { useConnectionStatus } from '@/hooks/useConnectionStatus';
 
 interface Profile {
   id: string;
@@ -52,6 +54,7 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const connectionStatus = useConnectionStatus(profile?.id || '');
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -350,6 +353,7 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-2 w-full sm:w-auto">
+                <ConnectionStatus status={connectionStatus.status} />
                 <div className="flex gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"

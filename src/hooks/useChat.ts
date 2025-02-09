@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -118,7 +119,7 @@ export const useChat = (channelId: string) => {
     }
   };
 
-  const { channelStatus, cleanup } = useSubscriptions(
+  const { subscribeToMessages, subscribeToMentions } = useSubscriptions(
     channelId,
     currentUserId,
     retryCount,
@@ -162,14 +163,29 @@ export const useChat = (channelId: string) => {
   useEffect(() => {
     if (!channelId) return;
     
-    fetchMessages();
-    setIsSubscribed(true);
-    setRetryCount(0);
+    let mentionsChannel;
+
+    const setupSubscriptions = async () => {
+      try {
+        await fetchMessages();
+        subscribeToMessages();
+        mentionsChannel = subscribeToMentions();
+        setIsSubscribed(true);
+        setRetryCount(0);
+      } catch (error) {
+        console.error('[Chat] Error setting up subscriptions:', error);
+      }
+    };
+
+    setupSubscriptions();
 
     return () => {
-      cleanup();
+      if (mentionsChannel) {
+        console.log('[Chat] Cleaning up mentions subscription');
+        supabase.removeChannel(mentionsChannel);
+      }
     };
-  }, [channelId, cleanup]);
+  }, [channelId]);
 
   return {
     messages,
@@ -179,6 +195,6 @@ export const useChat = (channelId: string) => {
     deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
-    markMentionsAsRead,
+    markMentionsAsRead, // Added this export
   };
 };

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -91,6 +92,7 @@
   }
 
   .chat-bubble-right {
+    @apply bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white;
     border-bottom-right-radius: 0;
   }
 
@@ -100,6 +102,7 @@
   }
 
   .chat-bubble-left {
+    @apply bg-white/90 backdrop-blur-sm;
     border-bottom-left-radius: 0;
   }
 
@@ -109,7 +112,7 @@
   }
 
   .chat-gradient-avatar {
-    @apply rounded-full text-white shadow-md;
+    @apply rounded-full bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white shadow-md;
   }
 
   .chat-input-container {
