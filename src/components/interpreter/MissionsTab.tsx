@@ -347,8 +347,8 @@ export const MissionsTab = () => {
         
         return (
           <Card key={mission.id} className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div className="space-y-2 w-full">
                 <div className="flex items-center gap-2 mb-2">
                   {mission.mission_type === 'scheduled' ? (
                     <Calendar className="h-4 w-4 text-blue-500" />
@@ -390,10 +390,10 @@ export const MissionsTab = () => {
                 </Badge>
               </div>
               {mission.status === 'awaiting_acceptance' && !isProcessing && (
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                     onClick={() => handleMissionResponse(mission.id, true)}
                   >
                     <CheckSquare className="h-4 w-4" />
@@ -401,7 +401,7 @@ export const MissionsTab = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                     onClick={() => handleMissionResponse(mission.id, false)}
                   >
                     <XSquare className="h-4 w-4" />
