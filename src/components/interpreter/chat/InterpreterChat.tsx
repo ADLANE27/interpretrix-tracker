@@ -766,7 +766,7 @@ export const InterpreterChat = ({
                   placeholder="Répondre dans la conversation..."
                   className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
                 />
-                <div className="absolute bottom-2 right-2">
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
                   <Button 
                     onClick={handleSendThreadMessage}
                     className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
