@@ -15,11 +15,6 @@ import {
   X,
   ArrowDown,
   Bell,
-  Bold,
-  Italic,
-  List,
-  ListOrdered,
-  Link2
 } from 'lucide-react';
 import { 
   Popover, 
@@ -502,66 +497,6 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
-  const handleBoldClick = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = message.substring(start, end);
-    
-    const beforeText = message.substring(0, start);
-    const afterText = message.substring(end);
-
-    if (selectedText) {
-      const newMessage = `${beforeText}**${selectedText}**${afterText}`;
-      setMessage(newMessage);
-      textarea.focus();
-      setTimeout(() => {
-        textarea.selectionStart = start + 2;
-        textarea.selectionEnd = end + 2;
-      }, 0);
-    } else {
-      const newMessage = `${beforeText}****${afterText}`;
-      setMessage(newMessage);
-      textarea.focus();
-      setTimeout(() => {
-        textarea.selectionStart = start + 2;
-        textarea.selectionEnd = start + 2;
-      }, 0);
-    }
-  };
-
-  const handleItalicClick = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = message.substring(start, end);
-    
-    const beforeText = message.substring(0, start);
-    const afterText = message.substring(end);
-
-    if (selectedText) {
-      const newMessage = `${beforeText}_${selectedText}_${afterText}`;
-      setMessage(newMessage);
-      textarea.focus();
-      setTimeout(() => {
-        textarea.selectionStart = start + 1;
-        textarea.selectionEnd = end + 1;
-      }, 0);
-    } else {
-      const newMessage = `${beforeText}__${afterText}`;
-      setMessage(newMessage);
-      textarea.focus();
-      setTimeout(() => {
-        textarea.selectionStart = start + 1;
-        textarea.selectionEnd = start + 1;
-      }, 0);
-    }
-  };
-
   return (
     <div className={cn(
       "flex flex-col relative",
@@ -648,24 +583,6 @@ export const InterpreterChat = ({
                   </Button>
                 </div>
               )}
-
-              <div className="chat-toolbar">
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Bold className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Italic className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <List className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <ListOrdered className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className="chat-toolbar-button">
-                  <Link2 className="h-4 w-4" />
-                </Button>
-              </div>
 
               <Textarea
                 ref={textareaRef}
