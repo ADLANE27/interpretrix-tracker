@@ -556,20 +556,81 @@ export const InterpreterChat = ({
   };
 
   const formatMessageContent = (content: string): string => {
-    // Convert markdown-style formatting to HTML
-    return content
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/_(.*?)_/g, '<em>$1</em>')
-      .replace(/^• (.*)/gm, '<li>$1</li>')
-      .replace(/^\d+\. (.*)/gm, '<li>$1</li>')
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('<li>')) {
-          return `<ul>${line}</ul>`;
+    // First split by newlines and handle lists
+    const lines = content.split('\n');
+    let inList = false;
+    let listCounter = 1;
+    
+    const formattedLines = lines.map(line => {
+      // Check for bullet points
+      if (line.trim().startsWith('• ')) {
+        inList = true;
+        return `<li>${line.trim().substring(2)}</li>`;
+      }
+      // Check for numbered lists
+      const numberedMatch = line.trim().match(/^\d+\.\s(.+)/);
+      if (numberedMatch) {
+        inList = true;
+        return `<li>${numberedMatch[1]}</li>`;
+      }
+      
+      // If we were in a list but this line isn't a list item, close the list
+      if (inList && !line.trim().startsWith('• ') && !line.trim().match(/^\d+\.\s/)) {
+        inList = false;
+        listCounter = 1;
+      }
+      
+      // Format bold and italic
+      return line
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+        .replace(/_(.*?)_/g, '<em>$1</em>');              // Italic
+    });
+
+    // Join lines back together with proper list wrapping
+    let html = '';
+    let currentList = '';
+    let inUnorderedList = false;
+    let inOrderedList = false;
+
+    formattedLines.forEach(line => {
+      if (line.startsWith('<li>')) {
+        // Check if it's coming from a bullet point or number
+        const isUnordered = line.includes('• ');
+        
+        if (isUnordered && !inUnorderedList) {
+          if (inOrderedList) {
+            html += '</ol>';
+            inOrderedList = false;
+          }
+          html += '<ul>';
+          inUnorderedList = true;
+        } else if (!isUnordered && !inOrderedList) {
+          if (inUnorderedList) {
+            html += '</ul>';
+            inUnorderedList = false;
+          }
+          html += '<ol>';
+          inOrderedList = true;
         }
-        return line;
-      })
-      .join('<br/>');
+        html += line;
+      } else {
+        if (inUnorderedList) {
+          html += '</ul>';
+          inUnorderedList = false;
+        }
+        if (inOrderedList) {
+          html += '</ol>';
+          inOrderedList = false;
+        }
+        html += line + '<br/>';
+      }
+    });
+
+    // Close any open lists
+    if (inUnorderedList) html += '</ul>';
+    if (inOrderedList) html += '</ol>';
+
+    return html;
   };
 
   return (
