@@ -13,10 +13,11 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
+import { LogOut, Menu, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ThemeToggle } from "./interpreter/ThemeToggle";
 
 interface Profile {
   id: string;
@@ -54,6 +55,9 @@ export const InterpreterDashboard = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    document.documentElement.classList.toggle("dark", savedTheme === "dark");
+
     const initializeAuth = async () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
@@ -336,10 +340,10 @@ export const InterpreterDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
-          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader
                 firstName={profile.first_name}
@@ -351,6 +355,7 @@ export const InterpreterDashboard = () => {
               />
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex gap-2 w-full sm:w-auto">
+                  <ThemeToggle />
                   <Button
                     variant="outline"
                     size="icon"
@@ -375,16 +380,16 @@ export const InterpreterDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
             <StatusManager
               currentStatus={profile.status}
               onStatusChange={handleStatusChange}
             />
           </div>
 
-          <Card className="shadow-sm">
+          <Card className="shadow-sm dark:bg-gray-800 transition-colors duration-300">
             {isMobile ? (
-              <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
                 <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
@@ -392,7 +397,7 @@ export const InterpreterDashboard = () => {
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-[80%] sm:w-[385px]">
+                  <SheetContent side="left" className="w-[80%] sm:w-[385px] dark:bg-gray-800">
                     <SheetHeader>
                       <SheetTitle>Navigation</SheetTitle>
                     </SheetHeader>
@@ -413,7 +418,7 @@ export const InterpreterDashboard = () => {
               </div>
             ) : (
               <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <div className="border-b overflow-x-auto">
+                <div className="border-b dark:border-gray-700 overflow-x-auto">
                   <TabsList className="w-full justify-start h-12 bg-transparent p-0">
                     {tabItems.map((tab) => (
                       <TabsTrigger 
@@ -447,7 +452,7 @@ export const InterpreterDashboard = () => {
             onChange={handleProfilePictureUpload}
           />
 
-          <footer className="text-center text-sm text-gray-500 pt-4">
+          <footer className="text-center text-sm text-gray-500 dark:text-gray-400 pt-4">
             © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
           </footer>
         </div>
