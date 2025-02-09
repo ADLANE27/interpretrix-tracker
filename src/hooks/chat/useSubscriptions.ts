@@ -4,10 +4,12 @@ import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 import { useRef, useCallback, useState, useEffect } from 'react';
 
-// Constants for reconnection
-const INITIAL_RETRY_DELAY = 2000; // 2 seconds
-const MAX_RETRY_DELAY = 30000; // 30 seconds
-const MAX_SILENT_RETRIES = 3; // Number of retries before showing toast
+// Constants for reconnection strategy
+const INITIAL_RETRY_DELAY = 1000; // Start with 1 second
+const MAX_RETRY_DELAY = 15000; // Max 15 seconds between retries
+const MAX_SILENT_RETRIES = 5;
+const MOBILE_RETRY_MULTIPLIER = 1.5; // Slower backoff for mobile
+const MIN_TIME_BETWEEN_TOASTS = 30000; // 30 seconds between error toasts
 
 export const useSubscriptions = (
   channelId: string,
@@ -24,6 +26,9 @@ export const useSubscriptions = (
   const silentRetryCountRef = useRef(0);
   const lastActiveRef = useRef(Date.now());
   const isBackgroundRef = useRef(false);
+  const lastToastTimeRef = useRef(0);
+  const isMobileRef = useRef(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  const isIOSRef = useRef(/iPad|iPhone|iPod/.test(navigator.userAgent));
 
   const cleanupChannel = useCallback(() => {
     if (channelRef.current) {
@@ -37,40 +42,78 @@ export const useSubscriptions = (
     }
   }, []);
 
+  const shouldShowToast = useCallback(() => {
+    const now = Date.now();
+    if (now - lastToastTimeRef.current < MIN_TIME_BETWEEN_TOASTS) {
+      return false;
+    }
+    if (silentRetryCountRef.current <= MAX_SILENT_RETRIES) {
+      return false;
+    }
+    if (isBackgroundRef.current) {
+      return false;
+    }
+    lastToastTimeRef.current = now;
+    return true;
+  }, []);
+
+  const getRetryDelay = useCallback(() => {
+    const baseDelay = Math.min(
+      INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+      MAX_RETRY_DELAY
+    );
+    return isMobileRef.current ? baseDelay * MOBILE_RETRY_MULTIPLIER : baseDelay;
+  }, [retryCount]);
+
+  const handleConnectionState = useCallback(() => {
+    if (!channelRef.current || isBackgroundRef.current) return;
+
+    const online = navigator.onLine;
+    console.log('[Chat] Connection state changed:', online ? 'online' : 'offline');
+
+    if (online) {
+      console.log('[Chat] Online - attempting to reconnect');
+      channelRef.current.subscribe();
+    } else {
+      console.log('[Chat] Offline - cleaning up channel');
+      cleanupChannel();
+    }
+  }, [cleanupChannel]);
+
   const handleVisibilityChange = useCallback(() => {
     const isVisible = document.visibilityState === 'visible';
     console.log('[Chat] Visibility changed:', isVisible ? 'visible' : 'hidden');
     
     isBackgroundRef.current = !isVisible;
+    lastActiveRef.current = Date.now();
     
     if (isVisible) {
-      lastActiveRef.current = Date.now();
-      if (channelStatus !== 'SUBSCRIBED' && channelRef.current) {
-        console.log('[Chat] Page visible, resubscribing to channel');
+      // For iOS, we force a new subscription when coming back to foreground
+      if (isIOSRef.current) {
+        console.log('[Chat] iOS detected - forcing channel resubscription');
+        cleanupChannel();
+        setupChannel();
+      } else if (channelRef.current && channelStatus !== 'SUBSCRIBED') {
+        console.log('[Chat] Resubscribing to channel');
         channelRef.current.subscribe();
       }
     }
-  }, [channelStatus]);
+  }, [channelStatus, cleanupChannel]);
 
   const handleSubscriptionError = useCallback(() => {
-    if (isReconnectingRef.current || isBackgroundRef.current) return;
+    if (isReconnectingRef.current || isBackgroundRef.current) {
+      console.log('[Chat] Skipping reconnection - already reconnecting or in background');
+      return;
+    }
     
     isReconnectingRef.current = true;
-    const now = Date.now();
-    const timeSinceLastActive = now - lastActiveRef.current;
+    const delay = getRetryDelay();
 
-    // Clear any existing retry timeout
+    console.log(`[Chat] Planning reconnection in ${delay}ms (retry #${retryCount})`);
+
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
     }
-
-    // Calculate delay with exponential backoff
-    const delay = Math.min(
-      INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
-      MAX_RETRY_DELAY
-    );
-
-    console.log(`[Chat] Planning reconnection in ${delay}ms (retry #${retryCount})`);
 
     retryTimeoutRef.current = setTimeout(() => {
       if (channelRef.current && !isBackgroundRef.current) {
@@ -78,22 +121,20 @@ export const useSubscriptions = (
         setRetryCount(retryCount + 1);
         silentRetryCountRef.current++;
         
-        channelRef.current.subscribe();
-        
-        // Only show toast after MAX_SILENT_RETRIES and if app is active
-        if (silentRetryCountRef.current > MAX_SILENT_RETRIES && timeSinceLastActive < 5000) {
+        if (shouldShowToast()) {
           toast({
             title: "Problème de connexion",
             description: "Tentative de reconnexion en cours...",
             variant: "destructive",
           });
         }
+        
+        channelRef.current.subscribe();
       }
-      
       isReconnectingRef.current = false;
     }, delay);
 
-  }, [retryCount, setRetryCount, toast]);
+  }, [retryCount, setRetryCount, toast, getRetryDelay, shouldShowToast]);
 
   const setupChannel = useCallback(() => {
     console.log('[Chat] Setting up realtime subscription for channel:', channelId);
@@ -114,7 +155,9 @@ export const useSubscriptions = (
           console.log('[Chat] Received real-time update:', payload);
           await fetchMessages();
           
-          if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
+          if (payload.eventType === 'INSERT' && 
+              payload.new.sender_id !== currentUserId && 
+              !isBackgroundRef.current) {
             toast({
               title: "Nouveau message",
               description: "Un nouveau message a été reçu",
@@ -132,7 +175,9 @@ export const useSubscriptions = (
         },
         async (payload) => {
           console.log('[Chat] Received mention update:', payload);
-          if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
+          if (payload.eventType === 'INSERT' && 
+              payload.new.mentioned_user_id === currentUserId &&
+              !isBackgroundRef.current) {
             toast({
               title: "New Mention",
               description: "You were mentioned in a message",
@@ -170,11 +215,15 @@ export const useSubscriptions = (
   useEffect(() => {
     console.log('[Chat] Setting up visibility change listener');
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleConnectionState);
+    window.addEventListener('offline', handleConnectionState);
     
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleConnectionState);
+      window.removeEventListener('offline', handleConnectionState);
     };
-  }, [handleVisibilityChange]);
+  }, [handleVisibilityChange, handleConnectionState]);
 
   useEffect(() => {
     if (channelId) {
