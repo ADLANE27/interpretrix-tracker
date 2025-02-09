@@ -514,16 +514,18 @@ export const InterpreterChat = ({
     const afterText = message.substring(end);
 
     if (selectedText) {
-      setMessage(`${beforeText}**${selectedText}**${afterText}`);
+      const newMessage = `${beforeText}**${selectedText}**${afterText}`;
+      setMessage(newMessage);
+      textarea.focus();
       setTimeout(() => {
-        textarea.focus();
         textarea.selectionStart = start + 2;
         textarea.selectionEnd = end + 2;
       }, 0);
     } else {
-      setMessage(`${beforeText}****${afterText}`);
+      const newMessage = `${beforeText}****${afterText}`;
+      setMessage(newMessage);
+      textarea.focus();
       setTimeout(() => {
-        textarea.focus();
         textarea.selectionStart = start + 2;
         textarea.selectionEnd = start + 2;
       }, 0);
@@ -542,16 +544,18 @@ export const InterpreterChat = ({
     const afterText = message.substring(end);
 
     if (selectedText) {
-      setMessage(`${beforeText}_${selectedText}_${afterText}`);
+      const newMessage = `${beforeText}_${selectedText}_${afterText}`;
+      setMessage(newMessage);
+      textarea.focus();
       setTimeout(() => {
-        textarea.focus();
         textarea.selectionStart = start + 1;
         textarea.selectionEnd = end + 1;
       }, 0);
     } else {
-      setMessage(`${beforeText}__${afterText}`);
+      const newMessage = `${beforeText}__${afterText}`;
+      setMessage(newMessage);
+      textarea.focus();
       setTimeout(() => {
-        textarea.focus();
         textarea.selectionStart = start + 1;
         textarea.selectionEnd = start + 1;
       }, 0);
