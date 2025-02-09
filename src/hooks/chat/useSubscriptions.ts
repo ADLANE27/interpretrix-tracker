@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 
 const RETRY_DELAY = 2000; // 2 secondes entre les tentatives
 
@@ -18,6 +18,8 @@ export const useSubscriptions = (
   const mentionChannelRef = useRef<RealtimeChannel | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout>();
   const isReconnectingRef = useRef(false);
+  const [messageChannelStatus, setMessageChannelStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null>(null);
+  const [mentionChannelStatus, setMentionChannelStatus] = useState<'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null>(null);
 
   const cleanupChannel = useCallback((channel: RealtimeChannel | null) => {
     if (channel) {
@@ -29,23 +31,30 @@ export const useSubscriptions = (
     }
   }, []);
 
-  const handleVisibilityChange = useCallback((channel: RealtimeChannel | null) => {
+  const handleVisibilityChange = useCallback((channel: RealtimeChannel | null, status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'CLOSED' | null) => {
     if (!channel) return;
 
-    if (document.visibilityState === 'visible' && !channel.isJoined()) {
+    if (document.visibilityState === 'visible' && status !== 'SUBSCRIBED') {
       console.log('[Chat] Page visible, resubscribing to channel');
       channel.subscribe();
     }
   }, []);
 
   const setupVisibilityListener = useCallback((channel: RealtimeChannel, type: 'messages' | 'mentions') => {
-    const listener = () => handleVisibilityChange(channel);
+    const listener = () => {
+      if (type === 'messages') {
+        handleVisibilityChange(channel, messageChannelStatus);
+      } else {
+        handleVisibilityChange(channel, mentionChannelStatus);
+      }
+    };
+    
     document.addEventListener('visibilitychange', listener);
     
     return () => {
       document.removeEventListener('visibilitychange', listener);
     };
-  }, [handleVisibilityChange]);
+  }, [handleVisibilityChange, messageChannelStatus, mentionChannelStatus]);
 
   const handleSubscriptionError = useCallback(() => {
     if (isReconnectingRef.current) return;
@@ -114,6 +123,7 @@ export const useSubscriptions = (
       )
       .subscribe((status) => {
         console.log('[Chat] Subscription status:', status);
+        setMessageChannelStatus(status);
         if (status === 'SUBSCRIBED') {
           console.log('[Chat] Successfully subscribed to messages');
           setRetryCount(0);
@@ -161,6 +171,7 @@ export const useSubscriptions = (
       )
       .subscribe((status) => {
         console.log('[Chat] Mentions subscription status:', status);
+        setMentionChannelStatus(status);
         if (status === 'CHANNEL_ERROR') {
           handleSubscriptionError();
         }
