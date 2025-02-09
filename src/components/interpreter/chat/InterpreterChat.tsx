@@ -44,7 +44,7 @@ interface InterpreterChatProps {
   isFullScreen?: boolean;
 }
 
-export const InterpreterChat = ({ 
+const InterpreterChatComponent = ({ 
   channelId,
   filters,
   onFiltersChange,
@@ -522,7 +522,7 @@ export const InterpreterChat = ({
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 pb-[120px]"
+            className="flex-1 pb-[160px]"
             onScrollCapture={handleScroll}
           >
             <div className="p-4 space-y-6">
@@ -606,7 +606,7 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t">
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t">
             <div className="chat-input-container">
               {replyingTo && (
                 <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
@@ -786,4 +786,4 @@ const getUserColor = (userId: string) => {
   return '#000000';
 };
 
-export { InterpreterChat };
+export const InterpreterChat = InterpreterChatComponent;
