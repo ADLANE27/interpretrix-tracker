@@ -45,6 +45,8 @@ interface Interpreter {
   languages: string[];
   status: string;
   profile_picture_url: string | null;
+  connection_status?: string;
+  last_heartbeat?: string;
 }
 
 export const MissionManagement = () => {
@@ -161,8 +163,8 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      let query = supabase
-        .from("available_interpreters")
+      const { data: interpreters, error } = await supabase
+        .from('interpreter_profiles')
         .select(`
           id,
           first_name,
@@ -170,12 +172,13 @@ export const MissionManagement = () => {
           status,
           profile_picture_url,
           languages,
-          connection_status,
-          last_heartbeat
+          interpreter_connection_status!inner (
+            connection_status,
+            last_heartbeat
+          )
         `)
-        .contains('languages', [`${sourceLang} → ${targetLang}`]);
-
-      const { data: interpreters, error } = await query;
+        .contains('languages', [`${sourceLang} → ${targetLang}`])
+        .eq('status', 'available');
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
@@ -194,8 +197,29 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Transform the data to match the Interpreter interface
+      const availableInterps: Interpreter[] = interpreters.map(interpreter => ({
+        id: interpreter.id,
+        first_name: interpreter.first_name,
+        last_name: interpreter.last_name,
+        languages: interpreter.languages,
+        status: interpreter.status,
+        profile_picture_url: interpreter.profile_picture_url,
+        connection_status: interpreter.interpreter_connection_status?.connection_status,
+        last_heartbeat: interpreter.interpreter_connection_status?.last_heartbeat
+      }));
+
+      // Filter out interpreters whose last heartbeat is more than 1 minute old
+      const activeInterpreters = availableInterps.filter(interpreter => {
+        if (!interpreter.last_heartbeat) return false;
+        const heartbeatTime = new Date(interpreter.last_heartbeat);
+        const now = new Date();
+        const diffInSeconds = (now.getTime() - heartbeatTime.getTime()) / 1000;
+        return diffInSeconds <= 60;
+      });
+
       // Filter out duplicates based on interpreter ID
-      const uniqueInterpreters = interpreters.filter((interpreter, index, self) =>
+      const uniqueInterpreters = activeInterpreters.filter((interpreter, index, self) =>
         index === self.findIndex((t) => t.id === interpreter.id)
       );
 
