@@ -11,9 +11,8 @@ import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
-import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, BookOpen, Bell } from 'lucide-react';
+import { LogOut, Menu, Bell } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,7 +49,6 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("missions");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -376,8 +374,7 @@ export const InterpreterDashboard = () => {
               />
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <ConnectionStatus status={connectionStatus.status} />
-                <div className="grid grid-cols-3 sm:flex gap-2 w-full sm:w-auto">
-                  <HowToUseGuide isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} />
+                <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
                   <NotificationPermission interpreterId={profile.id} />
                   <Button
                     variant="outline"
