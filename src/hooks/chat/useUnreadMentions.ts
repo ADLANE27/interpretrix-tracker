@@ -156,8 +156,11 @@ export const useUnreadMentions = () => {
       }
     });
 
+    // Create a single channel instance
+    const mentionsChannel = supabase.channel('mentions-changes');
+
     // Subscribe to mentions changes
-    const channel = supabase.channel('mentions')
+    mentionsChannel
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
@@ -168,9 +171,11 @@ export const useUnreadMentions = () => {
       )
       .subscribe();
 
+    // Cleanup function
     return () => {
+      console.log('[Mentions Debug] Cleaning up subscriptions');
       authSubscription.unsubscribe();
-      supabase.removeChannel(channel);
+      supabase.removeChannel(mentionsChannel);
     };
   }, []);
 
@@ -182,4 +187,3 @@ export const useUnreadMentions = () => {
     refreshMentions: fetchUnreadMentions 
   };
 };
-
