@@ -43,10 +43,10 @@ export const MentionsPopover = ({
         className="sm:max-w-[500px] p-0 gap-0 overflow-hidden"
       >
         <div className="flex flex-col h-[500px]">
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between">
+          <div className="p-4 border-b relative">
+            <div className="flex items-center">
               <h3 className="font-medium">Mentions Récentes</h3>
-              <Badge variant="secondary" className="font-normal">
+              <Badge variant="secondary" className="font-normal ml-3">
                 {totalCount} {totalCount === 1 ? 'mention' : 'mentions'}
               </Badge>
             </div>
