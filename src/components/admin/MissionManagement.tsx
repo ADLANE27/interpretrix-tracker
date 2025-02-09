@@ -184,36 +184,8 @@ export const MissionManagement = () => {
         throw error;
       }
 
-      console.log('[MissionManagement] All available interpreters:', interpreters);
-      
-      // Log each interpreter's language pairs for debugging
-      interpreters?.forEach(interpreter => {
-        console.log(`[MissionManagement] Interpreter ${interpreter.first_name} languages:`, interpreter.languages);
-      });
-
-      // Filter interpreters with matching language pair
-      const matchingInterpreters = interpreters?.filter(interpreter => {
-        const hasMatchingPair = interpreter.languages.some(lang => {
-          const pair = `${sourceLang} → ${targetLang}`;
-          console.log(`[MissionManagement] Comparing ${lang} with ${pair}`);
-          return lang === pair;
-        });
-        
-        if (hasMatchingPair) {
-          console.log(`[MissionManagement] Found matching interpreter:`, {
-            name: `${interpreter.first_name} ${interpreter.last_name}`,
-            status: interpreter.status,
-            connection_status: interpreter.interpreter_connection_status?.connection_status
-          });
-        }
-        
-        return hasMatchingPair;
-      });
-
-      console.log('[MissionManagement] Matching interpreters before status filter:', matchingInterpreters);
-
-      if (!matchingInterpreters || matchingInterpreters.length === 0) {
-        console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
+      if (!interpreters || interpreters.length === 0) {
+        console.log('[MissionManagement] No available interpreters found');
         toast({
           title: "Aucun interprète trouvé",
           description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
@@ -222,7 +194,21 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Transform the data to match the Interpreter interface
+      // Filter interpreters who can handle this language pair
+      const matchingInterpreters = interpreters.filter(interpreter => 
+        interpreter.languages.includes(`${sourceLang} → ${targetLang}`)
+      );
+
+      if (matchingInterpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found for language pair:', `${sourceLang} → ${targetLang}`);
+        toast({
+          title: "Aucun interprète trouvé",
+          description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
+        });
+        setAvailableInterpreters([]);
+        return;
+      }
+
       const availableInterps: Interpreter[] = matchingInterpreters.map(interpreter => ({
         id: interpreter.id,
         first_name: interpreter.first_name,
@@ -234,30 +220,17 @@ export const MissionManagement = () => {
         last_heartbeat: interpreter.interpreter_connection_status?.last_heartbeat
       }));
 
-      console.log('[MissionManagement] Available interpreters after transformation:', availableInterps);
-
-      // For immediate missions, filter based on connection status
-      const filteredInterpreters = missionType === 'immediate' 
-        ? availableInterps.filter(interpreter => {
-            const isAvailable = interpreter.connection_status === 'connected' || 
-                              interpreter.connection_status === 'background';
-            console.log(`[MissionManagement] Interpreter ${interpreter.first_name} availability for immediate mission:`, {
-              connection_status: interpreter.connection_status,
-              isAvailable
-            });
-            return isAvailable;
-          })
+      // Pour les missions immédiates, on vérifie que l'interprète est connecté
+      const finalInterpreters = missionType === 'immediate' 
+        ? availableInterps.filter(interpreter => 
+            interpreter.connection_status === 'connected' || 
+            interpreter.connection_status === 'background'
+          )
         : availableInterps;
 
-      console.log('[MissionManagement] Final filtered interpreters:', filteredInterpreters);
-
-      // Filter out duplicates based on interpreter ID
-      const uniqueInterpreters = filteredInterpreters.filter((interpreter, index, self) =>
-        index === self.findIndex((t) => t.id === interpreter.id)
-      );
-
-      setAvailableInterpreters(uniqueInterpreters);
+      setAvailableInterpreters(finalInterpreters);
       setSelectedInterpreters([]);
+
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
       toast({
