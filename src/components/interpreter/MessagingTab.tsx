@@ -98,6 +98,7 @@ export const MessagingTab = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10 mt-4"
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </Button>
