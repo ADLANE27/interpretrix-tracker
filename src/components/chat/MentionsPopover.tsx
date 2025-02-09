@@ -46,7 +46,7 @@ export const MentionsPopover = ({
         avoidCollisions={false}
         collisionPadding={0}
         sticky="always"
-        className={`${isMobile ? 'w-[calc(100vw-32px)]' : 'w-96'} !absolute !bottom-auto !top-[100%]`}
+        className={`${isMobile ? 'w-[calc(100vw-32px)]' : 'w-96'} !absolute !bottom-auto !top-[100%] !left-1/2 !-translate-x-1/2`}
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
