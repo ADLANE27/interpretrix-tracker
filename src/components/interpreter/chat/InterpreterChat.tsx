@@ -533,8 +533,11 @@ export const InterpreterChat = ({
                   className="group message-appear"
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg">
-                      <AvatarFallback className="bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]">
+                    <Avatar className="h-10 w-10 flex-shrink-0 shadow-lg">
+                      <AvatarFallback 
+                        style={{ backgroundColor: getUserColor(message.sender.id) }}
+                        className="text-white"
+                      >
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -710,7 +713,10 @@ export const InterpreterChat = ({
             <div className="p-3 bg-gray-50 border-b">
               <div className="flex items-start gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-interpreter-navy text-white">
+                  <AvatarFallback 
+                    style={{ backgroundColor: getUserColor(selectedThread.sender.id) }}
+                    className="text-white"
+                  >
                     {selectedThread.sender.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -731,7 +737,10 @@ export const InterpreterChat = ({
                 <div key={message.id} className="py-3">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-interpreter-navy text-white">
+                      <AvatarFallback 
+                        style={{ backgroundColor: getUserColor(message.sender.id) }}
+                        className="text-white"
+                      >
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -773,4 +782,9 @@ export const InterpreterChat = ({
       </div>
     </div>
   );
+};
+
+const getUserColor = (userId: string) => {
+  // Implement logic to get user color based on userId
+  return '#000000'; // Default color
 };
