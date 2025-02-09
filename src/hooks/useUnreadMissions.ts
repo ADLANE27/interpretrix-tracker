@@ -50,20 +50,29 @@ export const useUnreadMissions = () => {
   useEffect(() => {
     fetchUnreadMissions();
 
-    const channel = supabase
-      .channel('interpreter-missions')
+    // Subscribe to mission changes
+    const missionChannel = supabase
+      .channel('mission-updates')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
-          table: 'interpretation_missions'
+          table: 'interpretation_missions',
+          filter: `status=eq.awaiting_acceptance`
         },
         () => {
           console.log('[UnreadMissions] Missions table changed, refreshing count');
           fetchUnreadMissions();
         }
       )
+      .subscribe((status) => {
+        console.log('[UnreadMissions] Mission subscription status:', status);
+      });
+
+    // Subscribe to notification changes
+    const notificationChannel = supabase
+      .channel('notification-updates')
       .on(
         'postgres_changes',
         {
@@ -77,14 +86,14 @@ export const useUnreadMissions = () => {
         }
       )
       .subscribe((status) => {
-        console.log('[UnreadMissions] Subscription status:', status);
+        console.log('[UnreadMissions] Notification subscription status:', status);
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(missionChannel);
+      supabase.removeChannel(notificationChannel);
     };
   }, []);
 
   return { unreadCount, refreshUnreadMissions: fetchUnreadMissions };
 };
-
