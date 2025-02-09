@@ -1,4 +1,6 @@
 
+import { supabase } from "@/integrations/supabase/client";
+
 let audioContext: AudioContext | null = null;
 let audioInitialized = false;
 let immediateSound: HTMLAudioElement | null = null;
