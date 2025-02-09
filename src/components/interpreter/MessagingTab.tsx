@@ -84,9 +84,8 @@ export const MessagingTab = () => {
           <Collapsible
             open={!isCollapsed}
             onOpenChange={setIsCollapsed}
-            className="flex"
           >
-            <CollapsibleContent className="w-[300px] lg:w-[350px]">
+            <CollapsibleContent className="w-[300px] lg:w-[350px] transition-all duration-300">
               <Card className="p-3 sm:p-4 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl h-full">
                 <InterpreterChannelList 
                   onChannelSelect={handleChannelSelect}
@@ -98,7 +97,6 @@ export const MessagingTab = () => {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10 mt-4"
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </Button>
@@ -112,6 +110,7 @@ export const MessagingTab = () => {
           "p-3 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA]",
           "hover:shadow-xl rounded-xl flex-1",
+          isCollapsed ? "ml-0" : "ml-4",
           isFullScreen ? "w-full h-full" : ""
         )}>
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
@@ -178,3 +177,4 @@ export const MessagingTab = () => {
     </div>
   );
 };
+
