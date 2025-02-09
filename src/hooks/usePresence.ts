@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +25,7 @@ export const usePresence = (userId: string, roomId: string) => {
   const retryCount = useRef(0);
   const MAX_RETRY_COUNT = 5;
   const RETRY_DELAY = 5000;
+  const HEARTBEAT_INTERVAL = 15000; // 15 seconds
 
   const updateConnectionStatus = async (status: 'connected' | 'background' | 'disconnected') => {
     console.log('[Presence] Updating connection status:', status);
@@ -43,6 +43,10 @@ export const usePresence = (userId: string, roomId: string) => {
     } catch (error) {
       console.error('[Presence] Error updating connection status:', error);
     }
+  };
+
+  const getBackoffDelay = (retryAttempt: number) => {
+    return Math.min(1000 * Math.pow(2, retryAttempt), 30000); // Max 30 seconds
   };
 
   const setupPresence = () => {
@@ -107,11 +111,13 @@ export const usePresence = (userId: string, roomId: string) => {
               } catch (error) {
                 console.error('[Presence] Heartbeat error:', error);
                 if (retryCount.current < MAX_RETRY_COUNT) {
+                  const delay = getBackoffDelay(retryCount.current);
                   retryCount.current++;
-                  setupPresence();
+                  console.log(`[Presence] Retrying in ${delay}ms (attempt ${retryCount.current})`);
+                  setTimeout(setupPresence, delay);
                 }
               }
-            }, 30000) as unknown as number;
+            }, HEARTBEAT_INTERVAL) as unknown as number;
 
           } catch (error) {
             console.error('[Presence] Error setting up presence:', error);
@@ -124,13 +130,13 @@ export const usePresence = (userId: string, roomId: string) => {
         } else if (status === 'CHANNEL_ERROR') {
           console.error('[Presence] Channel error occurred');
           if (retryCount.current < MAX_RETRY_COUNT) {
+            const delay = getBackoffDelay(retryCount.current);
             retryCount.current++;
+            console.log(`[Presence] Retrying in ${delay}ms (attempt ${retryCount.current})`);
             if (reconnectTimeout.current) {
               clearTimeout(reconnectTimeout.current);
             }
-            reconnectTimeout.current = window.setTimeout(() => {
-              setupPresence();
-            }, RETRY_DELAY) as unknown as number;
+            reconnectTimeout.current = window.setTimeout(setupPresence, delay) as unknown as number;
           }
         }
       });
@@ -168,6 +174,22 @@ export const usePresence = (userId: string, roomId: string) => {
       }
     };
 
+    // Try to keep the app awake
+    let wakeLock: any = null;
+    const requestWakeLock = async () => {
+      try {
+        // @ts-ignore - NavigatorExtended
+        if ('wakeLock' in navigator) {
+          // @ts-ignore - NavigatorExtended
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[Presence] Wake Lock is active');
+        }
+      } catch (err) {
+        console.log('[Presence] Wake Lock error:', err);
+      }
+    };
+    requestWakeLock();
+
     const handleOnline = () => {
       console.log('[Presence] Browser online');
       if (userId) {
@@ -202,6 +224,12 @@ export const usePresence = (userId: string, roomId: string) => {
 
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
+      }
+
+      if (wakeLock) {
+        wakeLock.release()
+          .then(() => console.log('[Presence] Wake Lock released'))
+          .catch((err: Error) => console.log('[Presence] Error releasing Wake Lock:', err));
       }
 
       // Update connection status to disconnected
