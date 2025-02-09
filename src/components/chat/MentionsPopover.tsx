@@ -37,7 +37,12 @@ export const MentionsPopover = ({
       <PopoverTrigger asChild>
         {children}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96">
+      <PopoverContent 
+        align="end" 
+        side="bottom" 
+        sideOffset={5}
+        className="w-96"
+      >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="font-medium">Mentions Récentes</h3>
