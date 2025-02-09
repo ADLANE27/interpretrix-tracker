@@ -500,7 +500,7 @@ export const InterpreterChat = ({
   return (
     <div className={cn(
       "flex flex-col relative",
-      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-200px)]",
       "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
       <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
