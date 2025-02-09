@@ -4,7 +4,7 @@ import { Clock, BellRing, CalendarDays, MessageSquare, UserCog } from "lucide-re
 
 export const InterpreterGuideContent = () => {
   return (
-    <div className="bg-background rounded-lg border p-6 shadow-sm">
+    <div className="bg-background p-6">
       <h2 className="text-2xl font-bold mb-6">Guide d'utilisation - Espace Interprète</h2>
       <ScrollArea className="h-[calc(100vh-250px)] pr-4">
         <div className="space-y-6">
@@ -63,8 +63,6 @@ export const InterpreterGuideContent = () => {
               <p>Dans l'onglet "Mon Profil" :</p>
               <ul className="list-disc ml-6 space-y-1">
                 <li>Mettez à jour vos informations personnelles</li>
-                <li>Gérez vos paramètres de compte</li>
-                <li>Modifiez vos tarifs et disponibilités</li>
               </ul>
             </div>
           </section>
