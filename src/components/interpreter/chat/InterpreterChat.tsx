@@ -639,10 +639,10 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className="chat-send-button"
+                  size="icon"
+                  className="ml-auto"
                 >
                   <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Send</span>
                 </Button>
               </div>
             </div>
