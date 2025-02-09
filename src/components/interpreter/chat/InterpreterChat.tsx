@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -503,6 +502,54 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
+  const handleBoldClick = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = message.substring(start, end);
+    
+    const beforeText = message.substring(0, start);
+    const afterText = message.substring(end);
+
+    if (selectedText) {
+      setMessage(`${beforeText}**${selectedText}**${afterText}`);
+    } else {
+      setMessage(`${beforeText}****${afterText}`);
+      // Set cursor between asterisks
+      setTimeout(() => {
+        textarea.selectionStart = start + 2;
+        textarea.selectionEnd = start + 2;
+        textarea.focus();
+      }, 0);
+    }
+  };
+
+  const handleItalicClick = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = message.substring(start, end);
+    
+    const beforeText = message.substring(0, start);
+    const afterText = message.substring(end);
+
+    if (selectedText) {
+      setMessage(`${beforeText}_${selectedText}_${afterText}`);
+    } else {
+      setMessage(`${beforeText}__${afterText}`);
+      // Set cursor between underscores
+      setTimeout(() => {
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = start + 1;
+        textarea.focus();
+      }, 0);
+    }
+  };
+
   return (
     <div className={cn(
       "flex flex-col relative",
@@ -613,7 +660,7 @@ export const InterpreterChat = ({
                 value={message}
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Message #general"
+                placeholder="Écrivez votre message..."
                 className="chat-input-field"
               />
 
