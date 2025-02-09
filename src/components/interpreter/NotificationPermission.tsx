@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { setupNotifications } from '@/lib/pushNotifications';
-import { Bell, BellOff, Download } from 'lucide-react';
+import { Bell, BellOff, Download, Settings2 } from 'lucide-react';
 
 interface DeviceInfo {
   platform: string;
@@ -28,6 +28,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     const userAgent = navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
+    const isChrome = /chrome/.test(userAgent) && !isSafari;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     
     const iOSVersion = isIOS ? 
@@ -36,7 +37,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
     const info: DeviceInfo = {
       platform: isIOS ? 'iOS' : /android/.test(userAgent) ? 'Android' : 'Desktop',
-      browser: isSafari ? 'Safari' : 'Chrome/Other',
+      browser: isChrome ? 'Chrome' : isSafari ? 'Safari' : 'Other',
       version: isIOS ? `iOS ${iOSVersion}` : 'N/A',
       isStandalone,
       supportsNotifications: 'Notification' in window
@@ -54,6 +55,35 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
     console.log('[Notifications] Current permission:', Notification.permission);
     setPermission(Notification.permission);
+  };
+
+  const showChromeInstructions = () => {
+    toast({
+      title: "Comment activer les notifications",
+      description: (
+        <div className="space-y-2">
+          <p>1. Cliquez sur l'icône 🔒 à gauche de la barre d'adresse</p>
+          <p>2. Cliquez sur "Notifications"</p>
+          <p>3. Sélectionnez "Autoriser"</p>
+        </div>
+      ),
+      action: (
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => {
+            // Open Chrome notification settings
+            if (deviceInfo?.browser === 'Chrome') {
+              window.open('chrome://settings/content/notifications');
+            }
+          }}
+        >
+          <Settings2 className="h-4 w-4 mr-2" />
+          Paramètres
+        </Button>
+      ),
+      duration: 10000, // Show for 10 seconds
+    });
   };
 
   const handleEnableNotifications = async () => {
@@ -96,13 +126,17 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       
       if (error instanceof Error) {
         if (error.message === 'Notification permission denied') {
-          toast({
-            title: "Notifications bloquées",
-            description: deviceInfo?.platform === 'iOS' ? 
-              "Autorisez les notifications dans Réglages > Safari" :
-              "Autorisez les notifications dans les paramètres du navigateur",
-            variant: "destructive",
-          });
+          if (deviceInfo?.browser === 'Chrome') {
+            showChromeInstructions();
+          } else {
+            toast({
+              title: "Notifications bloquées",
+              description: deviceInfo?.platform === 'iOS' ? 
+                "Autorisez les notifications dans Réglages > Safari" :
+                "Autorisez les notifications dans les paramètres du navigateur",
+              variant: "destructive",
+            });
+          }
         } else {
           toast({
             title: "Erreur",
@@ -177,15 +211,19 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         size="icon"
         className="h-9 w-9 text-red-600 hover:text-red-700"
         onClick={() => {
-          const message = deviceInfo?.platform === 'iOS' ?
-            "Autorisez les notifications dans Réglages > Safari" :
-            "Autorisez les notifications dans les paramètres du navigateur";
-            
-          toast({
-            title: "Notifications bloquées",
-            description: message,
-            variant: "destructive",
-          });
+          if (deviceInfo?.browser === 'Chrome') {
+            showChromeInstructions();
+          } else {
+            const message = deviceInfo?.platform === 'iOS' ?
+              "Autorisez les notifications dans Réglages > Safari" :
+              "Autorisez les notifications dans les paramètres du navigateur";
+              
+            toast({
+              title: "Notifications bloquées",
+              description: message,
+              variant: "destructive",
+            });
+          }
         }}
         title="Notifications bloquées"
       >
@@ -211,3 +249,4 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     </Button>
   );
 };
+
