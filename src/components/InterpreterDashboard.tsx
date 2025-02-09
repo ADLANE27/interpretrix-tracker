@@ -50,6 +50,7 @@ export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("missions");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -379,7 +380,7 @@ export const InterpreterDashboard = () => {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => {}}
+                    onClick={() => setIsGuideOpen(true)}
                     className="flex-1 sm:flex-none"
                     title="Guide d'utilisation"
                   >
@@ -438,7 +439,10 @@ export const InterpreterDashboard = () => {
                         >
                           <span className="flex-1 text-left">{tab.label}</span>
                           {tab.badge && (
-                            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-900">
+                            <Badge 
+                              variant="secondary" 
+                              className="ml-2 bg-purple-100 text-purple-900"
+                            >
                               {tab.badge}
                             </Badge>
                           )}
@@ -483,6 +487,8 @@ export const InterpreterDashboard = () => {
               {activeTab === "profile" && <InterpreterProfile />}
             </div>
           </Card>
+
+          <HowToUseGuide isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} />
 
           <input
             type="file"
