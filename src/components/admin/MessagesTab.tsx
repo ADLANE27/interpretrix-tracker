@@ -6,7 +6,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ export const MessagesTab = () => {
   const [showChannels, setShowChannels] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundInitialized, setSoundInitialized] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -38,44 +37,17 @@ export const MessagesTab = () => {
     }
   });
 
-  const initializeSound = async () => {
-    if (!soundInitialized) {
-      console.log('[MessagesTab] Initializing sounds...');
-      try {
-        // Create and play a silent buffer to enable audio
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        setSoundInitialized(true);
-        
-        // Force preload the notification sounds
-        await playNotificationSound('immediate', true);
-        await playNotificationSound('scheduled', true);
-        
-        console.log('[MessagesTab] Sounds initialized successfully');
-      } catch (error) {
-        console.error('[MessagesTab] Error initializing sounds:', error);
-      }
-    }
-  };
-
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    initializeSound();
   };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
-    initializeSound();
   };
 
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
-    initializeSound();
     toast({
       title: soundEnabled ? "Sons désactivés" : "Sons activés",
       description: soundEnabled 
@@ -100,25 +72,6 @@ export const MessagesTab = () => {
     const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
     setShowScrollButton(!isNearBottom);
   };
-
-  useEffect(() => {
-    console.log('[MessagesTab] Setting up user interaction listeners');
-    const handleUserInteraction = () => {
-      console.log('[MessagesTab] User interaction detected, initializing sound');
-      initializeSound();
-      // Remove event listeners after first interaction
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('touchstart', handleUserInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
 
   useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
@@ -158,13 +111,6 @@ export const MessagesTab = () => {
                 await playNotificationSound(mission.mission_type);
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
-                // Try to reinitialize sound on error
-                await initializeSound();
-                try {
-                  await playNotificationSound(mission.mission_type);
-                } catch (retryError) {
-                  console.error('[MessagesTab] Retry failed:', retryError);
-                }
               }
             }
           }
