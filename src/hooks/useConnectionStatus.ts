@@ -24,11 +24,16 @@ export const useConnectionStatus = (interpreterId: string) => {
   const BASE_RECONNECT_DELAY = 2000;
 
   const calculateReconnectDelay = () => {
-    // Simple constant delay instead of exponential backoff for more aggressive reconnection
     return BASE_RECONNECT_DELAY;
   };
 
   const sendHeartbeat = async () => {
+    // Skip if no interpreter ID is provided
+    if (!interpreterId) {
+      console.log('[ConnectionStatus] No interpreter ID provided, skipping heartbeat');
+      return;
+    }
+
     try {
       console.log('[ConnectionStatus] Envoi du heartbeat');
       const { error } = await supabase
@@ -72,6 +77,12 @@ export const useConnectionStatus = (interpreterId: string) => {
   };
 
   useEffect(() => {
+    // Skip initialization if no interpreter ID is provided
+    if (!interpreterId) {
+      console.log('[ConnectionStatus] No interpreter ID provided, skipping initialization');
+      return;
+    }
+
     // Initialiser le statut de connexion
     const initConnectionStatus = async () => {
       try {
