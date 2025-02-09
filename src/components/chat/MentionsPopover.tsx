@@ -39,9 +39,12 @@ export const MentionsPopover = ({
       </PopoverTrigger>
       <PopoverContent 
         align="end" 
-        side="bottom" 
+        side="bottom"
         sideOffset={5}
-        className="w-96"
+        avoidCollisions={false}
+        collisionPadding={0}
+        sticky="always"
+        className="w-96 !absolute !bottom-auto !top-[100%]"
       >
         <div className="space-y-2">
           <div className="flex items-center justify-between">
