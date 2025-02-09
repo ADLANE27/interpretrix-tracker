@@ -515,13 +515,17 @@ export const InterpreterChat = ({
 
     if (selectedText) {
       setMessage(`${beforeText}**${selectedText}**${afterText}`);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = start + 2;
+        textarea.selectionEnd = end + 2;
+      }, 0);
     } else {
       setMessage(`${beforeText}****${afterText}`);
-      // Set cursor between asterisks
       setTimeout(() => {
+        textarea.focus();
         textarea.selectionStart = start + 2;
         textarea.selectionEnd = start + 2;
-        textarea.focus();
       }, 0);
     }
   };
@@ -539,13 +543,17 @@ export const InterpreterChat = ({
 
     if (selectedText) {
       setMessage(`${beforeText}_${selectedText}_${afterText}`);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = start + 1;
+        textarea.selectionEnd = end + 1;
+      }, 0);
     } else {
       setMessage(`${beforeText}__${afterText}`);
-      // Set cursor between underscores
       setTimeout(() => {
+        textarea.focus();
         textarea.selectionStart = start + 1;
         textarea.selectionEnd = start + 1;
-        textarea.focus();
       }, 0);
     }
   };
