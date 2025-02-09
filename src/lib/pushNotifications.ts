@@ -25,12 +25,23 @@ export async function registerServiceWorker() {
   try {
     console.log('[Push Notifications] Starting service worker registration');
 
-    // Register service worker with explicit scope '/'
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-      type: 'module',
-      updateViaCache: 'none'
-    });
+    let registration: ServiceWorkerRegistration;
+
+    // iOS requires scope to be explicitly set to root
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+        type: 'module',
+        updateViaCache: 'none'
+      });
+    } else {
+      // For other browsers, let the browser handle the scope
+      registration = await navigator.serviceWorker.register('/sw.js', {
+        type: 'module',
+        updateViaCache: 'none'
+      });
+    }
     
     console.log('[Push Notifications] Service Worker registered:', registration);
     console.log('[Push Notifications] Service Worker scope:', registration.scope);

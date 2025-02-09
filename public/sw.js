@@ -1,4 +1,3 @@
-
 // Enhanced service worker with comprehensive browser support and logging
 const SW_VERSION = '1.0.7';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
@@ -31,6 +30,7 @@ self.addEventListener('push', event => {
     const data = event.data.json();
     console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
     
+    // Enhanced notification options for better mobile support
     const options = {
       body: data.body,
       icon: data.icon || '/favicon.ico',
@@ -39,17 +39,32 @@ self.addEventListener('push', event => {
         ...data.data,
         timestamp: Date.now()
       },
-      vibrate: data.vibrate || [200, 100, 200],
-      tag: data.tag || `mission-${data.data?.mission_id}`,
+      // Customized vibration pattern for better attention
+      vibrate: [100, 50, 100],
+      // Use unique tag per mission type to prevent notification spam
+      tag: `mission-${data.data?.mission_type}-${data.data?.mission_id}`,
+      // Always renotify even if using same tag
       renotify: true,
+      // Keep notification visible until user interaction
       requireInteraction: true,
-      actions: data.actions || [
-        { action: 'accept', title: 'Accepter' },
-        { action: 'decline', title: 'Décliner' }
+      // Simplified actions for mobile
+      actions: [
+        { action: 'accept', title: '✓' },
+        { action: 'decline', title: '✗' }
       ],
+      // Enable sound
       silent: false,
+      // Add timestamp for ordering
       timestamp: Date.now()
     };
+
+    // Platform-specific customizations
+    const isIOS = /iPad|iPhone|iPod/.test(self.registration.platform);
+    if (isIOS) {
+      // iOS specific tweaks
+      options.actions = options.actions.slice(0, 2); // iOS only supports 2 actions
+      delete options.requireInteraction; // Not supported on iOS
+    }
 
     event.waitUntil(
       (async () => {
@@ -154,4 +169,3 @@ self.addEventListener('activate', event => {
     ])
   );
 });
-
