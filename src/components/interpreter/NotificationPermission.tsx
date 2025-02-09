@@ -45,19 +45,37 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
     console.log('[Notifications] Environment detected:', info);
     setDeviceInfo(info);
+
+    // Show initial environment info toast
+    toast({
+      title: "Environnement détecté",
+      description: `${info.platform} - ${info.browser}`,
+    });
   };
 
   const checkNotificationPermission = () => {
     if (!('Notification' in window)) {
       console.warn('[Notifications] Notifications API not supported');
+      toast({
+        title: "Notifications non supportées",
+        description: "Votre navigateur ne supporte pas les notifications",
+        variant: "destructive",
+      });
       return;
     }
 
     console.log('[Notifications] Current permission:', Notification.permission);
     setPermission(Notification.permission);
+
+    // Show current permission state toast
+    toast({
+      title: "État des notifications",
+      description: `Permission actuelle: ${Notification.permission}`,
+    });
   };
 
   const showChromeInstructions = () => {
+    console.log('[Notifications] Showing Chrome instructions');
     toast({
       title: "Comment activer les notifications",
       description: (
@@ -72,7 +90,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
           variant="outline" 
           size="sm"
           onClick={() => {
-            // Open Chrome notification settings
             if (deviceInfo?.browser === 'Chrome') {
               window.open('chrome://settings/content/notifications');
             }
@@ -82,7 +99,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
           Paramètres
         </Button>
       ),
-      duration: 10000, // Show for 10 seconds
+      duration: 10000,
     });
   };
 
@@ -90,6 +107,11 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     try {
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
+
+      toast({
+        title: "Activation des notifications",
+        description: "Veuillez patienter...",
+      });
 
       // First check if we need to prompt for PWA installation
       if (deviceInfo?.platform === 'iOS' && !deviceInfo.isStandalone) {
@@ -120,6 +142,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       
       toast({
         title: "Notifications activées",
+        description: "Vous recevrez désormais les notifications des nouvelles missions",
       });
     } catch (error) {
       console.error('[Notifications] Error:', error);
@@ -140,7 +163,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         } else {
           toast({
             title: "Erreur",
-            description: "Impossible d'activer les notifications",
+            description: `Impossible d'activer les notifications: ${error.message}`,
             variant: "destructive",
           });
         }
@@ -249,4 +272,3 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     </Button>
   );
 };
-

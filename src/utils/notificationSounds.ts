@@ -1,6 +1,4 @@
 
-import { supabase } from "@/integrations/supabase/client";
-
 let audioContext: AudioContext | null = null;
 let audioInitialized = false;
 let immediateSound: HTMLAudioElement | null = null;
@@ -37,6 +35,7 @@ const createAndPlaySilentBuffer = async () => {
 };
 
 const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElement> => {
+  console.log(`[notificationSounds] Loading ${type} sound`);
   const fileName = type === 'immediate' ? 'immediate-mission.mp3' : 'scheduled-mission.mp3';
   
   const { data } = supabase.storage
