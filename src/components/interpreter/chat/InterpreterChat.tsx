@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -19,18 +20,13 @@ import {
   Italic,
   List,
   ListOrdered,
+  Link2
 } from 'lucide-react';
 import { 
   Popover, 
   PopoverContent, 
   PopoverTrigger 
 } from '@/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MentionSuggestions } from '@/components/chat/MentionSuggestions';
@@ -507,160 +503,6 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
-  const applyFormatting = (type: 'bold' | 'italic' | 'list' | 'orderedList') => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = message.substring(start, end);
-
-    let formattedText = '';
-    let cursorOffset = 2;
-
-    switch (type) {
-      case 'bold':
-        formattedText = `**${selectedText}**`;
-        break;
-      case 'italic':
-        formattedText = `_${selectedText}_`;
-        cursorOffset = 1;
-        break;
-      case 'list':
-        formattedText = selectedText
-          .split('\n')
-          .map(line => `• ${line}`)
-          .join('\n');
-        cursorOffset = 2;
-        break;
-      case 'orderedList':
-        formattedText = selectedText
-          .split('\n')
-          .map((line, index) => `${index + 1}. ${line}`)
-          .join('\n');
-        cursorOffset = 3;
-        break;
-    }
-
-    const newMessage = 
-      message.substring(0, start) + 
-      formattedText + 
-      message.substring(end);
-
-    setMessage(newMessage);
-
-    // Restore focus and selection
-    textarea.focus();
-    const newCursorPosition = start + formattedText.length;
-    textarea.setSelectionRange(newCursorPosition, newCursorPosition);
-  };
-
-  const formatMessageContent = (content: string): string => {
-    // Split by newlines while preserving empty lines
-    const lines = content.split(/\r?\n/);
-    let inList = false;
-    let listCounter = 1;
-    let currentListType: 'ordered' | 'unordered' | null = null;
-    
-    const formattedLines = lines.map((line, index) => {
-      const trimmedLine = line.trim();
-      
-      // Handle empty lines
-      if (!trimmedLine) {
-        if (currentListType) {
-          // Close current list
-          currentListType = null;
-          inList = false;
-          listCounter = 1;
-        }
-        return '<br/>';
-      }
-
-      // Detect the start of a new list
-      if (trimmedLine.startsWith('• ') || trimmedLine.startsWith('* ')) {
-        // Start or continue unordered list
-        if (currentListType !== 'unordered') {
-          if (currentListType === 'ordered') {
-            // Close ordered list before starting unordered
-            html += '</ol>';
-          }
-          currentListType = 'unordered';
-        }
-        return `<li>${trimmedLine.substring(2)}</li>`;
-      }
-
-      // Check for numbered list (either explicit number or just a dot)
-      const numberedMatch = trimmedLine.match(/^(\d+\.|\.) (.+)/);
-      if (numberedMatch) {
-        // Start or continue ordered list
-        if (currentListType !== 'ordered') {
-          if (currentListType === 'unordered') {
-            // Close unordered list before starting ordered
-            html += '</ul>';
-          }
-          currentListType = 'ordered';
-        }
-        return `<li>${numberedMatch[2]}</li>`;
-      }
-
-      // If we were in a list but this line isn't a list item
-      if (currentListType) {
-        const prevListType = currentListType;
-        currentListType = null;
-        inList = false;
-        listCounter = 1;
-        return `${prevListType === 'ordered' ? '</ol>' : '</ul>'}<p>${line}</p>`;
-      }
-
-      // Format text styling - only if there's content between the symbols
-      // and the symbols are not part of the content
-      let formattedText = line;
-
-      // Handle bold text (both ** and __ syntax)
-      formattedText = formattedText.replace(/(\*\*|__)(?=\S)([^\*\n]+?\S)\1/g, '<strong>$2</strong>');
-
-      // Handle italic text (both * and _ syntax)
-      formattedText = formattedText.replace(/(\*|_)(?=\S)([^\*\n]+?\S)\1/g, '<em>$2</em>');
-
-      // Handle strikethrough text
-      formattedText = formattedText.replace(/~~(?=\S)([^~\n]+?\S)~~/g, '<del>$1</del>');
-
-      // Handle code blocks
-      formattedText = formattedText.replace(/`(?=\S)([^`\n]+?\S)`/g, '<code>$1</code>');
-
-      return `<p>${formattedText}</p>`;
-    });
-
-    // Combine all lines and handle list wrapping
-    let html = '';
-    let currentHtml = '';
-
-    formattedLines.forEach((line, index) => {
-      if (line.startsWith('<li>')) {
-        if (!currentListType) {
-          // Start a new list
-          currentListType = line.includes('• ') ? 'unordered' : 'ordered';
-          html += currentListType === 'unordered' ? '<ul>' : '<ol>';
-        }
-        html += line;
-      } else {
-        if (currentListType) {
-          // Close current list
-          html += currentListType === 'unordered' ? '</ul>' : '</ol>';
-          currentListType = null;
-        }
-        html += line;
-      }
-    });
-
-    // Close any remaining open list
-    if (currentListType) {
-      html += currentListType === 'unordered' ? '</ul>' : '</ol>';
-    }
-
-    return html;
-  };
-
   return (
     <div className={cn(
       "flex flex-col relative",
@@ -684,7 +526,7 @@ export const InterpreterChat = ({
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 h-full"
+            className="flex-1 h-full pb-[200px]"
             onScrollCapture={handleScroll}
           >
             <div className="py-4">
@@ -711,10 +553,7 @@ export const InterpreterChat = ({
                         <p>Reply to {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                       </div>
                     )}
-                    <div 
-                      className="chat-message-content"
-                      dangerouslySetInnerHTML={{ __html: formatMessageContent(message.content) }}
-                    />
+                    <p className="chat-message-content">{message.content}</p>
                   </div>
                 </div>
               ))}
@@ -751,72 +590,22 @@ export const InterpreterChat = ({
                 </div>
               )}
 
-              <div className="flex items-center gap-1 p-2 border-b">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => applyFormatting('bold')}
-                      >
-                        <Bold className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Bold</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => applyFormatting('italic')}
-                      >
-                        <Italic className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Italic</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => applyFormatting('list')}
-                      >
-                        <List className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Bullet List</p>
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => applyFormatting('orderedList')}
-                      >
-                        <ListOrdered className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Numbered List</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              <div className="chat-toolbar">
+                <Button variant="ghost" size="sm" className="chat-toolbar-button">
+                  <Bold className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="chat-toolbar-button">
+                  <Italic className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="chat-toolbar-button">
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="chat-toolbar-button">
+                  <ListOrdered className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="chat-toolbar-button">
+                  <Link2 className="h-4 w-4" />
+                </Button>
               </div>
 
               <Textarea
@@ -824,7 +613,7 @@ export const InterpreterChat = ({
                 value={message}
                 onChange={handleMessageChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Écrivez votre message..."
+                placeholder="Message #general"
                 className="chat-input-field"
               />
 
@@ -874,10 +663,10 @@ export const InterpreterChat = ({
                 <Button 
                   onClick={handleSendMessage}
                   disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  size="icon"
-                  className="ml-auto"
+                  className="chat-send-button"
                 >
                   <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline">Send</span>
                 </Button>
               </div>
             </div>

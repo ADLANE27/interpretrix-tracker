@@ -42,6 +42,7 @@ export const useMessageActions = (
       if (error) throw error;
       if (!data) throw new Error("No data returned from insert");
 
+      // No need to fetch all messages, just update the local state
       await fetchMessages();
       return data.id;
     } catch (error) {

@@ -87,7 +87,6 @@ export const useChat = (channelId: string) => {
               avatarUrl: sender.avatar_url || ''
             },
             timestamp: new Date(message.created_at),
-            parent_message_id: message.parent_message_id,
             reactions: parsedReactions,
             attachments: parsedAttachments
           };
@@ -196,6 +195,6 @@ export const useChat = (channelId: string) => {
     deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
-    markMentionsAsRead,
+    markMentionsAsRead, // Added this export
   };
 };
