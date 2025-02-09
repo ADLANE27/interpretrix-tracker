@@ -82,7 +82,7 @@
   }
 
   .chat-message-container {
-    @apply flex items-start gap-3 px-4 py-2 hover:bg-gray-50/80 transition-all duration-200 group;
+    @apply flex items-start gap-3 px-4 py-2 hover:bg-gray-50/80 transition-all duration-200;
   }
 
   .chat-message-header {

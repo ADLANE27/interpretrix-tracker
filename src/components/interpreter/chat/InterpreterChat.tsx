@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
@@ -14,7 +15,12 @@ import {
   MessageSquare,
   X,
   ArrowDown,
-  Bell
+  Bell,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Link2
 } from 'lucide-react';
 import { 
   Popover, 
