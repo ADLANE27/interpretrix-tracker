@@ -24,13 +24,13 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
   console.log(`[notificationSounds] Loading ${type} sound`);
   const fileName = type === 'immediate' ? 'immediate-mission.mp3' : 'scheduled-mission.mp3';
   
-  const { data, error } = await supabase.storage
+  const { data: publicUrl } = supabase.storage
     .from('notification_sounds')
-    .createSignedUrl(`${fileName}`, 60 * 60); // 1 hour expiration
+    .getPublicUrl(fileName);
 
-  if (error || !data?.signedUrl) {
-    console.error(`[notificationSounds] Error getting signed URL for ${fileName}:`, error);
-    throw new Error(`No signed URL returned for sound file: ${error?.message}`);
+  if (!publicUrl?.publicUrl) {
+    console.error(`[notificationSounds] Error getting public URL for ${fileName}`);
+    throw new Error('No public URL returned for sound file');
   }
 
   const audio = new Audio();
@@ -48,7 +48,7 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
       reject(error);
     }, { once: true });
     
-    audio.src = data.signedUrl;
+    audio.src = publicUrl.publicUrl;
     audio.load();
   });
 };
