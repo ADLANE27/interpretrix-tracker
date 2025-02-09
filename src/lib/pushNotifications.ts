@@ -67,13 +67,12 @@ async function showNotification(missionData: any) {
       options
     );
 
-    // Play sound based on validated mission type
+    // Play sound based on mission type - simplified approach
     try {
       console.log('[Notifications] Playing sound for mission type:', missionData.mission_type);
       await playNotificationSound(missionData.mission_type);
     } catch (soundError) {
       console.error('[Notifications] Error playing sound:', soundError);
-      // Don't throw here - we still want to show the notification even if sound fails
     }
 
   } catch (error) {
@@ -102,7 +101,7 @@ export async function setupNotifications(interpreterId: string) {
       throw new Error('Notification permission denied');
     }
 
-    // Pre-initialize sounds with better error handling
+    // Pre-initialize sounds
     try {
       await Promise.all([
         playNotificationSound('immediate', true),
@@ -111,15 +110,14 @@ export async function setupNotifications(interpreterId: string) {
       console.log('[Notifications] Sounds pre-initialized successfully');
     } catch (error) {
       console.error('[Notifications] Error pre-initializing sounds:', error);
-      // Continue setup even if sound initialization fails
     }
     
-    // Subscribe to mission notifications with better error handling
+    // Subscribe to mission notifications with simplified approach
     const channel = supabase.channel('mission-notifications')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: 'INSERT', // Only listen for new missions
           schema: 'public',
           table: 'mission_notifications',
           filter: `interpreter_id=eq.${interpreterId}`
@@ -128,25 +126,23 @@ export async function setupNotifications(interpreterId: string) {
           console.log('[Notifications] New mission notification received:', payload);
           
           try {
-            if (payload.new.status === 'pending') {
-              const { data: mission, error } = await supabase
-                .from('interpretation_missions')
-                .select('*')
-                .eq('id', payload.new.mission_id)
-                .maybeSingle();
+            const { data: mission, error } = await supabase
+              .from('interpretation_missions')
+              .select('*')
+              .eq('id', payload.new.mission_id)
+              .maybeSingle();
 
-              if (error) {
-                console.error('[Notifications] Error fetching mission:', error);
-                return;
-              }
-
-              if (!mission) {
-                console.error('[Notifications] No mission found for id:', payload.new.mission_id);
-                return;
-              }
-
-              await showNotification(mission);
+            if (error) {
+              console.error('[Notifications] Error fetching mission:', error);
+              return;
             }
+
+            if (!mission) {
+              console.error('[Notifications] No mission found for id:', payload.new.mission_id);
+              return;
+            }
+
+            await showNotification(mission);
           } catch (error) {
             console.error('[Notifications] Error processing notification:', error);
           }
