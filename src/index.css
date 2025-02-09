@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,13 +34,6 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
-
-    /* Slack-specific variables */
-    --slack-text-primary: #1D1C1D;
-    --slack-text-secondary: #616061;
-    --slack-blue: #1264A3;
-    --slack-hover-bg: rgba(248, 248, 248, 1);
-    --slack-border: rgba(230, 230, 230, 1);
   }
 
   .dark {
@@ -75,7 +69,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-[#e5e7eb];
   }
   body {
     @apply bg-background text-foreground;
@@ -83,74 +77,56 @@
 }
 
 @layer components {
-  .message-row {
-    @apply px-4 py-0.5 hover:bg-slack-hover-bg transition-colors duration-150 ease-in-out group;
-  }
-
-  .message-time {
-    @apply text-xs text-slack-text-secondary ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150;
-  }
-
-  .message-sender {
-    @apply font-semibold text-slack-text-primary text-[15px];
-  }
-
-  .message-content {
-    @apply text-[15px] leading-[1.46668] text-slack-text-primary break-words;
-  }
-
   .chat-bubble {
-    @apply relative p-2 transition-all duration-150 rounded-md;
+    @apply relative p-4 rounded-2xl transition-all duration-300;
   }
 
-  .chat-bubble-right {
-    @apply bg-[#0B57D0] text-white;
-  }
-
-  .chat-bubble-left {
-    @apply bg-[#F8F8F8] text-[#1D1C1D];
-  }
-
-  .chat-input-container {
-    @apply bg-white border-t border-slack-border p-4;
-  }
-
-  .chat-input-wrapper {
+  .chat-bubble-tail {
     @apply relative;
   }
 
-  .chat-input {
-    @apply w-full min-h-[44px] max-h-[300px] rounded-lg border border-slack-border bg-white px-3 py-2 text-[15px] leading-[1.46668] placeholder-slack-text-secondary focus:ring-2 focus:ring-slack-blue/30 focus:border-slack-blue transition-all duration-150;
+  .chat-bubble-tail::after {
+    content: '';
+    @apply absolute bottom-0 w-4 h-4 transform;
+    clip-path: polygon(0 0, 100% 100%, 100% 0);
   }
 
-  .chat-toolbar {
-    @apply absolute bottom-2 right-2 flex items-center gap-2;
+  .chat-bubble-right {
+    @apply bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white;
+    border-bottom-right-radius: 0;
   }
 
-  .chat-action-button {
-    @apply h-8 w-8 flex items-center justify-center rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150;
+  .chat-bubble-right.chat-bubble-tail::after {
+    @apply right-0 translate-x-full;
+    background: linear-gradient(135deg, #8B5CF6 0%, #9b87f5 100%);
   }
 
-  .chat-send-button {
-    @apply h-8 px-4 rounded-lg bg-slack-blue hover:bg-slack-blue/90 text-white flex items-center gap-2 transition-colors duration-150 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed;
+  .chat-bubble-left {
+    @apply bg-white/90 backdrop-blur-sm;
+    border-bottom-left-radius: 0;
   }
 
-  .chat-formatting-toolbar {
-    @apply flex items-center gap-0.5 px-2 py-1 border-b border-slack-border;
+  .chat-bubble-left.chat-bubble-tail::after {
+    @apply left-0 -translate-x-full rotate-90;
+    background: white;
   }
 
-  .formatting-button {
-    @apply h-7 w-7 rounded hover:bg-slack-hover-bg text-slack-text-secondary hover:text-slack-text-primary transition-colors duration-150 flex items-center justify-center;
+  .chat-gradient-avatar {
+    @apply rounded-full bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white shadow-md;
+  }
+
+  .chat-input-container {
+    @apply bg-white/80 backdrop-blur-md rounded-2xl shadow-lg transition-all duration-300 hover:shadow-xl border border-gray-100;
   }
 
   .message-appear {
-    animation: messageAppear 0.15s ease-out forwards;
+    animation: messageAppear 0.3s ease-out forwards;
   }
 
   @keyframes messageAppear {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(10px);
     }
     to {
       opacity: 1;

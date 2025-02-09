@@ -533,11 +533,8 @@ export const InterpreterChat = ({
                   className="group message-appear"
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10 flex-shrink-0 shadow-lg">
-                      <AvatarFallback 
-                        style={{ backgroundColor: getUserColor(message.sender.id) }}
-                        className="text-white"
-                      >
+                    <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg">
+                      <AvatarFallback className="bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]">
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -713,10 +710,7 @@ export const InterpreterChat = ({
             <div className="p-3 bg-gray-50 border-b">
               <div className="flex items-start gap-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback 
-                    style={{ backgroundColor: getUserColor(selectedThread.sender.id) }}
-                    className="text-white"
-                  >
+                  <AvatarFallback className="bg-interpreter-navy text-white">
                     {selectedThread.sender.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -737,10 +731,7 @@ export const InterpreterChat = ({
                 <div key={message.id} className="py-3">
                   <div className="flex items-start gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback 
-                        style={{ backgroundColor: getUserColor(message.sender.id) }}
-                        className="text-white"
-                      >
+                      <AvatarFallback className="bg-interpreter-navy text-white">
                         {message.sender.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -766,7 +757,7 @@ export const InterpreterChat = ({
                   placeholder="Répondre dans la conversation..."
                   className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
                 />
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+                <div className="absolute bottom-2 right-2">
                   <Button 
                     onClick={handleSendThreadMessage}
                     className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
@@ -782,9 +773,4 @@ export const InterpreterChat = ({
       </div>
     </div>
   );
-};
-
-const getUserColor = (userId: string) => {
-  // Implement logic to get user color based on userId
-  return '#000000'; // Default color
 };
