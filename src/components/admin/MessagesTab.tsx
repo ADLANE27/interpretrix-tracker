@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -39,7 +38,7 @@ export const MessagesTab = () => {
     }
   });
 
-  const initializeSound = () => {
+  const initializeSound = async () => {
     if (!soundInitialized) {
       console.log('[MessagesTab] Initializing sounds...');
       try {
@@ -53,8 +52,8 @@ export const MessagesTab = () => {
         setSoundInitialized(true);
         
         // Force preload the notification sounds
-        playNotificationSound('immediate', true).catch(console.error);
-        playNotificationSound('scheduled', true).catch(console.error);
+        await playNotificationSound('immediate', true);
+        await playNotificationSound('scheduled', true);
         
         console.log('[MessagesTab] Sounds initialized successfully');
       } catch (error) {
@@ -160,7 +159,7 @@ export const MessagesTab = () => {
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
                 // Try to reinitialize sound on error
-                initializeSound();
+                await initializeSound();
                 try {
                   await playNotificationSound(mission.mission_type);
                 } catch (retryError) {
@@ -192,7 +191,7 @@ export const MessagesTab = () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, toast, isMobile]);
+  }, [soundEnabled, toast]);
 
   return (
     <div className={cn(

@@ -73,7 +73,7 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
     setTimeout(() => {
       if (!audio.readyState) {
         const timeoutError = new Error(`Timeout loading ${type} sound`);
-        console.error('[notificationSounds]', timeoutError);
+        console.error('[notificationSounds] Timeout error:', timeoutError);
         reject(timeoutError);
       }
     }, 10000);
