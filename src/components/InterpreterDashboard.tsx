@@ -372,9 +372,9 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full sm:w-auto">
                 <ConnectionStatus status={connectionStatus.status} />
-                <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+                <div className="flex items-center justify-center gap-2">
                   <NotificationPermission interpreterId={profile.id} />
                   <Button
                     variant="outline"
