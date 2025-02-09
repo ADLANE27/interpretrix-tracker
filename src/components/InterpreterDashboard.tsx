@@ -13,12 +13,15 @@ import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
+import { LogOut, Menu, BookOpen, Bell } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ConnectionStatus } from '@/components/interpreter/ConnectionStatus';
 import { useConnectionStatus } from '@/hooks/useConnectionStatus';
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
+import { useUnreadMissions } from "@/hooks/useUnreadMissions";
+import { Badge } from "@/components/ui/badge";
 
 interface Profile {
   id: string;
@@ -55,6 +58,8 @@ export const InterpreterDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const connectionStatus = useConnectionStatus(profile?.id || '');
+  const { totalUnreadCount: unreadMentionsCount } = useUnreadMentions();
+  const { unreadCount: unreadMissionsCount } = useUnreadMissions();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -308,6 +313,27 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const tabItems = [
+    { 
+      value: "missions", 
+      label: "Missions",
+      badge: unreadMissionsCount > 0 ? unreadMissionsCount : null 
+    },
+    { 
+      value: "calendar", 
+      label: "Calendrier" 
+    },
+    { 
+      value: "messaging", 
+      label: "Messagerie",
+      badge: unreadMentionsCount > 0 ? unreadMentionsCount : null 
+    },
+    { 
+      value: "profile", 
+      label: "Mon Profil" 
+    },
+  ];
+
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -325,18 +351,6 @@ export const InterpreterDashboard = () => {
       />
     );
   }
-
-  const tabItems = [
-    { value: "missions", label: "Missions" },
-    { value: "calendar", label: "Calendrier" },
-    { value: "messaging", label: "Messagerie" },
-    { value: "profile", label: "Mon Profil" },
-  ];
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    setIsSheetOpen(false);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -389,7 +403,14 @@ export const InterpreterDashboard = () => {
           <Card className="shadow-sm">
             {isMobile ? (
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
+                <h2 className="text-lg font-semibold">
+                  {tabItems.find(tab => tab.value === activeTab)?.label}
+                  {tabItems.find(tab => tab.value === activeTab)?.badge && (
+                    <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-900">
+                      {tabItems.find(tab => tab.value === activeTab)?.badge}
+                    </Badge>
+                  )}
+                </h2>
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -408,7 +429,12 @@ export const InterpreterDashboard = () => {
                           className="w-full justify-start"
                           onClick={() => handleTabChange(tab.value)}
                         >
-                          {tab.label}
+                          <span className="flex-1 text-left">{tab.label}</span>
+                          {tab.badge && (
+                            <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-900">
+                              {tab.badge}
+                            </Badge>
+                          )}
                         </Button>
                       ))}
                     </div>
@@ -423,9 +449,17 @@ export const InterpreterDashboard = () => {
                       <TabsTrigger 
                         key={tab.value}
                         value={tab.value}
-                        className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
+                        className="relative data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                       >
                         {tab.label}
+                        {tab.badge && (
+                          <Badge 
+                            variant="secondary" 
+                            className="ml-2 bg-purple-100 text-purple-900"
+                          >
+                            {tab.badge}
+                          </Badge>
+                        )}
                       </TabsTrigger>
                     ))}
                   </TabsList>
