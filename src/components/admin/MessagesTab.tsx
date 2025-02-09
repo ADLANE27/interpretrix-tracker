@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -99,17 +98,11 @@ export const MessagesTab = () => {
         async (payload: any) => {
           console.log('[MessagesTab] New mission created:', payload);
           
-          if (payload.eventType === 'INSERT') {
-            const mission = payload.new as any;
-            
-            if (!mission) {
-              console.error('[MessagesTab] Invalid mission payload');
-              return;
-            }
-
+          if (payload.new) {
+            const mission = payload.new;
             const isImmediate = mission.mission_type === 'immediate';
             
-            // Show toast notification immediately
+            // Show toast notification
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
