@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,8 +189,40 @@ export const MissionsTab = () => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        (payload) => {
+        async (payload) => {
           console.log('[MissionsTab] Mission update received:', payload);
+          
+          // Show toast for new missions that include the current user
+          if (payload.eventType === 'INSERT') {
+            const mission = payload.new as Mission;
+            if (mission.notified_interpreters?.includes(currentUserId || '')) {
+              const isImmediate = mission.mission_type === 'immediate';
+              
+              console.log('[MissionsTab] Showing toast for new mission');
+              toast({
+                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                variant: isImmediate ? "destructive" : "default",
+                duration: 10000,
+              });
+
+              if (soundEnabled) {
+                try {
+                  console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                  await playNotificationSound(mission.mission_type);
+                } catch (error) {
+                  console.error('[MissionsTab] Error playing sound:', error);
+                  initializeSound();
+                  try {
+                    await playNotificationSound(mission.mission_type);
+                  } catch (retryError) {
+                    console.error('[MissionsTab] Retry failed:', retryError);
+                  }
+                }
+              }
+            }
+          }
+          
           fetchMissions();
         }
       )
