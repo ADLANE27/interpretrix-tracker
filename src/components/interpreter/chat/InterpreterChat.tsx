@@ -44,7 +44,7 @@ interface InterpreterChatProps {
   isFullScreen?: boolean;
 }
 
-const InterpreterChatComponent = ({ 
+export const InterpreterChat = ({ 
   channelId,
   filters,
   onFiltersChange,
@@ -500,7 +500,7 @@ const InterpreterChatComponent = ({
   return (
     <div className={cn(
       "flex flex-col relative",
-      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-200px)]",
+      isFullScreen ? "h-[calc(100vh-32px)]" : "h-[calc(100vh-300px)]",
       "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
       <div className="flex items-center justify-between p-4 border-b bg-white/80 backdrop-blur-sm">
@@ -515,14 +515,14 @@ const InterpreterChatComponent = ({
         onClearFilters={onClearFilters}
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative h-full">
         <div className={cn(
-          "flex-1 flex flex-col relative",
+          "flex-1 flex flex-col relative h-full",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 pb-[160px]"
+            className="flex-1 h-full pb-[120px]"
             onScrollCapture={handleScroll}
           >
             <div className="p-4 space-y-6">
@@ -606,89 +606,91 @@ const InterpreterChatComponent = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t">
-            <div className="chat-input-container">
-              {replyingTo && (
-                <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-purple-700">
-                    <ArrowRight className="h-4 w-4" />
-                    <span>En réponse à {replyingTo.sender.name}</span>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
+            <div className="p-4 max-w-[95%] mx-auto">
+              <div className="chat-input-container">
+                {replyingTo && (
+                  <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-purple-700">
+                      <ArrowRight className="h-4 w-4" />
+                      <span>En réponse à {replyingTo.sender.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelReply}
+                      className="hover:bg-purple-100 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
+                )}
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={handleMessageChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Écrivez votre message..."
+                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                />
+
+                <MentionSuggestions
+                  suggestions={mentionSuggestions}
+                  onSelect={handleMentionSelect}
+                  visible={showMentions}
+                />
+
+                <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={cancelReply}
-                    className="hover:bg-purple-100 transition-colors"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <Paperclip className="h-4 w-4 text-purple-500" />
+                  </Button>
+
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
+                      >
+                        <Smile className="h-4 w-4 text-purple-500" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="end">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
+                        theme="light"
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Button 
+                    onClick={handleSendMessage}
+                    disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+                    className={cn(
+                      "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
+                      "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
+                      "text-white flex items-center gap-2 px-4",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    <Send className="h-4 w-4" />
+                    <span className="hidden sm:inline">Envoyer</span>
                   </Button>
                 </div>
-              )}
-              <Textarea
-                ref={textareaRef}
-                value={message}
-                onChange={handleMessageChange}
-                onKeyPress={handleKeyPress}
-                placeholder="Écrivez votre message..."
-                className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
-              />
-
-              <MentionSuggestions
-                suggestions={mentionSuggestions}
-                onSelect={handleMentionSelect}
-                visible={showMentions}
-              />
-
-              <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
-                >
-                  <Paperclip className="h-4 w-4 text-purple-500" />
-                </Button>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
-                    >
-                      <Smile className="h-4 w-4 text-purple-500" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="end">
-                    <Picker
-                      data={data}
-                      onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
-                      theme="light"
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <Button 
-                  onClick={handleSendMessage}
-                  disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                  className={cn(
-                    "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
-                    "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
-                    "text-white flex items-center gap-2 px-4",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Envoyer</span>
-                </Button>
               </div>
             </div>
           </div>
@@ -783,7 +785,6 @@ const InterpreterChatComponent = ({
 };
 
 const getUserColor = (userId: string) => {
-  return '#000000';
+  // Implement logic to get user color based on userId
+  return '#000000'; // Default color
 };
-
-export const InterpreterChat = InterpreterChatComponent;
