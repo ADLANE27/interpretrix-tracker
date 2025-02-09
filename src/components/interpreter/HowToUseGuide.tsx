@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Info, CheckCircle, AlertCircle, ArrowRight, BookOpen } from "lucide-react";
 
 interface HowToUseGuideProps {
   isOpen: boolean;
@@ -19,13 +19,17 @@ export const HowToUseGuide = ({ isOpen, onOpenChange }: HowToUseGuideProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Info className="h-4 w-4" />
-          Guide d'utilisation
+        <Button
+          variant="outline"
+          size="icon"
+          className="flex-1 sm:flex-none"
+          title="Guide d'utilisation"
+        >
+          <BookOpen className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl h-[95vh] sm:h-auto flex flex-col p-0">
-        <DialogHeader className="p-6 pb-2">
+      <DialogContent className="max-w-2xl h-[90vh] sm:h-auto flex flex-col p-0 fixed top-[5vh]">
+        <DialogHeader className="p-6 pb-2 sticky top-0 bg-white z-10">
           <DialogTitle className="text-2xl font-bold">Guide d'utilisation - Espace Interprète</DialogTitle>
         </DialogHeader>
         <ScrollArea className="flex-1 px-6 pb-6">
