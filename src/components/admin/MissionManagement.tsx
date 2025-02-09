@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MissionList } from "./mission/MissionList";
+import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
+import { parseISO, formatISO } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
 // Sort languages alphabetically
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
@@ -95,6 +97,7 @@ export const MissionManagement = () => {
   const setupRealtimeSubscription = () => {
     console.log('[MissionManagement] Setting up realtime subscription');
     
+    // Create a single channel for all subscriptions
     const channel = supabase
       .channel('admin-missions')
       .on(
@@ -109,10 +112,25 @@ export const MissionManagement = () => {
           fetchMissions();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        () => {
+          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
+          if (sourceLanguage && targetLanguage) {
+            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          }
+        }
+      )
       .subscribe((status) => {
         console.log('[MissionManagement] Subscription status:', status);
       });
 
+    // Return cleanup function
     return () => {
       console.log('[MissionManagement] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
@@ -123,10 +141,11 @@ export const MissionManagement = () => {
     fetchMissions();
     const cleanup = setupRealtimeSubscription();
     
+    // Cleanup function
     return () => {
       cleanup();
     };
-  }, []); 
+  }, []); // Only run once on mount
 
   const handleSelectAllInterpreters = () => {
     if (selectedInterpreters.length === availableInterpreters.length) {
@@ -142,8 +161,7 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      // Query interpreters with matching language pair
-      const { data: interpreters, error } = await supabase
+      const query = supabase
         .from("interpreter_profiles")
         .select(`
           id,
@@ -154,6 +172,13 @@ export const MissionManagement = () => {
           languages
         `)
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
+
+      // Only filter by status for immediate missions
+      if (missionType === 'immediate') {
+        query.eq('status', 'available');
+      }
+
+      const { data: interpreters, error } = await query;
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
@@ -172,13 +197,8 @@ export const MissionManagement = () => {
         return;
       }
 
-      // For immediate missions, only show available interpreters
-      const filteredInterpreters = missionType === 'immediate'
-        ? interpreters.filter(interpreter => interpreter.status === 'available')
-        : interpreters;
-
       // Filter out duplicates based on interpreter ID
-      const uniqueInterpreters = filteredInterpreters.filter((interpreter, index, self) =>
+      const uniqueInterpreters = interpreters.filter((interpreter, index, self) =>
         index === self.findIndex((t) => t.id === interpreter.id)
       );
 
@@ -199,7 +219,35 @@ export const MissionManagement = () => {
     if (sourceLanguage && targetLanguage) {
       findAvailableInterpreters(sourceLanguage, targetLanguage);
     }
-  }, [sourceLanguage, targetLanguage, missionType]);
+  }, [sourceLanguage, targetLanguage]);
+
+  const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
+    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+      const isAvailable = await isInterpreterAvailableForScheduledMission(
+        interpreterId,
+        scheduledStartTime,
+        scheduledEndTime,
+        supabase
+      );
+
+      if (!isAvailable && checked) {
+        toast({
+          title: "Conflit d'horaire",
+          description: "Cet interprète a déjà une mission programmée qui chevauche cet horaire",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setSelectedInterpreters(prev => {
+      if (checked) {
+        return [...prev, interpreterId];
+      } else {
+        return prev.filter(id => id !== interpreterId);
+      }
+    });
+  };
 
   const handleDeleteMission = async (missionId: string) => {
     try {
@@ -314,8 +362,8 @@ export const MissionManagement = () => {
 
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
         // Convert local datetime to UTC
-        utcStartTime = new Date(scheduledStartTime).toISOString();
-        utcEndTime = new Date(scheduledEndTime).toISOString();
+        utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+        utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
         calculatedDuration = Math.round(
           (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
         );
@@ -332,7 +380,7 @@ export const MissionManagement = () => {
         estimated_duration: calculatedDuration,
         status: "awaiting_acceptance",
         notification_expiry: notificationExpiry.toISOString(),
-        notified_interpreters: selectedInterpreters,
+        notified_interpreters: selectedInterpreters, // This is critical
         mission_type: missionType,
         scheduled_start_time: utcStartTime,
         scheduled_end_time: utcEndTime
@@ -521,7 +569,10 @@ export const MissionManagement = () => {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>
-                  Interprètes disponibles ({availableInterpreters.length})
+                  {missionType === 'immediate' 
+                    ? `Interprètes disponibles (${availableInterpreters.length})`
+                    : `Interprètes (${availableInterpreters.length})`
+                  }
                 </Label>
                 <Button
                   type="button"
@@ -544,13 +595,7 @@ export const MissionManagement = () => {
                   >
                     <Checkbox
                       checked={selectedInterpreters.includes(interpreter.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedInterpreters([...selectedInterpreters, interpreter.id]);
-                        } else {
-                          setSelectedInterpreters(selectedInterpreters.filter(id => id !== interpreter.id));
-                        }
-                      }}
+                      onCheckedChange={(checked) => handleInterpreterSelection(interpreter.id, checked as boolean)}
                       className="pointer-events-auto"
                     />
                     <Avatar className="h-10 w-10">
@@ -615,4 +660,3 @@ export const MissionManagement = () => {
     </div>
   );
 };
-

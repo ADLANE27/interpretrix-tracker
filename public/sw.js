@@ -1,7 +1,9 @@
 
-const SW_VERSION = '1.0.13';
+// Enhanced service worker with comprehensive browser support and logging
+const SW_VERSION = '1.0.7';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
+// Enhanced error handling with detailed logging
 self.addEventListener('error', event => {
   console.error('[Service Worker] Uncaught error:', event.error);
   console.error('[Service Worker] Stack:', event.error.stack);
@@ -15,49 +17,73 @@ self.addEventListener('unhandledrejection', event => {
   }
 });
 
+// Enhanced push event handler with better debugging
 self.addEventListener('push', event => {
-  console.log('[Service Worker] Push received:', event);
+  console.log('[Service Worker] Push received at:', new Date().toISOString());
+  console.log('[Service Worker] Raw push data:', event.data ? event.data.text() : 'No data');
   
-  if (!(self.Notification && self.Notification.permission === 'granted')) {
-    console.error('[Service Worker] Push received but notifications not supported/permitted');
+  if (!event.data) {
+    console.warn('[Service Worker] Push event received but no data');
     return;
   }
 
   try {
-    const data = event.data?.json() ?? {};
-    console.log('[Service Worker] Push data:', data);
-
+    const data = event.data.json();
+    console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
+    
     const options = {
-      body: `${data.source_language} → ${data.target_language} - ${data.estimated_duration} minutes`,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      data: data,
-      vibrate: [200],
-      tag: `mission-${data.mission_type}-${data.id}`,
+      body: data.body,
+      icon: data.icon || '/favicon.ico',
+      badge: data.badge || '/favicon.ico',
+      data: {
+        ...data.data,
+        timestamp: Date.now()
+      },
+      vibrate: data.vibrate || [200, 100, 200],
+      tag: data.tag || `mission-${data.data?.mission_id}`,
       renotify: true,
       requireInteraction: true,
-      actions: [
-        { action: 'accept', title: '✓' },
-        { action: 'decline', title: '✗' }
+      actions: data.actions || [
+        { action: 'accept', title: 'Accepter' },
+        { action: 'decline', title: 'Décliner' }
       ],
       silent: false,
       timestamp: Date.now()
     };
 
     event.waitUntil(
-      self.registration.showNotification(
-        data.mission_type === 'immediate' ? 
-          '🚨 Nouvelle mission immédiate' : 
-          '📅 Nouvelle mission programmée',
-        options
-      )
+      (async () => {
+        try {
+          if (!self.registration.showNotification) {
+            console.error('[Service Worker] Notifications not supported');
+            throw new Error('Notifications not supported');
+          }
+
+          console.log('[Service Worker] Showing notification with options:', JSON.stringify(options, null, 2));
+          await self.registration.showNotification(
+            data.title || 'Nouvelle mission disponible',
+            options
+          );
+          
+          console.log('[Service Worker] Notification shown successfully');
+        } catch (error) {
+          console.error('[Service Worker] Error showing notification:', error);
+          console.error('[Service Worker] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          });
+          throw error;
+        }
+      })()
     );
   } catch (error) {
-    console.error('[Service Worker] Error handling push:', error);
+    console.error('[Service Worker] Error processing push data:', error);
     console.error('[Service Worker] Stack:', error.stack);
   }
 });
 
+// Enhanced notification click handling with debugging
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
     action: event.action,
@@ -74,31 +100,33 @@ self.addEventListener('notificationclick', event => {
     return;
   }
 
+  const urlToOpen = new URL('/', self.location.origin).href;
+
   event.waitUntil(
     (async () => {
       try {
-        // Always use HTTPS for the URL
-        const urlToOpen = self.location.origin.replace('http:', 'https:') + '/';
-
         const windowClients = await clients.matchAll({
           type: 'window',
           includeUncontrolled: true
         });
 
-        // Try to focus an existing window first
+        console.log('[Service Worker] Found window clients:', windowClients.length);
+
         for (const client of windowClients) {
           if (client.url === urlToOpen && 'focus' in client) {
+            console.log('[Service Worker] Focusing existing window');
             await client.focus();
             return;
           }
         }
 
-        // If no existing window, open a new one
         if (clients.openWindow) {
+          console.log('[Service Worker] Opening new window:', urlToOpen);
           await clients.openWindow(urlToOpen);
         }
       } catch (error) {
         console.error('[Service Worker] Error handling notification click:', error);
+        console.error('[Service Worker] Stack:', error.stack);
       }
     })()
   );
@@ -111,5 +139,19 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
 });
+

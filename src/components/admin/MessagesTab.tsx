@@ -6,7 +6,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from 'lucide-react';
+import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ export const MessagesTab = () => {
   const [showChannels, setShowChannels] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundInitialized, setSoundInitialized] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -37,17 +38,44 @@ export const MessagesTab = () => {
     }
   });
 
+  const initializeSound = () => {
+    if (!soundInitialized) {
+      console.log('[MessagesTab] Initializing sounds...');
+      try {
+        // Create and play a silent buffer to enable audio
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        setSoundInitialized(true);
+        
+        // Force preload the notification sounds
+        playNotificationSound('immediate', true).catch(console.error);
+        playNotificationSound('scheduled', true).catch(console.error);
+        
+        console.log('[MessagesTab] Sounds initialized successfully');
+      } catch (error) {
+        console.error('[MessagesTab] Error initializing sounds:', error);
+      }
+    }
+  };
+
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
+    initializeSound();
   };
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
     setShowChannels(false);
+    initializeSound();
   };
 
   const toggleSound = () => {
     setSoundEnabled(!soundEnabled);
+    initializeSound();
     toast({
       title: soundEnabled ? "Sons désactivés" : "Sons activés",
       description: soundEnabled 
@@ -74,18 +102,26 @@ export const MessagesTab = () => {
   };
 
   useEffect(() => {
-    console.log('[MessagesTab] Setting up realtime subscription...');
-    
-    // Pre-initialize sounds
-    if (soundEnabled) {
-      Promise.all([
-        playNotificationSound('immediate', true),
-        playNotificationSound('scheduled', true)
-      ]).catch(error => {
-        console.error('[MessagesTab] Error pre-initializing sounds:', error);
-      });
-    }
+    console.log('[MessagesTab] Setting up user interaction listeners');
+    const handleUserInteraction = () => {
+      console.log('[MessagesTab] User interaction detected, initializing sound');
+      initializeSound();
+      // Remove event listeners after first interaction
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
 
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('touchstart', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log('[MessagesTab] Setting up realtime subscription...');
     const channel = supabase
       .channel('realtime-mission-updates')
       .on(
@@ -98,11 +134,17 @@ export const MessagesTab = () => {
         async (payload: any) => {
           console.log('[MessagesTab] New mission created:', payload);
           
-          if (payload.new) {
-            const mission = payload.new;
+          if (payload.eventType === 'INSERT') {
+            const mission = payload.new as any;
+            
+            if (!mission) {
+              console.error('[MessagesTab] Invalid mission payload');
+              return;
+            }
+
             const isImmediate = mission.mission_type === 'immediate';
             
-            // Show toast notification
+            console.log('[MessagesTab] Showing toast notification');
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
@@ -110,19 +152,19 @@ export const MessagesTab = () => {
               duration: 10000,
             });
 
-            // Play sound if enabled
             if (soundEnabled) {
               try {
                 console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                 await playNotificationSound(mission.mission_type);
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
-                // Show a fallback toast if sound fails
-                toast({
-                  title: "Erreur de son",
-                  description: "Impossible de jouer le son de notification",
-                  variant: "destructive",
-                });
+                // Try to reinitialize sound on error
+                initializeSound();
+                try {
+                  await playNotificationSound(mission.mission_type);
+                } catch (retryError) {
+                  console.error('[MessagesTab] Retry failed:', retryError);
+                }
               }
             }
           }
@@ -149,7 +191,7 @@ export const MessagesTab = () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, toast]);
+  }, [soundEnabled, toast, isMobile]);
 
   return (
     <div className={cn(

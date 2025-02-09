@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import webPush from 'npm:web-push';
 import { createClient } from 'npm:@supabase/supabase-js';
@@ -6,11 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-function isValidVapidKey(key: string): boolean {
-  // VAPID keys must be URL-safe base64 strings
-  return /^[A-Za-z0-9\-_]+$/.test(key);
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -24,7 +20,7 @@ serve(async (req) => {
     const { message, notificationData } = await req.json();
     console.log('[Push Notification] Received payload:', { message, notificationData });
 
-    // Get VAPID keys and validate them
+    // Get VAPID keys from environment variables
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
@@ -33,16 +29,9 @@ serve(async (req) => {
       throw new Error('VAPID configuration missing');
     }
 
-    // Validate VAPID key format
-    if (!isValidVapidKey(vapidPublicKey) || !isValidVapidKey(vapidPrivateKey)) {
-      console.error('[Push Notification] Invalid VAPID key format');
-      throw new Error('Invalid VAPID key format');
-    }
-
     // Initialize web-push with VAPID details
-    // Using a verified domain for VAPID
     webPush.setVapidDetails(
-      'https://bblpiatmtnlhnbavhkau.supabase.co',
+      'mailto:your-email@example.com', // Update this email
       vapidPublicKey,
       vapidPrivateKey
     );
@@ -109,7 +98,7 @@ serve(async (req) => {
       );
     }
 
-    // Prepare notification payload with proper icons and actions
+    // Prepare notification payload
     const notificationPayload = {
       title: message?.title || 'Nouvelle mission disponible',
       body: message?.body || `${message?.data?.mission_type === 'immediate' ? '🔴 Mission immédiate' : '📅 Mission programmée'} - ${message?.data?.source_language} → ${message?.data?.target_language} (${message?.data?.estimated_duration} min)`,
@@ -124,15 +113,10 @@ serve(async (req) => {
       },
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      // Enhanced vibration pattern for better attention
       vibrate: [200, 100, 200],
-      // Use unique tag per mission
       tag: `mission-${message?.data?.mission_id || notificationData?.mission_id}`,
-      // Always renotify even if using same tag
       renotify: true,
-      // Keep notification visible until user interaction
       requireInteraction: true,
-      // Simplified actions for better cross-platform support
       actions: [
         { action: 'accept', title: 'Accepter' },
         { action: 'decline', title: 'Décliner' }
@@ -141,7 +125,7 @@ serve(async (req) => {
 
     console.log('[Push Notification] Sending notifications with payload:', notificationPayload);
 
-    // Send notifications with enhanced retry logic and validation
+    // Send notifications with retry logic
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         const subscription = {
@@ -154,7 +138,6 @@ serve(async (req) => {
 
         let attempts = 0;
         const maxAttempts = 3;
-        const initialDelay = 1000; // 1 second
 
         while (attempts < maxAttempts) {
           try {
@@ -175,15 +158,9 @@ serve(async (req) => {
               .eq('id', sub.id);
 
             console.log(`[Push Notification] Successfully sent to subscription ${sub.id}`);
-            return { success: true, subscriptionId: sub.id, statusCode: result.statusCode };
+            return { success: true, subscriptionId: sub.id };
           } catch (error) {
             console.error(`[Push Notification] Error sending to ${sub.id}:`, error);
-            console.error('[Push Notification] Error details:', {
-              name: error.name,
-              message: error.message,
-              statusCode: error.statusCode,
-              stack: error.stack
-            });
 
             if (error.statusCode === 410 || error.statusCode === 404) {
               // Subscription is expired or invalid
@@ -195,13 +172,12 @@ serve(async (req) => {
                 })
                 .eq('id', sub.id);
               
-              console.log(`[Push Notification] Marked subscription ${sub.id} as expired`);
               break; // Don't retry for invalid subscriptions
             }
 
             attempts++;
             if (attempts < maxAttempts) {
-              const delay = initialDelay * Math.pow(2, attempts - 1); // Exponential backoff
+              const delay = Math.pow(2, attempts) * 1000; // Exponential backoff
               console.log(`[Push Notification] Retrying in ${delay}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay));
             }
@@ -216,25 +192,12 @@ serve(async (req) => {
       })
     );
 
-    // Prepare detailed response summary
+    // Prepare response summary
     const summary = {
       total: results.length,
       successful: results.filter(r => r.status === 'fulfilled' && r.value.success).length,
       failed: results.filter(r => r.status === 'rejected' || !r.value.success).length,
-      details: results.map(r => {
-        if (r.status === 'fulfilled') {
-          return {
-            ...r.value,
-            status: r.status
-          };
-        } else {
-          return {
-            success: false,
-            error: r.reason,
-            status: r.status
-          };
-        }
-      })
+      details: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason })
     };
 
     console.log('[Push Notification] Results summary:', summary);
@@ -244,8 +207,7 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[Push Notification] Critical error:', error);
-    console.error('[Push Notification] Stack:', error.stack);
+    console.error('[Push Notification] Error:', error);
     
     return new Response(
       JSON.stringify({ 

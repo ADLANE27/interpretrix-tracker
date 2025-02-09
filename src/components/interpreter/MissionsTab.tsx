@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { CheckSquare, XSquare, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { playNotificationSound } from "@/utils/notificationSounds";
 
 interface Mission {
   id: string;
@@ -30,6 +30,36 @@ export const MissionsTab = () => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundInitialized, setSoundInitialized] = useState(false);
+
+  const initializeSound = () => {
+    if (!soundInitialized) {
+      console.log('[MissionsTab] Initializing sounds...');
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        
+        const buffer = audioContext.createBuffer(1, 1, 22050);
+        const source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        
+        source.start(0);
+        source.stop(0.001);
+        
+        setSoundInitialized(true);
+        
+        Promise.all([
+          playNotificationSound('immediate', true),
+          playNotificationSound('scheduled', true)
+        ]).catch(console.error);
+        
+        console.log('[MissionsTab] Sounds initialized successfully');
+      } catch (error) {
+        console.error('[MissionsTab] Error initializing sounds:', error);
+      }
+    }
+  };
 
   const fetchMissions = async () => {
     try {
@@ -90,6 +120,67 @@ export const MissionsTab = () => {
     
     const channel = supabase
       .channel('interpreter-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mission_notifications'
+        },
+        async (payload) => {
+          console.log('[MissionsTab] New notification received:', payload);
+          
+          const notification = payload.new as any;
+          if (!currentUserId || notification.interpreter_id !== currentUserId) {
+            console.log('[MissionsTab] Notification not for current user');
+            return;
+          }
+
+          const { data: mission, error: missionError } = await supabase
+            .from('interpretation_missions')
+            .select('*')
+            .eq('id', notification.mission_id)
+            .single();
+
+          if (missionError) {
+            console.error('[MissionsTab] Error fetching mission:', missionError);
+            return;
+          }
+
+          console.log('[MissionsTab] Mission details:', mission);
+
+          const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
+            ? mission.mission_type 
+            : 'scheduled'; // Default to scheduled if invalid type
+
+          const isImmediate = missionType === 'immediate';
+            
+          console.log('[MissionsTab] Showing toast notification');
+          toast({
+            title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+            description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+            variant: isImmediate ? "destructive" : "default",
+            duration: 10000,
+          });
+
+          if (soundEnabled) {
+            try {
+              console.log('[MissionsTab] Playing notification sound for:', missionType);
+              await playNotificationSound(missionType);
+            } catch (error) {
+              console.error('[MissionsTab] Error playing sound:', error);
+              initializeSound();
+              try {
+                await playNotificationSound(missionType);
+              } catch (retryError) {
+                console.error('[MissionsTab] Retry failed:', retryError);
+              }
+            }
+          }
+
+          fetchMissions();
+        }
+      )
       .on(
         'postgres_changes',
         {
@@ -210,10 +301,22 @@ export const MissionsTab = () => {
     fetchMissions();
     const cleanup = setupRealtimeSubscription();
 
+    const handleUserInteraction = () => {
+      console.log('[MissionsTab] User interaction detected, initializing sound');
+      initializeSound();
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('touchstart', handleUserInteraction);
+
     return () => {
       cleanup();
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
     };
-  }, [toast]);
+  }, [soundEnabled, toast, currentUserId]);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
     if (status === 'accepted') {
@@ -244,8 +347,8 @@ export const MissionsTab = () => {
         
         return (
           <Card key={mission.id} className="p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-              <div className="space-y-2 w-full">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
                   {mission.mission_type === 'scheduled' ? (
                     <Calendar className="h-4 w-4 text-blue-500" />
@@ -287,10 +390,10 @@ export const MissionsTab = () => {
                 </Badge>
               </div>
               {mission.status === 'awaiting_acceptance' && !isProcessing && (
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 w-full sm:w-auto"
+                    className="flex items-center gap-2"
                     onClick={() => handleMissionResponse(mission.id, true)}
                   >
                     <CheckSquare className="h-4 w-4" />
@@ -298,7 +401,7 @@ export const MissionsTab = () => {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex items-center gap-2 w-full sm:w-auto"
+                    className="flex items-center gap-2"
                     onClick={() => handleMissionResponse(mission.id, false)}
                   >
                     <XSquare className="h-4 w-4" />

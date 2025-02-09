@@ -11,18 +11,12 @@ import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
+import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, HelpCircle } from 'lucide-react';
+import { LogOut, Menu, BookOpen, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ConnectionStatus } from '@/components/interpreter/ConnectionStatus';
-import { useConnectionStatus } from '@/hooks/useConnectionStatus';
-import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
-import { useUnreadMissions } from "@/hooks/useUnreadMissions";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { InterpreterGuideContent } from "./interpreter/InterpreterGuideContent";
 
 interface Profile {
   id: string;
@@ -58,9 +52,6 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const connectionStatus = useConnectionStatus(profile?.id || '');
-  const { totalUnreadCount: unreadMentionsCount } = useUnreadMentions();
-  const { unreadCount: unreadMissionsCount } = useUnreadMissions();
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -314,34 +305,6 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (isMobile) {
-      setIsSheetOpen(false);
-    }
-  };
-
-  const tabItems = [
-    { 
-      value: "missions", 
-      label: "Missions",
-      badge: unreadMissionsCount > 0 ? unreadMissionsCount : null 
-    },
-    { 
-      value: "calendar", 
-      label: "Calendrier" 
-    },
-    { 
-      value: "messaging", 
-      label: "Messagerie",
-      badge: unreadMentionsCount > 0 ? unreadMentionsCount : null 
-    },
-    { 
-      value: "profile", 
-      label: "Mon Profil" 
-    },
-  ];
-
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -360,6 +323,18 @@ export const InterpreterDashboard = () => {
     );
   }
 
+  const tabItems = [
+    { value: "missions", label: "Missions" },
+    { value: "calendar", label: "Calendrier" },
+    { value: "messaging", label: "Messagerie" },
+    { value: "profile", label: "Mon Profil" },
+  ];
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setIsSheetOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
@@ -374,30 +349,23 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full sm:w-auto">
-                <ConnectionStatus status={connectionStatus.status} />
-                <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {}}
+                    className="flex-1 sm:flex-none"
+                    title="Guide d'utilisation"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </Button>
                   <NotificationPermission interpreterId={profile.id} />
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-9 w-9"
-                        title="Guide d'utilisation"
-                      >
-                        <HelpCircle className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl h-[80vh]">
-                      <InterpreterGuideContent />
-                    </DialogContent>
-                  </Dialog>
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={handleLogout}
-                    className="h-9 w-9 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    className="flex-1 sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors"
                     title="Se déconnecter"
                   >
                     <LogOut className="h-4 w-4" />
@@ -417,14 +385,7 @@ export const InterpreterDashboard = () => {
           <Card className="shadow-sm">
             {isMobile ? (
               <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">
-                  {tabItems.find(tab => tab.value === activeTab)?.label}
-                  {tabItems.find(tab => tab.value === activeTab)?.badge && (
-                    <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-900">
-                      {tabItems.find(tab => tab.value === activeTab)?.badge}
-                    </Badge>
-                  )}
-                </h2>
+                <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -443,15 +404,7 @@ export const InterpreterDashboard = () => {
                           className="w-full justify-start"
                           onClick={() => handleTabChange(tab.value)}
                         >
-                          <span className="flex-1 text-left">{tab.label}</span>
-                          {tab.badge && (
-                            <Badge 
-                              variant="secondary" 
-                              className="ml-2 bg-purple-100 text-purple-900"
-                            >
-                              {tab.badge}
-                            </Badge>
-                          )}
+                          {tab.label}
                         </Button>
                       ))}
                     </div>
@@ -466,17 +419,9 @@ export const InterpreterDashboard = () => {
                       <TabsTrigger 
                         key={tab.value}
                         value={tab.value}
-                        className="relative data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
+                        className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap"
                       >
                         {tab.label}
-                        {tab.badge && (
-                          <Badge 
-                            variant="secondary" 
-                            className="ml-2 bg-purple-100 text-purple-900"
-                          >
-                            {tab.badge}
-                          </Badge>
-                        )}
                       </TabsTrigger>
                     ))}
                   </TabsList>
