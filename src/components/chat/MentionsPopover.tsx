@@ -6,10 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { MessageSquare, X, Check, Bell } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -35,15 +35,12 @@ export const MentionsPopover = ({
   const isMobile = useIsMobile();
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         {children}
-      </PopoverTrigger>
-      <PopoverContent 
-        align="center" 
-        side="bottom"
-        sideOffset={5}
-        className={`${isMobile ? 'w-[calc(100vw-64px)]' : 'w-80'} !fixed !left-[50%] !-translate-x-[50%] !top-[80px] p-0 overflow-hidden`}
+      </DialogTrigger>
+      <DialogContent 
+        className="sm:max-w-[500px] p-0 gap-0 overflow-hidden"
       >
         <div className="flex flex-col h-[500px]">
           <div className="p-4 border-b">
@@ -117,7 +114,7 @@ export const MentionsPopover = ({
             </ScrollArea>
           )}
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 };
