@@ -161,22 +161,19 @@ export const MissionManagement = () => {
     try {
       console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
       
-      const query = supabase
-        .from("interpreter_profiles")
+      let query = supabase
+        .from("available_interpreters")
         .select(`
           id,
           first_name,
           last_name,
           status,
           profile_picture_url,
-          languages
+          languages,
+          connection_status,
+          last_heartbeat
         `)
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
-
-      // Only filter by status for immediate missions
-      if (missionType === 'immediate') {
-        query.eq('status', 'available');
-      }
 
       const { data: interpreters, error } = await query;
 

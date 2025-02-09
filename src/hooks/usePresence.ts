@@ -20,22 +20,47 @@ export const usePresence = (userId: string, roomId: string) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const heartbeatInterval = useRef<number>();
+  const reconnectTimeout = useRef<number>();
   const isIOSRef = useRef(/iPad|iPhone|iPod/.test(navigator.userAgent));
   const isBackgroundRef = useRef(false);
+  const retryCount = useRef(0);
+  const MAX_RETRY_COUNT = 5;
+  const RETRY_DELAY = 5000;
+
+  const updateConnectionStatus = async (status: 'connected' | 'background' | 'disconnected') => {
+    console.log('[Presence] Updating connection status:', status);
+    try {
+      await supabase
+        .from('interpreter_connection_status')
+        .upsert({
+          interpreter_id: userId,
+          is_online: status !== 'disconnected',
+          last_seen_at: new Date().toISOString(),
+          last_heartbeat: new Date().toISOString(),
+          connection_status: status
+        })
+        .eq('interpreter_id', userId);
+    } catch (error) {
+      console.error('[Presence] Error updating connection status:', error);
+    }
+  };
 
   const setupPresence = () => {
     console.log('[Presence] Setting up presence for room:', roomId);
     
     try {
+      if (channelRef.current) {
+        console.log('[Presence] Cleaning up existing channel');
+        supabase.removeChannel(channelRef.current);
+      }
+
       channelRef.current = supabase.channel(`presence_${roomId}`)
         .on('presence', { event: 'sync' }, () => {
           const state = channelRef.current?.presenceState() || {};
           console.log('[Presence] Sync state:', state);
           
-          // Transform the presence data to match our PresenceState interface
           const transformedState: Record<string, PresenceState> = {};
           Object.entries(state).forEach(([key, value]) => {
-            // Cast the value to unknown first, then to UserPresence[]
             const presences = value as unknown as UserPresence[];
             if (presences.length > 0) {
               transformedState[key] = {
@@ -49,6 +74,7 @@ export const usePresence = (userId: string, roomId: string) => {
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
           console.log('[Presence] Join:', key, newPresences);
+          retryCount.current = 0; // Reset retry count on successful join
         })
         .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
           console.log('[Presence] Leave:', key, leftPresences);
@@ -59,45 +85,34 @@ export const usePresence = (userId: string, roomId: string) => {
         
         if (status === 'SUBSCRIBED' && userId) {
           try {
-            // Update connection status in database
-            await supabase
-              .from('interpreter_connection_status')
-              .upsert({
-                interpreter_id: userId,
-                is_online: true,
-                last_seen_at: new Date().toISOString(),
-                last_heartbeat: new Date().toISOString(),
-                connection_status: isBackgroundRef.current ? 'background' : 'connected'
-              })
-              .eq('interpreter_id', userId);
+            await updateConnectionStatus(isBackgroundRef.current ? 'background' : 'connected');
 
-            // Track presence state
             await channelRef.current?.track({
               user_id: userId,
               online_at: new Date().toISOString(),
             });
 
             // Setup heartbeat
+            if (heartbeatInterval.current) {
+              clearInterval(heartbeatInterval.current);
+            }
+
             heartbeatInterval.current = window.setInterval(async () => {
               try {
-                if (!isBackgroundRef.current) {
-                  await supabase
-                    .from('interpreter_connection_status')
-                    .update({
-                      last_heartbeat: new Date().toISOString(),
-                      connection_status: 'connected'
-                    })
-                    .eq('interpreter_id', userId);
-
-                  await channelRef.current?.track({
-                    user_id: userId,
-                    online_at: new Date().toISOString(),
-                  });
-                }
+                await updateConnectionStatus(isBackgroundRef.current ? 'background' : 'connected');
+                await channelRef.current?.track({
+                  user_id: userId,
+                  online_at: new Date().toISOString(),
+                });
               } catch (error) {
                 console.error('[Presence] Heartbeat error:', error);
+                if (retryCount.current < MAX_RETRY_COUNT) {
+                  retryCount.current++;
+                  setupPresence();
+                }
               }
             }, 30000) as unknown as number;
+
           } catch (error) {
             console.error('[Presence] Error setting up presence:', error);
             toast({
@@ -105,6 +120,17 @@ export const usePresence = (userId: string, roomId: string) => {
               description: "Impossible de mettre à jour votre statut de présence",
               variant: "destructive",
             });
+          }
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Presence] Channel error occurred');
+          if (retryCount.current < MAX_RETRY_COUNT) {
+            retryCount.current++;
+            if (reconnectTimeout.current) {
+              clearTimeout(reconnectTimeout.current);
+            }
+            reconnectTimeout.current = window.setTimeout(() => {
+              setupPresence();
+            }, RETRY_DELAY) as unknown as number;
           }
         }
       });
@@ -129,18 +155,11 @@ export const usePresence = (userId: string, roomId: string) => {
       
       if (userId) {
         try {
-          await supabase
-            .from('interpreter_connection_status')
-            .update({
-              connection_status: isVisible ? 'connected' : 'background',
-              last_seen_at: new Date().toISOString()
-            })
-            .eq('interpreter_id', userId);
+          await updateConnectionStatus(isVisible ? 'connected' : 'background');
 
           // For iOS, we force a new subscription when coming back to foreground
           if (isVisible && isIOSRef.current && channelRef.current) {
             console.log('[Presence] iOS detected - forcing channel resubscription');
-            supabase.removeChannel(channelRef.current);
             setupPresence();
           }
         } catch (error) {
@@ -149,11 +168,29 @@ export const usePresence = (userId: string, roomId: string) => {
       }
     };
 
+    const handleOnline = () => {
+      console.log('[Presence] Browser online');
+      if (userId) {
+        setupPresence();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('[Presence] Browser offline');
+      if (userId) {
+        updateConnectionStatus('disconnected');
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     
     return () => {
       console.log('[Presence] Cleaning up presence');
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
@@ -163,18 +200,13 @@ export const usePresence = (userId: string, roomId: string) => {
         clearInterval(heartbeatInterval.current);
       }
 
+      if (reconnectTimeout.current) {
+        clearTimeout(reconnectTimeout.current);
+      }
+
       // Update connection status to disconnected
       if (userId) {
-        Promise.resolve(
-          supabase
-            .from('interpreter_connection_status')
-            .update({
-              is_online: false,
-              connection_status: 'disconnected',
-              last_seen_at: new Date().toISOString()
-            })
-            .eq('interpreter_id', userId)
-        )
+        updateConnectionStatus('disconnected')
           .then(() => console.log('[Presence] Updated connection status to disconnected'))
           .catch((error: Error) => console.error('[Presence] Error updating disconnected status:', error));
       }
