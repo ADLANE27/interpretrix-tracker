@@ -28,12 +28,12 @@ export const HowToUseGuide = ({ isOpen, onOpenChange }: HowToUseGuideProps) => {
           <BookOpen className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl h-[90vh] sm:h-auto flex flex-col p-0 fixed top-[5vh]">
-        <DialogHeader className="p-6 pb-2 sticky top-0 bg-white z-10">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 fixed top-[5vh] overflow-hidden">
+        <DialogHeader className="p-6 pb-2 border-b bg-white">
           <DialogTitle className="text-2xl font-bold">Guide d'utilisation - Espace Interprète</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="flex-1 px-6 pb-6">
-          <div className="space-y-6">
+        <ScrollArea className="flex-1 overflow-y-auto">
+          <div className="px-6 py-6 space-y-6">
             <section className="space-y-3">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
@@ -92,7 +92,7 @@ export const HowToUseGuide = ({ isOpen, onOpenChange }: HowToUseGuideProps) => {
                 <Info className="h-5 w-5 text-orange-500" />
                 Gérer votre profil
               </h3>
-              <div className="ml-7 space-y-2 pb-4">
+              <div className="ml-7 space-y-2">
                 <p>Dans l'onglet "Mon Profil" :</p>
                 <ul className="list-disc ml-6 space-y-1">
                   <li>Mettez à jour vos informations personnelles</li>
