@@ -81,31 +81,29 @@ export const MessagingTab = () => {
     >
       {(!selectedChannelId || showChannels || !isMobile) && !isFullScreen && (
         <div className={cn(
-          "transition-all duration-300 ease-in-out",
+          "flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden",
           isCollapsed ? "w-[48px]" : "w-[300px] lg:w-[350px]"
         )}>
-          <Collapsible
-            open={!isCollapsed}
-            onOpenChange={setIsCollapsed}
-            className="relative"
-          >
-            <CollapsibleContent className="data-[state=closed]:animate-collapse data-[state=open]:animate-expand">
+          <div className="relative h-full">
+            <div className={cn(
+              "transition-all duration-300 ease-in-out",
+              isCollapsed ? "opacity-0 invisible" : "opacity-100 visible"
+            )}>
               <Card className="p-3 sm:p-4 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl h-full">
                 <InterpreterChannelList 
                   onChannelSelect={handleChannelSelect}
                 />
               </Card>
-            </CollapsibleContent>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10"
-              >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="absolute right-0 top-4 h-8 w-8 bg-white shadow-md hover:bg-gray-100 -mr-4 z-10"
+            >
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       )}
       
