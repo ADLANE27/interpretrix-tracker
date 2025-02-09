@@ -526,122 +526,69 @@ export const InterpreterChat = ({
             onScrollCapture={handleScroll}
           >
             <div className="p-4 space-y-6">
-              {filteredMessages.map(message => {
-                const isCurrentUser = message.sender.id === currentUserId;
-                const messageTime = format(message.timestamp, 'HH:mm');
-                
-                return (
-                  <div 
-                    key={message.id} 
-                    id={`message-${message.id}`}
-                    className="group message-appear"
-                  >
-                    <div className={cn(
-                      "flex items-start gap-3",
-                      isCurrentUser && "flex-row-reverse"
-                    )}>
-                      <Avatar className={cn(
-                        "h-10 w-10 flex-shrink-0 shadow-lg",
-                        isCurrentUser 
-                          ? "bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]" 
-                          : "bg-gradient-to-br from-[#FEC6A1] to-[#F97316]"
-                      )}>
-                        <AvatarFallback className="text-white">
-                          {message.sender.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className={cn(
-                        "flex-1 min-w-0 space-y-1",
-                        isCurrentUser && "items-end"
-                      )}>
-                        <div className={cn(
-                          "flex items-center gap-2",
-                          isCurrentUser && "flex-row-reverse"
-                        )}>
-                          <span className={cn(
-                            "font-semibold text-sm",
-                            isCurrentUser ? "text-[#8B5CF6]" : "text-[#F97316]"
-                          )}>
-                            {message.sender.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {messageTime}
-                          </span>
+              {filteredMessages.map(message => (
+                <div 
+                  key={message.id} 
+                  id={`message-${message.id}`}
+                  className="group message-appear"
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg">
+                      <AvatarFallback className="bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
+                      </div>
+                      {message.parent_message_id && (
+                        <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
+                          <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
                         </div>
-                        
-                        {message.parent_message_id && (
-                          <div className={cn(
-                            "ml-0 pl-2 border-l-2 text-xs text-muted-foreground",
-                            isCurrentUser ? "border-purple-200" : "border-orange-200",
-                            isCurrentUser && "text-right"
-                          )}>
-                            <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
-                          </div>
-                        )}
-
+                      )}
+                      <div className="group">
                         <div className={cn(
-                          "group max-w-[80%]",
-                          isCurrentUser && "ml-auto"
+                          "chat-bubble chat-bubble-tail",
+                          message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
                         )}>
-                          <div className={cn(
-                            "chat-bubble chat-bubble-tail",
-                            isCurrentUser 
-                              ? "chat-bubble-right bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6] text-white" 
-                              : "chat-bubble-left bg-white border border-gray-100 shadow-sm"
-                          )}>
-                            <p className={cn(
-                              "text-sm whitespace-pre-wrap break-words",
-                              isCurrentUser ? "text-white" : "text-gray-700"
-                            )}>
-                              {message.content}
-                            </p>
-                          </div>
-                          
-                          <div className={cn(
-                            "flex mt-2 gap-2",
-                            isCurrentUser ? "justify-start" : "justify-end"
-                          )}>
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {message.content}
+                          </p>
+                        </div>
+                        <div className="flex justify-end mt-2 gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                            onClick={() => handleThreadClick(message)}
+                          >
+                            <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
+                            {threadCounts[message.id] > 0 && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                {threadCounts[message.id]}
+                              </span>
+                            )}
+                          </Button>
+                          {currentUserId === message.sender.id && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className={cn(
-                                "opacity-0 group-hover:opacity-100 transition-opacity",
-                                isCurrentUser 
-                                  ? "hover:bg-purple-50 text-purple-600" 
-                                  : "hover:bg-orange-50 text-orange-600"
-                              )}
-                              onClick={() => handleThreadClick(message)}
+                              onClick={() => deleteMessage(message.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
                             >
-                              <MessageSquare className="h-4 w-4 mr-1" />
-                              {threadCounts[message.id] > 0 && (
-                                <span className={cn(
-                                  "text-xs px-1.5 py-0.5 rounded-full",
-                                  isCurrentUser 
-                                    ? "bg-purple-100 text-purple-700"
-                                    : "bg-orange-100 text-orange-700"
-                                )}>
-                                  {threadCounts[message.id]}
-                                </span>
-                              )}
+                              <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
-                            {currentUserId === message.sender.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteMessage(message.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 text-red-500"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           </ScrollArea>
 
@@ -762,26 +709,14 @@ export const InterpreterChat = ({
 
             <div className="p-3 bg-gray-50 border-b">
               <div className="flex items-start gap-3">
-                <Avatar className={cn(
-                  "h-8 w-8",
-                  selectedThread.sender.id === currentUserId
-                    ? "bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]"
-                    : "bg-gradient-to-br from-[#FEC6A1] to-[#F97316]"
-                )}>
-                  <AvatarFallback className="text-white">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-interpreter-navy text-white">
                     {selectedThread.sender.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "font-semibold text-sm",
-                      selectedThread.sender.id === currentUserId
-                        ? "text-[#8B5CF6]"
-                        : "text-[#F97316]"
-                    )}>
-                      {selectedThread.sender.name}
-                    </span>
+                    <span className="font-semibold text-sm">{selectedThread.sender.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {format(selectedThread.timestamp, 'HH:mm')}
                     </span>
@@ -792,56 +727,26 @@ export const InterpreterChat = ({
             </div>
 
             <ScrollArea className="flex-1 px-4">
-              {threadMessages.map(message => {
-                const isCurrentUser = message.sender.id === currentUserId;
-                return (
-                  <div key={message.id} className="py-3">
-                    <div className={cn(
-                      "flex items-start gap-3",
-                      isCurrentUser && "flex-row-reverse"
-                    )}>
-                      <Avatar className={cn(
-                        "h-8 w-8",
-                        isCurrentUser
-                          ? "bg-gradient-to-br from-[#9b87f5] to-[#8B5CF6]"
-                          : "bg-gradient-to-br from-[#FEC6A1] to-[#F97316]"
-                      )}>
-                        <AvatarFallback className="text-white">
-                          {message.sender.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className={cn(
-                        "flex-1",
-                        isCurrentUser && "text-right"
-                      )}>
-                        <div className={cn(
-                          "flex items-center gap-2",
-                          isCurrentUser && "flex-row-reverse justify-start"
-                        )}>
-                          <span className={cn(
-                            "font-semibold text-sm",
-                            isCurrentUser ? "text-[#8B5CF6]" : "text-[#F97316]"
-                          )}>
-                            {message.sender.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {format(message.timestamp, 'HH:mm')}
-                          </span>
-                        </div>
-                        <p className={cn(
-                          "text-sm mt-1",
-                          "p-3 rounded-lg inline-block",
-                          isCurrentUser
-                            ? "bg-purple-50 text-purple-900"
-                            : "bg-orange-50 text-orange-900"
-                        )}>
-                          {message.content}
-                        </p>
+              {threadMessages.map(message => (
+                <div key={message.id} className="py-3">
+                  <div className="flex items-start gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-interpreter-navy text-white">
+                        {message.sender.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{message.sender.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(message.timestamp, 'HH:mm')}
+                        </span>
                       </div>
+                      <p className="text-sm mt-1">{message.content}</p>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </ScrollArea>
 
             <div className="p-4 border-t bg-white">
@@ -855,10 +760,7 @@ export const InterpreterChat = ({
                 <div className="absolute bottom-2 right-2">
                   <Button 
                     onClick={handleSendThreadMessage}
-                    className={cn(
-                      "h-8 bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6]",
-                      "hover:from-[#8B5CF6] hover:to-[#7c4dff]"
-                    )}
+                    className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Répondre
