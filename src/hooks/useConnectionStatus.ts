@@ -21,15 +21,11 @@ export const useConnectionStatus = (interpreterId: string) => {
   const heartbeatInterval = useRef<number>();
   const reconnectTimeout = useRef<number>();
   const reconnectAttempts = useRef(0);
-  const MAX_RECONNECT_ATTEMPTS = 5;
   const BASE_RECONNECT_DELAY = 2000;
 
   const calculateReconnectDelay = () => {
-    // Exponential backoff: 2s, 4s, 8s, 16s, 32s
-    return Math.min(
-      BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts.current),
-      32000
-    );
+    // Simple constant delay instead of exponential backoff for more aggressive reconnection
+    return BASE_RECONNECT_DELAY;
   };
 
   const sendHeartbeat = async () => {
@@ -60,33 +56,19 @@ export const useConnectionStatus = (interpreterId: string) => {
   };
 
   const handleConnectionError = () => {
-    setConnectionStatus(prev => ({ ...prev, status: 'disconnected' }));
+    setConnectionStatus(prev => ({ ...prev, status: 'connecting' }));
     
-    if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
-      const delay = calculateReconnectDelay();
-      console.log(`[ConnectionStatus] Tentative de reconnexion dans ${delay}ms (tentative ${reconnectAttempts.current + 1}/${MAX_RECONNECT_ATTEMPTS})`);
-      
-      toast({
-        title: "Connexion perdue",
-        description: `Tentative de reconnexion dans ${delay / 1000} secondes...`,
-      });
-
-      if (reconnectTimeout.current) {
-        window.clearTimeout(reconnectTimeout.current);
-      }
-
-      reconnectTimeout.current = window.setTimeout(async () => {
-        reconnectAttempts.current++;
-        await sendHeartbeat();
-      }, delay);
-    } else {
-      console.log('[ConnectionStatus] Nombre maximum de tentatives de reconnexion atteint');
-      toast({
-        title: "Erreur de connexion",
-        description: "Impossible de rétablir la connexion. Veuillez rafraîchir la page.",
-        variant: "destructive",
-      });
+    const delay = calculateReconnectDelay();
+    console.log(`[ConnectionStatus] Tentative de reconnexion dans ${delay}ms`);
+    
+    if (reconnectTimeout.current) {
+      window.clearTimeout(reconnectTimeout.current);
     }
+
+    reconnectTimeout.current = window.setTimeout(async () => {
+      reconnectAttempts.current++;
+      await sendHeartbeat();
+    }, delay);
   };
 
   useEffect(() => {
@@ -116,23 +98,11 @@ export const useConnectionStatus = (interpreterId: string) => {
       }
     };
 
+    console.log('[ConnectionStatus] Initialisation de la connexion persistante');
     initConnectionStatus();
 
     // Mettre en place l'intervalle de heartbeat
     heartbeatInterval.current = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
-
-    // Gérer les changements de visibilité de la page
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[ConnectionStatus] Page visible - réinitialisation de la connexion');
-        await sendHeartbeat();
-      } else {
-        console.log('[ConnectionStatus] Page masquée');
-        setConnectionStatus(prev => ({ ...prev, status: 'disconnected' }));
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Configuration de la souscription aux changements en temps réel
     const channel = supabase
@@ -151,11 +121,24 @@ export const useConnectionStatus = (interpreterId: string) => {
       )
       .subscribe();
 
+    // Activer le wake lock si disponible
+    const enableWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          await (navigator as any).wakeLock.request('screen');
+          console.log('[ConnectionStatus] Wake lock activé');
+        } catch (err) {
+          console.log('[ConnectionStatus] Wake lock non disponible:', err);
+        }
+      }
+    };
+    enableWakeLock();
+
     // Nettoyage
     return () => {
+      console.log('[ConnectionStatus] Nettoyage de la connexion');
       if (heartbeatInterval.current) clearInterval(heartbeatInterval.current);
       if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
   }, [interpreterId, toast]);
