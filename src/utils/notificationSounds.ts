@@ -24,12 +24,13 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
   console.log(`[notificationSounds] Loading ${type} sound`);
   const fileName = type === 'immediate' ? 'immediate-mission.mp3' : 'scheduled-mission.mp3';
   
-  const { data } = supabase.storage
+  const { data, error } = await supabase.storage
     .from('notification_sounds')
-    .getPublicUrl(`/${fileName}`);
-  
-  if (!data?.publicUrl) {
-    throw new Error('No public URL returned for sound file');
+    .createSignedUrl(`${fileName}`, 60 * 60); // 1 hour expiration
+
+  if (error || !data?.signedUrl) {
+    console.error(`[notificationSounds] Error getting signed URL for ${fileName}:`, error);
+    throw new Error(`No signed URL returned for sound file: ${error?.message}`);
   }
 
   const audio = new Audio();
@@ -47,7 +48,7 @@ const loadSound = async (type: 'immediate' | 'scheduled'): Promise<HTMLAudioElem
       reject(error);
     }, { once: true });
     
-    audio.src = data.publicUrl;
+    audio.src = data.signedUrl;
     audio.load();
   });
 };
@@ -116,6 +117,7 @@ export const playNotificationSound = async (type: 'immediate' | 'scheduled', pre
     }
   } catch (error) {
     console.error('[notificationSounds] Error playing sound:', error);
-    throw error;
+    // Don't throw the error, just log it
+    // This prevents breaking the app if sound fails
   }
 };

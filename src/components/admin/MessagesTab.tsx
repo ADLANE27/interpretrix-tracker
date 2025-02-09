@@ -109,7 +109,7 @@ export const MessagesTab = () => {
 
             const isImmediate = mission.mission_type === 'immediate';
             
-            console.log('[MessagesTab] Showing toast notification');
+            // Show toast notification immediately
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
@@ -117,12 +117,19 @@ export const MessagesTab = () => {
               duration: 10000,
             });
 
+            // Play sound if enabled
             if (soundEnabled) {
               try {
                 console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                 await playNotificationSound(mission.mission_type);
               } catch (error) {
                 console.error('[MessagesTab] Error playing sound:', error);
+                // Show a fallback toast if sound fails
+                toast({
+                  title: "Erreur de son",
+                  description: "Impossible de jouer le son de notification",
+                  variant: "destructive",
+                });
               }
             }
           }
