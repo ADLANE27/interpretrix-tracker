@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/lib/pushNotifications';
+import { setupNotifications } from '@/lib/pushNotifications';
 import { Bell, BellOff, Download } from 'lucide-react';
 
 interface DeviceInfo {
@@ -10,7 +10,7 @@ interface DeviceInfo {
   browser: string;
   version: string;
   isStandalone: boolean;
-  supportsPush: boolean;
+  supportsNotifications: boolean;
 }
 
 export const NotificationPermission = ({ interpreterId }: { interpreterId: string }) => {
@@ -30,21 +30,16 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     const isSafari = /^((?!chrome|android).)*safari/i.test(userAgent);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     
-    // Detect iOS version for Safari
     const iOSVersion = isIOS ? 
       parseInt((userAgent).match(/os (\d+)_/)?.[1] || '0') : 
       0;
-
-    const supportsPush = 'Notification' in window && 
-                        'serviceWorker' in navigator && 
-                        'PushManager' in window;
 
     const info: DeviceInfo = {
       platform: isIOS ? 'iOS' : /android/.test(userAgent) ? 'Android' : 'Desktop',
       browser: isSafari ? 'Safari' : 'Chrome/Other',
       version: isIOS ? `iOS ${iOSVersion}` : 'N/A',
       isStandalone,
-      supportsPush
+      supportsNotifications: 'Notification' in window
     };
 
     console.log('[Notifications] Environment detected:', info);
@@ -90,14 +85,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         return;
       }
 
-      const permission = await Notification.requestPermission();
-      console.log('[Notifications] Permission result:', permission);
-
-      if (permission !== 'granted') {
-        throw new Error('Notification permission denied');
-      }
-
-      await subscribeToPushNotifications(interpreterId);
+      await setupNotifications(interpreterId);
       setPermission('granted');
       
       toast({
@@ -125,25 +113,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       }
     } finally {
       setIsSubscribing(false);
-    }
-  };
-
-  const handleDisableNotifications = async () => {
-    try {
-      console.log('[Notifications] Starting disable process...');
-      await unsubscribeFromPushNotifications(interpreterId);
-      setPermission('default');
-      
-      toast({
-        title: "Notifications désactivées",
-      });
-    } catch (error) {
-      console.error('[Notifications] Error disabling:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de désactiver les notifications",
-        variant: "destructive",
-      });
     }
   };
 
@@ -182,8 +151,8 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     );
   }
 
-  // If push notifications are not supported
-  if (!deviceInfo?.supportsPush) {
+  // If notifications are not supported
+  if (!deviceInfo?.supportsNotifications) {
     return (
       <Button 
         variant="outline" 
@@ -197,20 +166,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         }
       >
         <Bell className="h-4 w-4" />
-      </Button>
-    );
-  }
-
-  if (permission === 'granted') {
-    return (
-      <Button 
-        variant="outline" 
-        size="icon"
-        onClick={handleDisableNotifications}
-        className="h-9 w-9"
-        title="Désactiver les notifications"
-      >
-        <BellOff className="h-4 w-4" />
       </Button>
     );
   }
@@ -244,11 +199,15 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       onClick={handleEnableNotifications}
       variant="outline"
       size="icon"
-      disabled={isSubscribing}
+      disabled={isSubscribing || permission === 'granted'}
       className="h-9 w-9"
-      title="Activer les notifications"
+      title={permission === 'granted' ? "Notifications activées" : "Activer les notifications"}
     >
-      <Bell className="h-4 w-4" />
+      {permission === 'granted' ? (
+        <BellOff className="h-4 w-4" />
+      ) : (
+        <Bell className="h-4 w-4" />
+      )}
     </Button>
   );
 };
