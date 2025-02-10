@@ -14,24 +14,26 @@ const Index = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const getInitialSession = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // Get the initial session
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (!user) {
-          console.log("No active user found, redirecting to login");
+        if (!session) {
+          console.log("[Index] No active session found");
           setLoading(false);
           return;
         }
 
+        // If we have a session, get the user role
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', user.id)
+          .eq('user_id', session.user.id)
           .single();
         
         if (rolesError) {
-          console.error("Error fetching user role:", rolesError);
+          console.error("[Index] Error fetching user role:", rolesError);
           toast({
             title: "Erreur",
             description: "Impossible de vérifier vos permissions",
@@ -42,24 +44,41 @@ const Index = () => {
 
         setUserRole(roles?.role || null);
       } catch (error) {
-        console.error("Auth check error:", error);
-        toast({
-          title: "Erreur d'authentification",
-          description: "Veuillez vous reconnecter",
-          variant: "destructive",
-        });
-        navigate("/login");
+        console.error("[Index] Auth check error:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    getInitialSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[Index] Auth state changed:", event, session?.user?.id);
+      
       if (!session) {
-        console.log("Auth state changed: no session");
+        console.log("[Index] No session in auth change");
         setUserRole(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (rolesError) {
+          console.error("[Index] Error fetching user role on auth change:", rolesError);
+          return;
+        }
+
+        setUserRole(roles?.role || null);
+      } catch (error) {
+        console.error("[Index] Error in auth change handler:", error);
+      } finally {
         setLoading(false);
       }
     });
