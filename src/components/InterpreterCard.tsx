@@ -1,7 +1,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Clock, Globe, Calendar, ArrowRightLeft, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
@@ -14,7 +14,6 @@ interface Mission {
   estimated_duration: number;
   source_language: string;
   target_language: string;
-  client_name: string | null;
   mission_type: 'immediate' | 'scheduled';
   status: string;
 }
@@ -42,17 +41,16 @@ const statusConfig = {
 
 export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [showAllMissions, setShowAllMissions] = useState(false);
 
   useEffect(() => {
-    // Initial fetch of missions
     const fetchMissions = async () => {
       const { data, error } = await supabase
         .from('interpretation_missions')
         .select('*')
         .eq('assigned_interpreter_id', interpreter.id)
         .eq('status', 'accepted')
+        .eq('mission_type', 'scheduled')
         .gte('scheduled_start_time', new Date().toISOString())
         .order('scheduled_start_time', { ascending: true });
 
@@ -61,7 +59,17 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         return;
       }
 
-      setMissions(data || []);
+      const typedMissions = (data || []).map(mission => ({
+        scheduled_start_time: mission.scheduled_start_time,
+        scheduled_end_time: mission.scheduled_end_time,
+        estimated_duration: mission.estimated_duration,
+        source_language: mission.source_language,
+        target_language: mission.target_language,
+        mission_type: mission.mission_type as 'immediate' | 'scheduled',
+        status: mission.status
+      }));
+
+      setMissions(typedMissions);
     };
 
     fetchMissions();
@@ -152,11 +160,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
 
-        {/* Next Mission Details Section */}
+        {/* Scheduled Missions Section */}
         {nextMission && (
           <div className="mt-4 border-t pt-3 space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-700">Prochaine mission</h4>
+              <h4 className="text-sm font-semibold text-gray-700">Missions programmées</h4>
               {hasAdditionalMissions && (
                 <button
                   onClick={() => setShowAllMissions(!showAllMissions)}
@@ -197,14 +205,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                   {nextMission.source_language} → {nextMission.target_language}
                 </span>
               </div>
-              {nextMission.client_name && (
-                <div className="text-sm text-gray-600">
-                  Client: {nextMission.client_name}
-                </div>
-              )}
-              <Badge variant="secondary">
-                {nextMission.mission_type === 'immediate' ? 'Immédiate' : 'Programmée'}
-              </Badge>
             </div>
 
             {/* Additional Missions */}
@@ -230,14 +230,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                         {mission.source_language} → {mission.target_language}
                       </span>
                     </div>
-                    {mission.client_name && (
-                      <div className="text-sm text-gray-600">
-                        Client: {mission.client_name}
-                      </div>
-                    )}
-                    <Badge variant="secondary">
-                      {mission.mission_type === 'immediate' ? 'Immédiate' : 'Programmée'}
-                    </Badge>
                   </div>
                 ))}
               </div>
@@ -248,3 +240,4 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
+
