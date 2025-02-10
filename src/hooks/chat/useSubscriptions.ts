@@ -32,6 +32,14 @@ export const useSubscriptions = (
   const { toast } = useToast();
 
   const handleSubscriptionError = () => {
+    if (retryCount >= MAX_RETRIES) {
+      toast({
+        title: "Problème de connexion",
+        description: "La connexion sera rétablie automatiquement",
+        variant: "default",
+      });
+    }
+    
     const delay = calculateRetryDelay(retryCount);
     setTimeout(() => {
       if (document.visibilityState === 'visible') {
@@ -123,3 +131,4 @@ export const useSubscriptions = (
     subscribeToMentions,
   };
 };
+
