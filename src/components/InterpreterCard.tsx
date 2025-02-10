@@ -1,8 +1,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Clock, Globe } from "lucide-react";
+import { Phone, Clock, Globe, Calendar, ArrowRightLeft } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
+import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -26,6 +28,8 @@ const statusConfig = {
 };
 
 export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
+  const hasUpcomingMission = interpreter.next_mission_start && interpreter.next_mission_duration;
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -39,10 +43,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           <Badge className={`${statusConfig[interpreter.status].color}`}>
             {statusConfig[interpreter.status].label}
           </Badge>
-          {interpreter.next_mission_start && (
+          {hasUpcomingMission && (
             <UpcomingMissionBadge
               startTime={interpreter.next_mission_start}
-              estimatedDuration={interpreter.next_mission_duration || 0}
+              estimatedDuration={interpreter.next_mission_duration}
             />
           )}
         </div>
@@ -80,6 +84,25 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-500" />
             <span className="text-sm">{interpreter.hourlyRate}€/h</span>
+          </div>
+        )}
+
+        {/* Mission Details Section */}
+        {hasUpcomingMission && (
+          <div className="mt-4 border-t pt-3 space-y-2">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">Prochaine mission</h4>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm">
+                {format(new Date(interpreter.next_mission_start), "d MMMM à HH:mm", { locale: fr })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-500" />
+              <span className="text-sm">
+                Durée: {interpreter.next_mission_duration} minutes
+              </span>
+            </div>
           </div>
         )}
       </div>
