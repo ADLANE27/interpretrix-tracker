@@ -39,14 +39,11 @@ export const useSubscriptions = (
   const handleSubscriptionError = () => {
     console.error(`[Subscriptions] Channel error occurred. Retry count: ${retryCount}`);
     
-    if (retryCount >= MAX_RETRIES) {
-      console.log('[Subscriptions] Max retries reached, showing toast');
-      toast({
-        title: "Problème de connexion",
-        description: "La connexion sera rétablie automatiquement",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Tentative de reconnexion...",
+      description: `Tentative ${retryCount + 1}/${MAX_RETRIES}`,
+      variant: "default",
+    });
     
     const delay = calculateRetryDelay(retryCount);
     console.log(`[Subscriptions] Scheduling retry in ${delay}ms`);
@@ -103,6 +100,11 @@ export const useSubscriptions = (
         if (status === 'SUBSCRIBED') {
           console.log('[Subscriptions] Successfully subscribed, resetting retry count');
           setRetryCount(0);
+          toast({
+            title: "Connecté",
+            description: "La connexion est rétablie",
+            variant: "default",
+          });
         }
       });
 
