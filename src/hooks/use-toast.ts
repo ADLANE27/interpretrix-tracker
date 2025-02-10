@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -155,6 +156,8 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
+      duration: props.duration || 5000,
+      className: `fixed bottom-0 left-0 right-0 mx-auto mb-4 max-w-md ${props.className || ''}`,
       onOpenChange: (open) => {
         if (!open) dismiss()
       },

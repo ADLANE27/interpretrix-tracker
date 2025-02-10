@@ -43,6 +43,8 @@ export const useSubscriptions = (
       title: "Tentative de reconnexion...",
       description: `Tentative ${retryCount + 1}/${MAX_RETRIES}`,
       variant: "default",
+      duration: 3000,
+      className: "bg-white/95 backdrop-blur-sm border-purple-200 shadow-lg",
     });
     
     const delay = calculateRetryDelay(retryCount);
@@ -87,6 +89,8 @@ export const useSubscriptions = (
             toast({
               title: "Nouveau message",
               description: "Un nouveau message a été reçu",
+              duration: 3000,
+              className: "bg-white/95 backdrop-blur-sm border-purple-200 shadow-lg",
             });
           }
         }
@@ -104,6 +108,8 @@ export const useSubscriptions = (
             title: "Connecté",
             description: "La connexion est rétablie",
             variant: "default",
+            duration: 3000,
+            className: "bg-white/95 backdrop-blur-sm border-purple-200 shadow-lg",
           });
         }
       });
@@ -134,6 +140,8 @@ export const useSubscriptions = (
             toast({
               title: "New Mention",
               description: "You were mentioned in a message",
+              duration: 3000,
+              className: "bg-white/95 backdrop-blur-sm border-purple-200 shadow-lg",
             });
           }
         }
