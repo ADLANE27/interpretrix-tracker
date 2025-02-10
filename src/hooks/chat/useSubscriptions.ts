@@ -3,6 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
+// Progressive retry with exponential backoff
+const INITIAL_RETRY_DELAY = 1000;
+const MAX_RETRY_DELAY = 30000;
+const MAX_RETRIES = 5;
+
+const calculateRetryDelay = (retryCount: number) => {
+  const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount);
+  return Math.min(delay, MAX_RETRY_DELAY);
+};
+
 // Remove retry limit for better iOS PWA support
 const handleVisibilityChange = (channel: RealtimeChannel) => {
   if (document.visibilityState === 'visible') {
@@ -22,13 +32,20 @@ export const useSubscriptions = (
   const { toast } = useToast();
 
   const handleSubscriptionError = () => {
-    // Instead of limiting retries, we'll reconnect when the app becomes visible
-    toast({
-      title: "Problème de connexion",
-      description: "Tentative de reconnexion en cours...",
-      variant: "destructive",
-    });
-    setRetryCount(retryCount + 1);
+    if (retryCount >= MAX_RETRIES) {
+      toast({
+        title: "Problème de connexion",
+        description: "La connexion sera rétablie automatiquement",
+        variant: "default",
+      });
+    }
+    
+    const delay = calculateRetryDelay(retryCount);
+    setTimeout(() => {
+      if (document.visibilityState === 'visible') {
+        setRetryCount(retryCount + 1);
+      }
+    }, delay);
   };
 
   const subscribeToMessages = () => {
@@ -65,6 +82,9 @@ export const useSubscriptions = (
         console.log('[Chat] Subscription status:', status);
         if (status === 'CHANNEL_ERROR') {
           handleSubscriptionError();
+        }
+        if (status === 'SUBSCRIBED') {
+          setRetryCount(0); // Reset retry count on successful connection
         }
       });
 
@@ -111,3 +131,4 @@ export const useSubscriptions = (
     subscribeToMentions,
   };
 };
+
