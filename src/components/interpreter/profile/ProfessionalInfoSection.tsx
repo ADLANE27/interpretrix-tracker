@@ -36,7 +36,7 @@ export const ProfessionalInfoSection = ({
             <SelectValue placeholder="Sélectionnez votre statut" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="salaried_aft">Salarié AFT</SelectItem>
+            <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
             <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
             <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
             <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
