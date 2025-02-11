@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface SubscriptionOptions {
   channelName: string;
@@ -85,36 +85,30 @@ export const useRealtimeSubscription = ({
 
     console.log('[useRealtimeSubscription] Setting up channel:', channelName);
 
-    channelRef.current = supabase.channel(channelName);
+    // Configurer les options pour les changements PostgreSQL
+    const postgresChanges = eventTypes.map(eventType => ({
+      event: eventType,
+      schema: 'public',
+      table: tableToWatch,
+      ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {})
+    }));
 
-    // Ajout des écouteurs de présence et système
-    channelRef.current
-      .on('presence', { event: 'sync' }, () => {
-        console.log('[useRealtimeSubscription] Channel synced');
-      })
-      .on('presence', { event: 'join' }, ({ key }) => {
-        console.log('[useRealtimeSubscription] Join event:', key);
-      })
-      .on('system', { event: '*' }, (payload) => {
-        console.log('[useRealtimeSubscription] System event:', payload);
-      });
-
-    // Ajout des écouteurs de changements PostgreSQL
-    eventTypes.forEach(eventType => {
-      if (channelRef.current) {
-        channelRef.current.on(
-          'postgres_changes',
-          {
-            event: eventType,
-            schema: 'public',
-            table: tableToWatch,
-            ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {})
-          },
-          (payload) => {
-            console.log(`[useRealtimeSubscription] ${eventType} event:`, payload);
-          }
-        );
+    // Créer le canal avec la configuration
+    channelRef.current = supabase.channel(channelName, {
+      config: {
+        postgres_changes: postgresChanges
       }
+    });
+
+    // Configurer les handlers pour chaque type d'événement
+    eventTypes.forEach(eventType => {
+      channelRef.current?.on(
+        'postgres_changes',
+        { event: eventType, schema: 'public', table: tableToWatch },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log(`[useRealtimeSubscription] ${eventType} event:`, payload);
+        }
+      );
     });
 
     channelRef.current.subscribe(async (status) => {
