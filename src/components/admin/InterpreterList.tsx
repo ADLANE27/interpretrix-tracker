@@ -81,13 +81,18 @@ export const InterpreterList = ({
 
   // Format interpreter data to match the expected format for the InterpreterCard
   const formatInterpreterForDisplay = (interpreter: InterpreterData) => {
+    // S'assurer que les langues sont correctement formatées
+    const languages = Array.isArray(interpreter.languages) 
+      ? interpreter.languages.filter(lang => lang && lang.includes('→')) 
+      : [];
+
     return {
       id: interpreter.id,
       name: `${interpreter.first_name} ${interpreter.last_name}`,
       status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
       employment_status: interpreter.employment_status,
-      languages: Array.isArray(interpreter.languages) ? interpreter.languages : [],
-      hourlyRate: interpreter.tarif_15min * 4, // Convert 15min rate to hourly rate
+      languages,
+      hourlyRate: interpreter.tarif_15min * 4,
     };
   };
 
@@ -97,9 +102,9 @@ export const InterpreterList = ({
       interpreter.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       interpreter.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       interpreter.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      interpreter.languages?.some((lang) =>
+      (Array.isArray(interpreter.languages) && interpreter.languages.some((lang) =>
         lang.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      ));
 
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     
