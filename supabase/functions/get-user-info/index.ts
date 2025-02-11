@@ -4,18 +4,28 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, content-range, content-disposition, content-length',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'content-range, content-disposition'
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    // Create Supabase client with admin privileges
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     )
 
     const { userId } = await req.json()
@@ -24,14 +34,22 @@ serve(async (req) => {
       throw new Error('userId is required')
     }
 
+    // Get user data using admin auth client
     const { data: { user }, error: userError } = await supabaseClient.auth.admin.getUserById(userId)
     
-    if (userError) throw userError
+    if (userError) {
+      console.error('Error fetching user:', userError)
+      throw userError
+    }
 
-    console.log('Raw user data:', user) // Debug log
-    console.log('User metadata:', user?.user_metadata) // Debug log
+    if (!user) {
+      throw new Error('User not found')
+    }
 
-    // Extract first name and last name from metadata
+    console.log('Raw user data:', user)
+    console.log('User metadata:', user.user_metadata)
+
+    // Extract user data with better error handling
     const firstName = user?.user_metadata?.first_name || 
                      user?.user_metadata?.firstName || 
                      user?.user_metadata?.given_name ||
@@ -46,23 +64,23 @@ serve(async (req) => {
                     user?.raw_user_meta_data?.lastName || 
                     ''
 
-    // Make sure we extract all necessary user data
     const userData = {
-      email: user?.email || '',
+      email: user.email || '',
       first_name: firstName,
       last_name: lastName,
     }
 
-    console.log('Processed user data:', userData) // Debug log
+    console.log('Processed user data:', userData)
 
     return new Response(
       JSON.stringify(userData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       },
     )
   } catch (error) {
-    console.error('Error in get-user-info:', error) // Debug log
+    console.error('Error in get-user-info:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
