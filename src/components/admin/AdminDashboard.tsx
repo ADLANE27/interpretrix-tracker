@@ -314,7 +314,9 @@ export const AdminDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="salaried">Salarié</SelectItem>
+                      <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                      <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                       <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
                     </SelectContent>
                   </Select>
