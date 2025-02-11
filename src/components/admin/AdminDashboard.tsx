@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -17,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
-import { Badge } from "../ui/badge";
 
 interface Interpreter {
   id: string;
@@ -26,17 +24,11 @@ interface Interpreter {
   status: "available" | "unavailable" | "pause" | "busy";
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: string[];
+  phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
-  nationality: string | null;
-  phone_interpretation_rate: number | null;
-  siret_number: string | null;
-  vat_number: string | null;
-  profile_picture_url: string | null;
   next_mission_start: string | null;
   next_mission_duration: number | null;
-  tarif_15min: number;
-  tarif_5min: number;
 }
 
 export const AdminDashboard = () => {
@@ -48,7 +40,6 @@ export const AdminDashboard = () => {
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
-  const [rateSort, setRateSort] = useState<"none" | "asc" | "desc">("none");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -87,17 +78,11 @@ export const AdminDashboard = () => {
       status: validateStatus(item.status),
       employment_status: item.employment_status,
       languages: item.languages,
+      phone_interpretation_rate: item.phone_interpretation_rate,
       phone_number: item.phone_number,
       birth_country: item.birth_country,
-      nationality: item.nationality,
-      phone_interpretation_rate: item.phone_interpretation_rate,
-      siret_number: item.siret_number,
-      vat_number: item.vat_number,
-      profile_picture_url: item.profile_picture_url,
       next_mission_start: item.next_mission_start,
       next_mission_duration: item.next_mission_duration,
-      tarif_15min: item.tarif_15min,
-      tarif_5min: item.tarif_5min,
     }));
   };
 
@@ -222,7 +207,9 @@ export const AdminDashboard = () => {
               <TabsTrigger value="missions">Missions</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-              <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
+              <TabsTrigger value="guide">
+                Guide d'utilisation
+              </TabsTrigger>
             </TabsList>
             <Button 
               variant="outline" 
@@ -333,23 +320,6 @@ export const AdminDashboard = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="rate-sort">Trier par tarif</Label>
-                  <Select
-                    value={rateSort}
-                    onValueChange={(value: "none" | "asc" | "desc") => setRateSort(value)}
-                  >
-                    <SelectTrigger id="rate-sort">
-                      <SelectValue placeholder="Trier par tarif" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sans tri</SelectItem>
-                      <SelectItem value="asc">Du moins cher au plus cher</SelectItem>
-                      <SelectItem value="desc">Du plus cher au moins cher</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <StatusFilter
@@ -358,30 +328,22 @@ export const AdminDashboard = () => {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredInterpreters
-                  .sort((a, b) => {
-                    if (rateSort === "none") return 0;
-                    const aRate = a.tarif_15min || 0;
-                    const bRate = b.tarif_15min || 0;
-                    return rateSort === "asc" ? aRate - bRate : bRate - aRate;
-                  })
-                  .map((interpreter) => (
-                    <InterpreterCard
-                      key={interpreter.id}
-                      interpreter={{
-                        id: interpreter.id,
-                        name: `${interpreter.first_name} ${interpreter.last_name}`,
-                        status: interpreter.status || "unavailable",
-                        employment_status: interpreter.employment_status,
-                        languages: interpreter.languages,
-                        tarif_15min: interpreter.tarif_15min,
-                        tarif_5min: interpreter.tarif_5min,
-                        phone_number: interpreter.phone_number,
-                        next_mission_start: interpreter.next_mission_start,
-                        next_mission_duration: interpreter.next_mission_duration,
-                      }}
-                    />
-                  ))}
+                {filteredInterpreters.map((interpreter) => (
+                  <InterpreterCard
+                    key={interpreter.id}
+                    interpreter={{
+                      id: interpreter.id,
+                      name: `${interpreter.first_name} ${interpreter.last_name}`,
+                      status: interpreter.status || "unavailable",
+                      employment_status: interpreter.employment_status,
+                      languages: interpreter.languages,
+                      hourlyRate: interpreter.phone_interpretation_rate,
+                      phone_number: interpreter.phone_number,
+                      next_mission_start: interpreter.next_mission_start,
+                      next_mission_duration: interpreter.next_mission_duration,
+                    }}
+                  />
+                ))}
               </div>
             </div>
           </TabsContent>
