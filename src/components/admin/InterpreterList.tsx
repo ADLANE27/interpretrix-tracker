@@ -39,7 +39,7 @@ interface InterpreterData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status?: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   languages?: string[];
   status?: string;
 }
@@ -52,19 +52,15 @@ interface InterpreterListProps {
   onResetPassword: (userId: string) => void;
 }
 
+const employmentStatusLabels: Record<string, string> = {
+  salaried_aft: "Salarié AFTrad",
+  salaried_aftcom: "Salarié AFTCOM",
+  salaried_planet: "Salarié PLANET",
+  self_employed: "Auto-entrepreneur",
+};
+
 const getEmploymentStatusLabel = (status?: string): string => {
-  switch (status) {
-    case "salaried_aft":
-      return "Salarié AFTrad";
-    case "salaried_aftcom":
-      return "Salarié AFTCOM";
-    case "salaried_planet":
-      return "Salarié PLANET";
-    case "self_employed":
-      return "Auto-entrepreneur";
-    default:
-      return "Non spécifié";
-  }
+  return status ? employmentStatusLabels[status] || "Non spécifié" : "Non spécifié";
 };
 
 export const InterpreterList = ({
@@ -78,6 +74,7 @@ export const InterpreterList = ({
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState<string | null>(null);
 
   const filteredInterpreters = interpreters.filter((interpreter) => {
     const matchesSearch =
@@ -89,10 +86,12 @@ export const InterpreterList = ({
         lang.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
-    const matchesStatus =
-      !selectedStatus || interpreter.status === selectedStatus;
+    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+    
+    const matchesEmploymentStatus = !selectedEmploymentStatus || 
+      interpreter.employment_status === selectedEmploymentStatus;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesEmploymentStatus;
   });
 
   return (
@@ -114,6 +113,23 @@ export const InterpreterList = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8"
               />
+            </div>
+            <div className="w-64">
+              <Select
+                value={selectedEmploymentStatus || ""}
+                onValueChange={(value) => setSelectedEmploymentStatus(value || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Statut professionnel" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                  <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                  <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                  <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

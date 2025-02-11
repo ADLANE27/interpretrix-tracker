@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
@@ -23,7 +22,7 @@ interface InterpreterCardProps {
     id: string;
     name: string;
     status: "available" | "unavailable" | "pause" | "busy";
-    type: "internal" | "external";
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
     languages: string[];
     hourlyRate?: number;
     phone_number?: string | null;
@@ -37,6 +36,13 @@ const statusConfig = {
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   pause: { color: "bg-interpreter-pause text-white", label: "En pause" },
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
+};
+
+const employmentStatusLabels: Record<string, string> = {
+  salaried_aft: "Salarié AFTrad",
+  salaried_aftcom: "Salarié AFTCOM",
+  salaried_planet: "Salarié PLANET",
+  self_employed: "Auto-entrepreneur",
 };
 
 export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
@@ -109,7 +115,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         <div>
           <h3 className="font-semibold text-lg">{interpreter.name}</h3>
           <Badge variant="outline" className="mt-1">
-            {interpreter.type === "internal" ? "Salarié" : "Freelance"}
+            {employmentStatusLabels[interpreter.employment_status]}
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -240,4 +246,3 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
-
