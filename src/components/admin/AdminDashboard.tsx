@@ -29,6 +29,8 @@ interface Interpreter {
   birth_country: string | null;
   next_mission_start: string | null;
   next_mission_duration: number | null;
+  tarif_15min: number | null;
+  tarif_5min: number | null;
 }
 
 export const AdminDashboard = () => {
@@ -83,6 +85,8 @@ export const AdminDashboard = () => {
       birth_country: item.birth_country,
       next_mission_start: item.next_mission_start,
       next_mission_duration: item.next_mission_duration,
+      tarif_15min: item.tarif_15min,
+      tarif_5min: item.tarif_5min,
     }));
   };
 
@@ -337,7 +341,8 @@ export const AdminDashboard = () => {
                       status: interpreter.status || "unavailable",
                       employment_status: interpreter.employment_status,
                       languages: interpreter.languages,
-                      hourlyRate: interpreter.phone_interpretation_rate,
+                      tarif_15min: interpreter.tarif_15min,
+                      tarif_5min: interpreter.tarif_5min,
                       phone_number: interpreter.phone_number,
                       next_mission_start: interpreter.next_mission_start,
                       next_mission_duration: interpreter.next_mission_duration,
