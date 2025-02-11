@@ -45,6 +45,7 @@ interface Interpreter {
   languages: string[];
   status: string;
   profile_picture_url: string | null;
+  tarif_15min: number;
 }
 
 export const MissionManagement = () => {
@@ -169,7 +170,8 @@ export const MissionManagement = () => {
           last_name,
           status,
           profile_picture_url,
-          languages
+          languages,
+          tarif_15min
         `)
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
 
@@ -197,10 +199,12 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Filter out duplicates based on interpreter ID
-      const uniqueInterpreters = interpreters.filter((interpreter, index, self) =>
-        index === self.findIndex((t) => t.id === interpreter.id)
-      );
+      // Filter out duplicates based on interpreter ID and sort by rate
+      const uniqueInterpreters = interpreters
+        .filter((interpreter, index, self) =>
+          index === self.findIndex((t) => t.id === interpreter.id)
+        )
+        .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0)); // Sort by rate, lowest first
 
       setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
