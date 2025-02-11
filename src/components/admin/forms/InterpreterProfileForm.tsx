@@ -19,11 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface LanguagePair {
-  source: string;
-  target: string;
-}
+import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
 
 interface Address {
   street: string;
@@ -60,9 +56,21 @@ export const InterpreterProfileForm = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [languages, setLanguages] = useState<LanguagePair[]>(
+    initialData?.languages?.map(lang => {
+      if (typeof lang === 'string') {
+        const [source, target] = lang.split('→').map(part => part.trim());
+        return { source, target };
+      }
+      return lang;
+    }) || []
+  );
 
   const form = useForm<InterpreterFormData>({
-    defaultValues: initialData || {
+    defaultValues: {
+      ...initialData,
+      languages: languages,
+    } || {
       email: "",
       first_name: "",
       last_name: "",
@@ -84,7 +92,12 @@ export const InterpreterProfileForm = ({
     if (password) {
       data.password = password;
     }
-    await onSubmit(data);
+    // Transform languages to the format expected by the backend
+    const formattedData = {
+      ...data,
+      languages: languages.map(lang => `${lang.source} → ${lang.target}`)
+    };
+    await onSubmit(formattedData);
   };
 
   return (
@@ -159,6 +172,15 @@ export const InterpreterProfileForm = ({
             </FormItem>
           )}
         />
+
+        <div className="space-y-2">
+          <Label>Langues</Label>
+          <LanguageSelector
+            languages={languages}
+            onChange={setLanguages}
+            isEditing={true}
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
