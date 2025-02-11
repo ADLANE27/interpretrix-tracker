@@ -154,14 +154,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
         {interpreter.phone_number && (
           <div className="flex items-center gap-2">
-            <Phone className="w-4 h-4 text-gray-500" />
+            <Phone className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.phone_number}</span>
           </div>
         )}
         
-        {interpreter.type === "external" && interpreter.hourlyRate && (
+        {interpreter.hourlyRate && (
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-500" />
+            <Clock className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.hourlyRate}€/h</span>
           </div>
         )}

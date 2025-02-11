@@ -27,7 +27,7 @@ interface UserData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status?: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   languages?: string[];
   status?: string;
 }

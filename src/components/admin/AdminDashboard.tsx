@@ -333,7 +333,7 @@ export const AdminDashboard = () => {
                       id: interpreter.id,
                       name: `${interpreter.first_name} ${interpreter.last_name}`,
                       status: interpreter.status,
-                      type: interpreter.employment_status === "salaried" ? "internal" : "external",
+                      employment_status: interpreter.employment_status,
                       languages: interpreter.languages,
                       hourlyRate: interpreter.phone_interpretation_rate,
                       phone_number: interpreter.phone_number,
