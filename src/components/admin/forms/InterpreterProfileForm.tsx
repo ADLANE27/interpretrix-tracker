@@ -43,7 +43,7 @@ export interface InterpreterFormData {
 interface InterpreterProfileFormProps {
   isEditing: boolean;
   onSubmit: (data: InterpreterFormData) => Promise<void>;
-  initialData?: InterpreterFormData;
+  initialData?: Partial<InterpreterFormData> & { languages?: string[] };
   isSubmitting: boolean;
 }
 
@@ -56,32 +56,33 @@ export const InterpreterProfileForm = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [languages, setLanguages] = useState<LanguagePair[]>(
-    initialData?.languages?.map(lang => {
-      if (typeof lang === 'string') {
-        const [source, target] = lang.split('→').map(part => part.trim());
-        return { source, target };
-      }
-      return lang;
-    }) || []
-  );
+  
+  // Convert string array to LanguagePair array
+  const initialLanguages: LanguagePair[] = initialData?.languages?.map((lang: string) => {
+    const parts = lang.split('→');
+    return {
+      source: parts[0]?.trim() || '',
+      target: parts[1]?.trim() || ''
+    };
+  }).filter(lang => lang.source && lang.target) || [];
+
+  const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
+
+  const defaultValues: InterpreterFormData = {
+    email: initialData?.email || "",
+    first_name: initialData?.first_name || "",
+    last_name: initialData?.last_name || "",
+    active: initialData?.active ?? true,
+    tarif_15min: initialData?.tarif_15min || 0,
+    tarif_5min: initialData?.tarif_5min || 0,
+    employment_status: initialData?.employment_status || "salaried_aft",
+    languages: languages,
+    address: initialData?.address,
+    password: "",
+  };
 
   const form = useForm<InterpreterFormData>({
-    defaultValues: {
-      ...initialData,
-      languages: languages,
-    } || {
-      email: "",
-      first_name: "",
-      last_name: "",
-      active: true,
-      tarif_15min: 0,
-      tarif_5min: 0,
-      employment_status: "salaried_aft",
-      languages: [],
-      address: undefined,
-      password: "",
-    },
+    defaultValues,
   });
 
   const handleSubmit = async (data: InterpreterFormData) => {
@@ -89,15 +90,14 @@ export const InterpreterProfileForm = ({
       setPasswordError("Les mots de passe ne correspondent pas");
       return;
     }
-    if (password) {
-      data.password = password;
-    }
-    // Transform languages to the format expected by the backend
-    const formattedData = {
+    
+    const submissionData: InterpreterFormData = {
       ...data,
-      languages: languages.map(lang => `${lang.source} → ${lang.target}`)
+      password: password || undefined,
+      languages: languages // Use the languages from state
     };
-    await onSubmit(formattedData);
+
+    await onSubmit(submissionData);
   };
 
   return (
