@@ -85,13 +85,6 @@ export const useRealtimeSubscription = ({
 
     console.log('[useRealtimeSubscription] Setting up channel:', channelName);
 
-    const changes = {
-      schema: 'public',
-      table: tableToWatch,
-      event: '*',
-      ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {}),
-    };
-
     channelRef.current = supabase.channel(channelName)
       .on('presence', { event: 'sync' }, () => {
         console.log('[useRealtimeSubscription] Channel synced');
