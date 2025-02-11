@@ -48,18 +48,17 @@ export const useRealtimeSubscription = ({
         vendor: navigator.vendor,
       };
 
-      await supabase
-        .from('subscription_status')
-        .upsert({
-          user_id: user.id,
-          current_status: status,
-          device_info: deviceInfo,
-          channel_ids: [channelName],
-          last_successful_connection: status === 'connected' ? new Date().toISOString() : undefined,
-          retry_count: retryCountRef.current,
-        }, {
-          onConflict: 'user_id',
-        });
+      // Stockons les informations de connexion dans localStorage plutôt que dans la base
+      const connectionInfo = {
+        userId: user.id,
+        status,
+        deviceInfo,
+        channelName,
+        lastUpdate: new Date().toISOString(),
+        retryCount: retryCountRef.current,
+      };
+      localStorage.setItem(`connection_status_${channelName}`, JSON.stringify(connectionInfo));
+      
     } catch (error) {
       console.error('[useRealtimeSubscription] Error updating status:', error);
     }
@@ -102,53 +101,62 @@ export const useRealtimeSubscription = ({
       })
       .on('system', { event: '*' }, (payload) => {
         console.log('[useRealtimeSubscription] System event:', payload);
-      })
-      .on(
-        'postgres_changes',
-        changes,
-        (payload) => {
-          console.log('[useRealtimeSubscription] DB change:', payload);
-          // Les composants qui utilisent ce hook peuvent accéder aux événements via leur propre callback
-        }
-      )
-      .subscribe(async (status) => {
-        console.log('[useRealtimeSubscription] Subscription status:', status);
-
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
-          setError(null);
-          retryCountRef.current = 0;
-          clearRetryTimeout();
-          await updateSubscriptionStatus('connected');
-        } else if (status === 'CHANNEL_ERROR') {
-          setIsConnected(false);
-          setError(new Error('Connection error'));
-          await updateSubscriptionStatus('error');
-          
-          if (retryCountRef.current < MAX_RETRIES) {
-            const delay = Math.min(
-              INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
-              MAX_RETRY_DELAY
-            );
-            
-            console.log(`[useRealtimeSubscription] Retrying in ${delay}ms (attempt ${retryCountRef.current + 1}/${MAX_RETRIES})`);
-            
-            retryTimeoutRef.current = window.setTimeout(() => {
-              retryCountRef.current++;
-              setupChannel();
-            }, delay);
-          } else {
-            console.error('[useRealtimeSubscription] Max retries reached');
-            toast({
-              title: "Erreur de connexion",
-              description: "Impossible de se reconnecter après plusieurs tentatives",
-              variant: "destructive",
-            });
-          }
-        }
       });
 
-  }, [channelName, tableToWatch, filter, filterValue, toast, updateSubscriptionStatus]);
+    // Ajout correct des écouteurs de changements PostgreSQL
+    eventTypes.forEach(eventType => {
+      channelRef.current?.on(
+        'postgres_changes',
+        {
+          event: eventType,
+          schema: 'public',
+          table: tableToWatch,
+          ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {})
+        },
+        (payload) => {
+          console.log(`[useRealtimeSubscription] ${eventType} event:`, payload);
+        }
+      );
+    });
+
+    channelRef.current.subscribe(async (status) => {
+      console.log('[useRealtimeSubscription] Subscription status:', status);
+
+      if (status === 'SUBSCRIBED') {
+        setIsConnected(true);
+        setError(null);
+        retryCountRef.current = 0;
+        clearRetryTimeout();
+        await updateSubscriptionStatus('connected');
+      } else if (status === 'CHANNEL_ERROR') {
+        setIsConnected(false);
+        setError(new Error('Connection error'));
+        await updateSubscriptionStatus('error');
+        
+        if (retryCountRef.current < MAX_RETRIES) {
+          const delay = Math.min(
+            INITIAL_RETRY_DELAY * Math.pow(2, retryCountRef.current),
+            MAX_RETRY_DELAY
+          );
+          
+          console.log(`[useRealtimeSubscription] Retrying in ${delay}ms (attempt ${retryCountRef.current + 1}/${MAX_RETRIES})`);
+          
+          retryTimeoutRef.current = window.setTimeout(() => {
+            retryCountRef.current++;
+            setupChannel();
+          }, delay);
+        } else {
+          console.error('[useRealtimeSubscription] Max retries reached');
+          toast({
+            title: "Erreur de connexion",
+            description: "Impossible de se reconnecter après plusieurs tentatives",
+            variant: "destructive",
+          });
+        }
+      }
+    });
+
+  }, [channelName, tableToWatch, filter, filterValue, eventTypes, toast, updateSubscriptionStatus]);
 
   useEffect(() => {
     setupChannel();
