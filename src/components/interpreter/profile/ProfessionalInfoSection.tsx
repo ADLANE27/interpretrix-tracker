@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LanguageSelector, LanguagePair } from "../LanguageSelector";
 
-type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
 interface ProfessionalInfoProps {
   employmentStatus: EmploymentStatus;
@@ -39,6 +39,7 @@ export const ProfessionalInfoSection = ({
             <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
             <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
             <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+            <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
             <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
           </SelectContent>
         </Select>

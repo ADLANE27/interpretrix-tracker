@@ -687,6 +687,7 @@ export type Database = {
         | "salaried_aftcom"
         | "salaried_planet"
         | "self_employed"
+        | "permanent_interpreter"
       interpreter_specialization:
         | "medical"
         | "legal"

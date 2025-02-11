@@ -22,7 +22,7 @@ interface InterpreterCardProps {
     id: string;
     name: string;
     status: "available" | "unavailable" | "pause" | "busy";
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
     hourlyRate?: number;
     phone_number?: string | null;
@@ -42,6 +42,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aft: "Salarié AFTrad",
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
+  permanent_interpreter: "Interprète permanent",
   self_employed: "Auto-entrepreneur",
 };
 

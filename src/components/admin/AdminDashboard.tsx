@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -23,7 +22,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
@@ -44,7 +43,6 @@ export const AdminDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Sort languages once during component initialization
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
   const resetAllFilters = () => {
@@ -317,6 +315,7 @@ export const AdminDashboard = () => {
                       <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
                       <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                       <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                      <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                       <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
                     </SelectContent>
                   </Select>
