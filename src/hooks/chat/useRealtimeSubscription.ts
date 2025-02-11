@@ -85,7 +85,10 @@ export const useRealtimeSubscription = ({
 
     console.log('[useRealtimeSubscription] Setting up channel:', channelName);
 
-    channelRef.current = supabase.channel(channelName)
+    channelRef.current = supabase.channel(channelName);
+
+    // Ajout des écouteurs de présence et système
+    channelRef.current
       .on('presence', { event: 'sync' }, () => {
         console.log('[useRealtimeSubscription] Channel synced');
       })
@@ -96,20 +99,22 @@ export const useRealtimeSubscription = ({
         console.log('[useRealtimeSubscription] System event:', payload);
       });
 
-    // Ajout correct des écouteurs de changements PostgreSQL
+    // Ajout des écouteurs de changements PostgreSQL
     eventTypes.forEach(eventType => {
-      channelRef.current?.on(
-        'postgres_changes',
-        {
-          event: eventType,
-          schema: 'public',
-          table: tableToWatch,
-          ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {})
-        },
-        (payload) => {
-          console.log(`[useRealtimeSubscription] ${eventType} event:`, payload);
-        }
-      );
+      if (channelRef.current) {
+        channelRef.current.on(
+          'postgres_changes',
+          {
+            event: eventType,
+            schema: 'public',
+            table: tableToWatch,
+            ...(filter && filterValue ? { filter: `${filter}=eq.${filterValue}` } : {})
+          },
+          (payload) => {
+            console.log(`[useRealtimeSubscription] ${eventType} event:`, payload);
+          }
+        );
+      }
     });
 
     channelRef.current.subscribe(async (status) => {
