@@ -50,6 +50,41 @@ const employmentStatusLabels: Record<string, string> = {
 export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [showAllMissions, setShowAllMissions] = useState(false);
+  const [localTarifs, setLocalTarifs] = useState({
+    tarif_5min: interpreter.tarif_5min || 0,
+    tarif_15min: interpreter.tarif_15min || 0
+  });
+
+  useEffect(() => {
+    setLocalTarifs({
+      tarif_5min: interpreter.tarif_5min || 0,
+      tarif_15min: interpreter.tarif_15min || 0
+    });
+  }, [interpreter.tarif_5min, interpreter.tarif_15min]);
+
+  useEffect(() => {
+    const fetchTarifs = async () => {
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('tarif_5min, tarif_15min')
+        .eq('id', interpreter.id)
+        .single();
+
+      if (error) {
+        console.error('[InterpreterCard] Error fetching tarifs:', error);
+        return;
+      }
+
+      if (data) {
+        setLocalTarifs({
+          tarif_5min: data.tarif_5min || 0,
+          tarif_15min: data.tarif_15min || 0
+        });
+      }
+    };
+
+    fetchTarifs();
+  }, [interpreter.id]);
 
   useEffect(() => {
     console.log('[InterpreterCard] Initial tariffs:', {
@@ -141,17 +176,8 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
-  const isTarifValid = (tarif: number | null | undefined): boolean => {
-    const isValid = typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
-    console.log('[InterpreterCard] Tarif validation:', {
-      tarif,
-      type: typeof tarif,
-      isValid,
-      isNumber: typeof tarif === 'number',
-      isPositive: tarif > 0,
-      isNotNaN: !isNaN(Number(tarif))
-    });
-    return isValid;
+  const isTarifValid = (tarif: number): boolean => {
+    return typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
   };
 
   console.log('[InterpreterCard] Complete interpreter data:', JSON.stringify(interpreter, null, 2));
@@ -206,20 +232,22 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             <span className="text-sm">{interpreter.phone_number}</span>
           </div>
         )}
-        
-        {isTarifValid(interpreter.tarif_15min) && (
-          <div className="flex items-center gap-2">
-            <Euro className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">{interpreter.tarif_15min}€/15min</span>
-          </div>
-        )}
 
-        {isTarifValid(interpreter.tarif_5min) && (
-          <div className="flex items-center gap-2">
-            <Euro className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">{interpreter.tarif_5min}€/5min</span>
-          </div>
-        )}
+        <div className="space-y-1">
+          {isTarifValid(localTarifs.tarif_15min) && (
+            <div className="flex items-center gap-2">
+              <Euro className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">{localTarifs.tarif_15min}€/15min</span>
+            </div>
+          )}
+
+          {isTarifValid(localTarifs.tarif_5min) && (
+            <div className="flex items-center gap-2">
+              <Euro className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">{localTarifs.tarif_5min}€/5min</span>
+            </div>
+          )}
+        </div>
 
         {nextMission && (
           <div className="mt-4 border-t pt-3 space-y-2">
