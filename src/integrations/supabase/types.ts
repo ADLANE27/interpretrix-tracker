@@ -666,7 +666,11 @@ export type Database = {
       }
     }
     Enums: {
-      employment_status: "salaried" | "self_employed"
+      employment_status:
+        | "salaried_aft"
+        | "salaried_aftcom"
+        | "salaried_planet"
+        | "self_employed"
       interpreter_specialization:
         | "medical"
         | "legal"

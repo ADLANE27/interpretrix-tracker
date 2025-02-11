@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,7 @@ export interface InterpreterFormData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status: "salaried" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   languages: LanguagePair[];
   address?: Address;
   password?: string;
@@ -66,7 +67,7 @@ export const InterpreterProfileForm = ({
       last_name: "",
       active: true,
       tarif_15min: 0,
-      employment_status: "salaried",
+      employment_status: "salaried_aft",
       languages: [],
       address: undefined,
       password: "",
@@ -145,7 +146,9 @@ export const InterpreterProfileForm = ({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="salaried">Salarié</SelectItem>
+                  <SelectItem value="salaried_aft">Salarié AFT</SelectItem>
+                  <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                  <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                   <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
                 </SelectContent>
               </Select>
