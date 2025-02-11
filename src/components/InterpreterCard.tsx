@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -53,6 +52,20 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [showAllMissions, setShowAllMissions] = useState(false);
 
   useEffect(() => {
+    console.log('[InterpreterCard] Initial tariffs:', {
+      tarif_5min: {
+        value: interpreter.tarif_5min,
+        type: typeof interpreter.tarif_5min,
+        isValid: typeof interpreter.tarif_5min === 'number' && interpreter.tarif_5min > 0
+      },
+      tarif_15min: {
+        value: interpreter.tarif_15min,
+        type: typeof interpreter.tarif_15min,
+        isValid: typeof interpreter.tarif_15min === 'number' && interpreter.tarif_15min > 0
+      },
+      interpreter_id: interpreter.id
+    });
+
     const fetchMissions = async () => {
       const { data, error } = await supabase
         .from('interpretation_missions')
@@ -128,10 +141,20 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
-  // Fonction pour vérifier si un tarif est valide
   const isTarifValid = (tarif: number | null | undefined): boolean => {
-    return typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
+    const isValid = typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
+    console.log('[InterpreterCard] Tarif validation:', {
+      tarif,
+      type: typeof tarif,
+      isValid,
+      isNumber: typeof tarif === 'number',
+      isPositive: tarif > 0,
+      isNotNaN: !isNaN(Number(tarif))
+    });
+    return isValid;
   };
+
+  console.log('[InterpreterCard] Complete interpreter data:', JSON.stringify(interpreter, null, 2));
 
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
@@ -275,4 +298,3 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
-
