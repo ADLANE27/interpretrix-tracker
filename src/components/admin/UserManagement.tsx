@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,7 @@ interface UserData {
   active: boolean;
   role: "admin" | "interpreter";
   tarif_15min: number;
+  tarif_5min: number;
   employment_status: EmploymentStatus;
   languages?: string[];
   status?: string;
@@ -76,7 +78,8 @@ export const UserManagement = () => {
           ...profile,
           active: userRole?.active ?? false,
           role: userRole?.role ?? 'interpreter',
-          employment_status: profile.employment_status || 'salaried_aft'
+          employment_status: profile.employment_status || 'salaried_aft',
+          tarif_5min: profile.tarif_5min || 0
         };
       });
 
@@ -98,6 +101,7 @@ export const UserManagement = () => {
                 last_name: "",
                 active: userRole.active || false,
                 tarif_15min: 0,
+                tarif_5min: 0,
                 employment_status: 'salaried_aft' as EmploymentStatus
               };
             }
@@ -111,6 +115,7 @@ export const UserManagement = () => {
               last_name: userData.last_name || "",
               active: userRole.active || false,
               tarif_15min: 0,
+              tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
             };
           })
