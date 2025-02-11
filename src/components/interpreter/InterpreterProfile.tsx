@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { AddressSection } from "./profile/AddressSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
+
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
 
 interface Address {
   street: string;
@@ -27,7 +30,7 @@ interface Profile {
   landline_phone: string | null;
   address: Address | null;
   nationality: string | null;
-  employment_status: "salaried" | "self_employed";
+  employment_status: EmploymentStatus;
   languages: LanguagePair[];
   tarif_15min: number;
 }
@@ -80,7 +83,7 @@ export const InterpreterProfile = () => {
       });
 
       // Safely transform the address from JSON
-      const addressData = data.address as { street: string; postal_code: string; city: string } | null;
+      const addressData = data.address as { street: string; postal_code: string; city: string; } | null;
       const transformedAddress: Address | null = addressData ? {
         street: addressData.street || "",
         postal_code: addressData.postal_code || "",

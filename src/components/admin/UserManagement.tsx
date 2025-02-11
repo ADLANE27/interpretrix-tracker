@@ -27,8 +27,9 @@ interface UserData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status?: "salaried" | "self_employed";
+  employment_status?: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   languages?: string[];
+  status?: string;
 }
 
 export const UserManagement = () => {
@@ -107,6 +108,7 @@ export const UserManagement = () => {
             tarif_15min: profile.tarif_15min || 0,
             employment_status: profile.employment_status,
             languages: profile.languages,
+            status: profile.status,
           };
         })
       );

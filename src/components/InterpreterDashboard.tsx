@@ -26,7 +26,7 @@ interface Profile {
   email: string;
   phone_number: string | null;
   languages: { source: string; target: string }[];
-  employment_status: "salaried" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   status: "available" | "busy" | "pause" | "unavailable";
   address: {
     street: string;
