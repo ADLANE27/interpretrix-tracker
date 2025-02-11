@@ -128,8 +128,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
-  // Log the interpreter object to debug rates
-  console.log('[InterpreterCard] Interpreter data:', interpreter);
+  // Fonction pour vérifier si un tarif est valide
+  const isTarifValid = (tarif: number | null | undefined): boolean => {
+    return typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
+  };
 
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
@@ -182,14 +184,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
         
-        {typeof interpreter.tarif_15min === 'number' && interpreter.tarif_15min > 0 && (
+        {isTarifValid(interpreter.tarif_15min) && (
           <div className="flex items-center gap-2">
             <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_15min}€/15min</span>
           </div>
         )}
 
-        {typeof interpreter.tarif_5min === 'number' && interpreter.tarif_5min > 0 && (
+        {isTarifValid(interpreter.tarif_5min) && (
           <div className="flex items-center gap-2">
             <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_5min}€/5min</span>
@@ -273,3 +275,4 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
+
