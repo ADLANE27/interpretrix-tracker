@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,12 +23,11 @@ import { InterpreterList } from "./InterpreterList";
 interface UserData {
   id: string;
   email: string;
-  role: "admin" | "interpreter";
   first_name: string;
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages?: string[];
   status?: string;
 }

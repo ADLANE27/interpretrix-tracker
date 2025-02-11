@@ -8,7 +8,7 @@ import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { AddressSection } from "./profile/AddressSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
 
-type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
 interface Address {
   street: string;
