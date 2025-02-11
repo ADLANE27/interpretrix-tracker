@@ -52,6 +52,21 @@ interface InterpreterListProps {
   onResetPassword: (userId: string) => void;
 }
 
+const getEmploymentStatusLabel = (status?: string): string => {
+  switch (status) {
+    case "salaried_aft":
+      return "Salarié AFTrad";
+    case "salaried_aftcom":
+      return "Salarié AFTCOM";
+    case "salaried_planet":
+      return "Salarié PLANET";
+    case "self_employed":
+      return "Auto-entrepreneur";
+    default:
+      return "Non spécifié";
+  }
+};
+
 export const InterpreterList = ({
   interpreters,
   onToggleStatus,
@@ -113,6 +128,7 @@ export const InterpreterList = ({
                 <TableHead>Nom</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Statut</TableHead>
+                <TableHead>Statut professionnel</TableHead>
                 <TableHead>Tarif (15 min)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -135,6 +151,7 @@ export const InterpreterList = ({
                       {interpreter.active ? "Actif" : "Inactif"}
                     </span>
                   </TableCell>
+                  <TableCell>{getEmploymentStatusLabel(interpreter.employment_status)}</TableCell>
                   <TableCell>{interpreter.tarif_15min} €</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
