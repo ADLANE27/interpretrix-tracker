@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
+import { Badge } from "../ui/badge";
 
 interface Interpreter {
   id: string;
@@ -24,7 +26,6 @@ interface Interpreter {
   status: "available" | "unavailable" | "pause" | "busy";
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: string[];
-  phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
   nationality: string | null;
@@ -86,7 +87,6 @@ export const AdminDashboard = () => {
       status: validateStatus(item.status),
       employment_status: item.employment_status,
       languages: item.languages,
-      phone_interpretation_rate: item.phone_interpretation_rate,
       phone_number: item.phone_number,
       birth_country: item.birth_country,
       nationality: item.nationality,
@@ -222,9 +222,7 @@ export const AdminDashboard = () => {
               <TabsTrigger value="missions">Missions</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-              <TabsTrigger value="guide">
-                Guide d'utilisation
-              </TabsTrigger>
+              <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
             </TabsList>
             <Button 
               variant="outline" 
@@ -338,7 +336,10 @@ export const AdminDashboard = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="rate-sort">Trier par tarif</Label>
-                  <Select value={rateSort} onValueChange={setRateSort}>
+                  <Select
+                    value={rateSort}
+                    onValueChange={(value: "none" | "asc" | "desc") => setRateSort(value)}
+                  >
                     <SelectTrigger id="rate-sort">
                       <SelectValue placeholder="Trier par tarif" />
                     </SelectTrigger>
