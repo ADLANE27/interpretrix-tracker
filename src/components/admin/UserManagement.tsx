@@ -222,7 +222,7 @@ export const UserManagement = () => {
 
       const { data: profile, error: profileCheckError } = await supabase
         .from("interpreter_profiles")
-        .select("password_changed")
+        .select("password_changed, languages")
         .eq("id", selectedUser.id)
         .single();
 
@@ -238,8 +238,11 @@ export const UserManagement = () => {
       }
 
       const languageStrings = formData.languages.map(
-        (pair) => `${pair.source} → ${pair.target}`
+        (pair) => `${pair.source}→${pair.target}`
       );
+
+      const existingLanguages = Array.isArray(profile.languages) ? profile.languages : [];
+      const updatedLanguages = languageStrings.length > 0 ? languageStrings : existingLanguages;
 
       const addressJson = formData.address ? {
         street: formData.address.street,
@@ -254,7 +257,7 @@ export const UserManagement = () => {
           last_name: formData.last_name,
           email: formData.email,
           employment_status: formData.employment_status,
-          languages: languageStrings,
+          languages: updatedLanguages,
           address: addressJson,
           tarif_15min: formData.tarif_15min,
           tarif_5min: formData.tarif_5min
