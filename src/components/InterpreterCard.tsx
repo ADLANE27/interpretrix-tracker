@@ -1,6 +1,7 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
