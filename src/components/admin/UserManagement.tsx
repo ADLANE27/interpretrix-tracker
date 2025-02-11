@@ -56,34 +56,50 @@ export const UserManagement = () => {
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
+      // Premièrement, récupérer tous les rôles utilisateurs
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
 
       if (rolesError) throw rolesError;
 
+      // Ensuite, récupérer les profils d'interprètes avec une jointure
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select("*");
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          employment_status,
+          languages,
+          status,
+          tarif_15min,
+          tarif_5min
+        `);
 
       if (interpreterError) throw interpreterError;
 
+      // Créer une Map pour un accès rapide aux rôles utilisateurs
       const userRolesMap = new Map(
         userRoles.map(role => [role.user_id, role])
       );
 
+      // Combiner les données des interprètes avec leurs rôles
       const interpretersWithStatus = interpreterProfiles.map(profile => {
         const userRole = userRolesMap.get(profile.id);
         return {
           ...profile,
           active: userRole?.active ?? false,
-          role: userRole?.role ?? 'interpreter',
+          role: 'interpreter' as const,
           employment_status: profile.employment_status || 'salaried_aft',
-          tarif_5min: profile.tarif_5min || 0
+          tarif_5min: profile.tarif_5min || 0,
+          tarif_15min: profile.tarif_15min || 0
         };
       });
 
-      const usersData: UserData[] = await Promise.all(
+      // Récupérer les données des administrateurs
+      const adminUsers: UserData[] = await Promise.all(
         userRoles
           .filter(role => role.role === 'admin')
           .map(async (userRole) => {
@@ -121,7 +137,7 @@ export const UserManagement = () => {
           })
       );
 
-      return [...usersData, ...interpretersWithStatus] as UserData[];
+      return [...adminUsers, ...interpretersWithStatus] as UserData[];
     },
   });
 
