@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Headset, Edit, Trash2, Search } from "lucide-react";
 import {
@@ -32,6 +31,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StatusFilter } from "@/components/StatusFilter";
 
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+
 interface InterpreterData {
   id: string;
   email: string;
@@ -39,7 +40,7 @@ interface InterpreterData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
+  employment_status: EmploymentStatus;
   languages?: string[];
   status?: string;
 }
@@ -57,6 +58,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
   self_employed: "Auto-entrepreneur",
+  permanent_interpreter: "Interprète permanent",
 };
 
 const getEmploymentStatusLabel = (status?: string): string => {
@@ -128,6 +130,7 @@ export const InterpreterList = ({
                   <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                   <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                   <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                  <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

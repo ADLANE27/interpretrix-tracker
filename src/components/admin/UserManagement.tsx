@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,16 +19,23 @@ import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+
 interface UserData {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   active: boolean;
+  role: "admin" | "interpreter";
   tarif_15min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: EmploymentStatus;
   languages?: string[];
   status?: string;
+}
+
+interface InterpreterData extends Omit<UserData, 'role'> {
+  employment_status: EmploymentStatus;
 }
 
 export const UserManagement = () => {
@@ -92,7 +98,7 @@ export const UserManagement = () => {
                 last_name: "",
                 active: userRole.active || false,
                 tarif_15min: 0,
-                employment_status: 'salaried_aft'
+                employment_status: 'salaried_aft' as EmploymentStatus
               };
             }
 
@@ -105,12 +111,12 @@ export const UserManagement = () => {
               last_name: userData.last_name || "",
               active: userRole.active || false,
               tarif_15min: 0,
-              employment_status: 'salaried_aft'
+              employment_status: 'salaried_aft' as EmploymentStatus
             };
           })
       );
 
-      return [...usersData, ...interpretersWithStatus];
+      return [...usersData, ...interpretersWithStatus] as UserData[];
     },
   });
 
