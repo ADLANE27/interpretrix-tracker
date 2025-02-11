@@ -1,4 +1,7 @@
 
+import { Badge } from "./ui/badge";
+import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
+
 interface InterpreterCardProps {
   interpreter: {
     id: string;
