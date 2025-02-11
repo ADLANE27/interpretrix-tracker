@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -310,6 +309,23 @@ export const InterpreterDashboard = () => {
     }
   };
 
+  const canAccessCalendar = profile?.employment_status === 'self_employed' || profile?.employment_status === 'salaried_aft';
+
+  const tabItems = [
+    { value: "missions", label: "Missions" },
+    ...(canAccessCalendar ? [{ value: "calendar", label: "Calendrier" }] : []),
+    { value: "messaging", label: "Messagerie" },
+    { value: "profile", label: "Mon Profil" },
+  ];
+
+  const handleTabChange = (value: string) => {
+    if (value === "calendar" && !canAccessCalendar) {
+      value = "missions";
+    }
+    setActiveTab(value);
+    setIsSheetOpen(false);
+  };
+
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -327,18 +343,6 @@ export const InterpreterDashboard = () => {
       />
     );
   }
-
-  const tabItems = [
-    { value: "missions", label: "Missions" },
-    { value: "calendar", label: "Calendrier" },
-    { value: "messaging", label: "Messagerie" },
-    { value: "profile", label: "Mon Profil" },
-  ];
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    setIsSheetOpen(false);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -437,7 +441,7 @@ export const InterpreterDashboard = () => {
 
             <div className="p-2 sm:p-6 min-h-[600px]">
               {activeTab === "missions" && <MissionsTab />}
-              {activeTab === "calendar" && (
+              {activeTab === "calendar" && canAccessCalendar && (
                 <MissionsCalendar missions={scheduledMissions} />
               )}
               {activeTab === "messaging" && <MessagingTab />}
