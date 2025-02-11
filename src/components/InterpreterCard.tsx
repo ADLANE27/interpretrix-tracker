@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
@@ -25,8 +24,8 @@ interface InterpreterCardProps {
     status: "available" | "unavailable" | "pause" | "busy";
     employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
-    tarif_15min?: number;
-    tarif_5min?: number;
+    tarif_15min?: number | null;
+    tarif_5min?: number | null;
     phone_number?: string | null;
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
@@ -270,4 +269,3 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
-
