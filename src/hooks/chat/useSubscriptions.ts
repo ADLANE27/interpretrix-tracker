@@ -1,8 +1,16 @@
 
-import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useRealtimeSubscription } from './useRealtimeSubscription';
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+// Remove retry limit for better iOS PWA support
+const handleVisibilityChange = (channel: RealtimeChannel) => {
+  if (document.visibilityState === 'visible') {
+    channel.subscribe();
+  } else {
+    channel.unsubscribe();
+  }
+};
 
 export const useSubscriptions = (
   channelId: string,
@@ -13,50 +21,89 @@ export const useSubscriptions = (
 ) => {
   const { toast } = useToast();
 
-  const handleSubscriptionError = useCallback(() => {
+  const handleSubscriptionError = () => {
+    // Instead of limiting retries, we'll reconnect when the app becomes visible
     toast({
       title: "Problème de connexion",
       description: "Tentative de reconnexion en cours...",
       variant: "destructive",
     });
     setRetryCount(retryCount + 1);
-  }, [retryCount, setRetryCount, toast]);
+  };
 
-  const subscribeToMessages = useCallback(() => {
+  const subscribeToMessages = () => {
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
-    const { isConnected, error } = useRealtimeSubscription({
-      channelName: `messages:${channelId}`,
-      tableToWatch: 'chat_messages',
-      filter: 'channel_id',
-      filterValue: channelId,
-    });
+    const channel = supabase
+      .channel(`messages:${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        async (payload) => {
+          console.log('[Chat] Received real-time update:', payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            await fetchMessages();
+          } else {
+            await fetchMessages();
+          }
+          
+          if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
+            toast({
+              title: "Nouveau message",
+              description: "Un nouveau message a été reçu",
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Chat] Subscription status:', status);
+        if (status === 'CHANNEL_ERROR') {
+          handleSubscriptionError();
+        }
+      });
 
-    if (!isConnected && error) {
-      handleSubscriptionError();
-    }
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
 
-    // Return a dummy channel for backward compatibility
-    return supabase.channel(`messages:${channelId}`);
-  }, [channelId, handleSubscriptionError]);
+    return channel;
+  };
 
-  const subscribeToMentions = useCallback(() => {
+  const subscribeToMentions = () => {
     console.log('[Chat] Setting up mentions subscription');
     
-    const { isConnected, error } = useRealtimeSubscription({
-      channelName: `mentions:${channelId}`,
-      tableToWatch: 'message_mentions',
-      filter: 'channel_id',
-      filterValue: channelId,
-    });
+    const channel = supabase
+      .channel(`mentions:${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_mentions',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        async (payload) => {
+          console.log('[Chat] Received mention update:', payload);
+          if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
+            toast({
+              title: "New Mention",
+              description: "You were mentioned in a message",
+            });
+          }
+        }
+      )
+      .subscribe();
 
-    if (!isConnected && error) {
-      handleSubscriptionError();
-    }
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
 
-    // Return a dummy channel for backward compatibility
-    return supabase.channel(`mentions:${channelId}`);
-  }, [channelId, handleSubscriptionError]);
+    return channel;
+  };
 
   return {
     handleSubscriptionError,
