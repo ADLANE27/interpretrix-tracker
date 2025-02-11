@@ -128,6 +128,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
+  // Log the interpreter object to debug rates
+  console.log('[InterpreterCard] Interpreter data:', interpreter);
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -179,14 +182,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
         
-        {(interpreter.tarif_15min ?? 0) > 0 && (
+        {typeof interpreter.tarif_15min === 'number' && interpreter.tarif_15min > 0 && (
           <div className="flex items-center gap-2">
             <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_15min}€/15min</span>
           </div>
         )}
 
-        {(interpreter.tarif_5min ?? 0) > 0 && (
+        {typeof interpreter.tarif_5min === 'number' && interpreter.tarif_5min > 0 && (
           <div className="flex items-center gap-2">
             <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_5min}€/5min</span>
