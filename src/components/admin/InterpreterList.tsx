@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,6 +78,18 @@ export const InterpreterList = ({
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState<string | null>(null);
+
+  // Format interpreter data to match the expected format for the InterpreterCard
+  const formatInterpreterForDisplay = (interpreter: InterpreterData) => {
+    return {
+      id: interpreter.id,
+      name: `${interpreter.first_name} ${interpreter.last_name}`,
+      status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
+      employment_status: interpreter.employment_status,
+      languages: Array.isArray(interpreter.languages) ? interpreter.languages : [],
+      hourlyRate: interpreter.tarif_15min * 4, // Convert 15min rate to hourly rate
+    };
+  };
 
   const filteredInterpreters = interpreters.filter((interpreter) => {
     const matchesSearch =
