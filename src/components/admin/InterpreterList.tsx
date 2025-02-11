@@ -81,9 +81,18 @@ export const InterpreterList = ({
 
   // Format interpreter data to match the expected format for the InterpreterCard
   const formatInterpreterForDisplay = (interpreter: InterpreterData) => {
-    // S'assurer que les langues sont correctement formatées
+    // S'assurer que les langues sont correctement formatées et non vides
     const languages = Array.isArray(interpreter.languages) 
-      ? interpreter.languages.filter(lang => lang && lang.includes('→')) 
+      ? interpreter.languages
+          .filter(lang => lang && typeof lang === 'string')
+          .map(lang => {
+            const [source, target] = lang.split('→').map(l => l.trim());
+            if (source && target) {
+              return `${source}→${target}`;
+            }
+            return null;
+          })
+          .filter(lang => lang !== null) as string[]
       : [];
 
     return {
