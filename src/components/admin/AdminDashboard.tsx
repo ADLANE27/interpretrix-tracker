@@ -42,6 +42,7 @@ export const AdminDashboard = () => {
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
+  const [rateSort, setRateSort] = useState<string>("none");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -55,6 +56,7 @@ export const AdminDashboard = () => {
     setPhoneFilter("");
     setBirthCountryFilter("all");
     setEmploymentStatusFilter("all");
+    setRateSort("none");
 
     toast({
       title: "Filtres réinitialisés",
@@ -161,45 +163,54 @@ export const AdminDashboard = () => {
     }
   };
 
-  const filteredInterpreters = interpreters.filter(interpreter => {
-    const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
-    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-    const matchesName = nameFilter === "" || 
-      `${interpreter.first_name} ${interpreter.last_name}`
-        .toLowerCase()
-        .includes(nameFilter.toLowerCase());
-    
-    const matchesSourceLanguage = sourceLanguageFilter === "all" || 
-      interpreter.languages.some(lang => {
-        const [source] = lang.split(" → ");
-        return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
-      });
+  const filteredInterpreters = interpreters
+    .filter(interpreter => {
+      const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
+      const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+      const matchesName = nameFilter === "" || 
+        `${interpreter.first_name} ${interpreter.last_name}`
+          .toLowerCase()
+          .includes(nameFilter.toLowerCase());
+      
+      const matchesSourceLanguage = sourceLanguageFilter === "all" || 
+        interpreter.languages.some(lang => {
+          const [source] = lang.split(" → ");
+          return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
+        });
 
-    const matchesTargetLanguage = targetLanguageFilter === "all" || 
-      interpreter.languages.some(lang => {
-        const [, target] = lang.split(" → ");
-        return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
-      });
+      const matchesTargetLanguage = targetLanguageFilter === "all" || 
+        interpreter.languages.some(lang => {
+          const [, target] = lang.split(" → ");
+          return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
+        });
 
-    const matchesPhone = phoneFilter === "" || 
-      (interpreter.phone_number && 
-       interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
+      const matchesPhone = phoneFilter === "" || 
+        (interpreter.phone_number && 
+         interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
 
-    const matchesBirthCountry = birthCountryFilter === "all" ||
-      (interpreter.birth_country === birthCountryFilter);
+      const matchesBirthCountry = birthCountryFilter === "all" ||
+        (interpreter.birth_country === birthCountryFilter);
 
-    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
-      interpreter.employment_status === employmentStatusFilter;
+      const matchesEmploymentStatus = employmentStatusFilter === "all" || 
+        interpreter.employment_status === employmentStatusFilter;
 
-    return isNotAdmin &&
-           matchesStatus && 
-           matchesName && 
-           matchesSourceLanguage && 
-           matchesTargetLanguage && 
-           matchesPhone && 
-           matchesBirthCountry &&
-           matchesEmploymentStatus;
-  });
+      return isNotAdmin &&
+             matchesStatus && 
+             matchesName && 
+             matchesSourceLanguage && 
+             matchesTargetLanguage && 
+             matchesPhone && 
+             matchesBirthCountry &&
+             matchesEmploymentStatus;
+    })
+    .sort((a, b) => {
+      if (rateSort === "rate-asc") {
+        const rateA = (a.tarif_15min ?? 0);
+        const rateB = (b.tarif_15min ?? 0);
+        return rateA - rateB;
+      }
+      return 0;
+    });
 
   return (
     <>
@@ -321,6 +332,19 @@ export const AdminDashboard = () => {
                       <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                       <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                       <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rate-sort">Trier par tarif</Label>
+                  <Select value={rateSort} onValueChange={setRateSort}>
+                    <SelectTrigger id="rate-sort">
+                      <SelectValue placeholder="Trier par tarif" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Pas de tri</SelectItem>
+                      <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
