@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
@@ -110,6 +111,19 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const additionalMissions = missions.slice(1);
   const hasAdditionalMissions = additionalMissions.length > 0;
 
+  // Fonction pour parser les langues
+  const parseLanguages = (languages: string[]) => {
+    return languages.map(lang => {
+      const parts = lang.split(' → ').map(part => part.trim());
+      return {
+        source: parts[0] || '',
+        target: parts[1] || ''
+      };
+    });
+  };
+
+  const parsedLanguages = parseLanguages(interpreter.languages || []);
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -136,20 +150,17 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-gray-500" />
           <div className="flex flex-wrap gap-1">
-            {interpreter.languages.map((lang, index) => {
-              const [source, target] = lang.split(" → ");
-              return (
-                <div key={index} className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {source}
-                  </Badge>
-                  <span className="text-xs">→</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {target}
-                  </Badge>
-                </div>
-              );
-            })}
+            {parsedLanguages.map((lang, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs">
+                  {lang.source}
+                </Badge>
+                <span className="text-xs">→</span>
+                <Badge variant="secondary" className="text-xs">
+                  {lang.target}
+                </Badge>
+              </div>
+            ))}
           </div>
         </div>
 
