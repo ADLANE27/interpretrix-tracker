@@ -25,7 +25,8 @@ interface InterpreterCardProps {
     status: "available" | "unavailable" | "pause" | "busy";
     employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
-    hourlyRate?: number;
+    tarif_15min?: number;
+    tarif_5min?: number;
     phone_number?: string | null;
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
@@ -178,10 +179,17 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
         
-        {interpreter.hourlyRate && (
+        {(interpreter.tarif_15min && interpreter.tarif_15min > 0) && (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">{interpreter.hourlyRate}€/h</span>
+            <span className="text-sm">{interpreter.tarif_15min}€/15min</span>
+          </div>
+        )}
+
+        {(interpreter.tarif_5min && interpreter.tarif_5min > 0) && (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">{interpreter.tarif_5min}€/5min</span>
           </div>
         )}
 
@@ -262,3 +270,4 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
+
