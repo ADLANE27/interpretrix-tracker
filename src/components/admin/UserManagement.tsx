@@ -69,7 +69,8 @@ export const UserManagement = () => {
         return {
           ...profile,
           active: userRole?.active ?? false,
-          role: userRole?.role ?? 'interpreter'
+          role: userRole?.role ?? 'interpreter',
+          employment_status: profile.employment_status || 'salaried_aft'
         };
       });
 
@@ -91,6 +92,7 @@ export const UserManagement = () => {
                 last_name: "",
                 active: userRole.active || false,
                 tarif_15min: 0,
+                employment_status: 'salaried_aft'
               };
             }
 
@@ -103,6 +105,7 @@ export const UserManagement = () => {
               last_name: userData.last_name || "",
               active: userRole.active || false,
               tarif_15min: 0,
+              employment_status: 'salaried_aft'
             };
           })
       );

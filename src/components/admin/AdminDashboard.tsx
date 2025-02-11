@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -22,7 +23,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried" | "self_employed";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed";
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
@@ -332,7 +333,7 @@ export const AdminDashboard = () => {
                     interpreter={{
                       id: interpreter.id,
                       name: `${interpreter.first_name} ${interpreter.last_name}`,
-                      status: interpreter.status,
+                      status: interpreter.status || "unavailable",
                       employment_status: interpreter.employment_status,
                       languages: interpreter.languages,
                       hourlyRate: interpreter.phone_interpretation_rate,
