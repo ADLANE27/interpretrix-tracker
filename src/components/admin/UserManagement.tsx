@@ -39,6 +39,28 @@ interface InterpreterData extends Omit<UserData, 'role'> {
   employment_status: EmploymentStatus;
 }
 
+const formatInterpreterForDisplay = (interpreter: any) => {
+  // Ensure we have valid languages array and filter out any corrupted entries
+  const validLanguages = Array.isArray(interpreter.languages) 
+    ? interpreter.languages.filter((lang: string) => {
+        if (!lang || typeof lang !== 'string') return false;
+        const [source, target] = lang.split('→').map(part => part.trim());
+        return source && target && !source.includes('undefined') && !target.includes('undefined');
+      })
+    : [];
+
+  return {
+    id: interpreter.id,
+    name: `${interpreter.first_name} ${interpreter.last_name}`,
+    email: interpreter.email,
+    status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
+    employment_status: interpreter.employment_status,
+    languages: validLanguages,
+    hourlyRate: (interpreter.tarif_15min || 0) * 4,
+    active: interpreter.active
+  };
+};
+
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);

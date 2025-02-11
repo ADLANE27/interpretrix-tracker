@@ -114,15 +114,15 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     if (!languages || !Array.isArray(languages)) return [];
     
     return languages
-      .filter(lang => lang && typeof lang === 'string' && lang.includes('→'))
+      .filter(lang => {
+        if (!lang || typeof lang !== 'string') return false;
+        const [source, target] = lang.split('→').map(part => part.trim());
+        return source && target && !source.includes('undefined') && !target.includes('undefined');
+      })
       .map(lang => {
         const [source, target] = lang.split('→').map(part => part.trim());
-        return {
-          source: source || '',
-          target: target || ''
-        };
-      })
-      .filter(lang => lang.source && lang.target);
+        return { source, target };
+      });
   };
 
   const parsedLanguages = parseLanguages(interpreter.languages);
