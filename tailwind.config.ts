@@ -60,6 +60,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        dark: {
+          background: "#1A1F2C",
+          card: "#403E43",
+          text: "#FFFFFF",
+          muted: "#8A898C",
+          accent: "#222222",
+          highlight: "#E5DEFF"
+        }
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -84,4 +92,3 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
