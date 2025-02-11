@@ -628,6 +628,22 @@ export type Database = {
         }
         Returns: string
       }
+      get_interpreter_with_status: {
+        Args: {
+          p_interpreter_id: string
+        }
+        Returns: {
+          id: string
+          email: string
+          first_name: string
+          last_name: string
+          active: boolean
+          tarif_15min: number
+          employment_status: Database["public"]["Enums"]["employment_status"]
+          languages: string[]
+          status: string
+        }[]
+      }
       get_message_sender_details: {
         Args: {
           sender_id: string

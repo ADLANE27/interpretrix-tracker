@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,19 +57,33 @@ export const UserManagement = () => {
 
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select("*");
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          tarif_15min,
+          employment_status,
+          languages,
+          status,
+          user_roles (
+            active,
+            role
+          )
+        `);
 
       if (interpreterError) throw interpreterError;
 
-      const profilesMap = new Map(
-        interpreterProfiles.map(profile => [profile.id, profile])
-      );
+      const interpretersWithStatus = interpreterProfiles.map(profile => ({
+        ...profile,
+        active: profile.user_roles?.[0]?.active ?? false,
+        role: profile.user_roles?.[0]?.role ?? 'interpreter'
+      }));
 
       const usersData: UserData[] = await Promise.all(
-        userRoles.map(async (userRole) => {
-          const profile = profilesMap.get(userRole.user_id);
-          
-          if (!profile) {
+        userRoles
+          .filter(role => role.role === 'admin')
+          .map(async (userRole) => {
             const response = await supabase.functions.invoke('get-user-info', {
               body: { userId: userRole.user_id }
             });
@@ -96,24 +111,10 @@ export const UserManagement = () => {
               active: userRole.active || false,
               tarif_15min: 0,
             };
-          }
-
-          return {
-            id: userRole.user_id,
-            email: profile.email,
-            role: userRole.role,
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            active: userRole.active || false,
-            tarif_15min: profile.tarif_15min || 0,
-            employment_status: profile.employment_status,
-            languages: profile.languages,
-            status: profile.status,
-          };
-        })
+          })
       );
 
-      return usersData;
+      return [...usersData, ...interpretersWithStatus];
     },
   });
 
