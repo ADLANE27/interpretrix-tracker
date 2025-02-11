@@ -82,7 +82,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
     fetchMissions();
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('interpreter-missions')
       .on(
@@ -95,7 +94,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         },
         (payload) => {
           console.log('[InterpreterCard] Mission update received:', payload);
-          fetchMissions(); // Refresh missions when changes occur
+          fetchMissions();
         }
       )
       .subscribe((status) => {
@@ -111,19 +110,19 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const additionalMissions = missions.slice(1);
   const hasAdditionalMissions = additionalMissions.length > 0;
 
-  // Fonction pour parser les langues
   const parseLanguages = (languages: string[] | undefined | null) => {
     if (!languages || !Array.isArray(languages)) return [];
     
-    return languages.map(lang => {
-      if (typeof lang !== 'string') return { source: '', target: '' };
-      
-      const parts = lang.split('→').map(part => part.trim());
-      return {
-        source: parts[0] || '',
-        target: parts[1] || ''
-      };
-    }).filter(lang => lang.source && lang.target); // Ne garder que les paires valides
+    return languages
+      .filter(lang => lang && typeof lang === 'string' && lang.includes('→'))
+      .map(lang => {
+        const [source, target] = lang.split('→').map(part => part.trim());
+        return {
+          source: source || '',
+          target: target || ''
+        };
+      })
+      .filter(lang => lang.source && lang.target);
   };
 
   const parsedLanguages = parseLanguages(interpreter.languages);
@@ -186,7 +185,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
 
-        {/* Scheduled Missions Section */}
         {nextMission && (
           <div className="mt-4 border-t pt-3 space-y-2">
             <div className="flex items-center justify-between">
@@ -211,7 +209,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               )}
             </div>
 
-            {/* Next Mission */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
@@ -233,7 +230,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               </div>
             </div>
 
-            {/* Additional Missions */}
             {showAllMissions && additionalMissions.length > 0 && (
               <div className="mt-4 space-y-4">
                 {additionalMissions.map((mission, index) => (
