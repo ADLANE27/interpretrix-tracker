@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
@@ -269,3 +270,4 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
+
