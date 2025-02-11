@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Headset, Edit, Trash2, Search } from "lucide-react";
 import {
@@ -28,7 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { StatusFilter } from "@/components/StatusFilter";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
@@ -74,7 +74,6 @@ export const InterpreterList = ({
 }: InterpreterListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState<string | null>(null);
 
@@ -92,8 +91,6 @@ export const InterpreterList = ({
     return {
       id: interpreter.id,
       name: `${interpreter.first_name} ${interpreter.last_name}`,
-      status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
-      employment_status: interpreter.employment_status,
       languages,
       hourlyRate: interpreter.tarif_15min * 4,
     };
@@ -101,20 +98,18 @@ export const InterpreterList = ({
 
   const filteredInterpreters = interpreters.filter((interpreter) => {
     const matchesSearch =
-      searchQuery === "" ||
-      interpreter.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      searchQuery.length >= 3 &&
+      (interpreter.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       interpreter.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       interpreter.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (Array.isArray(interpreter.languages) && interpreter.languages.some((lang) =>
         lang.toLowerCase().includes(searchQuery.toLowerCase())
-      ));
+      )));
 
-    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-    
     const matchesEmploymentStatus = !selectedEmploymentStatus || 
       interpreter.employment_status === selectedEmploymentStatus;
 
-    return matchesSearch && matchesStatus && matchesEmploymentStatus;
+    return matchesSearch || (selectedEmploymentStatus && matchesEmploymentStatus);
   });
 
   return (
@@ -131,7 +126,7 @@ export const InterpreterList = ({
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par nom, email ou langue..."
+                placeholder="Rechercher par nom, email ou langue (minimum 3 caractères)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8"
@@ -157,81 +152,86 @@ export const InterpreterList = ({
             </div>
           </div>
 
-          <StatusFilter
-            selectedStatus={selectedStatus}
-            onStatusChange={setSelectedStatus}
-          />
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Statut professionnel</TableHead>
-                <TableHead>Tarif (15 min)</TableHead>
-                <TableHead>Tarif (5 min)</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInterpreters.map((interpreter) => (
-                <TableRow key={interpreter.id}>
-                  <TableCell>
-                    {interpreter.first_name} {interpreter.last_name}
-                  </TableCell>
-                  <TableCell>{interpreter.email}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-sm ${
-                        interpreter.active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {interpreter.active ? "Actif" : "Inactif"}
-                    </span>
-                  </TableCell>
-                  <TableCell>{getEmploymentStatusLabel(interpreter.employment_status)}</TableCell>
-                  <TableCell>{interpreter.tarif_15min} €</TableCell>
-                  <TableCell>{interpreter.tarif_5min} €</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => onToggleStatus(interpreter.id, interpreter.active)}
-                      >
-                        {interpreter.active ? "Désactiver" : "Activer"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => onEditUser(interpreter)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => onResetPassword(interpreter.id)}
-                      >
-                        Mot de passe
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => {
-                          setUserToDelete(interpreter.id);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {(searchQuery.length < 3 && !selectedEmploymentStatus) ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Entrez au moins 3 caractères pour rechercher un interprète ou sélectionnez un statut professionnel
+            </div>
+          ) : filteredInterpreters.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Aucun interprète trouvé
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Statut professionnel</TableHead>
+                  <TableHead>Tarif (15 min)</TableHead>
+                  <TableHead>Tarif (5 min)</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredInterpreters.map((interpreter) => (
+                  <TableRow key={interpreter.id}>
+                    <TableCell>
+                      {interpreter.first_name} {interpreter.last_name}
+                    </TableCell>
+                    <TableCell>{interpreter.email}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          interpreter.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {interpreter.active ? "Actif" : "Inactif"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{getEmploymentStatusLabel(interpreter.employment_status)}</TableCell>
+                    <TableCell>{interpreter.tarif_15min} €</TableCell>
+                    <TableCell>{interpreter.tarif_5min} €</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => onToggleStatus(interpreter.id, interpreter.active)}
+                        >
+                          {interpreter.active ? "Désactiver" : "Activer"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onEditUser(interpreter)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => onResetPassword(interpreter.id)}
+                        >
+                          Mot de passe
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            setUserToDelete(interpreter.id);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </CardContent>
 
