@@ -46,7 +46,6 @@ const Admin = () => {
         <AdminDashboard />
       </div>
     </div>
-  </div>
   );
 };
 
