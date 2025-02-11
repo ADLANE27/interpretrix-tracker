@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export interface InterpreterFormData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
+  tarif_5min: number;
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: LanguagePair[];
   address?: Address;
@@ -66,6 +68,7 @@ export const InterpreterProfileForm = ({
       last_name: "",
       active: true,
       tarif_15min: 0,
+      tarif_5min: 0,
       employment_status: "salaried_aft",
       languages: [],
       address: undefined,
@@ -157,26 +160,49 @@ export const InterpreterProfileForm = ({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="tarif_15min"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tarif (15 minutes)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="number" 
-                  min="0" 
-                  step="0.01"
-                  placeholder="0.00"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="tarif_15min"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tarif (15 minutes)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="tarif_5min"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tarif (5 minutes)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {!initialData && (
           <>

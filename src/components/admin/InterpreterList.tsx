@@ -41,6 +41,7 @@ interface InterpreterData {
   last_name: string;
   active: boolean;
   tarif_15min: number;
+  tarif_5min: number;
   employment_status: EmploymentStatus;
   languages?: string[];
   status?: string;
@@ -150,6 +151,7 @@ export const InterpreterList = ({
                 <TableHead>Statut</TableHead>
                 <TableHead>Statut professionnel</TableHead>
                 <TableHead>Tarif (15 min)</TableHead>
+                <TableHead>Tarif (5 min)</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -173,6 +175,7 @@ export const InterpreterList = ({
                   </TableCell>
                   <TableCell>{getEmploymentStatusLabel(interpreter.employment_status)}</TableCell>
                   <TableCell>{interpreter.tarif_15min} €</TableCell>
+                  <TableCell>{interpreter.tarif_5min} €</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button

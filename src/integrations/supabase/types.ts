@@ -293,6 +293,7 @@ export type Database = {
           specializations: string[] | null
           status: string | null
           tarif_15min: number
+          tarif_5min: number
           updated_at: string
           vat_number: string | null
         }
@@ -316,6 +317,7 @@ export type Database = {
           specializations?: string[] | null
           status?: string | null
           tarif_15min?: number
+          tarif_5min?: number
           updated_at?: string
           vat_number?: string | null
         }
@@ -339,6 +341,7 @@ export type Database = {
           specializations?: string[] | null
           status?: string | null
           tarif_15min?: number
+          tarif_5min?: number
           updated_at?: string
           vat_number?: string | null
         }
