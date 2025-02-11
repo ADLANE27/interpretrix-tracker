@@ -28,12 +28,12 @@ export const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter })
               ? interpreter.languages.join(', ')
               : "Aucune langue spécifiée"}
           </p>
-          {interpreter.tarif_15min && (
+          {interpreter.tarif_15min && interpreter.tarif_15min > 0 && (
             <p className="text-sm text-gray-600">
               Tarif 15min: {interpreter.tarif_15min}€
             </p>
           )}
-          {interpreter.tarif_5min && (
+          {interpreter.tarif_5min && interpreter.tarif_5min > 0 && (
             <p className="text-sm text-gray-600">
               Tarif 5min: {interpreter.tarif_5min}€
             </p>
@@ -43,12 +43,12 @@ export const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter })
           <Badge
             variant={
               interpreter.status === "available"
-                ? "success"
+                ? "default"
                 : interpreter.status === "unavailable"
                 ? "destructive"
                 : interpreter.status === "pause"
-                ? "warning"
-                : "secondary"
+                ? "secondary"
+                : "outline"
             }
           >
             {interpreter.status === "available"
@@ -83,7 +83,7 @@ export const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter })
         <div className="text-sm text-gray-600">
           <UpcomingMissionBadge
             startTime={interpreter.next_mission_start}
-            duration={interpreter.next_mission_duration || 0}
+            estimatedDuration={interpreter.next_mission_duration || 0}
           />
         </div>
       )}
