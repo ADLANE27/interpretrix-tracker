@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Headset, Edit, Trash2, Search } from "lucide-react";
 import {
@@ -118,14 +119,14 @@ export const InterpreterList = ({
             </div>
             <div className="w-64">
               <Select
-                value={selectedEmploymentStatus || ""}
-                onValueChange={(value) => setSelectedEmploymentStatus(value || null)}
+                value={selectedEmploymentStatus || "all"}
+                onValueChange={(value) => setSelectedEmploymentStatus(value === "all" ? null : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Statut professionnel" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
                   <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
                   <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                   <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
