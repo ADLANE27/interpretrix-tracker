@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,28 +56,22 @@ export const UserManagement = () => {
 
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from("interpreter_profiles")
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          tarif_15min,
-          employment_status,
-          languages,
-          status,
-          user_roles (
-            active,
-            role
-          )
-        `);
+        .select("*");
 
       if (interpreterError) throw interpreterError;
 
-      const interpretersWithStatus = interpreterProfiles.map(profile => ({
-        ...profile,
-        active: profile.user_roles?.[0]?.active ?? false,
-        role: profile.user_roles?.[0]?.role ?? 'interpreter'
-      }));
+      const userRolesMap = new Map(
+        userRoles.map(role => [role.user_id, role])
+      );
+
+      const interpretersWithStatus = interpreterProfiles.map(profile => {
+        const userRole = userRolesMap.get(profile.id);
+        return {
+          ...profile,
+          active: userRole?.active ?? false,
+          role: userRole?.role ?? 'interpreter'
+        };
+      });
 
       const usersData: UserData[] = await Promise.all(
         userRoles
@@ -259,7 +252,6 @@ export const UserManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      // First delete from user_roles
       const { error: roleError } = await supabase
         .from('user_roles')
         .delete()
@@ -270,7 +262,6 @@ export const UserManagement = () => {
         throw roleError;
       }
 
-      // Then delete from interpreter_profiles if exists
       const { error: profileError } = await supabase
         .from('interpreter_profiles')
         .delete()
@@ -281,7 +272,6 @@ export const UserManagement = () => {
         // Don't throw here as the profile might not exist
       }
 
-      // Finally delete the user from auth
       const { error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
       });
