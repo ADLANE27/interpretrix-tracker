@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { UserCog } from "lucide-react";
+import { UserCog, Search, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +22,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface AdminData {
   id: string;
@@ -40,7 +40,17 @@ interface AdminListProps {
 export const AdminList = ({ admins, onToggleStatus, onDeleteUser }: AdminListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredAdmins = admins.filter((admin) => {
+    const matchesSearch =
+      searchQuery.length >= 3 &&
+      (admin.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       admin.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       admin.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return matchesSearch;
+  });
 
   return (
     <Card className="mt-6">
@@ -51,57 +61,79 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser }: AdminListPro
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {admins.map((admin) => (
-              <TableRow key={admin.id}>
-                <TableCell>
-                  {admin.first_name} {admin.last_name}
-                </TableCell>
-                <TableCell>{admin.email}</TableCell>
-                <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-sm ${
-                      admin.active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {admin.active ? "Actif" : "Inactif"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => onToggleStatus(admin.id, admin.active)}
-                    >
-                      {admin.active ? "Désactiver" : "Activer"}
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => {
-                        setUserToDelete(admin.id);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher par nom ou email (minimum 3 caractères)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+
+          {searchQuery.length < 3 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Entrez au moins 3 caractères pour rechercher un administrateur
+            </div>
+          ) : filteredAdmins.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Aucun administrateur trouvé
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAdmins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell>
+                      {admin.first_name} {admin.last_name}
+                    </TableCell>
+                    <TableCell>{admin.email}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          admin.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {admin.active ? "Actif" : "Inactif"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => onToggleStatus(admin.id, admin.active)}
+                        >
+                          {admin.active ? "Désactiver" : "Activer"}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            setUserToDelete(admin.id);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       </CardContent>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
