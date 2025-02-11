@@ -1,7 +1,6 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Clock, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
@@ -181,14 +180,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         
         {(interpreter.tarif_15min ?? 0) > 0 && (
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-gray-500" />
+            <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_15min}€/15min</span>
           </div>
         )}
 
         {(interpreter.tarif_5min ?? 0) > 0 && (
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-gray-500" />
+            <Euro className="h-4 w-4 text-gray-500" />
             <span className="text-sm">{interpreter.tarif_5min}€/5min</span>
           </div>
         )}
