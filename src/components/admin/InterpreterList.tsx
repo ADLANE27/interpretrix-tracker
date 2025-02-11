@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Headset, Edit, Trash2, Search } from "lucide-react";
 import {
@@ -79,20 +78,15 @@ export const InterpreterList = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState<string | null>(null);
 
-  // Format interpreter data to match the expected format for the InterpreterCard
   const formatInterpreterForDisplay = (interpreter: InterpreterData) => {
-    // S'assurer que les langues sont correctement formatées et non vides
     const languages = Array.isArray(interpreter.languages) 
       ? interpreter.languages
-          .filter(lang => lang && typeof lang === 'string')
+          .filter(lang => lang && typeof lang === 'string' && lang.includes('→'))
           .map(lang => {
-            const [source, target] = lang.split('→').map(l => l.trim());
-            if (source && target) {
-              return `${source}→${target}`;
-            }
-            return null;
+            const [source, target] = lang.split('→');
+            return source && target ? lang : null;
           })
-          .filter(lang => lang !== null) as string[]
+          .filter(Boolean) as string[]
       : [];
 
     return {
