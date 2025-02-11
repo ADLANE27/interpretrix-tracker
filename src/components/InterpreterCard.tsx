@@ -51,16 +51,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [showAllMissions, setShowAllMissions] = useState(false);
   const [localTarifs, setLocalTarifs] = useState({
-    tarif_5min: interpreter.tarif_5min || 0,
-    tarif_15min: interpreter.tarif_15min || 0
+    tarif_5min: 0,
+    tarif_15min: 0
   });
-
-  useEffect(() => {
-    setLocalTarifs({
-      tarif_5min: interpreter.tarif_5min || 0,
-      tarif_15min: interpreter.tarif_15min || 0
-    });
-  }, [interpreter.tarif_5min, interpreter.tarif_15min]);
 
   useEffect(() => {
     const fetchTarifs = async () => {
@@ -77,8 +70,8 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       if (data) {
         setLocalTarifs({
-          tarif_5min: data.tarif_5min || 0,
-          tarif_15min: data.tarif_15min || 0
+          tarif_5min: data.tarif_5min,
+          tarif_15min: data.tarif_15min
         });
       }
     };
@@ -176,12 +169,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
-  const isTarifValid = (tarif: number): boolean => {
-    return typeof tarif === 'number' && tarif > 0 && !isNaN(tarif);
-  };
-
-  console.log('[InterpreterCard] Complete interpreter data:', JSON.stringify(interpreter, null, 2));
-
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -234,14 +221,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         )}
 
         <div className="space-y-1">
-          {isTarifValid(localTarifs.tarif_15min) && (
+          {localTarifs.tarif_15min > 0 && (
             <div className="flex items-center gap-2">
               <Euro className="h-4 w-4 text-gray-500" />
               <span className="text-sm">{localTarifs.tarif_15min}€/15min</span>
             </div>
           )}
 
-          {isTarifValid(localTarifs.tarif_5min) && (
+          {localTarifs.tarif_5min > 0 && (
             <div className="flex items-center gap-2">
               <Euro className="h-4 w-4 text-gray-500" />
               <span className="text-sm">{localTarifs.tarif_5min}€/5min</span>
