@@ -90,23 +90,49 @@ export const UserManagement = () => {
           role: 'interpreter' as const,
           employment_status: profile.employment_status || 'salaried_aft',
           tarif_5min: profile.tarif_5min || 0,
-          tarif_15min: profile.tarif_15min || 0
+          tarif_15min: profile.tarif_15min || 0,
+          languages: Array.isArray(profile.languages) ? profile.languages : []
         };
       });
 
-      const adminUsers: UserData[] = userRoles
-        .filter(role => role.role === 'admin')
-        .map(userRole => ({
-          id: userRole.user_id,
-          email: "",
-          role: userRole.role,
-          first_name: "",
-          last_name: "",
-          active: userRole.active || false,
-          tarif_15min: 0,
-          tarif_5min: 0,
-          employment_status: 'salaried_aft' as EmploymentStatus
-        }));
+      const adminUsers: UserData[] = await Promise.all(
+        userRoles
+          .filter(role => role.role === 'admin')
+          .map(async (userRole) => {
+            try {
+              const { data, error } = await supabase.functions.invoke('get-user-info', {
+                body: { userId: userRole.user_id }
+              });
+              
+              if (error) throw error;
+
+              return {
+                id: userRole.user_id,
+                email: data.email || "",
+                role: userRole.role,
+                first_name: data.first_name || "",
+                last_name: data.last_name || "",
+                active: userRole.active || false,
+                tarif_15min: 0,
+                tarif_5min: 0,
+                employment_status: 'salaried_aft' as EmploymentStatus
+              };
+            } catch (error) {
+              console.error('Error fetching admin info:', error);
+              return {
+                id: userRole.user_id,
+                email: "",
+                role: userRole.role,
+                first_name: "",
+                last_name: "",
+                active: userRole.active || false,
+                tarif_15min: 0,
+                tarif_5min: 0,
+                employment_status: 'salaried_aft' as EmploymentStatus
+              };
+            }
+          })
+      );
 
       return [...adminUsers, ...interpretersWithStatus] as UserData[];
     },
