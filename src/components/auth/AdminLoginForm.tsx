@@ -23,13 +23,18 @@ export const AdminLoginForm = () => {
 
       if (error) throw error;
 
-      const { data: roles } = await supabase
+      const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+        .maybeSingle();
 
-      if (roles?.role !== 'admin') {
+      if (rolesError) {
+        await supabase.auth.signOut();
+        throw new Error("Erreur lors de la vérification des rôles utilisateur.");
+      }
+
+      if (!roles || roles.role !== 'admin') {
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
       }
