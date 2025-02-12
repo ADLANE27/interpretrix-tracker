@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -54,6 +55,58 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_5min: 0,
     tarif_15min: 0
   });
+  const [currentStatus, setCurrentStatus] = useState(interpreter.status);
+  const [isOnline, setIsOnline] = useState(true);
+
+  // Handle online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Handle visibility changes
+  useEffect(() => {
+    let visibilityTimeout: NodeJS.Timeout;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Refresh data when tab becomes visible
+        fetchTarifs();
+        fetchMissions();
+        fetchCurrentStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (visibilityTimeout) clearTimeout(visibilityTimeout);
+    };
+  }, [interpreter.id]);
+
+  const fetchCurrentStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', interpreter.id)
+        .single();
+
+      if (error) throw error;
+      if (data) setCurrentStatus(data.status);
+    } catch (error) {
+      console.error('[InterpreterCard] Error fetching current status:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchTarifs = async () => {
@@ -122,10 +175,28 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       setMissions(typedMissions);
     };
 
-    fetchMissions();
+    // Set up real-time subscriptions
+    const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${interpreter.id}`
+        },
+        (payload) => {
+          console.log('[InterpreterCard] Status update received:', payload);
+          if (payload.new) {
+            setCurrentStatus(payload.new.status);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[InterpreterCard] Status subscription status:', status);
+      });
 
-    const channel = supabase
-      .channel('interpreter-missions')
+    const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`)
       .on(
         'postgres_changes',
         {
@@ -140,11 +211,17 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         }
       )
       .subscribe((status) => {
-        console.log('[InterpreterCard] Subscription status:', status);
+        console.log('[InterpreterCard] Mission subscription status:', status);
       });
 
+    // Initial data fetch
+    fetchMissions();
+    fetchCurrentStatus();
+
+    // Cleanup subscriptions
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(statusChannel);
+      supabase.removeChannel(missionChannel);
     };
   }, [interpreter.id]);
 
@@ -179,8 +256,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${statusConfig[interpreter.status].color}`}>
-            {statusConfig[interpreter.status].label}
+          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+            {!isOnline && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+            {statusConfig[currentStatus].label}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
