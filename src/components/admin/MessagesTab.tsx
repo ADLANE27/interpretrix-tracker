@@ -187,7 +187,7 @@ export const MessagesTab = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MessagesTab] Tab became visible, reinitializing connection');
         if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-            channel.state !== REALTIME_SUBSCRIBE_STATES.JOINING) {
+            channel.state !== REALTIME_SUBSCRIBE_STATES.CONNECTING) {
           channel.subscribe();
         }
       }
