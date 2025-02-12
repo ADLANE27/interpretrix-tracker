@@ -34,75 +34,98 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  // Mettre à jour les missions quand les props changent
   useEffect(() => {
     console.log('[MissionsCalendar] Initial missions received:', initialMissions);
     setMissions(initialMissions);
   }, [initialMissions]);
 
-  // Charger les missions directement depuis Supabase
-  const fetchMissions = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('interpretation_missions')
-      .select('*')
-      .eq('assigned_interpreter_id', userId)
-      .eq('status', 'accepted')
-      .not('scheduled_start_time', 'is', null);
-
-    if (error) {
-      console.error('[MissionsCalendar] Error fetching missions:', error);
-      return;
-    }
-
-    console.log('[MissionsCalendar] Fetched missions:', data);
-    if (data) {
-      setMissions(data);
-    }
-  };
-
-  // Configurer la souscription en temps réel
   useEffect(() => {
     console.log('[MissionsCalendar] Setting up realtime subscription');
     
-    let userId: string | undefined;
+    const channel = supabase
+      .channel('calendar-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        async (payload: MissionPayload) => {
+          console.log('[MissionsCalendar] Mission update received:', payload);
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
 
-    const setupRealtimeSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      userId = user.id;
-      await fetchMissions(user.id);
-
-      const channel = supabase
-        .channel('calendar-missions')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'interpretation_missions'
-          },
-          async (payload: MissionPayload) => {
-            console.log('[MissionsCalendar] Mission update received:', payload);
-            
-            if (userId) {
-              await fetchMissions(userId);
-            }
+          if (!payload.new && payload.eventType !== 'DELETE') {
+            console.log('[MissionsCalendar] Invalid payload received:', payload);
+            return;
           }
-        )
-        .subscribe((status) => {
-          console.log('[MissionsCalendar] Subscription status:', status);
-        });
 
-      return () => {
-        console.log('[MissionsCalendar] Cleaning up realtime subscription');
-        supabase.removeChannel(channel);
-      };
-    };
+          if (payload.eventType !== 'DELETE') {
+            const { data: updatedMission, error } = await supabase
+              .from('interpretation_missions')
+              .select('*')
+              .eq('id', payload.new.id)
+              .single();
 
-    const cleanup = setupRealtimeSubscription();
+            if (error) {
+              console.error('[MissionsCalendar] Error fetching updated mission:', error);
+              return;
+            }
+
+            console.log('[MissionsCalendar] Updated mission fetched:', updatedMission);
+
+            setMissions(currentMissions => {
+              let newMissions;
+              
+              switch (payload.eventType) {
+                case 'INSERT':
+                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
+                    newMissions = [...currentMissions, updatedMission];
+                  } else {
+                    newMissions = currentMissions;
+                  }
+                  break;
+                
+                case 'UPDATE':
+                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
+                    // Mettre à jour ou ajouter la mission
+                    const missionExists = currentMissions.some(m => m.id === updatedMission.id);
+                    if (missionExists) {
+                      newMissions = currentMissions.map(mission => 
+                        mission.id === updatedMission.id ? updatedMission : mission
+                      );
+                    } else {
+                      newMissions = [...currentMissions, updatedMission];
+                    }
+                  } else {
+                    // Supprimer la mission si elle n'est plus assignée à l'interprète
+                    newMissions = currentMissions.filter(mission => mission.id !== updatedMission.id);
+                  }
+                  break;
+                
+                default:
+                  newMissions = currentMissions;
+              }
+              
+              console.log('[MissionsCalendar] Updated missions list:', newMissions);
+              return newMissions;
+            });
+          } else if (payload.old?.id) {
+            setMissions(currentMissions => 
+              currentMissions.filter(mission => mission.id !== payload.old?.id)
+            );
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionsCalendar] Subscription status:', status);
+      });
+
     return () => {
-      cleanup.then(cleanupFn => cleanupFn?.());
+      console.log('[MissionsCalendar] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
     };
   }, []);
 
