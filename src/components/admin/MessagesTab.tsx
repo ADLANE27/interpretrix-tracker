@@ -185,7 +185,7 @@ export const MessagesTab = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MessagesTab] Tab became visible, reinitializing connection');
-        if (!channel.isJoined() && !channel.isJoining()) {
+        if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
           channel.subscribe();
         }
       }

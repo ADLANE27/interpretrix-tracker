@@ -123,13 +123,13 @@ export const AdminDashboard = () => {
 
     const handleConnectionState = () => {
       const hasActiveChannels = channels.some(channel => 
-        channel.isJoined() || channel.isJoining()
+        channel.state === 'SUBSCRIBED' || channel.state === 'JOINING'
       );
       
       if (!hasActiveChannels && isSubscribed) {
         console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
         channels.forEach(channel => {
-          if (!channel.isJoined() && !channel.isJoining()) {
+          if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
             channel.subscribe();
           }
         });
