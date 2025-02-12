@@ -8,7 +8,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Info, CheckCircle, AlertCircle, ArrowRight, BookOpen } from "lucide-react";
 
 interface HowToUseGuideProps {
   isOpen: boolean;
