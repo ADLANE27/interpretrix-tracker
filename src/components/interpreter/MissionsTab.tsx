@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,11 +111,13 @@ export const MissionsTab = () => {
       setMissions(filteredMissions as Mission[]);
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les missions",
-        variant: "destructive",
-      });
+      if (!isMobile) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les missions",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -242,6 +245,13 @@ export const MissionsTab = () => {
           
           if (status === 'CHANNEL_ERROR') {
             console.error('[MissionsTab] Error subscribing to changes');
+            if (!isMobile) {  // Ajout de la condition pour ne pas afficher le toast sur mobile
+              toast({
+                title: "Erreur",
+                description: "Impossible de recevoir les mises à jour en temps réel",
+                variant: "destructive",
+              });
+            }
           }
         });
     }, 500);
