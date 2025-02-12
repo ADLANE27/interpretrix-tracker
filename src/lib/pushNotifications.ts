@@ -25,6 +25,12 @@ export async function registerServiceWorker() {
   try {
     console.log('[Push Notifications] Starting service worker registration');
 
+    // Unregister existing service workers first
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (let registration of registrations) {
+      await registration.unregister();
+    }
+
     // Register service worker with explicit scope '/'
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
@@ -93,15 +99,15 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
 
     // Check for existing subscription and unsubscribe if found
-    const existingSubscription = await registration.pushManager.getSubscription();
-    if (existingSubscription) {
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
       console.log('[Push Notifications] Found existing subscription, unsubscribing...');
-      await existingSubscription.unsubscribe();
+      await subscription.unsubscribe();
     }
 
     // Subscribe to push notifications
     console.log('[Push Notifications] Creating new push subscription...');
-    const subscription = await registration.pushManager.subscribe({
+    subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
     });
