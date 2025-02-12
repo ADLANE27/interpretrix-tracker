@@ -49,6 +49,7 @@ export const InterpreterDashboard = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("missions");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -361,15 +362,10 @@ export const InterpreterDashboard = () => {
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <div className="flex gap-2 w-full sm:w-auto">
                   <ThemeToggle />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {}}
-                    className="flex-1 sm:flex-none"
-                    title="Guide d'utilisation"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                  </Button>
+                  <HowToUseGuide 
+                    isOpen={isGuideOpen}
+                    onOpenChange={setIsGuideOpen}
+                  />
                   <NotificationPermission interpreterId={profile.id} />
                   <Button
                     variant="outline"

@@ -19,9 +19,13 @@ export const HowToUseGuide = ({ isOpen, onOpenChange }: HowToUseGuideProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Info className="h-4 w-4" />
-          Guide d'utilisation
+        <Button
+          variant="outline"
+          size="icon"
+          className="flex-1 sm:flex-none"
+          title="Guide d'utilisation"
+        >
+          <BookOpen className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
