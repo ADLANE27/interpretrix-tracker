@@ -33,14 +33,20 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
+    // Use maybeSingle() instead of single() to handle no results case
     const { data: userRoles, error: rolesError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (rolesError || userRoles?.role !== 'admin') {
+    if (rolesError) {
       console.error('Roles error:', rolesError)
+      throw new Error('Error fetching user roles')
+    }
+
+    if (!userRoles || userRoles.role !== 'admin') {
+      console.error('Not an admin. User roles:', userRoles)
       throw new Error('Unauthorized - Admin access required')
     }
 
