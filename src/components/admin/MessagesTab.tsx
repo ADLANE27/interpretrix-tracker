@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -185,7 +186,8 @@ export const MessagesTab = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MessagesTab] Tab became visible, reinitializing connection');
-        if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+        if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
+            channel.state !== REALTIME_SUBSCRIBE_STATES.JOINING) {
           channel.subscribe();
         }
       }
