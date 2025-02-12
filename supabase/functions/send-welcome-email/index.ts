@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 
@@ -11,8 +12,8 @@ const corsHeaders = {
 
 interface WelcomeEmailRequest {
   email: string;
-  firstName: string;
-  lastName: string;
+  password: string;
+  first_name: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -22,13 +23,13 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, firstName, lastName }: WelcomeEmailRequest = await req.json();
+    const { email, first_name, password }: WelcomeEmailRequest = await req.json();
 
-    if (!email || !firstName || !lastName) {
+    if (!email || !first_name || !password) {
       throw new Error("Missing required fields");
     }
 
-    console.log("Sending welcome email to:", { email, firstName, lastName });
+    console.log("Sending welcome email to:", { email, first_name });
 
     const { data: resetLink } = await resend.emails.send({
       from: "Interprétation <onboarding@resend.dev>",
@@ -36,10 +37,14 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Bienvenue sur la plateforme d'interprétation",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1>Bienvenue ${firstName} ${lastName},</h1>
+          <h1>Bienvenue ${first_name},</h1>
           <p>Votre compte a été créé avec succès.</p>
-          <p>Vous recevrez prochainement un email pour définir votre mot de passe.</p>
-          <p>Une fois votre mot de passe défini, vous pourrez vous connecter à la plateforme.</p>
+          <p>Voici vos identifiants de connexion :</p>
+          <ul>
+            <li>Email : ${email}</li>
+            <li>Mot de passe : ${password}</li>
+          </ul>
+          <p>Lors de votre première connexion, nous vous recommandons de changer votre mot de passe.</p>
           <p>Si vous avez des questions, n'hésitez pas à contacter notre équipe support.</p>
           <p>Cordialement,<br>L'équipe d'interprétation</p>
         </div>
