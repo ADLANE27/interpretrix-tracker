@@ -7,7 +7,7 @@ import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js"; // Added RealtimeChannel import
+import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { useToast } from "@/hooks/use-toast";
@@ -44,8 +44,8 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     const { data: missionsData, error } = await supabase
       .from('interpretation_missions')
       .select('*')
-      .or(`assigned_interpreter_id.eq.${userId},notified_interpreters.cs.{${userId}}`)
-      .order('created_at', { ascending: false });
+      .or('assigned_interpreter_id.eq.' + userId + ',notified_interpreters.cs.{' + userId + '}')
+      .order('scheduled_start_time', { ascending: true }); // Changed to order by start time
 
     if (error) {
       console.error('[MissionsCalendar] Error fetching missions:', error);
@@ -53,7 +53,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     }
 
     console.log('[MissionsCalendar] Fetched missions:', missionsData);
-    setMissions(missionsData);
+    if (missionsData) {
+      setMissions(missionsData);
+    }
   };
 
   // Set up realtime subscription
@@ -88,15 +90,16 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             console.log('[MissionsCalendar] Mission update received:', payload);
 
             try {
-              // Refresh the entire missions list when any change occurs
+              // Always refresh missions to ensure we have the latest state
               await fetchMissions(user.id);
 
-              // If it's an update and the mission is accepted, show a toast
+              // Show toast for newly accepted missions
               if (payload.eventType === 'UPDATE' && 
+                  payload.old?.status !== 'accepted' && 
                   payload.new.status === 'accepted' && 
                   payload.new.assigned_interpreter_id === user.id) {
                 toast({
-                  title: "Mission mise à jour",
+                  title: "Mission acceptée",
                   description: "Une nouvelle mission a été ajoutée à votre calendrier",
                 });
               }
@@ -137,7 +140,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     };
   }, []); // Empty dependency array ensures setup runs only once
 
-  // Filter missions for the calendar view
+  // Filter missions for the calendar view - only show accepted missions with scheduled times
   const scheduledMissions = missions.filter(mission => {
     const isAccepted = mission.status === 'accepted';
     const hasScheduledTime = mission.scheduled_start_time !== null;
