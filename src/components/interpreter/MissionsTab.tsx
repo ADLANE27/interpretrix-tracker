@@ -37,6 +37,7 @@ export const MissionsTab = () => {
   const isMobile = useIsMobile();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectCountRef = useRef(0);
 
   const initializeSound = () => {
     if (!soundInitialized) {
@@ -239,6 +240,7 @@ export const MissionsTab = () => {
           
           if (status === 'SUBSCRIBED') {
             console.log('[MissionsTab] Successfully subscribed to changes');
+            reconnectCountRef.current = 0; // Reset counter on successful connection
           }
           
           if (status === 'CHANNEL_ERROR') {
@@ -249,11 +251,13 @@ export const MissionsTab = () => {
               clearTimeout(reconnectTimeoutRef.current);
             }
             
-            // Set a new reconnection timeout
+            // Retry with exponential backoff
+            const backoffDelay = Math.min(1000 * Math.pow(2, reconnectCountRef.current), 30000);
             reconnectTimeoutRef.current = setTimeout(() => {
-              console.log('[MissionsTab] Attempting to reconnect...');
+              console.log(`[MissionsTab] Attempting to reconnect... (attempt ${reconnectCountRef.current + 1})`);
+              reconnectCountRef.current += 1;
               initializeChannel();
-            }, 5000); // Wait 5 seconds before attempting to reconnect
+            }, backoffDelay);
           }
         });
     };
@@ -264,6 +268,7 @@ export const MissionsTab = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MissionsTab] App became visible, reinitializing channel');
+        reconnectCountRef.current = 0; // Reset counter when app becomes visible
         initializeChannel();
       }
     };
