@@ -57,7 +57,25 @@ export const AdminDashboard = () => {
         .select("*");
 
       if (error) throw error;
-      setInterpreters(data || []);
+
+      // Map the data to match our Interpreter interface
+      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
+        id: interpreter.id || "",
+        first_name: interpreter.first_name || "",
+        last_name: interpreter.last_name || "",
+        status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "unavailable",
+        employment_status: interpreter.employment_status || "salaried_aft",
+        languages: interpreter.languages || [],
+        phone_interpretation_rate: interpreter.phone_interpretation_rate,
+        phone_number: interpreter.phone_number,
+        birth_country: interpreter.birth_country,
+        next_mission_start: interpreter.next_mission_start,
+        next_mission_duration: interpreter.next_mission_duration,
+        tarif_15min: interpreter.tarif_15min,
+        tarif_5min: interpreter.tarif_5min || 0 // Ensure tarif_5min is always present
+      }));
+
+      setInterpreters(mappedInterpreters);
     } catch (error) {
       console.error("Error fetching interpreters:", error);
       toast({
