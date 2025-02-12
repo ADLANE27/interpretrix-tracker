@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
-import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Interpreter {
   id: string;
@@ -49,6 +50,7 @@ export const AdminDashboard = () => {
 
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
+  // Function to fetch all interpreters
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
@@ -58,6 +60,7 @@ export const AdminDashboard = () => {
 
       if (error) throw error;
 
+      // Map the data to match our Interpreter interface
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
@@ -71,7 +74,7 @@ export const AdminDashboard = () => {
         next_mission_start: interpreter.next_mission_start,
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null
+        tarif_5min: null // Since it's not in the view, we set it to null
       }));
 
       setInterpreters(mappedInterpreters);
@@ -86,15 +89,13 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Set up real-time subscriptions with enhanced error handling and reconnection logic
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
-    let isSubscribed = true;
     const channels: RealtimeChannel[] = [];
-    let reconnectTimeout: NodeJS.Timeout;
-    let lastFetchTimestamp = Date.now();
 
     const setupChannel = (channelName: string, table: string) => {
-      const channel = supabase.channel(`admin-${channelName}-${Date.now()}`)
+      const channel = supabase.channel(`admin-${channelName}`)
         .on(
           'postgres_changes',
           {
@@ -103,52 +104,29 @@ export const AdminDashboard = () => {
             table: table
           },
           async (payload) => {
-            if (!isSubscribed) return;
             console.log(`[AdminDashboard] ${table} changed:`, payload);
-            
-            const now = Date.now();
-            if (now - lastFetchTimestamp > 1000) {
-              lastFetchTimestamp = now;
-              await fetchInterpreters();
-            }
+            await fetchInterpreters();
           }
         )
         .subscribe((status) => {
           console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
+          if (status === 'SUBSCRIBED') {
+            console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error(`[AdminDashboard] Error in ${channelName} channel`);
+            // Attempt to resubscribe after a delay
+            setTimeout(() => {
+              channel.subscribe();
+            }, 5000);
+          }
         });
 
       channels.push(channel);
       return channel;
     };
 
-    const handleConnectionState = () => {
-      const hasActiveChannels = channels.some(channel => 
-        channel.state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED || 
-        channel.state === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
-      );
-      
-      if (!hasActiveChannels && isSubscribed) {
-        console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
-        channels.forEach(channel => {
-          if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-              channel.state !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
-            channel.subscribe();
-          }
-        });
-      }
-    };
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log("[AdminDashboard] Tab became visible, refreshing all data");
-        const now = Date.now();
-        if (now - lastFetchTimestamp > 1000) {
-          lastFetchTimestamp = now;
-          await fetchInterpreters();
-        }
-      }
-    };
-
+    // Set up subscriptions for all relevant tables
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -157,20 +135,41 @@ export const AdminDashboard = () => {
     setupChannel('message-mentions', 'message_mentions');
     setupChannel('channel-members', 'channel_members');
 
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[AdminDashboard] Tab became visible, refreshing data");
+        fetchInterpreters();
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Handle connection state
+    const handleConnectionState = () => {
+      const connectionState = supabase.getChannels().length > 0;
+      console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
+      
+      if (!connectionState) {
+        console.log("[AdminDashboard] Attempting to reconnect...");
+        channels.forEach(channel => channel.subscribe());
+      }
+    };
+
+    // Set up connection state monitoring
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
 
+    // Initial data fetch
     fetchInterpreters();
 
+    // Cleanup subscriptions
     return () => {
-      console.log("[AdminDashboard] Cleaning up subscriptions and listeners");
-      isSubscribed = false;
-      clearInterval(connectionCheckInterval);
-      clearTimeout(reconnectTimeout);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log("[AdminDashboard] Cleaning up subscriptions");
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(connectionCheckInterval);
     };
   }, []);
 
@@ -374,7 +373,7 @@ export const AdminDashboard = () => {
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
                       <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                      <SelectItem value="salaried_planet">Salari�� PLANET</SelectItem>
+                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                       <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                       <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
                     </SelectContent>

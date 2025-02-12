@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -12,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -123,83 +123,73 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
-    let isSubscribed = true;
-    let lastFetchTimestamp = Date.now();
-    let reconnectTimeout: NodeJS.Timeout;
-
     const channel = supabase
-      .channel(`realtime-mission-updates-${Date.now()}`)
+      .channel('realtime-mission-updates')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'interpretation_missions'
         },
         async (payload: any) => {
-          if (!isSubscribed) return;
-          console.log('[MessagesTab] Mission update received:', payload);
+          console.log('[MessagesTab] New mission created:', payload);
           
-          const now = Date.now();
-          if (now - lastFetchTimestamp > 1000) {
-            lastFetchTimestamp = now;
+          if (payload.eventType === 'INSERT') {
+            const mission = payload.new as any;
             
-            if (payload.eventType === 'INSERT') {
-              const mission = payload.new as any;
-              
-              if (!mission) {
-                console.error('[MessagesTab] Invalid mission payload');
-                return;
-              }
+            if (!mission) {
+              console.error('[MessagesTab] Invalid mission payload');
+              return;
+            }
 
-              const isImmediate = mission.mission_type === 'immediate';
-              
-              console.log('[MessagesTab] Showing toast notification');
-              toast({
-                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                variant: isImmediate ? "destructive" : "default",
-                duration: 10000,
-              });
+            const isImmediate = mission.mission_type === 'immediate';
+            
+            console.log('[MessagesTab] Showing toast notification');
+            toast({
+              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+              variant: isImmediate ? "destructive" : "default",
+              duration: 10000,
+            });
 
-              if (soundEnabled) {
+            if (soundEnabled) {
+              try {
+                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
+                await playNotificationSound(mission.mission_type);
+              } catch (error) {
+                console.error('[MessagesTab] Error playing sound:', error);
+                // Try to reinitialize sound on error
+                initializeSound();
                 try {
-                  console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                   await playNotificationSound(mission.mission_type);
-                } catch (error) {
-                  console.error('[MessagesTab] Error playing sound:', error);
-                  initializeSound();
-                  try {
-                    await playNotificationSound(mission.mission_type);
-                  } catch (retryError) {
-                    console.error('[MessagesTab] Retry failed:', retryError);
-                  }
+                } catch (retryError) {
+                  console.error('[MessagesTab] Retry failed:', retryError);
                 }
               }
             }
           }
         }
       )
-      .subscribe();
-
-    // Handle visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[MessagesTab] Tab became visible, reinitializing connection');
-        if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-            channel.state !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
-          channel.subscribe();
+      .subscribe((status) => {
+        console.log('[MessagesTab] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MessagesTab] Successfully subscribed to mission updates');
         }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MessagesTab] Error subscribing to mission updates');
+          toast({
+            title: "Erreur",
+            description: "Impossible de recevoir les mises à jour en temps réel",
+            variant: "destructive",
+          });
+        }
+      });
 
     return () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
-      isSubscribed = false;
-      clearTimeout(reconnectTimeout);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
   }, [soundEnabled, toast, isMobile]);
