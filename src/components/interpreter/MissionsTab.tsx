@@ -38,6 +38,7 @@ export const MissionsTab = () => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectCountRef = useRef(0);
+  const visibilityTimeoutRef = useRef<NodeJS.Timeout>();
 
   const initializeSound = () => {
     if (!soundInitialized) {
@@ -126,7 +127,12 @@ export const MissionsTab = () => {
       }
 
       channelRef.current = supabase
-        .channel('interpreter-missions')
+        .channel('interpreter-missions', {
+          config: {
+            broadcast: { ack: true },
+            presence: { key: currentUserId || undefined }
+          }
+        })
         .on(
           'postgres_changes',
           {
@@ -235,23 +241,24 @@ export const MissionsTab = () => {
             fetchMissions();
           }
         )
-        .subscribe((status) => {
+        .subscribe(async (status) => {
           console.log('[MissionsTab] Subscription status:', status);
           
           if (status === 'SUBSCRIBED') {
             console.log('[MissionsTab] Successfully subscribed to changes');
-            reconnectCountRef.current = 0; // Reset counter on successful connection
+            reconnectCountRef.current = 0;
+            if (visibilityTimeoutRef.current) {
+              clearTimeout(visibilityTimeoutRef.current);
+            }
           }
           
           if (status === 'CHANNEL_ERROR') {
             console.error('[MissionsTab] Channel error, will attempt reconnect');
             
-            // Clear any existing reconnection timeout
             if (reconnectTimeoutRef.current) {
               clearTimeout(reconnectTimeoutRef.current);
             }
             
-            // Retry with exponential backoff
             const backoffDelay = Math.min(1000 * Math.pow(2, reconnectCountRef.current), 30000);
             reconnectTimeoutRef.current = setTimeout(() => {
               console.log(`[MissionsTab] Attempting to reconnect... (attempt ${reconnectCountRef.current + 1})`);
@@ -264,12 +271,20 @@ export const MissionsTab = () => {
 
     initializeChannel();
 
-    // Handle visibility change for PWA
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[MissionsTab] App became visible, reinitializing channel');
-        reconnectCountRef.current = 0; // Reset counter when app becomes visible
-        initializeChannel();
+        console.log('[MissionsTab] App became visible');
+        
+        if (visibilityTimeoutRef.current) {
+          clearTimeout(visibilityTimeoutRef.current);
+        }
+        
+        visibilityTimeoutRef.current = setTimeout(() => {
+          console.log('[MissionsTab] Reinitializing channel after visibility change');
+          reconnectCountRef.current = 0;
+          initializeChannel();
+          fetchMissions();
+        }, 1000);
       }
     };
 
@@ -280,6 +295,9 @@ export const MissionsTab = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
       }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
