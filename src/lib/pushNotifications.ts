@@ -185,3 +185,42 @@ export async function unsubscribeFromPushNotifications(interpreterId: string) {
     throw error;
   }
 }
+
+export async function sendTestNotification(interpreterId: string) {
+  try {
+    console.log('[Push Notifications] Sending test notification to interpreter:', interpreterId);
+    
+    const { data, error } = await supabase.functions.invoke(
+      'send-push-notification',
+      {
+        method: 'POST',
+        body: {
+          message: {
+            interpreterIds: [interpreterId],
+            title: 'Test Notification',
+            body: 'This is a test notification. If you receive this, push notifications are working correctly!',
+            data: {
+              mission_type: 'test',
+              source_language: 'Test',
+              target_language: 'Test',
+              estimated_duration: 5,
+              url: '/',
+              mission_id: 'test'
+            }
+          }
+        }
+      }
+    );
+
+    if (error) {
+      console.error('[Push Notifications] Error sending test notification:', error);
+      throw error;
+    }
+
+    console.log('[Push Notifications] Test notification sent successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('[Push Notifications] Error in sendTestNotification:', error);
+    throw error;
+  }
+}

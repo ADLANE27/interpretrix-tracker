@@ -1,13 +1,13 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from '@/lib/pushNotifications';
-import { Bell, BellOff } from 'lucide-react';
+import { subscribeToPushNotifications, unsubscribeFromPushNotifications, sendTestNotification } from '@/lib/pushNotifications';
+import { Bell, BellOff, Send } from 'lucide-react';
 
 export const NotificationPermission = ({ interpreterId }: { interpreterId: string }) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -15,7 +15,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   }, []);
 
   const checkNotificationPermission = () => {
-    // Detailed environment logging
     console.log('[Notifications] Environment check:', {
       hasNotificationAPI: 'Notification' in window,
       hasServiceWorkerAPI: 'serviceWorker' in navigator,
@@ -43,7 +42,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
 
-      // First request notification permission
       const permission = await Notification.requestPermission();
       console.log('[Notifications] Permission result:', permission);
 
@@ -51,7 +49,6 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         throw new Error('Notification permission denied');
       }
 
-      // Then register service worker and subscribe to push
       await subscribeToPushNotifications(interpreterId);
       setPermission('granted');
       
@@ -102,7 +99,26 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     }
   };
 
-  // If either Notifications or Service Workers are not supported
+  const handleTestNotification = async () => {
+    try {
+      setIsTesting(true);
+      await sendTestNotification(interpreterId);
+      toast({
+        title: "Notification envoyée",
+        description: "Si les notifications sont correctement configurées, vous devriez la recevoir dans quelques secondes.",
+      });
+    } catch (error) {
+      console.error('[Notifications] Test error:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer la notification de test",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     return (
       <Button 
@@ -120,15 +136,27 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
 
   if (permission === 'granted') {
     return (
-      <Button 
-        variant="outline" 
-        size="sm"
-        onClick={handleDisableNotifications}
-        className="flex items-center gap-2"
-      >
-        <BellOff className="h-4 w-4" />
-        Désactiver les notifications
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleDisableNotifications}
+          className="flex items-center gap-2"
+        >
+          <BellOff className="h-4 w-4" />
+          Désactiver les notifications
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleTestNotification}
+          disabled={isTesting}
+          className="flex items-center gap-2"
+        >
+          <Send className="h-4 w-4" />
+          {isTesting ? 'Envoi...' : 'Tester'}
+        </Button>
+      </div>
     );
   }
 
@@ -165,4 +193,3 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     </Button>
   );
 };
-
