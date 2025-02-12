@@ -35,6 +35,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
+    console.log('[MissionsCalendar] Initial missions received:', initialMissions);
     setMissions(initialMissions);
   }, [initialMissions]);
 
@@ -73,22 +74,43 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               return;
             }
 
+            console.log('[MissionsCalendar] Updated mission fetched:', updatedMission);
+
             setMissions(currentMissions => {
+              let newMissions;
+              
               switch (payload.eventType) {
                 case 'INSERT':
                   if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
-                    return [...currentMissions, updatedMission];
+                    newMissions = [...currentMissions, updatedMission];
+                  } else {
+                    newMissions = currentMissions;
                   }
-                  return currentMissions;
+                  break;
                 
                 case 'UPDATE':
-                  return currentMissions.map(mission => 
-                    mission.id === updatedMission.id ? updatedMission : mission
-                  );
+                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
+                    // Mettre à jour ou ajouter la mission
+                    const missionExists = currentMissions.some(m => m.id === updatedMission.id);
+                    if (missionExists) {
+                      newMissions = currentMissions.map(mission => 
+                        mission.id === updatedMission.id ? updatedMission : mission
+                      );
+                    } else {
+                      newMissions = [...currentMissions, updatedMission];
+                    }
+                  } else {
+                    // Supprimer la mission si elle n'est plus assignée à l'interprète
+                    newMissions = currentMissions.filter(mission => mission.id !== updatedMission.id);
+                  }
+                  break;
                 
                 default:
-                  return currentMissions;
+                  newMissions = currentMissions;
               }
+              
+              console.log('[MissionsCalendar] Updated missions list:', newMissions);
+              return newMissions;
             });
           } else if (payload.old?.id) {
             setMissions(currentMissions => 
@@ -99,14 +121,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
       )
       .subscribe((status) => {
         console.log('[MissionsCalendar] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MissionsCalendar] Successfully subscribed to changes');
-        }
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MissionsCalendar] Error subscribing to changes');
-        }
       });
 
     return () => {
@@ -116,7 +130,12 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   }, []);
 
   const scheduledMissions = missions.filter(
-    (mission) => mission.status === 'accepted' && mission.scheduled_start_time
+    (mission) => {
+      const isAccepted = mission.status === 'accepted';
+      const hasScheduledTime = mission.scheduled_start_time !== null;
+      console.log(`[MissionsCalendar] Mission ${mission.id} - accepted: ${isAccepted}, hasScheduledTime: ${hasScheduledTime}`);
+      return isAccepted && hasScheduledTime;
+    }
   );
 
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
@@ -126,13 +145,18 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     const selectedDayStart = startOfDay(selectedDate);
     const missionDayStart = startOfDay(missionDate);
     
-    return selectedDayStart.getTime() === missionDayStart.getTime();
+    const matches = selectedDayStart.getTime() === missionDayStart.getTime();
+    console.log(`[MissionsCalendar] Checking mission ${mission.id} for date ${selectedDate.toISOString()} - matches: ${matches}`);
+    
+    return matches;
   });
 
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
-      return startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone));
+      const date = startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone));
+      console.log(`[MissionsCalendar] Mission ${mission.id} date: ${date.toISOString()}`);
+      return date;
     })
     .filter((date): date is Date => date !== null);
 
