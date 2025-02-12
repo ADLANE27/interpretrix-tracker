@@ -22,28 +22,66 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       return;
     }
 
-    // Forcer une nouvelle vérification des permissions
-    const currentPermission = await Notification.permission;
-    console.log('[Notifications] Current permission:', currentPermission);
-    
-    // Vérifier si un service worker est actif
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
-      const subscription = await registration.pushManager.getSubscription();
-      console.log('[Notifications] Active subscription:', subscription ? 'Yes' : 'No');
+    try {
+      // Forcer une nouvelle vérification des permissions
+      const currentPermission = await Notification.permission;
+      console.log('[Notifications] Current permission:', currentPermission);
       
-      if (subscription && currentPermission === 'granted') {
-        setPermission('granted');
+      // Vérifier si un service worker est actif
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        const subscription = await registration.pushManager.getSubscription();
+        console.log('[Notifications] Active subscription:', subscription ? 'Yes' : 'No');
+        
+        // Double vérification de la validité de la souscription
+        if (subscription) {
+          try {
+            // Vérifier si la souscription est toujours valide
+            await subscription.getKey('p256dh');
+            // Si nous arrivons ici, la souscription est valide
+            setPermission('granted');
+          } catch (error) {
+            console.warn('[Notifications] Invalid subscription:', error);
+            setPermission('default');
+            // Nettoyer la souscription invalide
+            await subscription.unsubscribe();
+          }
+        } else {
+          setPermission('default');
+        }
       } else {
         setPermission('default');
       }
-    } else {
+    } catch (error) {
+      console.error('[Notifications] Error checking permissions:', error);
       setPermission('default');
     }
   };
 
   useEffect(() => {
     checkNotificationPermission();
+    
+    // Ajouter un listener pour les changements de permission
+    const handlePermissionChange = () => {
+      console.log('[Notifications] Permission changed to:', Notification.permission);
+      checkNotificationPermission();
+    };
+
+    // Si l'API est supportée, ajouter le listener
+    if ('Notification' in window) {
+      // @ts-ignore - L'API est en cours de standardisation
+      if (navigator.permissions?.query) {
+        navigator.permissions.query({ name: 'notifications' })
+          .then(permissionStatus => {
+            permissionStatus.onchange = handlePermissionChange;
+          })
+          .catch(console.error);
+      }
+    }
+
+    return () => {
+      // Cleanup si nécessaire
+    };
   }, []);
 
   const handleEnableNotifications = async () => {
@@ -98,7 +136,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     try {
       console.log('[Notifications] Starting disable process...');
       await unsubscribeFromPushNotifications(interpreterId);
-      setPermission('default');
+      await checkNotificationPermission();
       
       toast({
         title: "Notifications désactivées",
