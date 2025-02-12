@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
-import { RealtimeChannel } from "@supabase/supabase-js";
+import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 interface Interpreter {
   id: string;
@@ -123,13 +123,15 @@ export const AdminDashboard = () => {
 
     const handleConnectionState = () => {
       const hasActiveChannels = channels.some(channel => 
-        channel.state === 'SUBSCRIBED' || channel.state === 'JOINING'
+        channel.state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED || 
+        channel.state === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
       );
       
       if (!hasActiveChannels && isSubscribed) {
         console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
         channels.forEach(channel => {
-          if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+          if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
+              channel.state !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
             channel.subscribe();
           }
         });
