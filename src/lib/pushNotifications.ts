@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -15,118 +16,16 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-type ServiceWorkerRegistrationStatus = {
-  success: boolean;
-  registration?: ServiceWorkerRegistration;
-  error?: Error;
-};
-
-async function waitForServiceWorkerRegistration(registration: ServiceWorkerRegistration): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Si le Service Worker est déjà actif, résoudre immédiatement
-    if (registration.active) {
-      console.log('[Push Notifications] Service Worker already active');
-      resolve();
-      return;
-    }
-
-    // Augmenter le timeout à 30 secondes
-    const timeout = setTimeout(() => {
-      console.log('[Push Notifications] Service Worker registration timeout - cleaning up');
-      cleanup();
-      reject(new Error('Service Worker registration timeout'));
-    }, 30000);
-
-    // Écouter les changements d'état d'installation
-    const handleInstalling = () => {
-      console.log('[Push Notifications] Service Worker installing');
-    };
-
-    // Écouter les changements d'état d'activation
-    const handleActivating = () => {
-      console.log('[Push Notifications] Service Worker activating');
-    };
-
-    // Écouter les changements d'état actif
-    const handleActivated = () => {
-      console.log('[Push Notifications] Service Worker activated');
-      cleanup();
-      resolve();
-    };
-
-    // Ajouter tous les listeners
-    registration.installing?.addEventListener('statechange', handleInstalling);
-    registration.waiting?.addEventListener('statechange', handleActivating);
-    registration.active?.addEventListener('statechange', handleActivated);
-
-    // Fonction de nettoyage
-    function cleanup() {
-      clearTimeout(timeout);
-      registration.installing?.removeEventListener('statechange', handleInstalling);
-      registration.waiting?.removeEventListener('statechange', handleActivating);
-      registration.active?.removeEventListener('statechange', handleActivated);
-    }
-  });
-}
-
-export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  try {
-    if (!('serviceWorker' in navigator)) {
-      throw new Error('Service Worker not supported');
-    }
-
-    // Suppression des anciens service workers
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map(reg => reg.unregister()));
-    
-    // Attendre un peu pour s'assurer que tout est nettoyé
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Enregistrer le nouveau service worker
-    console.log('[Push Notifications] Registering new service worker');
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-      type: 'module'
-    });
-
-    // Attendre que le service worker soit actif
-    await new Promise<void>((resolve, reject) => {
-      if (registration.active) {
-        resolve();
-        return;
-      }
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Service Worker registration timeout'));
-      }, 10000);
-
-      registration.addEventListener('activate', () => {
-        clearTimeout(timeout);
-        resolve();
-      });
-    });
-
-    return registration;
-  } catch (error) {
-    console.error('[Push Notifications] Registration failed:', error);
-    throw error;
-  }
-}
-
 export async function subscribeToPushNotifications(interpreterId: string): Promise<boolean> {
   try {
     console.log('[Push Notifications] Starting subscription process');
 
-    const permissionResult = await Notification.requestPermission();
-    if (permissionResult !== 'granted') {
-      throw new Error(`Permission not granted: ${permissionResult}`);
+    // 1. Vérifier si les API nécessaires sont disponibles
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      throw new Error('Push notifications not supported');
     }
 
-    const registration = await registerServiceWorker();
-    if (!registration) {
-      throw new Error('Failed to register service worker');
-    }
-
+    // 2. Obtenir la clé VAPID
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
       {
@@ -141,6 +40,12 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
+    // 3. Enregistrer le Service Worker
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/',
+    });
+
+    // 4. Gérer la souscription
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
       await existingSubscription.unsubscribe();
@@ -151,8 +56,8 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       applicationServerKey
     });
 
+    // 5. Sauvegarder la souscription
     const subscriptionJSON = subscription.toJSON();
-
     const { error: insertError } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -181,33 +86,23 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
   try {
-    console.log('[Push Notifications] Starting unsubscribe process');
-    
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
-      console.log('[Push Notifications] Found existing subscription');
       await subscription.unsubscribe();
-      console.log('[Push Notifications] Unsubscribed from browser');
-
+      
       const { error } = await supabase
         .from('push_subscriptions')
         .delete()
         .eq('interpreter_id', interpreterId)
         .eq('endpoint', subscription.endpoint);
 
-      if (error) {
-        console.error('[Push Notifications] Database error:', error);
-        throw error;
-      }
-      console.log('[Push Notifications] Subscription removed from database');
+      if (error) throw error;
     }
 
-    // Toujours désinscrire le service worker
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map(reg => reg.unregister()));
-    console.log('[Push Notifications] Service worker unregistered');
 
     return true;
   } catch (error) {
@@ -218,7 +113,6 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
 
 export async function sendTestNotification(interpreterId: string) {
   try {
-    console.log('[Push Notifications] Sending test notification');
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
@@ -241,12 +135,7 @@ export async function sendTestNotification(interpreterId: string) {
       }
     );
 
-    if (error) {
-      console.error('[Push Notifications] Test notification error:', error);
-      throw error;
-    }
-    
-    console.log('[Push Notifications] Test notification sent successfully');
+    if (error) throw error;
     return data;
   } catch (error) {
     console.error('[Push Notifications] Test notification error:', error);
