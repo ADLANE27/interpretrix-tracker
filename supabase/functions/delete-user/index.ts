@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
@@ -52,7 +53,18 @@ Deno.serve(async (req) => {
 
     console.log('Attempting to delete user:', userId)
 
-    // First delete from user_roles
+    // First delete from interpreter_connection_status
+    const { error: connectionStatusDeleteError } = await supabaseClient
+      .from('interpreter_connection_status')
+      .delete()
+      .eq('interpreter_id', userId)
+
+    if (connectionStatusDeleteError) {
+      console.error('Error deleting connection status:', connectionStatusDeleteError)
+      throw new Error('Failed to delete connection status')
+    }
+
+    // Then delete from user_roles
     const { error: roleDeleteError } = await supabaseClient
       .from('user_roles')
       .delete()
