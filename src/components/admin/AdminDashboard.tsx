@@ -107,7 +107,7 @@ export const AdminDashboard = () => {
             console.log(`[AdminDashboard] ${table} changed:`, payload);
             
             const now = Date.now();
-            if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
+            if (now - lastFetchTimestamp > 1000) {
               lastFetchTimestamp = now;
               await fetchInterpreters();
             }
@@ -115,50 +115,35 @@ export const AdminDashboard = () => {
         )
         .subscribe((status) => {
           console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
-          if (status === 'SUBSCRIBED') {
-            console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
-          }
-          if (status === 'CHANNEL_ERROR') {
-            console.error(`[AdminDashboard] Error in ${channelName} channel`);
-            if (isSubscribed) {
-              clearTimeout(reconnectTimeout);
-              reconnectTimeout = setTimeout(() => {
-                if (isSubscribed) {
-                  console.log(`[AdminDashboard] Attempting to reconnect ${channelName}`);
-                  channel.subscribe();
-                }
-              }, 5000);
-            }
-          }
         });
 
       channels.push(channel);
       return channel;
     };
 
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log("[AdminDashboard] Tab became visible, refreshing all data");
-        const now = Date.now();
-        if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
-          lastFetchTimestamp = now;
-          await fetchInterpreters();
-        }
-      }
-    };
-
     const handleConnectionState = () => {
       const hasActiveChannels = channels.some(channel => 
-        channel.state === 'SUBSCRIBED' || channel.state === 'JOINING'
+        channel.isJoined() || channel.isJoining()
       );
       
       if (!hasActiveChannels && isSubscribed) {
         console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
         channels.forEach(channel => {
-          if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+          if (!channel.isJoined() && !channel.isJoining()) {
             channel.subscribe();
           }
         });
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[AdminDashboard] Tab became visible, refreshing all data");
+        const now = Date.now();
+        if (now - lastFetchTimestamp > 1000) {
+          lastFetchTimestamp = now;
+          await fetchInterpreters();
+        }
       }
     };
 

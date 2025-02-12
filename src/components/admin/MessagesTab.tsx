@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -132,7 +131,7 @@ export const MessagesTab = () => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to all events
+          event: '*',
           schema: 'public',
           table: 'interpretation_missions'
         },
@@ -141,7 +140,7 @@ export const MessagesTab = () => {
           console.log('[MessagesTab] Mission update received:', payload);
           
           const now = Date.now();
-          if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
+          if (now - lastFetchTimestamp > 1000) {
             lastFetchTimestamp = now;
             
             if (payload.eventType === 'INSERT') {
@@ -180,32 +179,13 @@ export const MessagesTab = () => {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[MessagesTab] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MessagesTab] Successfully subscribed to mission updates');
-        }
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MessagesTab] Error subscribing to mission updates');
-          if (isSubscribed) {
-            clearTimeout(reconnectTimeout);
-            reconnectTimeout = setTimeout(() => {
-              if (isSubscribed) {
-                console.log('[MessagesTab] Attempting to reconnect...');
-                channel.subscribe();
-              }
-            }, 5000);
-          }
-        }
-      });
+      .subscribe();
 
     // Handle visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[MessagesTab] Tab became visible, reinitializing connection');
-        if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+        if (!channel.isJoined() && !channel.isJoining()) {
           channel.subscribe();
         }
       }
