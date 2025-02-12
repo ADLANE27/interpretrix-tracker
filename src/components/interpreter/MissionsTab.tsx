@@ -121,98 +121,67 @@ export const MissionsTab = () => {
     console.log('[MissionsTab] Setting up realtime subscription');
     
     const initializeChannel = () => {
-      if (channelRef.current) {
-        console.log('[MissionsTab] Removing existing channel');
-        supabase.removeChannel(channelRef.current);
-      }
+      try {
+        if (channelRef.current) {
+          console.log('[MissionsTab] Removing existing channel');
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
 
-      channelRef.current = supabase
-        .channel('interpreter-missions', {
-          config: {
-            broadcast: { ack: true },
-            presence: { key: currentUserId || undefined }
-          }
-        })
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'mission_notifications'
-          },
-          async (payload) => {
-            console.log('[MissionsTab] New notification received:', payload);
-            
-            const notification = payload.new as any;
-            if (!currentUserId || notification.interpreter_id !== currentUserId) {
-              console.log('[MissionsTab] Notification not for current user');
-              return;
-            }
-
-            const { data: mission, error: missionError } = await supabase
-              .from('interpretation_missions')
-              .select('*')
-              .eq('id', notification.mission_id)
-              .single();
-
-            if (missionError) {
-              console.error('[MissionsTab] Error fetching mission:', missionError);
-              return;
-            }
-
-            console.log('[MissionsTab] Mission details:', mission);
-
-            const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
-              ? mission.mission_type 
-              : 'scheduled';
-
-            const isImmediate = missionType === 'immediate';
-              
-            if (!isMobile) {
-              console.log('[MissionsTab] Showing toast notification (desktop only)');
-              toast({
-                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                variant: isImmediate ? "destructive" : "default",
-                duration: 10000,
-              });
-            }
-
-            if (soundEnabled) {
-              try {
-                console.log('[MissionsTab] Playing notification sound for:', missionType);
-                await playNotificationSound(missionType);
-              } catch (error) {
-                console.error('[MissionsTab] Error playing sound:', error);
-                initializeSound();
-                try {
-                  await playNotificationSound(missionType);
-                } catch (retryError) {
-                  console.error('[MissionsTab] Retry failed:', retryError);
+        // Forcer la déconnexion des WebSockets existants
+        supabase.realtime.disconnect();
+        
+        // Attendre un peu avant de reconnecter
+        setTimeout(() => {
+          channelRef.current = supabase
+            .channel('interpreter-missions', {
+              config: {
+                broadcast: { ack: true },
+                presence: { key: currentUserId || undefined },
+                transport: {
+                  params: {
+                    requestTimeout: 10000 // Augmenter le timeout
+                  }
                 }
               }
-            }
-
-            fetchMissions();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'interpretation_missions'
-          },
-          async (payload) => {
-            console.log('[MissionsTab] Mission update received:', payload);
-            
-            if (payload.eventType === 'INSERT') {
-              const mission = payload.new as Mission;
-              if (mission.notified_interpreters?.includes(currentUserId || '')) {
-                const isImmediate = mission.mission_type === 'immediate';
+            })
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'mission_notifications'
+              },
+              async (payload) => {
+                console.log('[MissionsTab] New notification received:', payload);
                 
+                const notification = payload.new as any;
+                if (!currentUserId || notification.interpreter_id !== currentUserId) {
+                  console.log('[MissionsTab] Notification not for current user');
+                  return;
+                }
+
+                const { data: mission, error: missionError } = await supabase
+                  .from('interpretation_missions')
+                  .select('*')
+                  .eq('id', notification.mission_id)
+                  .single();
+
+                if (missionError) {
+                  console.error('[MissionsTab] Error fetching mission:', missionError);
+                  return;
+                }
+
+                console.log('[MissionsTab] Mission details:', mission);
+
+                const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
+                  ? mission.mission_type 
+                  : 'scheduled';
+
+                const isImmediate = missionType === 'immediate';
+                  
                 if (!isMobile) {
-                  console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                  console.log('[MissionsTab] Showing toast notification (desktop only)');
                   toast({
                     title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
                     description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
@@ -223,50 +192,82 @@ export const MissionsTab = () => {
 
                 if (soundEnabled) {
                   try {
-                    console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                    await playNotificationSound(mission.mission_type);
+                    console.log('[MissionsTab] Playing notification sound for:', missionType);
+                    await playNotificationSound(missionType);
                   } catch (error) {
                     console.error('[MissionsTab] Error playing sound:', error);
                     initializeSound();
                     try {
-                      await playNotificationSound(mission.mission_type);
+                      await playNotificationSound(missionType);
                     } catch (retryError) {
                       console.error('[MissionsTab] Retry failed:', retryError);
                     }
                   }
                 }
+
+                fetchMissions();
               }
-            }
-            
-            fetchMissions();
-          }
-        )
-        .subscribe(async (status) => {
-          console.log('[MissionsTab] Subscription status:', status);
-          
-          if (status === 'SUBSCRIBED') {
-            console.log('[MissionsTab] Successfully subscribed to changes');
-            reconnectCountRef.current = 0;
-            if (visibilityTimeoutRef.current) {
-              clearTimeout(visibilityTimeoutRef.current);
-            }
-          }
-          
-          if (status === 'CHANNEL_ERROR') {
-            console.error('[MissionsTab] Channel error, will attempt reconnect');
-            
-            if (reconnectTimeoutRef.current) {
-              clearTimeout(reconnectTimeoutRef.current);
-            }
-            
-            const backoffDelay = Math.min(1000 * Math.pow(2, reconnectCountRef.current), 30000);
-            reconnectTimeoutRef.current = setTimeout(() => {
-              console.log(`[MissionsTab] Attempting to reconnect... (attempt ${reconnectCountRef.current + 1})`);
-              reconnectCountRef.current += 1;
-              initializeChannel();
-            }, backoffDelay);
-          }
-        });
+            )
+            .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'interpretation_missions'
+              },
+              async (payload) => {
+                console.log('[MissionsTab] Mission update received:', payload);
+                
+                if (payload.eventType === 'INSERT') {
+                  const mission = payload.new as Mission;
+                  if (mission.notified_interpreters?.includes(currentUserId || '')) {
+                    const isImmediate = mission.mission_type === 'immediate';
+                    
+                    if (!isMobile) {
+                      console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                      toast({
+                        title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                        description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                        variant: isImmediate ? "destructive" : "default",
+                        duration: 10000,
+                      });
+                    }
+
+                    if (soundEnabled) {
+                      try {
+                        console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                        await playNotificationSound(mission.mission_type);
+                      } catch (error) {
+                        console.error('[MissionsTab] Error playing sound:', error);
+                        initializeSound();
+                        try {
+                          await playNotificationSound(mission.mission_type);
+                        } catch (retryError) {
+                          console.error('[MissionsTab] Retry failed:', retryError);
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                fetchMissions();
+              }
+            )
+            .subscribe(async (status) => {
+              console.log('[MissionsTab] Subscription status:', status);
+              
+              if (status === 'SUBSCRIBED') {
+                console.log('[MissionsTab] Successfully subscribed to changes');
+                reconnectCountRef.current = 0;
+                if (visibilityTimeoutRef.current) {
+                  clearTimeout(visibilityTimeoutRef.current);
+                }
+              }
+            });
+        }, 1000);
+      } catch (error) {
+        console.error('[MissionsTab] Error in initializeChannel:', error);
+      }
     };
 
     initializeChannel();
@@ -280,18 +281,31 @@ export const MissionsTab = () => {
         }
         
         visibilityTimeoutRef.current = setTimeout(() => {
-          console.log('[MissionsTab] Reinitializing channel after visibility change');
+          console.log('[MissionsTab] Reinitializing after visibility change');
+          // Forcer une déconnexion complète avant de réinitialiser
+          try {
+            if (channelRef.current) {
+              supabase.removeChannel(channelRef.current);
+              channelRef.current = null;
+            }
+            supabase.realtime.disconnect();
+          } catch (error) {
+            console.error('[MissionsTab] Error during cleanup:', error);
+          }
+          
           reconnectCountRef.current = 0;
-          initializeChannel();
+          setTimeout(initializeChannel, 1000);
           fetchMissions();
         }, 1000);
       }
     };
 
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[MissionsTab] Cleaning up realtime subscription');
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -299,8 +313,13 @@ export const MissionsTab = () => {
       if (visibilityTimeoutRef.current) {
         clearTimeout(visibilityTimeoutRef.current);
       }
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+      try {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+        }
+        supabase.realtime.disconnect();
+      } catch (error) {
+        console.error('[MissionsTab] Error during final cleanup:', error);
       }
     };
   };
