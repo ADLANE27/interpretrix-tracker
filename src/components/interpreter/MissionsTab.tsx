@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Mission {
   id: string;
@@ -33,6 +34,7 @@ export const MissionsTab = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundInitialized, setSoundInitialized] = useState(false);
+  const isMobile = useIsMobile();
 
   const initializeSound = () => {
     if (!soundInitialized) {
@@ -158,13 +160,15 @@ export const MissionsTab = () => {
 
             const isImmediate = missionType === 'immediate';
               
-            console.log('[MissionsTab] Showing toast notification');
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
+            if (!isMobile) {
+              console.log('[MissionsTab] Showing toast notification (desktop only)');
+              toast({
+                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                variant: isImmediate ? "destructive" : "default",
+                duration: 10000,
+              });
+            }
 
             if (soundEnabled) {
               try {
@@ -199,13 +203,15 @@ export const MissionsTab = () => {
               if (mission.notified_interpreters?.includes(currentUserId || '')) {
                 const isImmediate = mission.mission_type === 'immediate';
                 
-                console.log('[MissionsTab] Showing toast for new mission');
-                toast({
-                  title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                  description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                  variant: isImmediate ? "destructive" : "default",
-                  duration: 10000,
-                });
+                if (!isMobile) {
+                  console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                  toast({
+                    title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                    description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                    variant: isImmediate ? "destructive" : "default",
+                    duration: 10000,
+                  });
+                }
 
                 if (soundEnabled) {
                   try {
@@ -240,7 +246,6 @@ export const MissionsTab = () => {
         });
     }, 500);
 
-    // Return cleanup function
     return () => {
       clearTimeout(initDelay);
       if (channel) {
@@ -253,10 +258,12 @@ export const MissionsTab = () => {
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
     if (isProcessing) {
       console.log('[MissionsTab] Already processing a request');
-      toast({
-        title: "Action en cours",
-        description: "Veuillez patienter pendant le traitement de votre demande",
-      });
+      if (!isMobile) {
+        toast({
+          title: "Action en cours",
+          description: "Veuillez patienter pendant le traitement de votre demande",
+        });
+      }
       return;
     }
 
@@ -288,10 +295,12 @@ export const MissionsTab = () => {
         }
 
         console.log('[MissionsTab] Mission accepted successfully');
-        toast({
-          title: "Mission acceptée",
-          description: "Vous avez accepté la mission avec succès",
-        });
+        if (!isMobile) {
+          toast({
+            title: "Mission acceptée",
+            description: "Vous avez accepté la mission avec succès",
+          });
+        }
       } else {
         console.log('[MissionsTab] Declining mission');
         const { error: declineError } = await supabase
@@ -311,20 +320,24 @@ export const MissionsTab = () => {
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
 
         console.log('[MissionsTab] Mission declined successfully');
-        toast({
-          title: "Mission déclinée",
-          description: "Vous avez décliné la mission",
-        });
+        if (!isMobile) {
+          toast({
+            title: "Mission déclinée",
+            description: "Vous avez décliné la mission",
+          });
+        }
       }
 
       fetchMissions();
     } catch (error) {
       console.error('[MissionsTab] Error updating mission:', error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de votre demande",
-        variant: "destructive",
-      });
+      if (!isMobile) {
+        toast({
+          title: "Erreur",
+          description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de votre demande",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsProcessing(false);
     }
