@@ -137,12 +137,7 @@ export const MissionsTab = () => {
             .channel('interpreter-missions', {
               config: {
                 broadcast: { ack: true },
-                presence: { key: currentUserId || undefined },
-                transport: {
-                  params: {
-                    requestTimeout: 10000 // Augmenter le timeout
-                  }
-                }
+                presence: { key: currentUserId || undefined }
               }
             })
             .on(
