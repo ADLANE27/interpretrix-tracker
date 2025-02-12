@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export const MissionManagement = () => {
   const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreters, setSelectedInterpreters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sourceLanguage, setSourceLanguage] = useState("");
+  const [sourceLanguage, setSourceLanguage] = useState("Français"); // Définir Français par défaut
   const [targetLanguage, setTargetLanguage] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
@@ -446,7 +447,6 @@ export const MissionManagement = () => {
 
   return (
     <div className="space-y-6">
-      {/* Mission Creation Form */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Créer une nouvelle mission</h3>
         <form onSubmit={createMission} className="space-y-4">
