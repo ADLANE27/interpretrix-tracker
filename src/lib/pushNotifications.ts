@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -25,10 +26,11 @@ export async function registerServiceWorker() {
   try {
     console.log('[Push Notifications] Starting service worker registration');
 
-    // Unregister existing service workers first
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (let registration of registrations) {
-      await registration.unregister();
+    // Vérifier si un service worker est déjà enregistré
+    const existingRegistration = await navigator.serviceWorker.getRegistration('/');
+    if (existingRegistration?.active) {
+      console.log('[Push Notifications] Found existing active service worker');
+      return existingRegistration;
     }
 
     // Register service worker with explicit scope '/'
@@ -63,6 +65,30 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     
     const registration = await registerServiceWorker();
     
+    // Vérifier d'abord si une souscription existe déjà
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      console.log('[Push Notifications] Found existing subscription');
+      try {
+        // Vérifier si la souscription est toujours valide
+        const subscriptionJSON = subscription.toJSON();
+        const { data: existingSubscription } = await supabase
+          .from('push_subscriptions')
+          .select('*')
+          .eq('interpreter_id', interpreterId)
+          .eq('endpoint', subscriptionJSON.endpoint)
+          .single();
+
+        if (existingSubscription && existingSubscription.status === 'active') {
+          console.log('[Push Notifications] Found valid existing subscription in database');
+          return true;
+        }
+      } catch (error) {
+        console.log('[Push Notifications] Error checking existing subscription:', error);
+        // Si erreur, on continue pour créer une nouvelle souscription
+      }
+    }
+
     // Request notification permission with proper error handling
     console.log('[Push Notifications] Requesting notification permission');
     const permission = await Notification.requestPermission();
@@ -98,10 +124,9 @@ export async function subscribeToPushNotifications(interpreterId: string) {
     // Convert VAPID key
     const applicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey);
 
-    // Check for existing subscription and unsubscribe if found
-    let subscription = await registration.pushManager.getSubscription();
+    // Si une souscription existe, la désactiver
     if (subscription) {
-      console.log('[Push Notifications] Found existing subscription, unsubscribing...');
+      console.log('[Push Notifications] Unsubscribing from existing subscription');
       await subscription.unsubscribe();
     }
 
