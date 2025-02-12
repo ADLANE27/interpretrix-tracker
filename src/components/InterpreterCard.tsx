@@ -18,11 +18,13 @@ interface Mission {
   status: string;
 }
 
+type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
+
 interface InterpreterCardProps {
   interpreter: {
     id: string;
     name: string;
-    status: "available" | "unavailable" | "pause" | "busy";
+    status: InterpreterStatus;
     employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
     tarif_15min?: number | null;
@@ -31,6 +33,12 @@ interface InterpreterCardProps {
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
   };
+}
+
+interface InterpreterProfile {
+  status: string;
+  tarif_5min: number;
+  tarif_15min: number;
 }
 
 const statusConfig = {
@@ -48,6 +56,10 @@ const employmentStatusLabels: Record<string, string> = {
   self_employed: "Auto-entrepreneur",
 };
 
+const isValidStatus = (status: string): status is InterpreterStatus => {
+  return ['available', 'unavailable', 'pause', 'busy'].includes(status);
+};
+
 export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [showAllMissions, setShowAllMissions] = useState(false);
@@ -55,8 +67,75 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_5min: 0,
     tarif_15min: 0
   });
-  const [currentStatus, setCurrentStatus] = useState(interpreter.status);
+  const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
+
+  // Define fetchTarifs before using it
+  const fetchTarifs = async () => {
+    const { data, error } = await supabase
+      .from('interpreter_profiles')
+      .select('tarif_5min, tarif_15min')
+      .eq('id', interpreter.id)
+      .single();
+
+    if (error) {
+      console.error('[InterpreterCard] Error fetching tarifs:', error);
+      return;
+    }
+
+    if (data) {
+      setLocalTarifs({
+        tarif_5min: data.tarif_5min,
+        tarif_15min: data.tarif_15min
+      });
+    }
+  };
+
+  // Define fetchMissions before using it
+  const fetchMissions = async () => {
+    const { data, error } = await supabase
+      .from('interpretation_missions')
+      .select('*')
+      .eq('assigned_interpreter_id', interpreter.id)
+      .eq('status', 'accepted')
+      .eq('mission_type', 'scheduled')
+      .gte('scheduled_start_time', new Date().toISOString())
+      .order('scheduled_start_time', { ascending: true });
+
+    if (error) {
+      console.error('[InterpreterCard] Error fetching missions:', error);
+      return;
+    }
+
+    const typedMissions = (data || []).map(mission => ({
+      scheduled_start_time: mission.scheduled_start_time,
+      scheduled_end_time: mission.scheduled_end_time,
+      estimated_duration: mission.estimated_duration,
+      source_language: mission.source_language,
+      target_language: mission.target_language,
+      mission_type: mission.mission_type as 'immediate' | 'scheduled',
+      status: mission.status
+    }));
+
+    setMissions(typedMissions);
+  };
+
+  const fetchCurrentStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('status')
+        .eq('id', interpreter.id)
+        .single();
+
+      if (error) throw error;
+      if (data && isValidStatus(data.status)) {
+        setCurrentStatus(data.status);
+      }
+    } catch (error) {
+      console.error('[InterpreterCard] Error fetching current status:', error);
+    }
+  };
 
   // Handle online/offline status
   useEffect(() => {
@@ -93,42 +172,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     };
   }, [interpreter.id]);
 
-  const fetchCurrentStatus = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('interpreter_profiles')
-        .select('status')
-        .eq('id', interpreter.id)
-        .single();
-
-      if (error) throw error;
-      if (data) setCurrentStatus(data.status);
-    } catch (error) {
-      console.error('[InterpreterCard] Error fetching current status:', error);
-    }
-  };
-
   useEffect(() => {
-    const fetchTarifs = async () => {
-      const { data, error } = await supabase
-        .from('interpreter_profiles')
-        .select('tarif_5min, tarif_15min')
-        .eq('id', interpreter.id)
-        .single();
-
-      if (error) {
-        console.error('[InterpreterCard] Error fetching tarifs:', error);
-        return;
-      }
-
-      if (data) {
-        setLocalTarifs({
-          tarif_5min: data.tarif_5min,
-          tarif_15min: data.tarif_15min
-        });
-      }
-    };
-
     fetchTarifs();
   }, [interpreter.id]);
 
@@ -147,34 +191,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       interpreter_id: interpreter.id
     });
 
-    const fetchMissions = async () => {
-      const { data, error } = await supabase
-        .from('interpretation_missions')
-        .select('*')
-        .eq('assigned_interpreter_id', interpreter.id)
-        .eq('status', 'accepted')
-        .eq('mission_type', 'scheduled')
-        .gte('scheduled_start_time', new Date().toISOString())
-        .order('scheduled_start_time', { ascending: true });
-
-      if (error) {
-        console.error('[InterpreterCard] Error fetching missions:', error);
-        return;
-      }
-
-      const typedMissions = (data || []).map(mission => ({
-        scheduled_start_time: mission.scheduled_start_time,
-        scheduled_end_time: mission.scheduled_end_time,
-        estimated_duration: mission.estimated_duration,
-        source_language: mission.source_language,
-        target_language: mission.target_language,
-        mission_type: mission.mission_type as 'immediate' | 'scheduled',
-        status: mission.status
-      }));
-
-      setMissions(typedMissions);
-    };
-
     // Set up real-time subscriptions
     const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`)
       .on(
@@ -187,7 +203,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         },
         (payload) => {
           console.log('[InterpreterCard] Status update received:', payload);
-          if (payload.new) {
+          if (payload.new && isValidStatus(payload.new.status)) {
             setCurrentStatus(payload.new.status);
           }
         }
