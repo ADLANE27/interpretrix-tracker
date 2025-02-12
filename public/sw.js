@@ -1,6 +1,6 @@
 
 // Service Worker version avec gestion d'erreurs améliorée
-const SW_VERSION = '1.1.0';
+const SW_VERSION = '1.2.0';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
 // Gestion globale des erreurs
@@ -40,6 +40,31 @@ async function retryOperation(operation, maxRetries = MAX_RETRIES) {
   }
   throw lastError;
 }
+
+// Installation et activation améliorées
+self.addEventListener('install', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Installing`);
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Activating`);
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Nettoyage du cache
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
+});
 
 // Gestion améliorée des notifications push
 self.addEventListener('push', event => {
@@ -84,14 +109,7 @@ self.addEventListener('push', event => {
           throw new Error('Notifications not supported');
         }
 
-        const notificationPromise = self.registration.showNotification(data.title, options);
-        
-        // Ajouter un timeout de sécurité
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Notification timeout')), 5000);
-        });
-
-        await Promise.race([notificationPromise, timeoutPromise]);
+        await self.registration.showNotification(data.title, options);
         console.log('[Service Worker] Notification shown successfully');
       })
     );
@@ -104,7 +122,7 @@ self.addEventListener('push', event => {
   }
 });
 
-// Gestion améliorée des clics sur les notifications
+// Gestion des clics sur les notifications
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
     tag: event.notification.tag,
@@ -139,30 +157,5 @@ self.addEventListener('notificationclick', event => {
         console.error('[Service Worker] Error handling click:', error);
       }
     })()
-  );
-});
-
-// Installation et activation améliorées
-self.addEventListener('install', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Installing`);
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      // Nettoyage du cache
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== 'v1') {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
   );
 });

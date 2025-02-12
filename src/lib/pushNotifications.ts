@@ -55,11 +55,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       throw new Error('Service Worker not supported');
     }
 
-    // Unregister any existing service workers
-    const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(existingRegistrations.map(reg => reg.unregister()));
+    // Nettoyage des anciens service workers
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      await registration.unregister();
+    }
 
-    // Register new service worker
+    // Attendre un court délai avant d'enregistrer le nouveau service worker
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Enregistrer le nouveau service worker
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       type: 'module',
@@ -71,7 +76,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       state: registration.active?.state
     });
 
-    // Wait for the service worker to be ready
+    // Attendre que le service worker soit prêt
     await waitForServiceWorkerRegistration(registration);
 
     return { success: true, registration };
@@ -89,19 +94,22 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
   try {
     console.log('[Push Notifications] Starting subscription process');
 
-    // Request notification permission first
+    // Demander la permission en premier
     const permissionResult = await Notification.requestPermission();
     if (permissionResult !== 'granted') {
       throw new Error(`Permission not granted: ${permissionResult}`);
     }
 
-    // Register service worker
+    // Enregistrer le service worker
     const swResult = await registerServiceWorker();
     if (!swResult.success || !swResult.registration) {
       throw new Error('Failed to register service worker');
     }
 
-    // Get VAPID public key
+    // Attendre un court délai pour s'assurer que le service worker est actif
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Récupérer la clé VAPID
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
       {
@@ -111,27 +119,32 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     );
 
     if (vapidError || !vapidData?.vapidPublicKey) {
+      console.error('[Push Notifications] VAPID key error:', vapidError);
       throw new Error('Failed to get VAPID key');
     }
 
-    // Convert VAPID key
+    // Convertir la clé VAPID
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
-    // Check for existing subscription
+    // Vérifier la souscription existante
     const existingSubscription = await swResult.registration.pushManager.getSubscription();
     if (existingSubscription) {
       await existingSubscription.unsubscribe();
+      console.log('[Push Notifications] Unsubscribed from existing subscription');
     }
 
-    // Create new subscription
+    // Créer une nouvelle souscription
+    console.log('[Push Notifications] Creating new subscription');
     const subscription = await swResult.registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
     });
 
+    console.log('[Push Notifications] New subscription created:', subscription);
+
     const subscriptionJSON = subscription.toJSON();
 
-    // Store subscription in database
+    // Stocker la souscription dans la base de données
     const { error: insertError } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -148,9 +161,11 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       });
 
     if (insertError) {
+      console.error('[Push Notifications] Database error:', insertError);
       throw insertError;
     }
 
+    console.log('[Push Notifications] Subscription stored in database');
     return true;
   } catch (error) {
     console.error('[Push Notifications] Subscription error:', {
@@ -164,11 +179,15 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
   try {
+    console.log('[Push Notifications] Starting unsubscribe process');
+    
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
+      console.log('[Push Notifications] Found existing subscription');
       await subscription.unsubscribe();
+      console.log('[Push Notifications] Unsubscribed from browser');
 
       const { error } = await supabase
         .from('push_subscriptions')
@@ -176,10 +195,18 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
         .eq('interpreter_id', interpreterId)
         .eq('endpoint', subscription.endpoint);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Push Notifications] Database error:', error);
+        throw error;
+      }
+      console.log('[Push Notifications] Subscription removed from database');
     }
 
-    await registration.unregister();
+    // Toujours désinscrire le service worker
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(reg => reg.unregister()));
+    console.log('[Push Notifications] Service worker unregistered');
+
     return true;
   } catch (error) {
     console.error('[Push Notifications] Unsubscribe error:', error);
@@ -189,6 +216,7 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
 
 export async function sendTestNotification(interpreterId: string) {
   try {
+    console.log('[Push Notifications] Sending test notification');
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
@@ -211,7 +239,12 @@ export async function sendTestNotification(interpreterId: string) {
       }
     );
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Push Notifications] Test notification error:', error);
+      throw error;
+    }
+    
+    console.log('[Push Notifications] Test notification sent successfully');
     return data;
   } catch (error) {
     console.error('[Push Notifications] Test notification error:', error);
