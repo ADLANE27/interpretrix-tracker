@@ -72,7 +72,7 @@ export const AdminDashboard = () => {
         next_mission_start: interpreter.next_mission_start,
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
-        tarif_5min: interpreter.tarif_5min || 0 // Ensure tarif_5min is always present
+        tarif_5min: null // Since it's not in the view, we set it to null
       }));
 
       setInterpreters(mappedInterpreters);
