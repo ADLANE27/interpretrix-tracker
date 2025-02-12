@@ -1,40 +1,7 @@
+
 // Service Worker version avec gestion d'erreurs améliorée
-const SW_VERSION = '1.3.0';
+const SW_VERSION = '1.4.0';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
-
-// Force l'activation immédiate
-self.addEventListener('install', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Installing`);
-  event.waitUntil(self.skipWaiting());
-});
-
-self.addEventListener('activate', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  // Force la prise de contrôle immédiate
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      // Nettoyage du cache
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== 'v1') {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
-  );
-});
-
-// Écouter les messages pour SKIP_WAITING
-self.addEventListener('message', event => {
-  if (event.data === 'SKIP_WAITING') {
-    console.log('[Service Worker] Skipping wait phase');
-    self.skipWaiting();
-  }
-});
 
 // Configuration des retries
 const MAX_RETRIES = 3;
@@ -72,6 +39,55 @@ self.addEventListener('unhandledrejection', event => {
     reason: event.reason,
     stack: event.reason.stack
   });
+});
+
+// Installation avec gestion d'erreurs
+self.addEventListener('install', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Installing`);
+  event.waitUntil(
+    retryOperation(async () => {
+      await self.skipWaiting();
+      console.log(`[Service Worker ${SW_VERSION}] Installation completed`);
+    })
+  );
+});
+
+// Activation avec nettoyage robuste
+self.addEventListener('activate', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Activating`);
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Nettoyage du cache
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              console.log(`[Service Worker] Deleting old cache:`, cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ]).then(() => {
+      console.log(`[Service Worker ${SW_VERSION}] Activation completed`);
+    })
+  );
+});
+
+// Gestion des messages avec confirmation
+self.addEventListener('message', event => {
+  console.log('[Service Worker] Message received:', event.data);
+  
+  if (event.data === 'SKIP_WAITING') {
+    console.log('[Service Worker] Skipping wait phase');
+    event.waitUntil(
+      retryOperation(async () => {
+        await self.skipWaiting();
+        console.log('[Service Worker] Wait phase skipped successfully');
+      })
+    );
+  }
 });
 
 // Gestion améliorée des notifications push
