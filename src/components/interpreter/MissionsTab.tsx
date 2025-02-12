@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,8 @@ export const MissionsTab = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundInitialized, setSoundInitialized] = useState(false);
   const isMobile = useIsMobile();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
   const initializeSound = () => {
     if (!soundInitialized) {
@@ -116,9 +118,13 @@ export const MissionsTab = () => {
   const setupRealtimeSubscription = () => {
     console.log('[MissionsTab] Setting up realtime subscription');
     
-    let channel: RealtimeChannel | null = null;
-    const initDelay = setTimeout(() => {
-      channel = supabase
+    const initializeChannel = () => {
+      if (channelRef.current) {
+        console.log('[MissionsTab] Removing existing channel');
+        supabase.removeChannel(channelRef.current);
+      }
+
+      channelRef.current = supabase
         .channel('interpreter-missions')
         .on(
           'postgres_changes',
@@ -236,23 +242,42 @@ export const MissionsTab = () => {
           }
           
           if (status === 'CHANNEL_ERROR') {
-            console.error('[MissionsTab] Error subscribing to changes');
-            if (!isMobile) {  // Ajout de la condition pour ne pas afficher le toast sur mobile
-              toast({
-                title: "Erreur",
-                description: "Impossible de recevoir les mises à jour en temps réel",
-                variant: "destructive",
-              });
+            console.error('[MissionsTab] Channel error, will attempt reconnect');
+            
+            // Clear any existing reconnection timeout
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current);
             }
+            
+            // Set a new reconnection timeout
+            reconnectTimeoutRef.current = setTimeout(() => {
+              console.log('[MissionsTab] Attempting to reconnect...');
+              initializeChannel();
+            }, 5000); // Wait 5 seconds before attempting to reconnect
           }
         });
-    }, 500);
+    };
+
+    initializeChannel();
+
+    // Handle visibility change for PWA
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[MissionsTab] App became visible, reinitializing channel');
+        initializeChannel();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearTimeout(initDelay);
-      if (channel) {
-        console.log('[MissionsTab] Cleaning up realtime subscription');
-        supabase.removeChannel(channel);
+      console.log('[MissionsTab] Cleaning up realtime subscription');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
       }
     };
   };
