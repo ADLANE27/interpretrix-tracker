@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -40,12 +39,17 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     setMissions(initialMissions);
   }, [initialMissions]);
 
+  // Set up realtime subscription
   useEffect(() => {
     console.log('[MissionsCalendar] Setting up realtime subscription');
     let isSubscribed = true;
+
+    // Create a unique channel name using timestamp
+    const channelName = `calendar-missions-${Date.now()}`;
+    console.log('[MissionsCalendar] Creating channel:', channelName);
     
     const channel = supabase
-      .channel('calendar-missions')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -54,18 +58,16 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
           table: 'interpretation_missions'
         },
         async (payload: MissionPayload) => {
-          console.log('[MissionsCalendar] Mission update received:', payload);
-          
           if (!isSubscribed) return;
+          console.log('[MissionsCalendar] Mission update received:', payload);
 
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) {
-            console.log('[MissionsCalendar] No authenticated user found');
-            return;
-          }
-
-          // Handle different event types
           try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+              console.log('[MissionsCalendar] No authenticated user found');
+              return;
+            }
+
             switch (payload.eventType) {
               case 'INSERT':
               case 'UPDATE': {
@@ -83,20 +85,13 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                 console.log('[MissionsCalendar] Fetched updated mission:', updatedMission);
 
                 setMissions(currentMissions => {
-                  // Check if this mission should be displayed for the current user
                   if (updatedMission.assigned_interpreter_id === user.id && 
                       updatedMission.status === 'accepted') {
-                    
-                    // Remove the old version if it exists
                     const filteredMissions = currentMissions.filter(m => m.id !== updatedMission.id);
-                    
-                    // Add the updated mission
                     const newMissions = [...filteredMissions, updatedMission];
                     console.log('[MissionsCalendar] Updated missions list:', newMissions);
                     return newMissions;
                   }
-                  
-                  // If the mission is no longer assigned to this user, remove it
                   return currentMissions.filter(m => m.id !== updatedMission.id);
                 });
                 break;
@@ -118,15 +113,25 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
       )
       .subscribe((status) => {
         console.log('[MissionsCalendar] Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[MissionsCalendar] Successfully subscribed to channel:', channelName);
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MissionsCalendar] Channel error for:', channelName);
+        }
       });
 
     // Cleanup function
     return () => {
-      console.log('[MissionsCalendar] Cleaning up realtime subscription');
+      console.log('[MissionsCalendar] Cleaning up subscription for channel:', channelName);
       isSubscribed = false;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel).then(() => {
+        console.log('[MissionsCalendar] Channel removed successfully:', channelName);
+      }).catch(error => {
+        console.error('[MissionsCalendar] Error removing channel:', error);
+      });
     };
-  }, []);
+  }, []); // Empty dependency array ensures setup runs only once
 
   // Filter missions for the calendar view
   const scheduledMissions = missions.filter(mission => {
