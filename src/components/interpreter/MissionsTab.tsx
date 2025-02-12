@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,13 +110,6 @@ export const MissionsTab = () => {
       setMissions(filteredMissions as Mission[]);
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
-      if (!isMobile) {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les missions",
-          variant: "destructive",
-        });
-      }
     }
   };
 
@@ -268,12 +260,6 @@ export const MissionsTab = () => {
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
     if (isProcessing) {
       console.log('[MissionsTab] Already processing a request');
-      if (!isMobile) {
-        toast({
-          title: "Action en cours",
-          description: "Veuillez patienter pendant le traitement de votre demande",
-        });
-      }
       return;
     }
 
@@ -305,12 +291,6 @@ export const MissionsTab = () => {
         }
 
         console.log('[MissionsTab] Mission accepted successfully');
-        if (!isMobile) {
-          toast({
-            title: "Mission acceptée",
-            description: "Vous avez accepté la mission avec succès",
-          });
-        }
       } else {
         console.log('[MissionsTab] Declining mission');
         const { error: declineError } = await supabase
@@ -328,26 +308,12 @@ export const MissionsTab = () => {
         }
 
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
-
         console.log('[MissionsTab] Mission declined successfully');
-        if (!isMobile) {
-          toast({
-            title: "Mission déclinée",
-            description: "Vous avez décliné la mission",
-          });
-        }
       }
 
       fetchMissions();
     } catch (error) {
       console.error('[MissionsTab] Error updating mission:', error);
-      if (!isMobile) {
-        toast({
-          title: "Erreur",
-          description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de votre demande",
-          variant: "destructive",
-        });
-      }
     } finally {
       setIsProcessing(false);
     }
