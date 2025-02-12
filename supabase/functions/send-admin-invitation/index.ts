@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
@@ -53,28 +54,36 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         role: 'admin',
+        active: true
       })
 
     if (roleError) {
       console.error('Error creating user role:', roleError)
+      // If we fail to create the role, delete the user
+      await supabaseClient.auth.admin.deleteUser(user.id)
       throw roleError
     }
 
     console.log('Admin role assigned successfully')
 
     // Send welcome email with credentials
-    const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
-      body: {
-        email,
-        password: generatedPassword,
-        first_name,
-      },
-    })
+    try {
+      const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+        body: {
+          email,
+          password: generatedPassword,
+          first_name,
+        },
+      })
 
-    if (emailError) {
-      console.error('Error sending welcome email:', emailError)
-      // Don't throw here, as the user is already created
-      // Just log the error and continue
+      if (emailError) {
+        console.error('Error sending welcome email:', emailError)
+        // Don't throw here, as the user is already created
+        // Just log the error and continue
+      }
+    } catch (emailError) {
+      console.error('Error invoking send-welcome-email function:', emailError)
+      // Continue despite email error
     }
 
     return new Response(
@@ -87,7 +96,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in send-admin-invitation:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.details || 'No additional details available'
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
