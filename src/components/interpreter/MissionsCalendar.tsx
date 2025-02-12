@@ -34,6 +34,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // Log initial missions and state updates for debugging
   useEffect(() => {
     console.log('[MissionsCalendar] Initial missions received:', initialMissions);
     setMissions(initialMissions);
@@ -41,6 +42,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
 
   useEffect(() => {
     console.log('[MissionsCalendar] Setting up realtime subscription');
+    let isSubscribed = true;
     
     const channel = supabase
       .channel('calendar-missions')
@@ -54,68 +56,63 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
         async (payload: MissionPayload) => {
           console.log('[MissionsCalendar] Mission update received:', payload);
           
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
+          if (!isSubscribed) return;
 
-          if (!payload.new && payload.eventType !== 'DELETE') {
-            console.log('[MissionsCalendar] Invalid payload received:', payload);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            console.log('[MissionsCalendar] No authenticated user found');
             return;
           }
 
-          if (payload.eventType !== 'DELETE') {
-            const { data: updatedMission, error } = await supabase
-              .from('interpretation_missions')
-              .select('*')
-              .eq('id', payload.new.id)
-              .single();
+          // Handle different event types
+          try {
+            switch (payload.eventType) {
+              case 'INSERT':
+              case 'UPDATE': {
+                const { data: updatedMission, error } = await supabase
+                  .from('interpretation_missions')
+                  .select('*')
+                  .eq('id', payload.new.id)
+                  .single();
 
-            if (error) {
-              console.error('[MissionsCalendar] Error fetching updated mission:', error);
-              return;
-            }
+                if (error) {
+                  console.error('[MissionsCalendar] Error fetching updated mission:', error);
+                  return;
+                }
 
-            console.log('[MissionsCalendar] Updated mission fetched:', updatedMission);
+                console.log('[MissionsCalendar] Fetched updated mission:', updatedMission);
 
-            setMissions(currentMissions => {
-              let newMissions;
-              
-              switch (payload.eventType) {
-                case 'INSERT':
-                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
-                    newMissions = [...currentMissions, updatedMission];
-                  } else {
-                    newMissions = currentMissions;
+                setMissions(currentMissions => {
+                  // Check if this mission should be displayed for the current user
+                  if (updatedMission.assigned_interpreter_id === user.id && 
+                      updatedMission.status === 'accepted') {
+                    
+                    // Remove the old version if it exists
+                    const filteredMissions = currentMissions.filter(m => m.id !== updatedMission.id);
+                    
+                    // Add the updated mission
+                    const newMissions = [...filteredMissions, updatedMission];
+                    console.log('[MissionsCalendar] Updated missions list:', newMissions);
+                    return newMissions;
                   }
-                  break;
-                
-                case 'UPDATE':
-                  if (updatedMission.assigned_interpreter_id === user.id && updatedMission.status === 'accepted') {
-                    // Mettre à jour ou ajouter la mission
-                    const missionExists = currentMissions.some(m => m.id === updatedMission.id);
-                    if (missionExists) {
-                      newMissions = currentMissions.map(mission => 
-                        mission.id === updatedMission.id ? updatedMission : mission
-                      );
-                    } else {
-                      newMissions = [...currentMissions, updatedMission];
-                    }
-                  } else {
-                    // Supprimer la mission si elle n'est plus assignée à l'interprète
-                    newMissions = currentMissions.filter(mission => mission.id !== updatedMission.id);
-                  }
-                  break;
-                
-                default:
-                  newMissions = currentMissions;
+                  
+                  // If the mission is no longer assigned to this user, remove it
+                  return currentMissions.filter(m => m.id !== updatedMission.id);
+                });
+                break;
               }
               
-              console.log('[MissionsCalendar] Updated missions list:', newMissions);
-              return newMissions;
-            });
-          } else if (payload.old?.id) {
-            setMissions(currentMissions => 
-              currentMissions.filter(mission => mission.id !== payload.old?.id)
-            );
+              case 'DELETE': {
+                if (payload.old?.id) {
+                  setMissions(currentMissions => 
+                    currentMissions.filter(mission => mission.id !== payload.old?.id)
+                  );
+                }
+                break;
+              }
+            }
+          } catch (error) {
+            console.error('[MissionsCalendar] Error processing mission update:', error);
           }
         }
       )
@@ -123,21 +120,23 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
         console.log('[MissionsCalendar] Subscription status:', status);
       });
 
+    // Cleanup function
     return () => {
       console.log('[MissionsCalendar] Cleaning up realtime subscription');
+      isSubscribed = false;
       supabase.removeChannel(channel);
     };
   }, []);
 
-  const scheduledMissions = missions.filter(
-    (mission) => {
-      const isAccepted = mission.status === 'accepted';
-      const hasScheduledTime = mission.scheduled_start_time !== null;
-      console.log(`[MissionsCalendar] Mission ${mission.id} - accepted: ${isAccepted}, hasScheduledTime: ${hasScheduledTime}`);
-      return isAccepted && hasScheduledTime;
-    }
-  );
+  // Filter missions for the calendar view
+  const scheduledMissions = missions.filter(mission => {
+    const isAccepted = mission.status === 'accepted';
+    const hasScheduledTime = mission.scheduled_start_time !== null;
+    console.log(`[MissionsCalendar] Mission ${mission.id} - accepted: ${isAccepted}, hasScheduledTime: ${hasScheduledTime}`);
+    return isAccepted && hasScheduledTime;
+  });
 
+  // Filter missions for the selected date
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
@@ -151,6 +150,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     return matches;
   });
 
+  // Get all dates that have missions
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
