@@ -21,10 +21,35 @@ serve(async (req) => {
 
     const { email, first_name, last_name, password } = await req.json()
 
-    console.log('Creating admin user:', { email, first_name, last_name })
+    console.log('Checking if user exists:', email)
+
+    // First, check if the user already exists
+    const { data: existingUsers, error: searchError } = await supabaseClient
+      .from('user_roles')
+      .select('user_id, role')
+      .eq('role', 'admin')
+      .eq('user_id', (
+        await supabaseClient.auth.admin.listUsers({
+          filters: {
+            email: email
+          }
+        })
+      ).data.users[0]?.id || '')
+
+    if (searchError) {
+      console.error('Error searching for existing user:', searchError)
+      throw searchError
+    }
+
+    if (existingUsers && existingUsers.length > 0) {
+      console.log('User already exists as admin')
+      throw new Error('Un administrateur avec cette adresse email existe déjà')
+    }
 
     // Create the user with provided password or generate a random one
     const generatedPassword = password || Math.random().toString(36).slice(-8)
+
+    console.log('Creating admin user:', { email, first_name, last_name })
 
     // Create the user
     const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
@@ -39,11 +64,50 @@ serve(async (req) => {
 
     if (createUserError) {
       console.error('Error creating user:', createUserError)
+      // Check if it's a duplicate email error
+      if (createUserError.message.includes('already been registered')) {
+        // Get the existing user
+        const { data: { users } } = await supabaseClient.auth.admin.listUsers({
+          filters: {
+            email: email
+          }
+        })
+        
+        if (users && users.length > 0) {
+          const existingUser = users[0]
+          console.log('User exists, adding admin role:', existingUser.id)
+          
+          // Add admin role to existing user
+          const { error: roleError } = await supabaseClient
+            .from('user_roles')
+            .insert({
+              user_id: existingUser.id,
+              role: 'admin',
+              active: true
+            })
+
+          if (roleError) {
+            console.error('Error adding admin role to existing user:', roleError)
+            throw new Error('Impossible d\'attribuer le rôle administrateur à cet utilisateur')
+          }
+
+          return new Response(
+            JSON.stringify({ 
+              message: 'Rôle administrateur ajouté avec succès à l\'utilisateur existant',
+              userId: existingUser.id 
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            },
+          )
+        }
+      }
       throw createUserError
     }
 
     if (!user) {
-      throw new Error('No user returned after creation')
+      throw new Error('Aucun utilisateur créé')
     }
 
     console.log('User created successfully:', user.id)
@@ -87,7 +151,10 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: 'Admin user created successfully', userId: user.id }),
+      JSON.stringify({ 
+        message: 'Administrateur créé avec succès',
+        userId: user.id 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
