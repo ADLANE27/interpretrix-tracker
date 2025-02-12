@@ -227,12 +227,12 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
     // Subscribe to status changes
     statusChannel
-      .on('postgres_changes', {
+      .on('postgres_changes' as any, {
         event: 'UPDATE',
         schema: 'public',
         table: 'interpreter_profiles',
         filter: `id=eq.${interpreter.id}`,
-      } as any, (payload: RealtimeInterpreterProfilePayload) => {
+      }, (payload: RealtimeInterpreterProfilePayload) => {
         console.log('[InterpreterCard] Status update received:', payload);
         if (payload.new && typeof payload.new.status === 'string' && isValidStatus(payload.new.status)) {
           setCurrentStatus(payload.new.status);
@@ -244,12 +244,12 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
     // Subscribe to mission changes
     missionChannel
-      .on('postgres_changes', {
+      .on('postgres_changes' as any, {
         event: 'UPDATE',
         schema: 'public',
         table: 'interpretation_missions',
         filter: `assigned_interpreter_id=eq.${interpreter.id}`,
-      } as any, (payload: RealtimePostgresUpdatePayload) => {
+      }, (payload: RealtimePostgresUpdatePayload) => {
         console.log('[InterpreterCard] Mission update received:', payload);
         fetchMissions();
       })
