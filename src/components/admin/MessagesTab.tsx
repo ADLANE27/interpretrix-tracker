@@ -123,48 +123,57 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     console.log('[MessagesTab] Setting up realtime subscription...');
+    let isSubscribed = true;
+    let lastFetchTimestamp = Date.now();
+    let reconnectTimeout: NodeJS.Timeout;
+
     const channel = supabase
-      .channel('realtime-mission-updates')
+      .channel(`realtime-mission-updates-${Date.now()}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen to all events
           schema: 'public',
           table: 'interpretation_missions'
         },
         async (payload: any) => {
-          console.log('[MessagesTab] New mission created:', payload);
+          if (!isSubscribed) return;
+          console.log('[MessagesTab] Mission update received:', payload);
           
-          if (payload.eventType === 'INSERT') {
-            const mission = payload.new as any;
+          const now = Date.now();
+          if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
+            lastFetchTimestamp = now;
             
-            if (!mission) {
-              console.error('[MessagesTab] Invalid mission payload');
-              return;
-            }
+            if (payload.eventType === 'INSERT') {
+              const mission = payload.new as any;
+              
+              if (!mission) {
+                console.error('[MessagesTab] Invalid mission payload');
+                return;
+              }
 
-            const isImmediate = mission.mission_type === 'immediate';
-            
-            console.log('[MessagesTab] Showing toast notification');
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
+              const isImmediate = mission.mission_type === 'immediate';
+              
+              console.log('[MessagesTab] Showing toast notification');
+              toast({
+                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                variant: isImmediate ? "destructive" : "default",
+                duration: 10000,
+              });
 
-            if (soundEnabled) {
-              try {
-                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
-                await playNotificationSound(mission.mission_type);
-              } catch (error) {
-                console.error('[MessagesTab] Error playing sound:', error);
-                // Try to reinitialize sound on error
-                initializeSound();
+              if (soundEnabled) {
                 try {
+                  console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                   await playNotificationSound(mission.mission_type);
-                } catch (retryError) {
-                  console.error('[MessagesTab] Retry failed:', retryError);
+                } catch (error) {
+                  console.error('[MessagesTab] Error playing sound:', error);
+                  initializeSound();
+                  try {
+                    await playNotificationSound(mission.mission_type);
+                  } catch (retryError) {
+                    console.error('[MessagesTab] Retry failed:', retryError);
+                  }
                 }
               }
             }
@@ -180,16 +189,35 @@ export const MessagesTab = () => {
         
         if (status === 'CHANNEL_ERROR') {
           console.error('[MessagesTab] Error subscribing to mission updates');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
+          if (isSubscribed) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
+              if (isSubscribed) {
+                console.log('[MessagesTab] Attempting to reconnect...');
+                channel.subscribe();
+              }
+            }, 5000);
+          }
         }
       });
 
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[MessagesTab] Tab became visible, reinitializing connection');
+        if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+          channel.subscribe();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       console.log('[MessagesTab] Cleaning up realtime subscription');
+      isSubscribed = false;
+      clearTimeout(reconnectTimeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
   }, [soundEnabled, toast, isMobile]);

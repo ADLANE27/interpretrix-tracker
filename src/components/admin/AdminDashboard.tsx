@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -50,7 +49,6 @@ export const AdminDashboard = () => {
 
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
-  // Function to fetch all interpreters
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
@@ -60,7 +58,6 @@ export const AdminDashboard = () => {
 
       if (error) throw error;
 
-      // Map the data to match our Interpreter interface
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
@@ -74,7 +71,7 @@ export const AdminDashboard = () => {
         next_mission_start: interpreter.next_mission_start,
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null // Since it's not in the view, we set it to null
+        tarif_5min: null
       }));
 
       setInterpreters(mappedInterpreters);
@@ -89,13 +86,15 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Set up real-time subscriptions with enhanced error handling and reconnection logic
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
+    let isSubscribed = true;
     const channels: RealtimeChannel[] = [];
+    let reconnectTimeout: NodeJS.Timeout;
+    let lastFetchTimestamp = Date.now();
 
     const setupChannel = (channelName: string, table: string) => {
-      const channel = supabase.channel(`admin-${channelName}`)
+      const channel = supabase.channel(`admin-${channelName}-${Date.now()}`)
         .on(
           'postgres_changes',
           {
@@ -104,8 +103,14 @@ export const AdminDashboard = () => {
             table: table
           },
           async (payload) => {
+            if (!isSubscribed) return;
             console.log(`[AdminDashboard] ${table} changed:`, payload);
-            await fetchInterpreters();
+            
+            const now = Date.now();
+            if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
+              lastFetchTimestamp = now;
+              await fetchInterpreters();
+            }
           }
         )
         .subscribe((status) => {
@@ -115,10 +120,15 @@ export const AdminDashboard = () => {
           }
           if (status === 'CHANNEL_ERROR') {
             console.error(`[AdminDashboard] Error in ${channelName} channel`);
-            // Attempt to resubscribe after a delay
-            setTimeout(() => {
-              channel.subscribe();
-            }, 5000);
+            if (isSubscribed) {
+              clearTimeout(reconnectTimeout);
+              reconnectTimeout = setTimeout(() => {
+                if (isSubscribed) {
+                  console.log(`[AdminDashboard] Attempting to reconnect ${channelName}`);
+                  channel.subscribe();
+                }
+              }, 5000);
+            }
           }
         });
 
@@ -126,7 +136,32 @@ export const AdminDashboard = () => {
       return channel;
     };
 
-    // Set up subscriptions for all relevant tables
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[AdminDashboard] Tab became visible, refreshing all data");
+        const now = Date.now();
+        if (now - lastFetchTimestamp > 1000) { // Debounce to 1 second
+          lastFetchTimestamp = now;
+          await fetchInterpreters();
+        }
+      }
+    };
+
+    const handleConnectionState = () => {
+      const hasActiveChannels = channels.some(channel => 
+        channel.state === 'SUBSCRIBED' || channel.state === 'JOINING'
+      );
+      
+      if (!hasActiveChannels && isSubscribed) {
+        console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
+        channels.forEach(channel => {
+          if (channel.state !== 'SUBSCRIBED' && channel.state !== 'JOINING') {
+            channel.subscribe();
+          }
+        });
+      }
+    };
+
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -135,41 +170,20 @@ export const AdminDashboard = () => {
     setupChannel('message-mentions', 'message_mentions');
     setupChannel('channel-members', 'channel_members');
 
-    // Handle visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log("[AdminDashboard] Tab became visible, refreshing data");
-        fetchInterpreters();
-      }
-    };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Handle connection state
-    const handleConnectionState = () => {
-      const connectionState = supabase.getChannels().length > 0;
-      console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
-      
-      if (!connectionState) {
-        console.log("[AdminDashboard] Attempting to reconnect...");
-        channels.forEach(channel => channel.subscribe());
-      }
-    };
-
-    // Set up connection state monitoring
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
 
-    // Initial data fetch
     fetchInterpreters();
 
-    // Cleanup subscriptions
     return () => {
-      console.log("[AdminDashboard] Cleaning up subscriptions");
+      console.log("[AdminDashboard] Cleaning up subscriptions and listeners");
+      isSubscribed = false;
+      clearInterval(connectionCheckInterval);
+      clearTimeout(reconnectTimeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(connectionCheckInterval);
     };
   }, []);
 
