@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
-import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Interpreter {
   id: string;
@@ -123,15 +123,13 @@ export const AdminDashboard = () => {
 
     const handleConnectionState = () => {
       const hasActiveChannels = channels.some(channel => 
-        channel.state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED || 
-        channel.state === REALTIME_SUBSCRIBE_STATES.JOINING
+        channel.state === "SUBSCRIBED" || channel.state === "JOINING"
       );
       
       if (!hasActiveChannels && isSubscribed) {
         console.log("[AdminDashboard] No active channels detected, attempting to reconnect...");
         channels.forEach(channel => {
-          if (channel.state !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-              channel.state !== REALTIME_SUBSCRIBE_STATES.JOINING) {
+          if (channel.state !== "SUBSCRIBED" && channel.state !== "JOINING") {
             channel.subscribe();
           }
         });
@@ -374,7 +372,7 @@ export const AdminDashboard = () => {
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
                       <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                      <SelectItem value="salaried_planet">Salari�� PLANET</SelectItem>
                       <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                       <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
                     </SelectContent>
