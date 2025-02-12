@@ -54,8 +54,6 @@ const Admin = () => {
           navigate('/admin/login');
           return;
         }
-
-        setupVapidKeys();
       } catch (error) {
         console.error('Auth check error:', error);
         navigate('/admin/login');
@@ -70,7 +68,9 @@ const Admin = () => {
       }
     });
 
+    // Initial auth check and VAPID setup
     checkAuth();
+    setupVapidKeys();
 
     // Cleanup subscription on unmount
     return () => {
