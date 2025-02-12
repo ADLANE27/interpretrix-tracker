@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Mission {
   scheduled_start_time: string;
@@ -209,41 +210,49 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       interpreter_id: interpreter.id
     });
 
-    // Set up real-time subscriptions with proper typing
-    const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${interpreter.id}`
-        },
-        (payload: RealtimeInterpreterProfilePayload) => {
-          console.log('[InterpreterCard] Status update received:', payload);
-          if (payload.new && typeof payload.new.status === 'string' && isValidStatus(payload.new.status)) {
-            setCurrentStatus(payload.new.status);
-          }
+    // Set up real-time subscriptions with proper channel configuration
+    const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: interpreter.id },
+      },
+    });
+
+    const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: interpreter.id },
+      },
+    });
+
+    // Subscribe to status changes
+    statusChannel
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: `id=eq.${interpreter.id}`,
+      } as any, (payload: RealtimeInterpreterProfilePayload) => {
+        console.log('[InterpreterCard] Status update received:', payload);
+        if (payload.new && typeof payload.new.status === 'string' && isValidStatus(payload.new.status)) {
+          setCurrentStatus(payload.new.status);
         }
-      )
+      })
       .subscribe((status) => {
         console.log('[InterpreterCard] Status subscription status:', status);
       });
 
-    const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions',
-          filter: `assigned_interpreter_id=eq.${interpreter.id}`
-        },
-        (payload: RealtimePostgresUpdatePayload) => {
-          console.log('[InterpreterCard] Mission update received:', payload);
-          fetchMissions();
-        }
-      )
+    // Subscribe to mission changes
+    missionChannel
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpretation_missions',
+        filter: `assigned_interpreter_id=eq.${interpreter.id}`,
+      } as any, (payload: RealtimePostgresUpdatePayload) => {
+        console.log('[InterpreterCard] Mission update received:', payload);
+        fetchMissions();
+      })
       .subscribe((status) => {
         console.log('[InterpreterCard] Mission subscription status:', status);
       });
