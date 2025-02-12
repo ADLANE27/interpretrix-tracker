@@ -1,24 +1,39 @@
-
 // Service Worker version avec gestion d'erreurs améliorée
-const SW_VERSION = '1.2.0';
+const SW_VERSION = '1.3.0';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
-// Gestion globale des erreurs
-self.addEventListener('error', event => {
-  console.error('[Service Worker] Uncaught error:', {
-    error: event.error,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-    message: event.message
-  });
+// Force l'activation immédiate
+self.addEventListener('install', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Installing`);
+  event.waitUntil(self.skipWaiting());
 });
 
-self.addEventListener('unhandledrejection', event => {
-  console.error('[Service Worker] Unhandled promise rejection:', {
-    reason: event.reason,
-    stack: event.reason.stack
-  });
+self.addEventListener('activate', event => {
+  console.log(`[Service Worker ${SW_VERSION}] Activating`);
+  // Force la prise de contrôle immédiate
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Nettoyage du cache
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== 'v1') {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
+  );
+});
+
+// Écouter les messages pour SKIP_WAITING
+self.addEventListener('message', event => {
+  if (event.data === 'SKIP_WAITING') {
+    console.log('[Service Worker] Skipping wait phase');
+    self.skipWaiting();
+  }
 });
 
 // Configuration des retries
@@ -41,29 +56,22 @@ async function retryOperation(operation, maxRetries = MAX_RETRIES) {
   throw lastError;
 }
 
-// Installation et activation améliorées
-self.addEventListener('install', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Installing`);
-  self.skipWaiting();
+// Gestion globale des erreurs
+self.addEventListener('error', event => {
+  console.error('[Service Worker] Uncaught error:', {
+    error: event.error,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    message: event.message
+  });
 });
 
-self.addEventListener('activate', event => {
-  console.log(`[Service Worker ${SW_VERSION}] Activating`);
-  event.waitUntil(
-    Promise.all([
-      self.clients.claim(),
-      // Nettoyage du cache
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== 'v1') {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
-    ])
-  );
+self.addEventListener('unhandledrejection', event => {
+  console.error('[Service Worker] Unhandled promise rejection:', {
+    reason: event.reason,
+    stack: event.reason.stack
+  });
 });
 
 // Gestion améliorée des notifications push

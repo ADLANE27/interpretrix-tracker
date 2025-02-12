@@ -24,27 +24,48 @@ type ServiceWorkerRegistrationStatus = {
 
 async function waitForServiceWorkerRegistration(registration: ServiceWorkerRegistration): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Si le Service Worker est déjà actif, résoudre immédiatement
     if (registration.active) {
+      console.log('[Push Notifications] Service Worker already active');
       resolve();
       return;
     }
 
+    // Augmenter le timeout à 30 secondes
     const timeout = setTimeout(() => {
+      console.log('[Push Notifications] Service Worker registration timeout - cleaning up');
+      cleanup();
       reject(new Error('Service Worker registration timeout'));
-    }, 10000);
+    }, 30000);
 
-    const handleStateChange = () => {
-      if (registration.active) {
-        cleanup();
-        resolve();
-      }
+    // Écouter les changements d'état d'installation
+    const handleInstalling = () => {
+      console.log('[Push Notifications] Service Worker installing');
     };
 
-    registration.addEventListener('statechange', handleStateChange);
+    // Écouter les changements d'état d'activation
+    const handleActivating = () => {
+      console.log('[Push Notifications] Service Worker activating');
+    };
 
+    // Écouter les changements d'état actif
+    const handleActivated = () => {
+      console.log('[Push Notifications] Service Worker activated');
+      cleanup();
+      resolve();
+    };
+
+    // Ajouter tous les listeners
+    registration.installing?.addEventListener('statechange', handleInstalling);
+    registration.waiting?.addEventListener('statechange', handleActivating);
+    registration.active?.addEventListener('statechange', handleActivated);
+
+    // Fonction de nettoyage
     function cleanup() {
       clearTimeout(timeout);
-      registration.removeEventListener('statechange', handleStateChange);
+      registration.installing?.removeEventListener('statechange', handleInstalling);
+      registration.waiting?.removeEventListener('statechange', handleActivating);
+      registration.active?.removeEventListener('statechange', handleActivated);
     }
   });
 }
@@ -56,25 +77,31 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     }
 
     // Nettoyage des anciens service workers
+    console.log('[Push Notifications] Unregistering existing service workers');
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
       await registration.unregister();
     }
 
-    // Attendre un court délai avant d'enregistrer le nouveau service worker
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Attendre que tous les service workers soient désinscrits
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Forcer la déconnexion et reconnexion du contrôleur
+    if (navigator.serviceWorker.controller) {
+      console.log('[Push Notifications] Disconnecting existing controller');
+      await navigator.serviceWorker.ready;
+      navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+    }
 
     // Enregistrer le nouveau service worker
+    console.log('[Push Notifications] Registering new service worker');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
       type: 'module',
       updateViaCache: 'none'
     });
 
-    console.log('[Push Notifications] Service Worker registered:', {
-      scope: registration.scope,
-      state: registration.active?.state
-    });
+    console.log('[Push Notifications] Service Worker registered with scope:', registration.scope);
 
     // Attendre que le service worker soit prêt
     await waitForServiceWorkerRegistration(registration);
@@ -84,7 +111,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     console.error('[Push Notifications] Service Worker registration failed:', {
       error,
       message: error.message,
-      stack: error.stack
+      stack: error.stack,
+      userAgent: navigator.userAgent
     });
     return { success: false, error: error as Error };
   }
