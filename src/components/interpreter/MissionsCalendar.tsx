@@ -7,7 +7,7 @@ import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js"; // Added RealtimeChannel import
 import { Database } from "@/integrations/supabase/types";
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { useToast } from "@/hooks/use-toast";
