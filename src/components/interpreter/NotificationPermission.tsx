@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications, sendTestNotification } from '@/lib/pushNotifications';
-import { Bell, BellOff, Send } from 'lucide-react';
+import { Bell, BellOff, Send, RefreshCw } from 'lucide-react';
 
 export const NotificationPermission = ({ interpreterId }: { interpreterId: string }) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -11,19 +11,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const [isTesting, setIsTesting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkNotificationPermission();
-  }, []);
-
   const checkNotificationPermission = async () => {
-    console.log('[Notifications] Environment check:', {
-      hasNotificationAPI: 'Notification' in window,
-      hasServiceWorkerAPI: 'serviceWorker' in navigator,
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      vendor: navigator.vendor
-    });
-
     if (!('Notification' in window)) {
       console.warn('[Notifications] Notifications API not supported');
       return;
@@ -34,68 +22,70 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       return;
     }
 
-    // Vérifier l'état actuel des permissions
+    // Forcer une nouvelle vérification des permissions
     const currentPermission = await Notification.permission;
     console.log('[Notifications] Current permission:', currentPermission);
-    setPermission(currentPermission);
-
-    // Si les permissions sont accordées, vérifier le service worker
-    if (currentPermission === 'granted') {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
-        if (!subscription) {
-          console.log('[Notifications] No active subscription found, resetting permission');
-          setPermission('default');
-        }
-      } catch (error) {
-        console.error('[Notifications] Error checking service worker:', error);
+    
+    // Vérifier si un service worker est actif
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) {
+      const subscription = await registration.pushManager.getSubscription();
+      console.log('[Notifications] Active subscription:', subscription ? 'Yes' : 'No');
+      
+      if (subscription && currentPermission === 'granted') {
+        setPermission('granted');
+      } else {
+        setPermission('default');
       }
+    } else {
+      setPermission('default');
     }
   };
+
+  useEffect(() => {
+    checkNotificationPermission();
+  }, []);
 
   const handleEnableNotifications = async () => {
     try {
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
-
-      // Tenter d'activer les notifications
+      
+      const permission = await Notification.permission;
+      console.log('[Notifications] Current permission before request:', permission);
+      
+      // Réinitialiser les service workers existants
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+      }
+      
       await subscribeToPushNotifications(interpreterId);
       
-      // Mettre à jour l'état des permissions après l'activation
-      const newPermission = await Notification.permission;
-      setPermission(newPermission);
-
-      if (newPermission === 'granted') {
-        toast({
-          title: "Notifications activées",
-          description: "Vous recevrez des notifications pour les nouvelles missions",
-        });
-      } else {
-        // Si les notifications ne sont pas activées après la tentative
-        console.log('[Notifications] Permissions not granted after attempt:', newPermission);
-        toast({
-          title: "Notifications non activées",
-          description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur puis réessayer",
-          variant: "destructive",
-        });
-      }
+      // Vérifier à nouveau les permissions après la souscription
+      await checkNotificationPermission();
+      
+      toast({
+        title: "Notifications activées",
+        description: "Vous recevrez des notifications pour les nouvelles missions",
+      });
     } catch (error) {
       console.error('[Notifications] Error:', error);
       
-      // Vérifier l'état actuel des permissions pour un message plus précis
+      // Vérifier à nouveau les permissions en cas d'erreur
       const currentPermission = await Notification.permission;
+      console.log('[Notifications] Permission after error:', currentPermission);
       
       if (currentPermission === 'denied') {
         toast({
           title: "Notifications bloquées",
-          description: "Pour activer les notifications, veuillez les autoriser dans les paramètres de votre navigateur puis réessayer",
+          description: "Pour activer les notifications, veuillez les autoriser dans les paramètres de votre navigateur (en cliquant sur l'icône 🔒 à gauche de l'URL), puis réessayez",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Erreur",
-          description: "Impossible d'activer les notifications. Veuillez réessayer.",
+          description: "Une erreur est survenue. Veuillez rafraîchir la page et réessayer.",
           variant: "destructive",
         });
       }
@@ -144,6 +134,14 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     }
   };
 
+  const handleRefresh = async () => {
+    await checkNotificationPermission();
+    toast({
+      title: "État des notifications actualisé",
+      description: "L'état des notifications a été vérifié à nouveau",
+    });
+  };
+
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     return (
       <Button 
@@ -186,15 +184,26 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   }
 
   return (
-    <Button 
-      onClick={handleEnableNotifications}
-      variant="outline"
-      size="sm"
-      disabled={isSubscribing}
-      className="flex items-center gap-2"
-    >
-      <Bell className="h-4 w-4" />
-      {isSubscribing ? 'Activation...' : 'Activer les notifications'}
-    </Button>
+    <div className="flex gap-2">
+      <Button 
+        onClick={handleEnableNotifications}
+        variant="outline"
+        size="sm"
+        disabled={isSubscribing}
+        className="flex items-center gap-2"
+      >
+        <Bell className="h-4 w-4" />
+        {isSubscribing ? 'Activation...' : 'Activer les notifications'}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleRefresh}
+        className="flex items-center gap-2"
+        title="Actualiser l'état des notifications"
+      >
+        <RefreshCw className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };
