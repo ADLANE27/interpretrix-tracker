@@ -41,6 +41,24 @@ interface InterpreterProfile {
   tarif_15min: number;
 }
 
+// Add new interfaces for Supabase real-time types
+interface RealtimePostgresUpdatePayload {
+  commit_timestamp: string;
+  errors: null | any[];
+  old: { [key: string]: any } | null;
+  new: { [key: string]: any } | null;
+  schema: string;
+  table: string;
+  type: 'INSERT' | 'UPDATE' | 'DELETE';
+}
+
+interface RealtimeInterpreterProfilePayload extends RealtimePostgresUpdatePayload {
+  new: {
+    status: string;
+    [key: string]: any;
+  } | null;
+}
+
 const statusConfig = {
   available: { color: "bg-interpreter-available text-white", label: "Disponible" },
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
@@ -191,7 +209,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       interpreter_id: interpreter.id
     });
 
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions with proper typing
     const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`)
       .on(
         'postgres_changes',
@@ -201,9 +219,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           table: 'interpreter_profiles',
           filter: `id=eq.${interpreter.id}`
         },
-        (payload) => {
+        (payload: RealtimeInterpreterProfilePayload) => {
           console.log('[InterpreterCard] Status update received:', payload);
-          if (payload.new && isValidStatus(payload.new.status)) {
+          if (payload.new && typeof payload.new.status === 'string' && isValidStatus(payload.new.status)) {
             setCurrentStatus(payload.new.status);
           }
         }
@@ -221,7 +239,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           table: 'interpretation_missions',
           filter: `assigned_interpreter_id=eq.${interpreter.id}`
         },
-        (payload) => {
+        (payload: RealtimePostgresUpdatePayload) => {
           console.log('[InterpreterCard] Mission update received:', payload);
           fetchMissions();
         }
