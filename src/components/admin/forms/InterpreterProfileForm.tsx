@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -260,8 +259,23 @@ export const InterpreterProfileForm = ({
           </>
         )}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Mise à jour..." : "Mettre à jour l'interprète"}
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isSubmitting}
+          onClick={(e) => {
+            e.preventDefault();
+            if (languages.length === 0) {
+              form.setError("languages", {
+                type: "manual",
+                message: "Veuillez ajouter au moins une paire de langues"
+              });
+              return;
+            }
+            form.handleSubmit(handleSubmit)(e);
+          }}
+        >
+          {isSubmitting ? "Création en cours..." : initialData ? "Mettre à jour le profil" : "Créer l'interprète"}
         </Button>
       </form>
     </Form>
