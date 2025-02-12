@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -48,6 +49,106 @@ export const AdminDashboard = () => {
 
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
+  // Function to fetch all interpreters
+  const fetchInterpreters = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("interpreters_with_next_mission")
+        .select("*");
+
+      if (error) throw error;
+      setInterpreters(data || []);
+    } catch (error) {
+      console.error("Error fetching interpreters:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger la liste des interprètes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    console.log("[AdminDashboard] Setting up real-time subscriptions");
+
+    // Subscribe to interpreter profile changes
+    const interpreterChannel = supabase.channel('interpreter-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        async () => {
+          console.log("[AdminDashboard] Interpreter profile changed, refreshing data");
+          await fetchInterpreters();
+        }
+      )
+      .subscribe((status) => {
+        console.log("[AdminDashboard] Interpreter subscription status:", status);
+      });
+
+    // Subscribe to mission changes
+    const missionChannel = supabase.channel('mission-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        async () => {
+          console.log("[AdminDashboard] Mission changed, refreshing data");
+          await fetchInterpreters();
+        }
+      )
+      .subscribe((status) => {
+        console.log("[AdminDashboard] Mission subscription status:", status);
+      });
+
+    // Subscribe to user role changes
+    const userRoleChannel = supabase.channel('user-role-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_roles'
+        },
+        async () => {
+          console.log("[AdminDashboard] User role changed, refreshing data");
+          await fetchInterpreters();
+        }
+      )
+      .subscribe((status) => {
+        console.log("[AdminDashboard] User role subscription status:", status);
+      });
+
+    // Initial data fetch
+    fetchInterpreters();
+
+    // Handle visibility changes to refresh data when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[AdminDashboard] Tab became visible, refreshing data");
+        fetchInterpreters();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup subscriptions
+    return () => {
+      console.log("[AdminDashboard] Cleaning up subscriptions");
+      supabase.removeChannel(interpreterChannel);
+      supabase.removeChannel(missionChannel);
+      supabase.removeChannel(userRoleChannel);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
@@ -62,85 +163,6 @@ export const AdminDashboard = () => {
       title: "Filtres réinitialisés",
       description: "Tous les filtres ont été réinitialisés",
     });
-  };
-
-  useEffect(() => {
-    fetchInterpreters();
-    subscribeToUpdates();
-  }, []);
-
-  const validateStatus = (status: string | null): "available" | "unavailable" | "pause" | "busy" => {
-    const validStatuses = ["available", "unavailable", "pause", "busy"];
-    return (status && validStatuses.includes(status) ? status : "unavailable") as Interpreter["status"];
-  };
-
-  const mapDatabaseToInterpreter = (data: any[]): Interpreter[] => {
-    return data.map(item => ({
-      id: item.id,
-      first_name: item.first_name,
-      last_name: item.last_name,
-      status: validateStatus(item.status),
-      employment_status: item.employment_status,
-      languages: item.languages,
-      phone_interpretation_rate: item.phone_interpretation_rate,
-      phone_number: item.phone_number,
-      birth_country: item.birth_country,
-      next_mission_start: item.next_mission_start,
-      next_mission_duration: item.next_mission_duration,
-      tarif_15min: item.tarif_15min,
-      tarif_5min: item.tarif_5min,
-    }));
-  };
-
-  const fetchInterpreters = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("interpreters_with_next_mission")
-        .select("*");
-
-      if (error) throw error;
-      setInterpreters(mapDatabaseToInterpreter(data || []));
-    } catch (error) {
-      console.error("Error fetching interpreters:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger la liste des interprètes",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const subscribeToUpdates = () => {
-    const channel = supabase
-      .channel('interpreter-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            setInterpreters(prev => 
-              prev.map(interpreter => 
-                interpreter.id === payload.new.id 
-                  ? { ...interpreter, ...mapDatabaseToInterpreter([payload.new])[0] }
-                  : interpreter
-              )
-            );
-            toast({
-              title: "Mise à jour",
-              description: `Le statut de ${payload.new.first_name} ${payload.new.last_name} a été mis à jour`,
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const handleLogout = async () => {
@@ -356,23 +378,69 @@ export const AdminDashboard = () => {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredInterpreters.map((interpreter) => (
-                  <InterpreterCard
-                    key={interpreter.id}
-                    interpreter={{
-                      id: interpreter.id,
-                      name: `${interpreter.first_name} ${interpreter.last_name}`,
-                      status: interpreter.status || "unavailable",
-                      employment_status: interpreter.employment_status,
-                      languages: interpreter.languages,
-                      tarif_15min: interpreter.tarif_15min,
-                      tarif_5min: interpreter.tarif_5min,
-                      phone_number: interpreter.phone_number,
-                      next_mission_start: interpreter.next_mission_start,
-                      next_mission_duration: interpreter.next_mission_duration,
-                    }}
-                  />
-                ))}
+                {interpreters
+                  .filter(interpreter => {
+                    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+                    const matchesName = nameFilter === "" || 
+                      `${interpreter.first_name} ${interpreter.last_name}`
+                        .toLowerCase()
+                        .includes(nameFilter.toLowerCase());
+                    
+                    const matchesSourceLanguage = sourceLanguageFilter === "all" || 
+                      interpreter.languages.some(lang => {
+                        const [source] = lang.split(" → ");
+                        return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
+                      });
+
+                    const matchesTargetLanguage = targetLanguageFilter === "all" || 
+                      interpreter.languages.some(lang => {
+                        const [, target] = lang.split(" → ");
+                        return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
+                      });
+
+                    const matchesPhone = phoneFilter === "" || 
+                      (interpreter.phone_number && 
+                       interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
+
+                    const matchesBirthCountry = birthCountryFilter === "all" ||
+                      (interpreter.birth_country === birthCountryFilter);
+
+                    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
+                      interpreter.employment_status === employmentStatusFilter;
+
+                    return matchesStatus && 
+                           matchesName && 
+                           matchesSourceLanguage && 
+                           matchesTargetLanguage && 
+                           matchesPhone && 
+                           matchesBirthCountry &&
+                           matchesEmploymentStatus;
+                  })
+                  .sort((a, b) => {
+                    if (rateSort === "rate-asc") {
+                      const rateA = (a.tarif_15min ?? 0);
+                      const rateB = (b.tarif_15min ?? 0);
+                      return rateA - rateB;
+                    }
+                    return 0;
+                  })
+                  .map((interpreter) => (
+                    <InterpreterCard
+                      key={interpreter.id}
+                      interpreter={{
+                        id: interpreter.id,
+                        name: `${interpreter.first_name} ${interpreter.last_name}`,
+                        status: interpreter.status || "unavailable",
+                        employment_status: interpreter.employment_status,
+                        languages: interpreter.languages,
+                        tarif_15min: interpreter.tarif_15min,
+                        tarif_5min: interpreter.tarif_5min,
+                        phone_number: interpreter.phone_number,
+                        next_mission_start: interpreter.next_mission_start,
+                        next_mission_duration: interpreter.next_mission_duration,
+                      }}
+                    />
+                  ))}
               </div>
             </div>
           </TabsContent>
