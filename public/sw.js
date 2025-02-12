@@ -1,26 +1,49 @@
 
-// Enhanced service worker with comprehensive browser support and logging
-const SW_VERSION = '1.0.7';
+// Service Worker version avec gestion d'erreurs améliorée
+const SW_VERSION = '1.1.0';
 console.log(`[Service Worker ${SW_VERSION}] Initializing`);
 
-// Enhanced error handling with detailed logging
+// Gestion globale des erreurs
 self.addEventListener('error', event => {
-  console.error('[Service Worker] Uncaught error:', event.error);
-  console.error('[Service Worker] Stack:', event.error.stack);
-  console.error('[Service Worker] Message:', event.error.message);
+  console.error('[Service Worker] Uncaught error:', {
+    error: event.error,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    message: event.message
+  });
 });
 
 self.addEventListener('unhandledrejection', event => {
-  console.error('[Service Worker] Unhandled promise rejection:', event.reason);
-  if (event.reason.stack) {
-    console.error('[Service Worker] Stack:', event.reason.stack);
-  }
+  console.error('[Service Worker] Unhandled promise rejection:', {
+    reason: event.reason,
+    stack: event.reason.stack
+  });
 });
 
-// Enhanced push event handler with better debugging
+// Configuration des retries
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+async function retryOperation(operation, maxRetries = MAX_RETRIES) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      console.warn(`[Service Worker] Attempt ${attempt}/${maxRetries} failed:`, error);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Gestion améliorée des notifications push
 self.addEventListener('push', event => {
   console.log('[Service Worker] Push received at:', new Date().toISOString());
-  console.log('[Service Worker] Raw push data:', event.data ? event.data.text() : 'No data');
   
   if (!event.data) {
     console.warn('[Service Worker] Push event received but no data');
@@ -30,9 +53,14 @@ self.addEventListener('push', event => {
   try {
     const data = event.data.json();
     console.log('[Service Worker] Push data:', JSON.stringify(data, null, 2));
-    
+
+    // Validation des données requises
+    if (!data.title) {
+      throw new Error('Missing notification title');
+    }
+
     const options = {
-      body: data.body,
+      body: data.body || 'Nouvelle notification',
       icon: data.icon || '/favicon.ico',
       badge: data.badge || '/favicon.ico',
       data: {
@@ -40,65 +68,50 @@ self.addEventListener('push', event => {
         timestamp: Date.now()
       },
       vibrate: data.vibrate || [200, 100, 200],
-      tag: data.tag || `mission-${data.data?.mission_id}`,
+      tag: data.tag || `mission-${data.data?.mission_id || Date.now()}`,
       renotify: true,
       requireInteraction: true,
       actions: data.actions || [
         { action: 'accept', title: 'Accepter' },
         { action: 'decline', title: 'Décliner' }
       ],
-      silent: false,
       timestamp: Date.now()
     };
 
     event.waitUntil(
-      (async () => {
-        try {
-          if (!self.registration.showNotification) {
-            console.error('[Service Worker] Notifications not supported');
-            throw new Error('Notifications not supported');
-          }
-
-          console.log('[Service Worker] Showing notification with options:', JSON.stringify(options, null, 2));
-          await self.registration.showNotification(
-            data.title || 'Nouvelle mission disponible',
-            options
-          );
-          
-          console.log('[Service Worker] Notification shown successfully');
-        } catch (error) {
-          console.error('[Service Worker] Error showing notification:', error);
-          console.error('[Service Worker] Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          });
-          throw error;
+      retryOperation(async () => {
+        if (!self.registration.showNotification) {
+          throw new Error('Notifications not supported');
         }
-      })()
+
+        const notificationPromise = self.registration.showNotification(data.title, options);
+        
+        // Ajouter un timeout de sécurité
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Notification timeout')), 5000);
+        });
+
+        await Promise.race([notificationPromise, timeoutPromise]);
+        console.log('[Service Worker] Notification shown successfully');
+      })
     );
   } catch (error) {
-    console.error('[Service Worker] Error processing push data:', error);
-    console.error('[Service Worker] Stack:', error.stack);
+    console.error('[Service Worker] Error processing push:', {
+      error: error.message,
+      stack: error.stack,
+      data: event.data?.text()
+    });
   }
 });
 
-// Enhanced notification click handling with debugging
+// Gestion améliorée des clics sur les notifications
 self.addEventListener('notificationclick', event => {
   console.log('[Service Worker] Notification clicked:', {
-    action: event.action,
-    notification: {
-      tag: event.notification.tag,
-      data: event.notification.data
-    }
+    tag: event.notification.tag,
+    action: event.action
   });
-  
-  event.notification.close();
 
-  if (event.action === 'decline') {
-    console.log('[Service Worker] Mission declined');
-    return;
-  }
+  event.notification.close();
 
   const urlToOpen = new URL('/', self.location.origin).href;
 
@@ -110,28 +123,26 @@ self.addEventListener('notificationclick', event => {
           includeUncontrolled: true
         });
 
-        console.log('[Service Worker] Found window clients:', windowClients.length);
-
+        // Recherche d'une fenêtre existante
         for (const client of windowClients) {
-          if (client.url === urlToOpen && 'focus' in client) {
-            console.log('[Service Worker] Focusing existing window');
+          if ('focus' in client) {
             await client.focus();
             return;
           }
         }
 
+        // Ouvrir une nouvelle fenêtre si nécessaire
         if (clients.openWindow) {
-          console.log('[Service Worker] Opening new window:', urlToOpen);
           await clients.openWindow(urlToOpen);
         }
       } catch (error) {
-        console.error('[Service Worker] Error handling notification click:', error);
-        console.error('[Service Worker] Stack:', error.stack);
+        console.error('[Service Worker] Error handling click:', error);
       }
     })()
   );
 });
 
+// Installation et activation améliorées
 self.addEventListener('install', event => {
   console.log(`[Service Worker ${SW_VERSION}] Installing`);
   self.skipWaiting();
@@ -142,6 +153,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
+      // Nettoyage du cache
       caches.keys().then(cacheNames => {
         return Promise.all(
           cacheNames.map(cacheName => {
@@ -154,4 +166,3 @@ self.addEventListener('activate', event => {
     ])
   );
 });
-
