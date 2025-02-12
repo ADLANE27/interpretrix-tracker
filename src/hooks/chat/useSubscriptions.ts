@@ -2,8 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { useEffect, useRef } from 'react';
 
-// Remove retry limit for better iOS PWA support
 const handleVisibilityChange = (channel: RealtimeChannel) => {
   if (document.visibilityState === 'visible') {
     channel.subscribe();
@@ -20,18 +20,29 @@ export const useSubscriptions = (
   fetchMessages: () => Promise<void>
 ) => {
   const { toast } = useToast();
+  const errorCountRef = useRef(0);
+  const initialDelayRef = useRef<NodeJS.Timeout>();
+  const isSubscribingRef = useRef(false);
 
   const handleSubscriptionError = () => {
-    // Instead of limiting retries, we'll reconnect when the app becomes visible
-    toast({
-      title: "Problème de connexion",
-      description: "Tentative de reconnexion en cours...",
-      variant: "destructive",
-    });
+    errorCountRef.current += 1;
+    
+    // N'afficher l'erreur qu'après 3 tentatives échouées
+    if (errorCountRef.current >= 3) {
+      errorCountRef.current = 0; // Reset le compteur
+      toast({
+        title: "Problème de connexion",
+        description: "Tentative de reconnexion en cours...",
+        variant: "destructive",
+      });
+    }
     setRetryCount(retryCount + 1);
   };
 
   const subscribeToMessages = () => {
+    if (isSubscribingRef.current) return;
+    isSubscribingRef.current = true;
+
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
     const channel = supabase
@@ -46,12 +57,7 @@ export const useSubscriptions = (
         },
         async (payload) => {
           console.log('[Chat] Received real-time update:', payload);
-          
-          if (payload.eventType === 'UPDATE') {
-            await fetchMessages();
-          } else {
-            await fetchMessages();
-          }
+          await fetchMessages();
           
           if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
             toast({
@@ -63,12 +69,16 @@ export const useSubscriptions = (
       )
       .subscribe((status) => {
         console.log('[Chat] Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          isSubscribingRef.current = false;
+          errorCountRef.current = 0;
+        }
         if (status === 'CHANNEL_ERROR') {
+          isSubscribingRef.current = false;
           handleSubscriptionError();
         }
       });
 
-    // Add visibility change listener
     document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
 
     return channel;
@@ -99,11 +109,19 @@ export const useSubscriptions = (
       )
       .subscribe();
 
-    // Add visibility change listener
     document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
 
     return channel;
   };
+
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      if (initialDelayRef.current) {
+        clearTimeout(initialDelayRef.current);
+      }
+    };
+  }, []);
 
   return {
     handleSubscriptionError,
