@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -14,7 +15,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     checkNotificationPermission();
   }, []);
 
-  const checkNotificationPermission = () => {
+  const checkNotificationPermission = async () => {
     console.log('[Notifications] Environment check:', {
       hasNotificationAPI: 'Notification' in window,
       hasServiceWorkerAPI: 'serviceWorker' in navigator,
@@ -33,8 +34,23 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       return;
     }
 
-    console.log('[Notifications] Current permission:', Notification.permission);
-    setPermission(Notification.permission);
+    // Vérifier si le service worker est déjà enregistré
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        console.log('[Notifications] Existing subscription found');
+        setPermission('granted');
+      } else {
+        console.log('[Notifications] No existing subscription');
+        const currentPermission = await Notification.permission;
+        setPermission(currentPermission);
+      }
+    } catch (error) {
+      console.error('[Notifications] Error checking service worker:', error);
+      setPermission(Notification.permission);
+    }
   };
 
   const handleEnableNotifications = async () => {
@@ -166,13 +182,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         variant="outline" 
         size="sm"
         className="flex items-center gap-2 text-red-600 hover:text-red-700"
-        onClick={() => {
-          toast({
-            title: "Notifications bloquées",
-            description: "Pour activer les notifications, veuillez les autoriser dans les paramètres de votre navigateur",
-            variant: "destructive",
-          });
-        }}
+        onClick={handleEnableNotifications}
       >
         <Bell className="h-4 w-4" />
         Notifications bloquées
