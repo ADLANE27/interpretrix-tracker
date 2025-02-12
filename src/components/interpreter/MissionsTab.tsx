@@ -118,8 +118,9 @@ export const MissionsTab = () => {
   const setupRealtimeSubscription = () => {
     console.log('[MissionsTab] Setting up realtime subscription');
     
+    let channel: RealtimeChannel | null = null;
     const initDelay = setTimeout(() => {
-      const channel = supabase
+      channel = supabase
         .channel('interpreter-missions')
         .on(
           'postgres_changes',
@@ -152,7 +153,7 @@ export const MissionsTab = () => {
 
             const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
               ? mission.mission_type 
-              : 'scheduled'; // Default to scheduled if invalid type
+              : 'scheduled';
 
             const isImmediate = missionType === 'immediate';
               
@@ -192,7 +193,6 @@ export const MissionsTab = () => {
           async (payload) => {
             console.log('[MissionsTab] Mission update received:', payload);
             
-            // Show toast for new missions that include the current user
             if (payload.eventType === 'INSERT') {
               const mission = payload.new as Mission;
               if (mission.notified_interpreters?.includes(currentUserId || '')) {
@@ -237,15 +237,16 @@ export const MissionsTab = () => {
             console.error('[MissionsTab] Error subscribing to changes');
           }
         });
+    }, 500);
 
-      return () => {
-        clearTimeout(initDelay);
-        if (channel) {
-          console.log('[MissionsTab] Cleaning up realtime subscription');
-          supabase.removeChannel(channel);
-        }
-      };
-    }, 500); // Délai de 500ms avant la première tentative
+    // Return cleanup function
+    return () => {
+      clearTimeout(initDelay);
+      if (channel) {
+        console.log('[MissionsTab] Cleaning up realtime subscription');
+        supabase.removeChannel(channel);
+      }
+    };
   };
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
