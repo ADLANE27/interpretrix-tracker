@@ -12,17 +12,19 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const { toast } = useToast();
 
   const checkNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      console.warn('[Notifications] Notifications API not supported');
-      return;
-    }
-
-    if (!('serviceWorker' in navigator)) {
-      console.warn('[Notifications] Service Worker API not supported');
-      return;
-    }
-
     try {
+      console.log('[Notifications] Starting permission check');
+      
+      if (!('Notification' in window)) {
+        console.warn('[Notifications] Notifications API not supported');
+        return;
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        console.warn('[Notifications] Service Worker API not supported');
+        return;
+      }
+
       // Forcer une nouvelle vérification des permissions
       const currentPermission = await Notification.permission;
       console.log('[Notifications] Current permission:', currentPermission);
@@ -30,26 +32,29 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       // Vérifier si un service worker est actif
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
+        console.log('[Notifications] Found service worker registration:', registration.scope);
+        
         const subscription = await registration.pushManager.getSubscription();
         console.log('[Notifications] Active subscription:', subscription ? 'Yes' : 'No');
         
-        // Double vérification de la validité de la souscription
         if (subscription) {
           try {
             // Vérifier si la souscription est toujours valide
             await subscription.getKey('p256dh');
-            // Si nous arrivons ici, la souscription est valide
             setPermission('granted');
+            console.log('[Notifications] Subscription is valid');
           } catch (error) {
-            console.warn('[Notifications] Invalid subscription:', error);
+            console.warn('[Notifications] Invalid subscription, will clean up:', error);
             setPermission('default');
             // Nettoyer la souscription invalide
             await subscription.unsubscribe();
           }
         } else {
+          console.log('[Notifications] No active subscription found');
           setPermission('default');
         }
       } else {
+        console.log('[Notifications] No service worker registration found');
         setPermission('default');
       }
     } catch (error) {
@@ -89,16 +94,28 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
       
-      const permission = await Notification.permission;
-      console.log('[Notifications] Current permission before request:', permission);
+      const currentPermission = await Notification.permission;
+      console.log('[Notifications] Current permission before request:', currentPermission);
       
+      // Vérifier si le navigateur supporte les Service Workers
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Workers non supportés par ce navigateur');
+      }
+
+      // Vérifier si le navigateur supporte les notifications
+      if (!('Notification' in window)) {
+        throw new Error('Notifications non supportées par ce navigateur');
+      }
+
       // Réinitialiser les service workers existants
       const registrations = await navigator.serviceWorker.getRegistrations();
+      console.log('[Notifications] Unregistering existing service workers:', registrations.length);
       for (const registration of registrations) {
         await registration.unregister();
       }
       
-      await subscribeToPushNotifications(interpreterId);
+      const result = await subscribeToPushNotifications(interpreterId);
+      console.log('[Notifications] Subscription result:', result);
       
       // Vérifier à nouveau les permissions après la souscription
       await checkNotificationPermission();
@@ -107,7 +124,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         title: "Notifications activées",
         description: "Vous recevrez des notifications pour les nouvelles missions",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Notifications] Error:', error);
       
       // Vérifier à nouveau les permissions en cas d'erreur
@@ -123,7 +140,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       } else {
         toast({
           title: "Erreur",
-          description: "Une erreur est survenue. Veuillez rafraîchir la page et réessayer.",
+          description: error.message || "Une erreur est survenue. Veuillez rafraîchir la page et réessayer.",
           variant: "destructive",
         });
       }
@@ -155,6 +172,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const handleTestNotification = async () => {
     try {
       setIsTesting(true);
+      console.log('[Notifications] Sending test notification...');
       await sendTestNotification(interpreterId);
       toast({
         title: "Notification envoyée",
@@ -173,6 +191,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   };
 
   const handleRefresh = async () => {
+    console.log('[Notifications] Refreshing notification state...');
     await checkNotificationPermission();
     toast({
       title: "État des notifications actualisé",
