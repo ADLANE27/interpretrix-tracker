@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { playNotificationSound } from "@/utils/notificationSounds";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Mission {
   id: string;
