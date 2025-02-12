@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 interface Interpreter {
   id: string;
@@ -52,6 +53,7 @@ export const AdminDashboard = () => {
   // Function to fetch all interpreters
   const fetchInterpreters = async () => {
     try {
+      console.log("[AdminDashboard] Fetching interpreters data");
       const { data, error } = await supabase
         .from("interpreters_with_next_mission")
         .select("*");
@@ -76,8 +78,9 @@ export const AdminDashboard = () => {
       }));
 
       setInterpreters(mappedInterpreters);
+      console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
     } catch (error) {
-      console.error("Error fetching interpreters:", error);
+      console.error("[AdminDashboard] Error fetching interpreters:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger la liste des interprètes",
@@ -86,68 +89,53 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with enhanced error handling and reconnection logic
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
+    const channels: RealtimeChannel[] = [];
 
-    // Subscribe to interpreter profile changes
-    const interpreterChannel = supabase.channel('interpreter-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        async () => {
-          console.log("[AdminDashboard] Interpreter profile changed, refreshing data");
-          await fetchInterpreters();
-        }
-      )
-      .subscribe((status) => {
-        console.log("[AdminDashboard] Interpreter subscription status:", status);
-      });
+    const setupChannel = (channelName: string, table: string) => {
+      const channel = supabase.channel(`admin-${channelName}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: table
+          },
+          async (payload) => {
+            console.log(`[AdminDashboard] ${table} changed:`, payload);
+            await fetchInterpreters();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
+          if (status === 'SUBSCRIBED') {
+            console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
+          }
+          if (status === 'CHANNEL_ERROR') {
+            console.error(`[AdminDashboard] Error in ${channelName} channel`);
+            // Attempt to resubscribe after a delay
+            setTimeout(() => {
+              channel.subscribe();
+            }, 5000);
+          }
+        });
 
-    // Subscribe to mission changes
-    const missionChannel = supabase.channel('mission-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        async () => {
-          console.log("[AdminDashboard] Mission changed, refreshing data");
-          await fetchInterpreters();
-        }
-      )
-      .subscribe((status) => {
-        console.log("[AdminDashboard] Mission subscription status:", status);
-      });
+      channels.push(channel);
+      return channel;
+    };
 
-    // Subscribe to user role changes
-    const userRoleChannel = supabase.channel('user-role-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_roles'
-        },
-        async () => {
-          console.log("[AdminDashboard] User role changed, refreshing data");
-          await fetchInterpreters();
-        }
-      )
-      .subscribe((status) => {
-        console.log("[AdminDashboard] User role subscription status:", status);
-      });
+    // Set up subscriptions for all relevant tables
+    setupChannel('interpreter-profiles', 'interpreter_profiles');
+    setupChannel('missions', 'interpretation_missions');
+    setupChannel('user-roles', 'user_roles');
+    setupChannel('mission-notifications', 'mission_notifications');
+    setupChannel('chat-messages', 'chat_messages');
+    setupChannel('message-mentions', 'message_mentions');
+    setupChannel('channel-members', 'channel_members');
 
-    // Initial data fetch
-    fetchInterpreters();
-
-    // Handle visibility changes to refresh data when tab becomes visible
+    // Handle visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("[AdminDashboard] Tab became visible, refreshing data");
@@ -157,13 +145,31 @@ export const AdminDashboard = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Handle connection state
+    const handleConnectionState = () => {
+      const connectionState = supabase.getChannels().length > 0;
+      console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
+      
+      if (!connectionState) {
+        console.log("[AdminDashboard] Attempting to reconnect...");
+        channels.forEach(channel => channel.subscribe());
+      }
+    };
+
+    // Set up connection state monitoring
+    const connectionCheckInterval = setInterval(handleConnectionState, 30000);
+
+    // Initial data fetch
+    fetchInterpreters();
+
     // Cleanup subscriptions
     return () => {
       console.log("[AdminDashboard] Cleaning up subscriptions");
-      supabase.removeChannel(interpreterChannel);
-      supabase.removeChannel(missionChannel);
-      supabase.removeChannel(userRoleChannel);
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(connectionCheckInterval);
     };
   }, []);
 
@@ -262,9 +268,7 @@ export const AdminDashboard = () => {
               <TabsTrigger value="missions">Missions</TabsTrigger>
               <TabsTrigger value="messages">Messages</TabsTrigger>
               <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-              <TabsTrigger value="guide">
-                Guide d'utilisation
-              </TabsTrigger>
+              <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
             </TabsList>
             <Button 
               variant="outline" 
