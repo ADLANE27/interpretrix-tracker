@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 async function registerServiceWorker() {
@@ -177,17 +176,10 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
     }
 
     const { data, error } = await supabase.functions.invoke(
-      'send-push-notification',
+      'send-test-notification',  // On utilise la nouvelle fonction de test
       {
         method: 'POST',
-        body: {
-          message: {
-            interpreterIds: [interpreterId],
-            title: 'Test de notification',
-            body: 'Cette notification est un test',
-            data: { type: 'test' }
-          }
-        }
+        body: { interpreterId }
       }
     );
 
