@@ -1,0 +1,67 @@
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'npm:@supabase/supabase-js';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: corsHeaders
+    });
+  }
+
+  try {
+    const { interpreterId } = await req.json();
+    console.log('[Test Notification] Sending test notification to:', interpreterId);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing configuration');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Invoquer la fonction send-push-notification
+    const { data, error } = await supabase.functions.invoke('send-push-notification', {
+      body: {
+        message: {
+          interpreterIds: [interpreterId],
+          title: '🔔 Test de notification',
+          body: 'Si vous voyez cette notification, tout fonctionne correctement !',
+          data: { type: 'test' }
+        }
+      }
+    });
+
+    if (error) {
+      console.error('[Test Notification] Error:', error);
+      throw error;
+    }
+
+    console.log('[Test Notification] Success:', data);
+
+    return new Response(
+      JSON.stringify({ success: true, data }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    );
+
+  } catch (error) {
+    console.error('[Test Notification] Error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      }
+    );
+  }
+});
