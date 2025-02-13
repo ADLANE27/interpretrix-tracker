@@ -46,15 +46,15 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     });
 
     // Attendre que le service worker soit actif
-    await navigator.serviceWorker.ready;
+    const readyRegistration = await navigator.serviceWorker.ready;
 
     // 4. Gérer la souscription
-    const existingSubscription = await registration.pushManager.getSubscription();
+    const existingSubscription = await readyRegistration.pushManager.getSubscription();
     if (existingSubscription) {
       await existingSubscription.unsubscribe();
     }
 
-    const subscription = await registration.pushManager.subscribe({
+    const subscription = await readyRegistration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
     });
@@ -89,8 +89,8 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
   try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
+    const readyRegistration = await navigator.serviceWorker.ready;
+    const subscription = await readyRegistration.pushManager.getSubscription();
 
     if (subscription) {
       await subscription.unsubscribe();
@@ -119,13 +119,9 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
     console.log('[Push Notifications] Sending test notification to:', interpreterId);
 
     // Vérifier d'abord si le service worker est prêt
-    await navigator.serviceWorker.ready;
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) {
-      throw new Error('Service worker not registered');
-    }
-    
-    const subscription = await registration.pushManager.getSubscription();
+    const readyRegistration = await navigator.serviceWorker.ready;
+    const subscription = await readyRegistration.pushManager.getSubscription();
+
     if (!subscription) {
       throw new Error('No active subscription found');
     }
