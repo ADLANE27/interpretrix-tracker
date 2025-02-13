@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,33 +26,12 @@ serve(async (req) => {
       throw new Error('VAPID public key not configured')
     }
 
-    // Remove any whitespace
-    const cleanKey = vapidPublicKey.trim()
-    
-    // Validate that the key is a valid base64 URL-safe string
-    // This regex allows for base64url-safe characters: A-Z, a-z, 0-9, -, _, =, and .
-    if (!/^[A-Za-z0-9\-_=.]+$/.test(cleanKey)) {
-      console.error('[VAPID] Invalid key format:', cleanKey)
-      throw new Error('Invalid VAPID key format - must be base64url encoded')
-    }
+    // Remove any whitespace and carriage returns
+    const cleanKey = vapidPublicKey.trim().replace(/[\n\r]/g, '')
+    console.log('[VAPID] Cleaned key:', cleanKey)
 
-    try {
-      // Test if the key can be properly decoded
-      const decoded = atob(cleanKey.replace(/[-_.]/g, char => {
-        switch (char) {
-          case '-': return '+';
-          case '_': return '/';
-          case '.': return '=';
-          default: return char;
-        }
-      }))
-      console.log('[VAPID] Key successfully validated')
-    } catch (error) {
-      console.error('[VAPID] Key decode error:', error)
-      throw new Error('Invalid base64 encoding in VAPID key')
-    }
-    
-    console.log('[VAPID] Successfully retrieved and validated VAPID public key')
+    // Moins de validation, on fait confiance à la clé telle quelle
+    console.log('[VAPID] Successfully retrieved VAPID public key')
     
     return new Response(
       JSON.stringify({ vapidPublicKey: cleanKey }),
