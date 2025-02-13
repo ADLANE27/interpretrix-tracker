@@ -140,18 +140,24 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
   try {
     console.log('[Push Notifications] Sending test notification to interpreter:', interpreterId);
     
+    // Vérification des paramètres
+    if (!interpreterId) {
+      throw new Error('Interpreter ID is required');
+    }
+
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
         method: 'POST',
-        body: {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           message: {
             interpreterIds: [interpreterId],
             title: 'Test de notification',
             body: 'Cette notification est un test',
             data: { type: 'test' }
           }
-        }
+        })
       }
     );
 
