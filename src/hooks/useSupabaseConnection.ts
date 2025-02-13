@@ -59,6 +59,8 @@ export const useSupabaseConnection = () => {
         supabase.removeChannel(channelRef.current);
       }
 
+      let heartbeatInterval: ReturnType<typeof setInterval>;
+
       // Vérifier la session avant de créer le canal
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) {
@@ -126,15 +128,22 @@ export const useSupabaseConnection = () => {
         });
 
         // Configurer le heartbeat
-        const heartbeatInterval = setupHeartbeat(channelRef.current);
-        return () => {
-          clearInterval(heartbeatInterval);
-        };
+        heartbeatInterval = setupHeartbeat(channelRef.current);
       });
 
+      // Retourner une fonction de nettoyage
+      return () => {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+        }
+      };
     } catch (error) {
       console.error('[useSupabaseConnection] Error initializing channel:', error);
       handleReconnect();
+      return () => {};
     }
   };
 
@@ -170,7 +179,7 @@ export const useSupabaseConnection = () => {
   };
 
   useEffect(() => {
-    const cleanup = initializeChannel();
+    const cleanupFn = initializeChannel();
 
     // Vérifier périodiquement la session et la connexion
     const sessionCheckInterval = setInterval(() => {
@@ -221,7 +230,9 @@ export const useSupabaseConnection = () => {
     window.addEventListener('online', handleOnline);
 
     return () => {
-      if (cleanup) cleanup();
+      if (typeof cleanupFn === 'function') {
+        cleanupFn();
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
