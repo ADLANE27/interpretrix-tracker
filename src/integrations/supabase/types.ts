@@ -683,6 +683,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      validate_vapid_keys: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          public_key: string
+          is_valid: boolean
+          error_message: string
+        }[]
+      }
     }
     Enums: {
       employment_status:
