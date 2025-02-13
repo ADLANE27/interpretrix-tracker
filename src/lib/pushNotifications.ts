@@ -45,6 +45,9 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       scope: '/',
     });
 
+    // Attendre que le service worker soit actif
+    await registration.ready;
+
     // 4. Gérer la souscription
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
@@ -111,12 +114,25 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
   }
 }
 
-export async function sendTestNotification(interpreterId: string) {
+export async function sendTestNotification(interpreterId: string): Promise<void> {
   try {
+    console.log('[Push Notifications] Sending test notification to:', interpreterId);
+
+    // Vérifier d'abord si le service worker est prêt
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      throw new Error('No active subscription found');
+    }
+
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: {
           message: {
             interpreterIds: [interpreterId],
@@ -136,17 +152,16 @@ export async function sendTestNotification(interpreterId: string) {
     );
 
     if (error) {
-      console.error('[Push Notifications] Test notification edge function error:', error);
+      console.error('[Push Notifications] Edge function error:', error);
       throw error;
     }
 
-    if (!data.success) {
-      console.error('[Push Notifications] Test notification failed:', data);
-      throw new Error('Failed to send test notification');
+    if (!data?.success) {
+      console.error('[Push Notifications] Push notification failed:', data);
+      throw new Error(data?.message || 'Failed to send notification');
     }
 
-    console.log('[Push Notifications] Test notification results:', data.results);
-    return data;
+    console.log('[Push Notifications] Test notification sent successfully:', data);
   } catch (error) {
     console.error('[Push Notifications] Test notification error:', error);
     throw error;
