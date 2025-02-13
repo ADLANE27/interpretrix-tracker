@@ -20,22 +20,6 @@ serve(async (req) => {
     const { message } = await req.json();
     console.log('[Push Notification] Received payload:', { message });
 
-    // Get VAPID keys from environment variables
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('[Push Notification] Missing VAPID keys');
-      throw new Error('VAPID configuration missing');
-    }
-
-    // Initialize web-push with VAPID details
-    webPush.setVapidDetails(
-      'mailto:contact@interpretix.io',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
-
     if (!message?.interpreterIds?.length) {
       return new Response(
         JSON.stringify({ message: 'No interpreter IDs provided' }),
@@ -46,12 +30,40 @@ serve(async (req) => {
       );
     }
 
+    // Get VAPID keys from environment variables
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('[Push Notification] Missing VAPID keys');
+      return new Response(
+        JSON.stringify({ message: 'VAPID configuration missing' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+
+    // Initialize web-push with VAPID details
+    webPush.setVapidDetails(
+      'mailto:contact@interpretix.io',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase configuration missing');
+      return new Response(
+        JSON.stringify({ message: 'Supabase configuration missing' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -64,10 +76,18 @@ serve(async (req) => {
       .in('interpreter_id', message.interpreterIds);
 
     if (subscriptionError) {
-      throw subscriptionError;
+      console.error('[Push Notification] Subscription error:', subscriptionError);
+      return new Response(
+        JSON.stringify({ message: 'Failed to fetch subscriptions', error: subscriptionError }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
     }
 
     if (!subscriptions?.length) {
+      console.log('[Push Notification] No active subscriptions found for interpreters:', message.interpreterIds);
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { 
@@ -76,6 +96,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('[Push Notification] Found subscriptions:', subscriptions.length);
 
     // Send notifications
     const results = await Promise.all(
@@ -89,6 +111,8 @@ serve(async (req) => {
             }
           };
 
+          console.log('[Push Notification] Sending to subscription:', sub.id);
+
           await webPush.sendNotification(
             subscription,
             JSON.stringify({
@@ -97,6 +121,8 @@ serve(async (req) => {
               data: message.data
             })
           );
+
+          console.log('[Push Notification] Successfully sent to subscription:', sub.id);
 
           // Update last successful push timestamp
           await supabase
@@ -138,6 +164,8 @@ serve(async (req) => {
       failed: results.filter(r => !r.success).length,
       details: results
     };
+
+    console.log('[Push Notification] Notification results:', summary);
 
     return new Response(
       JSON.stringify({ success: true, results: summary }),
