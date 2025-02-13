@@ -367,7 +367,7 @@ export const UserManagement = () => {
       const { error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
-          newPassword: password,
+          password: password,  // Fixed: changed from newPassword to password
         },
       });
 
