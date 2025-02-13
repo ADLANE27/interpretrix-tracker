@@ -38,16 +38,17 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Invoquer la fonction send-push-notification
+    // Call send-push-notification with standardized format
     console.log('[Test Notification] Invoking send-push-notification function');
     
     const { data, error } = await supabase.functions.invoke('send-push-notification', {
       body: {
-        message: {
-          interpreterIds: [interpreterId],
-          title: '🔔 Test de notification',
-          body: 'Si vous voyez cette notification, tout fonctionne correctement !',
-          data: { type: 'test' }
+        interpreterIds: [interpreterId],
+        title: '🔔 Test de notification',
+        body: 'Si vous voyez cette notification, tout fonctionne correctement !',
+        data: { 
+          type: 'test',
+          timestamp: new Date().toISOString()
         }
       }
     });

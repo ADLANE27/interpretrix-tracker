@@ -7,6 +7,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface PushPayload {
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+}
+
 serve(async (req) => {
   console.log('[Push Notification] Function called with method:', req.method);
 
@@ -27,48 +33,43 @@ serve(async (req) => {
     }
 
     // Parse body
-    let requestBody;
+    let body;
     try {
       const rawBody = await req.text();
       console.log('[Push Notification] Raw body:', rawBody);
-      requestBody = JSON.parse(rawBody);
+      body = JSON.parse(rawBody);
     } catch (error) {
       console.error('[Push Notification] Body parse error:', error);
       throw new Error('Invalid request body');
     }
 
-    // Validate body structure
-    if (!requestBody?.message?.interpreterIds?.length) {
-      console.error('[Push Notification] Invalid message format:', requestBody);
-      throw new Error('Invalid message format: missing interpreterIds');
-    }
-
     // Get environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
-    if (!supabaseUrl || !supabaseKey || !vapidPublicKey || !vapidPrivateKey) {
-      console.error('[Push Notification] Missing environment variables:', {
-        hasUrl: !!supabaseUrl,
-        hasKey: !!supabaseKey,
-        hasVapidPublic: !!vapidPublicKey,
-        hasVapidPrivate: !!vapidPrivateKey
-      });
-      throw new Error('Missing required environment variables');
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('[Push Notification] Missing VAPID keys');
+      throw new Error('Missing VAPID configuration');
     }
 
-    // Configurer web-push avec les clés VAPID
+    // Configure web-push
     webPush.setVapidDetails(
       'mailto:contact@interpretix.io',
       vapidPublicKey,
       vapidPrivateKey
     );
 
-    // Récupérer les souscriptions actives des interprètes
+    // Get subscriptions from database
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    // Fetch active subscriptions for the interpreter
     const { error: fetchError, data: subscriptions } = await fetch(
-      `${supabaseUrl}/rest/v1/push_subscriptions?status=eq.active&interpreter_id=in.(${requestBody.message.interpreterIds.join(',')})`,
+      `${supabaseUrl}/rest/v1/push_subscriptions?status=eq.active&interpreter_id=in.(${body.interpreterIds.join(',')})`,
       {
         headers: {
           'apikey': supabaseKey,
@@ -91,7 +92,7 @@ serve(async (req) => {
       );
     }
 
-    // Envoyer les notifications
+    // Send notifications
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
@@ -103,20 +104,18 @@ serve(async (req) => {
             }
           };
 
-          const payload = JSON.stringify({
-            title: requestBody.message.title || 'Nouvelle notification',
-            body: requestBody.message.body || '',
-            data: requestBody.message.data || {},
-            icon: '/favicon.ico',
-            badge: '/favicon.ico'
-          });
+          const payload: PushPayload = {
+            title: body.title || 'Nouvelle notification',
+            body: body.body || '',
+            data: body.data || {}
+          };
 
           console.log('[Push Notification] Sending to:', sub.endpoint, 'with payload:', payload);
           
-          await webPush.sendNotification(subscription, payload);
+          await webPush.sendNotification(subscription, JSON.stringify(payload));
           console.log('[Push Notification] Successfully sent to:', sub.endpoint);
 
-          // Mettre à jour la date du dernier push réussi
+          // Update last successful push
           await fetch(
             `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${sub.id}`,
             {
@@ -138,7 +137,7 @@ serve(async (req) => {
         } catch (error) {
           console.error('[Push Notification] Send error for endpoint:', sub.endpoint, error);
 
-          // Si la souscription est expirée, la marquer comme telle
+          // Handle expired subscriptions
           if (error.statusCode === 410 || error.statusCode === 404) {
             await fetch(
               `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${sub.id}`,
@@ -168,7 +167,7 @@ serve(async (req) => {
       })
     );
 
-    // Traiter les résultats
+    // Process results
     const summary = {
       total: results.length,
       successful: results.filter(r => r.status === 'fulfilled' && r.value.success).length,
