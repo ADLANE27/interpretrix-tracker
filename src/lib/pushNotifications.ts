@@ -135,7 +135,17 @@ export async function sendTestNotification(interpreterId: string) {
       }
     );
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Push Notifications] Test notification edge function error:', error);
+      throw error;
+    }
+
+    if (!data.success) {
+      console.error('[Push Notifications] Test notification failed:', data);
+      throw new Error('Failed to send test notification');
+    }
+
+    console.log('[Push Notifications] Test notification results:', data.results);
     return data;
   } catch (error) {
     console.error('[Push Notifications] Test notification error:', error);

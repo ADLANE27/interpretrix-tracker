@@ -120,6 +120,8 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   };
 
   const handleTestNotification = async () => {
+    if (isTesting) return; // Prevent multiple clicks
+    
     try {
       setIsTesting(true);
       await sendTestNotification(interpreterId);
@@ -131,7 +133,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       console.error('[Notifications] Test error:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer la notification de test",
+        description: "Impossible d'envoyer la notification de test. Veuillez vérifier que les notifications sont bien activées.",
         variant: "destructive",
       });
     } finally {
