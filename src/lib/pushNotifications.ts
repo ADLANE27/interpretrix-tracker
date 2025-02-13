@@ -175,11 +175,16 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
       throw new Error('Interpreter ID is required');
     }
 
+    console.log('[Push Notifications] Invoking send-test-notification function');
+    
     const { data, error } = await supabase.functions.invoke(
-      'send-test-notification',  // On utilise la nouvelle fonction de test
+      'send-test-notification',
       {
         method: 'POST',
-        body: { interpreterId }
+        body: JSON.stringify({ interpreterId }),
+        headers: {
+          'Content-Type': 'application/json',
+        }
       }
     );
 

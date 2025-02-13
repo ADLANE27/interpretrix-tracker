@@ -15,7 +15,18 @@ serve(async (req) => {
   }
 
   try {
-    const { interpreterId } = await req.json();
+    const requestBody = await req.text();
+    console.log('[Test Notification] Received request body:', requestBody);
+
+    let interpreterId;
+    try {
+      const parsed = JSON.parse(requestBody);
+      interpreterId = parsed.interpreterId;
+    } catch (e) {
+      console.error('[Test Notification] Error parsing request body:', e);
+      throw new Error('Invalid request body');
+    }
+
     console.log('[Test Notification] Sending test notification to:', interpreterId);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -28,6 +39,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Invoquer la fonction send-push-notification
+    console.log('[Test Notification] Invoking send-push-notification function');
+    
     const { data, error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         message: {
