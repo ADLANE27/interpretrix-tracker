@@ -17,7 +17,7 @@ serve(async (req) => {
   try {
     console.log('[VAPID] Starting VAPID key retrieval process')
     
-    // Get VAPID key directly from environment
+    // Get VAPID key from environment
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     console.log('[VAPID] Environment check:', vapidPublicKey ? 'Found' : 'Not found')
     
@@ -26,12 +26,9 @@ serve(async (req) => {
       throw new Error('VAPID public key not configured')
     }
 
-    // Remove any whitespace and carriage returns
-    const cleanKey = vapidPublicKey.trim().replace(/[\n\r]/g, '')
-    console.log('[VAPID] Cleaned key:', cleanKey)
-
-    // Moins de validation, on fait confiance à la clé telle quelle
-    console.log('[VAPID] Successfully retrieved VAPID public key')
+    // Supprimer uniquement les espaces en début et fin
+    const cleanKey = vapidPublicKey.trim()
+    console.log('[VAPID] Using key:', cleanKey)
     
     return new Response(
       JSON.stringify({ vapidPublicKey: cleanKey }),
