@@ -43,16 +43,23 @@ serve(async (req) => {
 
     // Validate body structure
     if (!requestBody?.message?.interpreterIds?.length) {
+      console.error('[Push Notification] Invalid message format:', requestBody);
       throw new Error('Invalid message format: missing interpreterIds');
     }
 
-    // Get Vapid keys
+    // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
     if (!supabaseUrl || !supabaseKey || !vapidPublicKey || !vapidPrivateKey) {
+      console.error('[Push Notification] Missing environment variables:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey,
+        hasVapidPublic: !!vapidPublicKey,
+        hasVapidPrivate: !!vapidPrivateKey
+      });
       throw new Error('Missing required environment variables');
     }
 
@@ -67,6 +74,8 @@ serve(async (req) => {
     );
 
     // Get active subscriptions
+    console.log('[Push Notification] Fetching subscriptions for interpreters:', requestBody.message.interpreterIds);
+    
     const { data: subscriptions, error: dbError } = await supabase
       .from('push_subscriptions')
       .select('*')
@@ -74,12 +83,14 @@ serve(async (req) => {
       .in('interpreter_id', requestBody.message.interpreterIds);
 
     if (dbError) {
+      console.error('[Push Notification] Database error:', dbError);
       throw new Error(`Database error: ${dbError.message}`);
     }
 
     console.log('[Push Notification] Found subscriptions:', subscriptions);
 
     if (!subscriptions?.length) {
+      console.log('[Push Notification] No active subscriptions found');
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { 
@@ -90,6 +101,8 @@ serve(async (req) => {
     }
 
     // Send notifications
+    console.log('[Push Notification] Attempting to send to', subscriptions.length, 'subscriptions');
+    
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
@@ -104,15 +117,18 @@ serve(async (req) => {
           const payload = JSON.stringify({
             title: requestBody.message.title || 'Nouvelle notification',
             body: requestBody.message.body || '',
-            data: requestBody.message.data || {}
+            data: requestBody.message.data || {},
+            icon: '/favicon.ico',
+            badge: '/favicon.ico'
           });
 
-          console.log('[Push Notification] Sending to:', sub.endpoint);
+          console.log('[Push Notification] Sending to:', sub.endpoint, 'with payload:', payload);
+          
           await webPush.sendNotification(subscription, payload);
           console.log('[Push Notification] Successfully sent to:', sub.endpoint);
 
           // Update last successful push
-          await supabase
+          const { error: updateError } = await supabase
             .from('push_subscriptions')
             .update({
               last_successful_push: new Date().toISOString(),
@@ -120,19 +136,29 @@ serve(async (req) => {
             })
             .eq('id', sub.id);
 
+          if (updateError) {
+            console.error('[Push Notification] Error updating subscription:', updateError);
+          }
+
           return { success: true, subscriptionId: sub.id };
         } catch (error) {
-          console.error('[Push Notification] Send error:', error);
+          console.error('[Push Notification] Send error for endpoint:', sub.endpoint, error);
 
           if (error.statusCode === 410 || error.statusCode === 404) {
+            console.log('[Push Notification] Marking subscription as expired:', sub.id);
+            
             // Update expired subscription
-            await supabase
+            const { error: updateError } = await supabase
               .from('push_subscriptions')
               .update({
                 status: 'expired',
                 updated_at: new Date().toISOString()
               })
               .eq('id', sub.id);
+
+            if (updateError) {
+              console.error('[Push Notification] Error updating expired subscription:', updateError);
+            }
           }
 
           return {
@@ -153,7 +179,7 @@ serve(async (req) => {
       details: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason })
     };
 
-    console.log('[Push Notification] Results:', JSON.stringify(summary));
+    console.log('[Push Notification] Final results:', JSON.stringify(summary, null, 2));
 
     return new Response(
       JSON.stringify({ success: true, results: summary }),
@@ -164,7 +190,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('[Push Notification] Error:', error);
+    console.error('[Push Notification] Critical error:', error);
     return new Response(
       JSON.stringify({
         error: error.message,
