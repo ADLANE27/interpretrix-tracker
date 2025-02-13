@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'npm:@supabase/supabase-js';
 import webPush from 'npm:web-push';
 
 const corsHeaders = {
@@ -26,9 +25,6 @@ serve(async (req) => {
     if (req.method !== 'POST') {
       throw new Error(`Method ${req.method} not allowed`);
     }
-
-    // Log headers for debugging
-    console.log('[Push Notification] Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
 
     // Parse body
     let requestBody;
@@ -63,34 +59,29 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Configure Web Push
+    // Configurer web-push avec les clés VAPID
     webPush.setVapidDetails(
       'mailto:contact@interpretix.io',
       vapidPublicKey,
       vapidPrivateKey
     );
 
-    // Get active subscriptions
-    console.log('[Push Notification] Fetching subscriptions for interpreters:', requestBody.message.interpreterIds);
-    
-    const { data: subscriptions, error: dbError } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('status', 'active')
-      .in('interpreter_id', requestBody.message.interpreterIds);
+    // Récupérer les souscriptions actives des interprètes
+    const { error: fetchError, data: subscriptions } = await fetch(
+      `${supabaseUrl}/rest/v1/push_subscriptions?status=eq.active&interpreter_id=in.(${requestBody.message.interpreterIds.join(',')})`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    ).then(res => res.json());
 
-    if (dbError) {
-      console.error('[Push Notification] Database error:', dbError);
-      throw new Error(`Database error: ${dbError.message}`);
-    }
+    if (fetchError) throw fetchError;
 
     console.log('[Push Notification] Found subscriptions:', subscriptions);
 
     if (!subscriptions?.length) {
-      console.log('[Push Notification] No active subscriptions found');
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { 
@@ -100,9 +91,7 @@ serve(async (req) => {
       );
     }
 
-    // Send notifications
-    console.log('[Push Notification] Attempting to send to', subscriptions.length, 'subscriptions');
-    
+    // Envoyer les notifications
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
@@ -127,38 +116,46 @@ serve(async (req) => {
           await webPush.sendNotification(subscription, payload);
           console.log('[Push Notification] Successfully sent to:', sub.endpoint);
 
-          // Update last successful push
-          const { error: updateError } = await supabase
-            .from('push_subscriptions')
-            .update({
-              last_successful_push: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', sub.id);
-
-          if (updateError) {
-            console.error('[Push Notification] Error updating subscription:', updateError);
-          }
+          // Mettre à jour la date du dernier push réussi
+          await fetch(
+            `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${sub.id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({
+                last_successful_push: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+            }
+          );
 
           return { success: true, subscriptionId: sub.id };
         } catch (error) {
           console.error('[Push Notification] Send error for endpoint:', sub.endpoint, error);
 
+          // Si la souscription est expirée, la marquer comme telle
           if (error.statusCode === 410 || error.statusCode === 404) {
-            console.log('[Push Notification] Marking subscription as expired:', sub.id);
-            
-            // Update expired subscription
-            const { error: updateError } = await supabase
-              .from('push_subscriptions')
-              .update({
-                status: 'expired',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', sub.id);
-
-            if (updateError) {
-              console.error('[Push Notification] Error updating expired subscription:', updateError);
-            }
+            await fetch(
+              `${supabaseUrl}/rest/v1/push_subscriptions?id=eq.${sub.id}`,
+              {
+                method: 'PATCH',
+                headers: {
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                  status: 'expired',
+                  updated_at: new Date().toISOString()
+                })
+              }
+            );
           }
 
           return {
@@ -171,7 +168,7 @@ serve(async (req) => {
       })
     );
 
-    // Process results
+    // Traiter les résultats
     const summary = {
       total: results.length,
       successful: results.filter(r => r.status === 'fulfilled' && r.value.success).length,
