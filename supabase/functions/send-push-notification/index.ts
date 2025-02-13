@@ -17,10 +17,15 @@ serve(async (req) => {
   try {
     console.log('[Push Notification] Starting push notification service');
     
-    const { message } = await req.json();
-    console.log('[Push Notification] Received payload:', { message });
+    // Log request details
+    const reqBody = await req.json();
+    console.log('[Push Notification] Raw request body:', JSON.stringify(reqBody));
+    
+    const { message } = reqBody;
+    console.log('[Push Notification] Extracted message:', JSON.stringify(message));
 
     if (!message?.interpreterIds?.length) {
+      console.log('[Push Notification] No interpreter IDs provided in message:', message);
       return new Response(
         JSON.stringify({ message: 'No interpreter IDs provided' }),
         { 
@@ -30,9 +35,19 @@ serve(async (req) => {
       );
     }
 
-    // Get VAPID keys from environment variables
+    // Get and log environment variables (without sensitive data)
+    console.log('[Push Notification] Checking environment variables');
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('[Push Notification] Environment check:', {
+      hasVapidPublicKey: !!vapidPublicKey,
+      hasVapidPrivateKey: !!vapidPrivateKey,
+      hasSupabaseUrl: !!supabaseUrl,
+      hasSupabaseKey: !!supabaseKey
+    });
     
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.error('[Push Notification] Missing VAPID keys');
@@ -46,17 +61,27 @@ serve(async (req) => {
     }
 
     // Initialize web-push with VAPID details
-    webPush.setVapidDetails(
-      'mailto:contact@interpretix.io',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
+    try {
+      console.log('[Push Notification] Initializing web-push');
+      webPush.setVapidDetails(
+        'mailto:contact@interpretix.io',
+        vapidPublicKey,
+        vapidPrivateKey
+      );
+      console.log('[Push Notification] web-push initialized successfully');
+    } catch (error) {
+      console.error('[Push Notification] Error initializing web-push:', error);
+      return new Response(
+        JSON.stringify({ message: 'Failed to initialize push service', error: error.message }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
     if (!supabaseUrl || !supabaseKey) {
+      console.error('[Push Notification] Missing Supabase configuration');
       return new Response(
         JSON.stringify({ message: 'Supabase configuration missing' }),
         { 
@@ -66,9 +91,12 @@ serve(async (req) => {
       );
     }
 
+    // Initialize Supabase client
+    console.log('[Push Notification] Initializing Supabase client');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get active subscriptions for these interpreters
+    console.log('[Push Notification] Fetching subscriptions for interpreters:', message.interpreterIds);
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
       .select('*')
@@ -97,7 +125,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('[Push Notification] Found subscriptions:', subscriptions.length);
+    console.log('[Push Notification] Found subscriptions:', {
+      count: subscriptions.length,
+      subscriptionIds: subscriptions.map(s => s.id)
+    });
 
     // Send notifications
     const results = await Promise.all(
@@ -111,15 +142,22 @@ serve(async (req) => {
             }
           };
 
-          console.log('[Push Notification] Sending to subscription:', sub.id);
+          console.log('[Push Notification] Preparing notification for subscription:', {
+            id: sub.id,
+            endpoint: subscription.endpoint
+          });
+
+          const payload = {
+            title: message.title,
+            body: message.body,
+            data: message.data
+          };
+
+          console.log('[Push Notification] Notification payload:', payload);
 
           await webPush.sendNotification(
             subscription,
-            JSON.stringify({
-              title: message.title,
-              body: message.body,
-              data: message.data
-            })
+            JSON.stringify(payload)
           );
 
           console.log('[Push Notification] Successfully sent to subscription:', sub.id);
@@ -138,6 +176,7 @@ serve(async (req) => {
           console.error(`[Push Notification] Error sending to ${sub.id}:`, error);
 
           if (error.statusCode === 410 || error.statusCode === 404) {
+            console.log(`[Push Notification] Marking subscription ${sub.id} as expired`);
             // Subscription is expired or invalid
             await supabase
               .from('push_subscriptions')
@@ -173,10 +212,12 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('[Push Notification] Error:', error);
+    console.error('[Push Notification] Error stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',
-        details: error.stack 
+        details: error.stack,
+        type: error.constructor.name
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
