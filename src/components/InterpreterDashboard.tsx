@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { subscribeToPushNotifications } from "@/lib/pushNotifications";
+import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 
 interface Profile {
   id: string;
@@ -55,6 +56,9 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Ajouter le hook de connexion
+  useSupabaseConnection();
 
   useEffect(() => {
     const checkNotificationStatus = async () => {
