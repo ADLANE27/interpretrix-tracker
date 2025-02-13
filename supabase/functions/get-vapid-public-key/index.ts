@@ -27,14 +27,26 @@ serve(async (req) => {
       throw new Error('VAPID public key not configured')
     }
 
-    // Remove any whitespace and validate format
+    // Remove any whitespace
     const cleanKey = vapidPublicKey.trim()
-    if (!/^[A-Za-z0-9_-]+$/.test(cleanKey)) {
-      console.error('[VAPID] Invalid key format')
-      throw new Error('Invalid VAPID key format')
+    
+    // Validate that the key is a valid base64 URL-safe string
+    // This regex allows for base64url-safe characters: A-Z, a-z, 0-9, -, _, and =
+    if (!/^[A-Za-z0-9\-_=]+$/.test(cleanKey)) {
+      console.error('[VAPID] Invalid key format:', cleanKey)
+      throw new Error('Invalid VAPID key format - must be base64url encoded')
+    }
+
+    try {
+      // Test if the key can be properly decoded
+      const decoded = atob(cleanKey.replace(/-/g, '+').replace(/_/g, '/'))
+      console.log('[VAPID] Key successfully validated')
+    } catch (error) {
+      console.error('[VAPID] Key decode error:', error)
+      throw new Error('Invalid base64 encoding in VAPID key')
     }
     
-    console.log('[VAPID] Successfully retrieved valid VAPID public key')
+    console.log('[VAPID] Successfully retrieved and validated VAPID public key')
     
     return new Response(
       JSON.stringify({ vapidPublicKey: cleanKey }),
@@ -52,7 +64,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Internal server error'
+        error: error.message || 'Internal server error',
+        details: error.stack
       }),
       { 
         headers: { 
