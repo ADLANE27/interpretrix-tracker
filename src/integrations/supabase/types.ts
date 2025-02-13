@@ -478,22 +478,7 @@ export type Database = {
           updated_at?: string
           user_agent?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreters_with_next_mission"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       secrets: {
         Row: {
