@@ -1,9 +1,8 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut, X } from "lucide-react";
+import { Search, LogOut, X, Key } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { generateAndStoreVapidKeys } from "@/lib/generateVapidKeys";
 
 interface Interpreter {
   id: string;
@@ -50,7 +50,6 @@ export const AdminDashboard = () => {
 
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
-  // Function to fetch all interpreters
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
@@ -60,7 +59,6 @@ export const AdminDashboard = () => {
 
       if (error) throw error;
 
-      // Map the data to match our Interpreter interface
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
@@ -74,7 +72,7 @@ export const AdminDashboard = () => {
         next_mission_start: interpreter.next_mission_start,
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null // Since it's not in the view, we set it to null
+        tarif_5min: null
       }));
 
       setInterpreters(mappedInterpreters);
@@ -89,7 +87,24 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Set up real-time subscriptions with enhanced error handling and reconnection logic
+  const handleGenerateVapidKeys = async () => {
+    try {
+      const result = await generateAndStoreVapidKeys();
+      console.log('VAPID keys generated:', result);
+      toast({
+        title: "Succès",
+        description: "Nouvelles clés VAPID générées et stockées avec succès",
+      });
+    } catch (error) {
+      console.error('Error generating VAPID keys:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer les nouvelles clés VAPID",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
@@ -115,7 +130,6 @@ export const AdminDashboard = () => {
           }
           if (status === 'CHANNEL_ERROR') {
             console.error(`[AdminDashboard] Error in ${channelName} channel`);
-            // Attempt to resubscribe after a delay
             setTimeout(() => {
               channel.subscribe();
             }, 5000);
@@ -126,7 +140,6 @@ export const AdminDashboard = () => {
       return channel;
     };
 
-    // Set up subscriptions for all relevant tables
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -135,7 +148,6 @@ export const AdminDashboard = () => {
     setupChannel('message-mentions', 'message_mentions');
     setupChannel('channel-members', 'channel_members');
 
-    // Handle visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("[AdminDashboard] Tab became visible, refreshing data");
@@ -145,7 +157,6 @@ export const AdminDashboard = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Handle connection state
     const handleConnectionState = () => {
       const connectionState = supabase.getChannels().length > 0;
       console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
@@ -156,13 +167,10 @@ export const AdminDashboard = () => {
       }
     };
 
-    // Set up connection state monitoring
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
 
-    // Initial data fetch
     fetchInterpreters();
 
-    // Cleanup subscriptions
     return () => {
       console.log("[AdminDashboard] Cleaning up subscriptions");
       channels.forEach(channel => {
@@ -263,13 +271,23 @@ export const AdminDashboard = () => {
       <div className="container mx-auto py-6">
         <Tabs defaultValue="interpreters" className="space-y-6">
           <div className="flex justify-between items-center mb-4">
-            <TabsList>
-              <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-              <TabsTrigger value="missions">Missions</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-              <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
-            </TabsList>
+            <div className="flex gap-4 items-center">
+              <TabsList>
+                <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+                <TabsTrigger value="missions">Missions</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+                <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
+              </TabsList>
+              <Button 
+                onClick={handleGenerateVapidKeys}
+                variant="outline"
+                className="gap-2"
+              >
+                <Key className="h-4 w-4" />
+                Regénérer les clés VAPID
+              </Button>
+            </div>
             <Button 
               variant="outline" 
               onClick={handleLogout}
