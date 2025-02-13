@@ -26,13 +26,13 @@ serve(async (req) => {
       throw new Error('VAPID public key not configured')
     }
 
-    // Clean the key more thoroughly
+    // Nettoyer la clé en ne gardant que les caractères valides base64
     const cleanKey = vapidPublicKey
       .trim()
-      .replace(/[\n\r\s]/g, '') // Remove all whitespace, newlines, and carriage returns
+      .replace(/[^A-Za-z0-9+/]/g, '') // Ne garder que les caractères valides base64
     
+    console.log('[VAPID] Clean key:', cleanKey)
     console.log('[VAPID] Key length:', cleanKey.length)
-    console.log('[VAPID] Using key:', cleanKey)
     
     return new Response(
       JSON.stringify({ vapidPublicKey: cleanKey }),

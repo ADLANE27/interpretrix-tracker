@@ -3,10 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
   try {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/\-/g, '+')
+    // S'assurer que la chaîne est propre avant le traitement
+    const cleanBase64 = base64String
+      .trim()
+      .replace(/[^A-Za-z0-9+/]/g, '') // Ne garder que les caractères valides base64
+    
+    const padding = '='.repeat((4 - cleanBase64.length % 4) % 4);
+    const base64 = (cleanBase64 + padding)
+      .replace(/-/g, '+')
       .replace(/_/g, '/');
+
+    console.log('[Push Notifications] Processed base64:', base64);
 
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
@@ -17,7 +24,7 @@ function urlBase64ToUint8Array(base64String: string) {
     return outputArray;
   } catch (error) {
     console.error('[Push Notifications] Error converting base64 to Uint8Array:', error);
-    throw new Error('Invalid VAPID key format');
+    throw new Error('Format de clé VAPID invalide. Contactez le support.');
   }
 }
 
@@ -62,13 +69,9 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     console.log('[Push Notifications] Got VAPID key:', vapidData.vapidPublicKey);
     
-    try {
-      const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
-      console.log('[Push Notifications] Converted VAPID key to Uint8Array');
-    } catch (error) {
-      console.error('[Push Notifications] Invalid VAPID key format:', error);
-      throw new Error('Format de clé VAPID invalide');
-    }
+    // Convertir la clé VAPID une seule fois
+    const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
+    console.log('[Push Notifications] Converted VAPID key to Uint8Array');
 
     // 4. Unregister ALL existing service workers
     console.log('[Push Notifications] Unregistering all service workers');
@@ -102,7 +105,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidData.vapidPublicKey)
+      applicationServerKey
     });
 
     console.log('[Push Notifications] Push subscription:', subscription);
