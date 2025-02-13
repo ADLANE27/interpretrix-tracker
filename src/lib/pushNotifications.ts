@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -48,16 +47,39 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     console.log('[Push Notifications] Got VAPID key');
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
-    // 3. Nettoyer les anciens service workers
-    console.log('[Push Notifications] Cleaning up old service workers');
+    // 3. Nettoyer les anciens service workers UNIQUEMENT s'ils ne sont pas actifs
+    console.log('[Push Notifications] Checking existing service workers');
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(existingRegistrations.map(reg => reg.unregister()));
+    
+    // Vérifier si nous avons déjà une souscription active
+    let hasActiveSubscription = false;
+    for (const reg of existingRegistrations) {
+      const subscription = await reg.pushManager.getSubscription();
+      if (subscription) {
+        hasActiveSubscription = true;
+        console.log('[Push Notifications] Found active subscription');
+        break;
+      }
+    }
 
-    // 4. Enregistrer le nouveau Service Worker
-    console.log('[Push Notifications] Registering new service worker');
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/'
-    });
+    // Ne nettoyer que si nous n'avons pas de souscription active
+    if (!hasActiveSubscription) {
+      console.log('[Push Notifications] No active subscription found, cleaning up old service workers');
+      await Promise.all(existingRegistrations.map(reg => reg.unregister()));
+    }
+
+    // 4. Enregistrer le Service Worker si nécessaire
+    let registration;
+    try {
+      console.log('[Push Notifications] Registering service worker');
+      registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+      console.log('[Push Notifications] Service worker registered successfully');
+    } catch (error) {
+      console.error('[Push Notifications] Service worker registration failed:', error);
+      throw new Error('Failed to register service worker');
+    }
 
     // 5. Demander la permission si nécessaire
     if (Notification.permission === 'default') {
@@ -69,7 +91,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     }
 
     // 6. Attendre l'activation du service worker
-    if (!registration.active) {
+    if (registration.installing || registration.waiting) {
       console.log('[Push Notifications] Waiting for service worker activation');
       await new Promise<void>((resolve) => {
         registration.addEventListener('activate', () => {
@@ -77,23 +99,23 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
           resolve();
         });
       });
-    } else {
-      console.log('[Push Notifications] Service worker already active');
     }
 
     // 7. Gérer la souscription
     console.log('[Push Notifications] Managing subscription');
     const existingSubscription = await registration.pushManager.getSubscription();
+    
+    let subscription;
     if (existingSubscription) {
-      console.log('[Push Notifications] Unsubscribing from existing subscription');
-      await existingSubscription.unsubscribe();
+      console.log('[Push Notifications] Using existing subscription');
+      subscription = existingSubscription;
+    } else {
+      console.log('[Push Notifications] Creating new subscription');
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey
+      });
     }
-
-    console.log('[Push Notifications] Creating new subscription');
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey
-    });
 
     // 8. Sauvegarder la souscription
     console.log('[Push Notifications] Saving subscription to database');
