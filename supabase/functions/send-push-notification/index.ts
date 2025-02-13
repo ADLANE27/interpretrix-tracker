@@ -22,87 +22,81 @@ serve(async (req) => {
   try {
     console.log('[Push Notification] Starting push notification service');
     
-    // Log request details
-    const reqBody = await req.json();
-    console.log('[Push Notification] Raw request body:', JSON.stringify(reqBody));
+    // Validate request method
+    if (req.method !== 'POST') {
+      throw new Error('Method not allowed');
+    }
+
+    // Validate Content-Type
+    const contentType = req.headers.get('content-type');
+    if (!contentType?.includes('application/json')) {
+      throw new Error('Content-Type must be application/json');
+    }
+
+    // Safely parse request body
+    let reqBody;
+    try {
+      const text = await req.text();
+      console.log('[Push Notification] Raw request body:', text);
+      
+      if (!text) {
+        throw new Error('Request body is empty');
+      }
+      
+      reqBody = JSON.parse(text);
+    } catch (error) {
+      console.error('[Push Notification] JSON parse error:', error);
+      throw new Error(`Invalid JSON in request body: ${error.message}`);
+    }
     
+    // Validate message structure
     const { message } = reqBody;
     console.log('[Push Notification] Extracted message:', JSON.stringify(message));
 
-    if (!message?.interpreterIds?.length) {
-      console.log('[Push Notification] No interpreter IDs provided in message:', message);
-      return new Response(
-        JSON.stringify({ message: 'No interpreter IDs provided' }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      );
+    if (!message) {
+      throw new Error('No message provided in request body');
     }
 
-    // Get and log environment variables (without sensitive data)
+    if (!Array.isArray(message?.interpreterIds) || message.interpreterIds.length === 0) {
+      throw new Error('interpreterIds must be a non-empty array');
+    }
+
+    // Get and validate environment variables
     console.log('[Push Notification] Checking environment variables');
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    console.log('[Push Notification] Environment check:', {
+    const envCheck = {
       hasVapidPublicKey: !!vapidPublicKey,
       hasVapidPrivateKey: !!vapidPrivateKey,
       hasSupabaseUrl: !!supabaseUrl,
       hasSupabaseKey: !!supabaseKey
-    });
+    };
+    
+    console.log('[Push Notification] Environment check:', envCheck);
     
     if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('[Push Notification] Missing VAPID keys');
-      return new Response(
-        JSON.stringify({ message: 'VAPID configuration missing' }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
+      throw new Error('VAPID configuration missing');
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase configuration missing');
     }
 
     // Initialize web-push with VAPID details
     try {
       console.log('[Push Notification] Initializing web-push');
-      
-      // Nettoyer les clés VAPID de tout espace ou caractère non valide
-      const cleanVapidPublicKey = vapidPublicKey.trim().replace(/[^A-Za-z0-9+/]/g, '');
-      const cleanVapidPrivateKey = vapidPrivateKey.trim().replace(/[^A-Za-z0-9+/]/g, '');
-      
       webPush.setVapidDetails(
         'mailto:contact@interpretix.io',
-        cleanVapidPublicKey,
-        cleanVapidPrivateKey
+        vapidPublicKey.trim(),
+        vapidPrivateKey.trim()
       );
       console.log('[Push Notification] web-push initialized successfully');
     } catch (error) {
       console.error('[Push Notification] Error initializing web-push:', error);
-      return new Response(
-        JSON.stringify({ 
-          message: 'Failed to initialize push service', 
-          error: error.message,
-          stack: error.stack 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
-    }
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('[Push Notification] Missing Supabase configuration');
-      return new Response(
-        JSON.stringify({ message: 'Supabase configuration missing' }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
+      throw new Error(`Failed to initialize push service: ${error.message}`);
     }
 
     // Initialize Supabase client
@@ -119,13 +113,7 @@ serve(async (req) => {
 
     if (subscriptionError) {
       console.error('[Push Notification] Subscription error:', subscriptionError);
-      return new Response(
-        JSON.stringify({ message: 'Failed to fetch subscriptions', error: subscriptionError }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
+      throw new Error(`Failed to fetch subscriptions: ${subscriptionError.message}`);
     }
 
     if (!subscriptions?.length) {
@@ -162,9 +150,9 @@ serve(async (req) => {
           });
 
           const payload = {
-            title: message.title,
-            body: message.body,
-            data: message.data
+            title: message.title || 'Nouvelle notification',
+            body: message.body || '',
+            data: message.data || {}
           };
 
           console.log('[Push Notification] Notification payload:', payload);
@@ -191,7 +179,6 @@ serve(async (req) => {
 
           if (error.statusCode === 410 || error.statusCode === 404) {
             console.log(`[Push Notification] Marking subscription ${sub.id} as expired`);
-            // Subscription is expired or invalid
             await supabase
               .from('push_subscriptions')
               .update({ 
@@ -205,7 +192,7 @@ serve(async (req) => {
             success: false, 
             subscriptionId: sub.id,
             error: error.message,
-            stack: error.stack
+            statusCode: error.statusCode
           };
         }
       })
@@ -235,19 +222,6 @@ serve(async (req) => {
 
     console.log('[Push Notification] Notification results:', summary);
 
-    if (summary.successful === 0) {
-      return new Response(
-        JSON.stringify({ 
-          message: 'All notifications failed',
-          results: summary
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
-    }
-
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -261,6 +235,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[Push Notification] Error:', error);
     console.error('[Push Notification] Error stack:', error.stack);
+    
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',
