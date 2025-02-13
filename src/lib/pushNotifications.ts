@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 async function registerServiceWorker() {
@@ -14,14 +15,16 @@ async function registerServiceWorker() {
 
 // Convert a base64 string to a Uint8Array for the applicationServerKey
 function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
+  // First, decode the base64url format to regular base64
+  const base64Url = base64String.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - base64Url.length % 4) % 4);
+  const base64 = base64Url + padding;
+  
+  // Then convert to binary string
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
 
+  // Convert to Uint8Array
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
@@ -38,7 +41,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Les notifications sont bloquées dans votre navigateur');
     }
 
-    // Vérifier que la page est visible
+    // Check if page is visible
     if (document.visibilityState !== 'visible') {
       throw new Error('La page doit être visible pour activer les notifications');
     }
@@ -85,7 +88,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Erreur lors de la récupération de la clé VAPID');
     }
 
-    console.log('[Push Notifications] Creating subscription...');
+    console.log('[Push Notifications] Creating subscription with VAPID key:', vapidData.vapidPublicKey);
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -100,8 +103,8 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       .upsert({
         interpreter_id: interpreterId,
         endpoint: subscription.endpoint,
-        p256dh: subscriptionJSON.keys.p256dh,
-        auth: subscriptionJSON.keys.auth,
+        p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')!))),
+        auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth')!))),
         user_agent: navigator.userAgent,
         status: 'active',
         created_at: new Date().toISOString(),
