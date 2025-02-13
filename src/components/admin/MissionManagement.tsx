@@ -1,113 +1,366 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addMinutes, formatISO } from "date-fns";
-import { fromZonedTime } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { CalendarIcon } from "@radix-ui/react-icons"
-import { Listbox } from '@headlessui/react'
+import { LANGUAGES } from "@/lib/constants";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MissionList } from "./mission/MissionList";
+import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
+import { parseISO, formatISO } from 'date-fns';
+import { fromZonedTime } from 'date-fns-tz';
 
-type Mission = {
+// Sort languages alphabetically
+const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
+
+interface Mission {
   id: string;
   source_language: string;
   target_language: string;
   estimated_duration: number;
   status: string;
   created_at: string;
-};
+  assigned_interpreter_id?: string;
+  scheduled_start_time?: string;
+  scheduled_end_time?: string;
+  mission_type: 'immediate' | 'scheduled';
+  interpreter_profiles?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    profile_picture_url: string | null;
+    status: string;
+  };
+}
 
-type Interpreter = {
+interface Interpreter {
   id: string;
-  email: string;
-};
+  first_name: string;
+  last_name: string;
+  languages: string[];
+  status: string;
+  profile_picture_url: string | null;
+  tarif_15min: number;
+}
 
-const languages = [
-  { label: "Français", value: "fr" },
-  { label: "Anglais", value: "en" },
-  { label: "Espagnol", value: "es" },
-  { label: "Allemand", value: "de" },
-  { label: "Italien", value: "it" },
-];
-
-export function MissionManagement() {
-  const [sourceLanguage, setSourceLanguage] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("");
-  const [estimatedDuration, setEstimatedDuration] = useState(0);
+export const MissionManagement = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
-  const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
+  const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreters, setSelectedInterpreters] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sourceLanguage, setSourceLanguage] = useState("Français"); // Définir Français par défaut
+  const [targetLanguage, setTargetLanguage] = useState("");
+  const [estimatedDuration, setEstimatedDuration] = useState("");
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
-  const [scheduledStartTime, setScheduledStartTime] = useState<Date | null>(null);
-  const [scheduledEndTime, setScheduledEndTime] = useState<Date | null>(null);
-  const [showDateSelection, setShowDateSelection] = useState(false);
-
-  useEffect(() => {
-    fetchMissions();
-    fetchInterpreters();
-  }, []);
+  const [scheduledStartTime, setScheduledStartTime] = useState("");
+  const [scheduledEndTime, setScheduledEndTime] = useState("");
+  const { toast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchMissions = async () => {
     try {
+      console.log('[MissionManagement] Fetching missions');
       const { data, error } = await supabase
         .from("interpretation_missions")
-        .select("*")
+        .select(`
+          *,
+          interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+            id,
+            first_name,
+            last_name,
+            profile_picture_url,
+            status
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setMissions(data || []);
+      
+      console.log('[MissionManagement] Missions fetched successfully:', data);
+      setMissions(data as Mission[]);
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching missions:", error);
-      toast.error("Impossible de charger les missions");
+      console.error('[MissionManagement] Error fetching missions:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les missions",
+        variant: "destructive",
+      });
+      setLoading(false);
     }
   };
 
-  const fetchInterpreters = async () => {
+  const setupRealtimeSubscription = () => {
+    console.log('[MissionManagement] Setting up realtime subscription');
+    
+    // Create a single channel for all subscriptions
+    const channel = supabase
+      .channel('admin-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        () => {
+          console.log('[MissionManagement] Received mission update, refreshing...');
+          fetchMissions();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        () => {
+          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
+          if (sourceLanguage && targetLanguage) {
+            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MissionManagement] Subscription status:', status);
+      });
+
+    // Return cleanup function
+    return () => {
+      console.log('[MissionManagement] Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  };
+
+  useEffect(() => {
+    fetchMissions();
+    const cleanup = setupRealtimeSubscription();
+    
+    // Cleanup function
+    return () => {
+      cleanup();
+    };
+  }, []); // Only run once on mount
+
+  const handleSelectAllInterpreters = () => {
+    if (selectedInterpreters.length === availableInterpreters.length) {
+      setSelectedInterpreters([]);
+    } else {
+      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+    }
+  };
+
+  const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
+    if (!sourceLang || !targetLang) return;
+    
     try {
-      const { data, error } = await supabase
+      console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
+      
+      const query = supabase
         .from("interpreter_profiles")
-        .select("id, email");
+        .select(`
+          id,
+          first_name,
+          last_name,
+          status,
+          profile_picture_url,
+          languages,
+          tarif_15min
+        `)
+        .contains('languages', [`${sourceLang} → ${targetLang}`]);
 
-      if (error) throw error;
-      setInterpreters(data || []);
-    } catch (error) {
-      console.error("Error fetching interpreters:", error);
-      toast.error("Impossible de charger les interprètes");
-    }
-  };
+      // Only filter by status for immediate missions
+      if (missionType === 'immediate') {
+        query.eq('status', 'available');
+      }
 
-  const createMission = async () => {
-    try {
-      setIsSubmitting(true);
+      const { data: interpreters, error } = await query;
 
-      if (!sourceLanguage || !targetLanguage || !selectedInterpreters.length) {
-        toast.error("Veuillez remplir tous les champs obligatoires");
+      if (error) {
+        console.error('[MissionManagement] Error fetching interpreters:', error);
+        throw error;
+      }
+
+      console.log('[MissionManagement] Found interpreters:', interpreters);
+      
+      if (!interpreters || interpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
+        toast({
+          title: "Aucun interprète trouvé",
+          description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
+        });
+        setAvailableInterpreters([]);
         return;
       }
 
-      // Calculate notification expiry (15 minutes from now)
-      const notificationExpiry = addMinutes(new Date(), 15);
+      // Filter out duplicates based on interpreter ID and sort by rate
+      const uniqueInterpreters = interpreters
+        .filter((interpreter, index, self) =>
+          index === self.findIndex((t) => t.id === interpreter.id)
+        )
+        .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0)); // Sort by rate, lowest first
 
-      // Calculate duration and handle timezone conversion for scheduled missions
-      let calculatedDuration = estimatedDuration;
+      setAvailableInterpreters(uniqueInterpreters);
+      setSelectedInterpreters([]);
+    } catch (error) {
+      console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de trouver les interprètes disponibles",
+        variant: "destructive",
+      });
+      setAvailableInterpreters([]);
+    }
+  };
+
+  useEffect(() => {
+    if (sourceLanguage && targetLanguage) {
+      findAvailableInterpreters(sourceLanguage, targetLanguage);
+    }
+  }, [sourceLanguage, targetLanguage]);
+
+  const handleInterpreterSelection = async (interpreterId: string, checked: boolean) => {
+    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+      const isAvailable = await isInterpreterAvailableForScheduledMission(
+        interpreterId,
+        scheduledStartTime,
+        scheduledEndTime,
+        supabase
+      );
+
+      if (!isAvailable && checked) {
+        toast({
+          title: "Conflit d'horaire",
+          description: "Cet interprète a déjà une mission programmée qui chevauche cet horaire",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setSelectedInterpreters(prev => {
+      if (checked) {
+        return [...prev, interpreterId];
+      } else {
+        return prev.filter(id => id !== interpreterId);
+      }
+    });
+  };
+
+  const handleDeleteMission = async (missionId: string) => {
+    try {
+      const { error: notificationError } = await supabase
+        .from("mission_notifications")
+        .delete()
+        .eq("mission_id", missionId);
+
+      if (notificationError) throw notificationError;
+
+      const { error } = await supabase
+        .from("interpretation_missions")
+        .delete()
+        .eq("id", missionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Mission supprimée",
+        description: "La mission a été supprimée avec succès",
+      });
+
+      fetchMissions();
+    } catch (error) {
+      console.error('[MissionManagement] Error deleting mission:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la mission",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isProcessing) {
+      toast({
+        title: "Action en cours",
+        description: "Une mission est déjà en cours de création",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      
+      if (selectedInterpreters.length === 0) {
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez sélectionner au moins un interprète",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!sourceLanguage || !targetLanguage) {
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez sélectionner les langues source et cible",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (missionType === 'scheduled') {
+        if (!scheduledStartTime || !scheduledEndTime) {
+          toast({
+            title: "Erreur de validation",
+            description: "Veuillez spécifier les horaires de la mission programmée",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const startDate = new Date(scheduledStartTime);
+        const endDate = new Date(scheduledEndTime);
+        const now = new Date();
+
+        if (startDate < now) {
+          toast({
+            title: "Erreur de validation",
+            description: "La date de début ne peut pas être dans le passé",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (endDate <= startDate) {
+          toast({
+            title: "Erreur de validation",
+            description: "La date de fin doit être postérieure à la date de début",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez spécifier une durée valide pour la mission",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let calculatedDuration = parseInt(estimatedDuration);
       let utcStartTime = null;
       let utcEndTime = null;
 
@@ -119,9 +372,8 @@ export function MissionManagement() {
         );
       }
 
-      if (missionType === 'immediate' && !calculatedDuration) {
-        throw new Error('Duration is required for immediate missions');
-      }
+      const notificationExpiry = new Date();
+      notificationExpiry.setHours(notificationExpiry.getHours() + 24);
 
       console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
 
@@ -144,233 +396,251 @@ export function MissionManagement() {
       if (missionError) throw missionError;
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
-
-      // Create notifications for each selected interpreter
-      const notifications = selectedInterpreters.map(interpreter => ({
-        mission_id: createdMission.id,
-        interpreter_id: interpreter,
-        status: "pending"
-      }));
-
-      const { error: notificationError } = await supabase
-        .from("mission_notifications")
-        .insert(notifications);
-
-      if (notificationError) throw notificationError;
-
-      console.log('[MissionManagement] Notifications created successfully for interpreters:', selectedInterpreters);
       
       setSourceLanguage("");
       setTargetLanguage("");
+      setEstimatedDuration("");
       setSelectedInterpreters([]);
-      setEstimatedDuration(0);
-      setMissionType("immediate");
-      setScheduledStartTime(null);
-      setScheduledEndTime(null);
-      setShowDateSelection(false);
+      setAvailableInterpreters([]);
+      setMissionType('immediate');
+      setScheduledStartTime("");
+      setScheduledEndTime("");
 
-      toast.success(`La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`);
+      toast({
+        title: "Mission créée avec succès",
+        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
+      });
 
       fetchMissions();
 
     } catch (error) {
-      console.error('[MissionManagement] Error creating mission:', error);
-      toast.error("Une erreur est survenue lors de la création de la mission");
+      console.error('[MissionManagement] Error in createMission:', error);
+      toast({
+        title: "Erreur inattendue",
+        description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la création de la mission",
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsProcessing(false);
     }
   };
 
   return (
-    <Card>
-      <Card>
-        <div className="grid gap-4">
+    <div className="space-y-6">
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Créer une nouvelle mission</h3>
+        <form onSubmit={createMission} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="sourceLanguage">Langue source</Label>
-              <Select onValueChange={setSourceLanguage}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une langue" />
+            <div className="space-y-2">
+              <Label>Type de mission</Label>
+              <Select value={missionType} onValueChange={(value: 'immediate' | 'scheduled') => setMissionType(value)}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Sélectionner le type de mission" className="pointer-events-none" />
                 </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="targetLanguage">Langue cible</Label>
-              <Select onValueChange={setTargetLanguage}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une langue" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((lang) => (
-                    <SelectItem key={lang.value} value={lang.value}>
-                      {lang.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="missionType">Type de mission</Label>
-              <Select onValueChange={(value) => {
-                setMissionType(value as 'immediate' | 'scheduled');
-                setShowDateSelection(value === 'scheduled');
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un type" />
-                </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="immediate">Immédiate</SelectItem>
                   <SelectItem value="scheduled">Programmée</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {showDateSelection && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Date de début</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[280px] justify-start text-left font-normal",
-                          !scheduledStartTime && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledStartTime ? format(scheduledStartTime, "PPP p") : <span>Choisir une date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledStartTime}
-                        onSelect={setScheduledStartTime}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+            {missionType === 'immediate' ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="estimated_duration">Durée estimée (minutes)</Label>
+                  <Input
+                    id="estimated_duration"
+                    type="number"
+                    min="1"
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(e.target.value)}
+                    required
+                    className="bg-background"
+                  />
                 </div>
-                <div>
-                  <Label>Date de fin</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[280px] justify-start text-left font-normal",
-                          !scheduledEndTime && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledEndTime ? format(scheduledEndTime, "PPP p") : <span>Choisir une date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledEndTime}
-                        onSelect={setScheduledEndTime}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <div className="space-y-2">
+                  <Label htmlFor="source_language">Langue source</Label>
+                  <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background max-h-[300px]">
+                      {sortedLanguages.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            )}
-
-            {missionType === 'immediate' && (
-              <div>
-                <Label htmlFor="estimatedDuration">Durée estimée (minutes)</Label>
-                <Input
-                  type="number"
-                  id="estimatedDuration"
-                  value={estimatedDuration.toString()}
-                  onChange={(e) => setEstimatedDuration(Number(e.target.value))}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="target_language">Langue cible</Label>
+                  <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background max-h-[300px]">
+                      {sortedLanguages.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_start">Date et heure de début</Label>
+                    <Input
+                      id="scheduled_start"
+                      type="datetime-local"
+                      value={scheduledStartTime}
+                      onChange={(e) => setScheduledStartTime(e.target.value)}
+                      required
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_end">Date et heure de fin</Label>
+                    <Input
+                      id="scheduled_end"
+                      type="datetime-local"
+                      value={scheduledEndTime}
+                      onChange={(e) => setScheduledEndTime(e.target.value)}
+                      required
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="source_language">Langue source</Label>
+                    <Select value={sourceLanguage} onValueChange={setSourceLanguage} required>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background max-h-[300px]">
+                        {sortedLanguages.map((lang) => (
+                          <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="target_language">Langue cible</Label>
+                    <Select value={targetLanguage} onValueChange={setTargetLanguage} required>
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Sélectionner une langue" className="pointer-events-none" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background max-h-[300px]">
+                        {sortedLanguages.map((lang) => (
+                          <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
             )}
           </div>
 
-          <div>
-            <Label htmlFor="interpreters">Interprètes</Label>
-            <Listbox value={selectedInterpreters} onChange={setSelectedInterpreters} multiple>
-              <div className="relative mt-1">
-                <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white py-2 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm">
-                  <span className="block truncate">
-                    {selectedInterpreters.length > 0
-                      ? `${selectedInterpreters.length} interprètes sélectionnés`
-                      : 'Sélectionner des interprètes'}
-                  </span>
-                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M10 3a1.5 1.5 0 01.354.354l5.293 5.293a1.5 1.5 0 11-2.122 2.122L10 6.414l-3.536 3.536a1.5 1.5 0 11-2.122-2.122L9.646 3.354A1.5 1.5 0 0110 3z" clipRule="evenodd" />
-                      <path fillRule="evenodd" d="M10 17a1.5 1.5 0 01-.354-.354l-5.293-5.293a1.5 1.5 0 112.122-2.122L10 13.586l3.536-3.536a1.5 1.5 0 112.122 2.122l-5.293 5.293A1.5 1.5 0 0110 17z" clipRule="evenodd" />
-                    </svg>
-                  </span>
-                </Listbox.Button>
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                  {interpreters.map((person, personIdx) => (
-                    <Listbox.Option
-                      key={personIdx}
-                      className={({ active }) =>
-                        cn(
-                          'relative cursor-default select-none py-2 pl-10 pr-4',
-                          active ? 'bg-amber-100 text-amber-900' : 'text-gray-900'
-                        )
-                      }
-                      value={person.id}
-                    >
-                      {({ selected }) => (
-                        <>
-                          <span className={cn('block truncate', selected ? 'font-medium' : 'font-normal')}>
-                            {person.email}
-                          </span>
-                          {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-amber-600">
-                              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.144 1.052l-8.026 8.025a.75.75 0 01-1.065.021L3.217 8.384a.75.75 0 111.03-1.096l3.908 4.431a.75.75 0 011.08-.04l7.297-8.25a.75.75 0 011.052-.146z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          ) : null}
-                        </>
-                      )}
-                    </Listbox.Option>
-                  ))}
-                </Listbox.Options>
+          {availableInterpreters.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label>
+                  {missionType === 'immediate' 
+                    ? `Interprètes disponibles (${availableInterpreters.length})`
+                    : `Interprètes (${availableInterpreters.length})`
+                  }
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSelectAllInterpreters}
+                  className="text-sm"
+                >
+                  {selectedInterpreters.length === availableInterpreters.length
+                    ? "Désélectionner tout"
+                    : "Sélectionner tout"}
+                </Button>
               </div>
-            </Listbox>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableInterpreters.map((interpreter) => (
+                  <Card 
+                    key={interpreter.id} 
+                    className={`p-4 flex items-center space-x-4 hover:bg-gray-50 ${
+                      selectedInterpreters.includes(interpreter.id) ? 'ring-2 ring-primary' : ''
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedInterpreters.includes(interpreter.id)}
+                      onCheckedChange={(checked) => handleInterpreterSelection(interpreter.id, checked as boolean)}
+                      className="pointer-events-auto"
+                    />
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={interpreter.profile_picture_url || undefined} />
+                      <AvatarFallback>
+                        {interpreter.first_name[0]}{interpreter.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">
+                        {interpreter.first_name} {interpreter.last_name}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant="secondary" 
+                          className={
+                            interpreter.status === 'available'
+                              ? 'bg-green-100 text-green-800'
+                              : interpreter.status === 'busy'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }
+                        >
+                          {interpreter.status === 'available' 
+                            ? 'Disponible' 
+                            : interpreter.status === 'busy'
+                            ? 'En appel'
+                            : 'Indisponible'
+                          }
+                        </Badge>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <Button disabled={isSubmitting} onClick={createMission}>
-            {isSubmitting ? "Création en cours..." : "Créer une mission"}
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={selectedInterpreters.length === 0}
+          >
+            Créer la mission et notifier les interprètes
           </Button>
+        </form>
+      </Card>
+
+      {/* Mission List */}
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Liste des missions</h3>
+          </div>
+
+          <MissionList
+            missions={missions}
+            onDelete={handleDeleteMission}
+          />
         </div>
       </Card>
-
-      <Card>
-        <h2>Missions existantes</h2>
-        {missions.map((mission) => (
-          <div key={mission.id}>
-            {mission.source_language} vers {mission.target_language} - Durée:{" "}
-            {mission.estimated_duration} minutes - Statut: {mission.status}
-          </div>
-        ))}
-      </Card>
-    </Card>
+    </div>
   );
-}
+};
