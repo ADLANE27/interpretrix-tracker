@@ -20,33 +20,21 @@ serve(async (req) => {
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing database configuration');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { data, error } = await supabase
-      .from('secrets')
-      .select('value')
-      .eq('name', 'VAPID_PUBLIC_KEY')
-      .single();
-
-    if (error) {
-      console.error('[VAPID] Error fetching public key:', error);
-      throw error;
-    }
-
-    if (!data?.value) {
-      console.error('[VAPID] No public key found');
-      throw new Error('No VAPID public key found');
+    if (!supabaseUrl || !supabaseKey || !vapidPublicKey) {
+      console.error('[VAPID] Missing environment variables:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey,
+        hasVapidKey: !!vapidPublicKey
+      });
+      throw new Error('Missing required environment variables');
     }
 
     console.log('[VAPID] Successfully retrieved public key');
 
     return new Response(
-      JSON.stringify({ vapidPublicKey: data.value }),
+      JSON.stringify({ vapidPublicKey }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
