@@ -25,6 +25,11 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Push notifications not supported');
     }
 
+    // Vérifier la permission
+    if (Notification.permission === 'denied') {
+      throw new Error('Notification permission denied');
+    }
+
     // 2. Obtenir la clé VAPID
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
@@ -40,26 +45,40 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
-    // 3. Enregistrer le Service Worker
+    // 3. Nettoyer les anciens service workers
+    const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(existingRegistrations.map(reg => reg.unregister()));
+
+    // 4. Enregistrer le nouveau Service Worker
     const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
+      scope: '/'
     });
 
-    // Attendre que le service worker soit actif
-    const readyRegistration = await navigator.serviceWorker.ready;
+    // 5. Attendre que le service worker soit actif
+    await registration.active || await new Promise<void>((resolve) => {
+      registration.addEventListener('activate', () => resolve());
+    });
 
-    // 4. Gérer la souscription
-    const existingSubscription = await readyRegistration.pushManager.getSubscription();
+    // 6. Demander la permission si nécessaire
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        throw new Error('Notification permission not granted');
+      }
+    }
+
+    // 7. Gérer la souscription
+    const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
       await existingSubscription.unsubscribe();
     }
 
-    const subscription = await readyRegistration.pushManager.subscribe({
+    const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
     });
 
-    // 5. Sauvegarder la souscription
+    // 8. Sauvegarder la souscription
     const subscriptionJSON = subscription.toJSON();
     const { error: insertError } = await supabase
       .from('push_subscriptions')
@@ -89,23 +108,23 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
   try {
-    const readyRegistration = await navigator.serviceWorker.ready;
-    const subscription = await readyRegistration.pushManager.getSubscription();
-
-    if (subscription) {
-      await subscription.unsubscribe();
-      
-      const { error } = await supabase
-        .from('push_subscriptions')
-        .delete()
-        .eq('interpreter_id', interpreterId)
-        .eq('endpoint', subscription.endpoint);
-
-      if (error) throw error;
-    }
-
     const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map(reg => reg.unregister()));
+    
+    for (const registration of registrations) {
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+        
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('interpreter_id', interpreterId)
+          .eq('endpoint', subscription.endpoint);
+
+        if (error) throw error;
+      }
+      await registration.unregister();
+    }
 
     return true;
   } catch (error) {
@@ -118,14 +137,24 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
   try {
     console.log('[Push Notifications] Sending test notification to:', interpreterId);
 
-    // Vérifier d'abord si le service worker est prêt
-    const readyRegistration = await navigator.serviceWorker.ready;
-    const subscription = await readyRegistration.pushManager.getSubscription();
+    // 1. Vérifier la permission
+    if (Notification.permission !== 'granted') {
+      throw new Error('Notification permission not granted');
+    }
 
+    // 2. Vérifier le service worker
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration?.active) {
+      throw new Error('Service worker not active');
+    }
+
+    // 3. Vérifier la souscription
+    const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
       throw new Error('No active subscription found');
     }
 
+    // 4. Envoyer la notification
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
