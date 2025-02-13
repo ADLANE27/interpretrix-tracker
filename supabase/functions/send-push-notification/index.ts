@@ -1,6 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import webPush from 'npm:web-push';
 import { createClient } from 'npm:@supabase/supabase-js';
+import webPush from 'npm:web-push';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,9 +9,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  console.log('[Push Notification] Function called with method:', req.method);
+
+  // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
+    return new Response(null, {
       headers: {
         ...corsHeaders,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -19,205 +22,153 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[Push Notification] Starting push notification service');
-    console.log('[Push Notification] Request method:', req.method);
-    console.log('[Push Notification] Request headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
-    
-    // Validate request method
+    // Validate method
     if (req.method !== 'POST') {
-      throw new Error('Method not allowed');
+      throw new Error(`Method ${req.method} not allowed`);
     }
 
-    // Validate Content-Type
-    const contentType = req.headers.get('content-type');
-    console.log('[Push Notification] Content-Type:', contentType);
-    
-    if (!contentType?.includes('application/json')) {
-      throw new Error('Content-Type must be application/json');
-    }
+    // Log headers for debugging
+    console.log('[Push Notification] Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
 
-    // Parse request body safely
-    let reqBody;
+    // Parse body
+    let requestBody;
     try {
-      const text = await req.text();
-      console.log('[Push Notification] Raw request body:', text);
-      
-      if (!text) {
-        throw new Error('Request body is empty');
-      }
-      
-      reqBody = JSON.parse(text);
-      console.log('[Push Notification] Parsed request body:', JSON.stringify(reqBody));
+      const rawBody = await req.text();
+      console.log('[Push Notification] Raw body:', rawBody);
+      requestBody = JSON.parse(rawBody);
     } catch (error) {
-      console.error('[Push Notification] JSON parse error:', error);
-      throw new Error(`Invalid JSON in request body: ${error.message}`);
-    }
-    
-    // Validate message structure
-    const { message } = reqBody;
-    console.log('[Push Notification] Extracted message:', JSON.stringify(message));
-
-    if (!message) {
-      throw new Error('No message provided in request body');
+      console.error('[Push Notification] Body parse error:', error);
+      throw new Error('Invalid request body');
     }
 
-    if (!Array.isArray(message?.interpreterIds) || message.interpreterIds.length === 0) {
-      throw new Error('interpreterIds must be a non-empty array');
+    // Validate body structure
+    if (!requestBody?.message?.interpreterIds?.length) {
+      throw new Error('Invalid message format: missing interpreterIds');
     }
 
-    // Get and validate environment variables
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    // Get Vapid keys
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!vapidPublicKey || !vapidPrivateKey || !supabaseUrl || !supabaseKey) {
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+
+    if (!supabaseUrl || !supabaseKey || !vapidPublicKey || !vapidPrivateKey) {
       throw new Error('Missing required environment variables');
     }
 
-    console.log('[Push Notification] Environment variables validated');
-
-    // Initialize web-push and Supabase client
-    webPush.setVapidDetails(
-      'mailto:contact@interpretix.io',
-      vapidPublicKey.trim(),
-      vapidPrivateKey.trim()
-    );
-
+    // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Configure Web Push
+    webPush.setVapidDetails(
+      'mailto:contact@interpretix.io',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
     // Get active subscriptions
-    const { data: subscriptions, error: subscriptionError } = await supabase
+    const { data: subscriptions, error: dbError } = await supabase
       .from('push_subscriptions')
       .select('*')
       .eq('status', 'active')
-      .in('interpreter_id', message.interpreterIds);
+      .in('interpreter_id', requestBody.message.interpreterIds);
 
-    if (subscriptionError) {
-      throw new Error(`Failed to fetch subscriptions: ${subscriptionError.message}`);
+    if (dbError) {
+      throw new Error(`Database error: ${dbError.message}`);
     }
 
-    console.log('[Push Notification] Found subscriptions:', JSON.stringify(subscriptions));
+    console.log('[Push Notification] Found subscriptions:', subscriptions);
 
     if (!subscriptions?.length) {
       return new Response(
         JSON.stringify({ message: 'No active subscriptions found' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404
+          status: 404 
         }
       );
     }
 
-    // Send notifications with retry logic
-    const MAX_RETRIES = 3;
+    // Send notifications
     const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
-        let lastError;
-        
-        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-          try {
-            const subscription = {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh, auth: sub.auth }
-            };
+        try {
+          const subscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          };
 
-            const payload = {
-              title: message.title || 'Nouvelle notification',
-              body: message.body || '',
-              data: message.data || {}
-            };
+          const payload = JSON.stringify({
+            title: requestBody.message.title || 'Nouvelle notification',
+            body: requestBody.message.body || '',
+            data: requestBody.message.data || {}
+          });
 
-            console.log('[Push Notification] Sending notification to:', sub.endpoint);
-            console.log('[Push Notification] Notification payload:', JSON.stringify(payload));
+          console.log('[Push Notification] Sending to:', sub.endpoint);
+          await webPush.sendNotification(subscription, payload);
+          console.log('[Push Notification] Successfully sent to:', sub.endpoint);
 
-            await webPush.sendNotification(
-              subscription,
-              JSON.stringify(payload)
-            );
+          // Update last successful push
+          await supabase
+            .from('push_subscriptions')
+            .update({
+              last_successful_push: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sub.id);
 
-            console.log('[Push Notification] Successfully sent notification to:', sub.endpoint);
+          return { success: true, subscriptionId: sub.id };
+        } catch (error) {
+          console.error('[Push Notification] Send error:', error);
 
-            // Update last successful push timestamp
+          if (error.statusCode === 410 || error.statusCode === 404) {
+            // Update expired subscription
             await supabase
               .from('push_subscriptions')
-              .update({ 
-                last_successful_push: new Date().toISOString(),
+              .update({
+                status: 'expired',
                 updated_at: new Date().toISOString()
               })
               .eq('id', sub.id);
-
-            return { success: true, subscriptionId: sub.id };
-          } catch (error) {
-            lastError = error;
-            console.error('[Push Notification] Error sending notification:', error);
-            
-            if (error.statusCode === 410 || error.statusCode === 404) {
-              // Subscription is expired or invalid
-              await supabase
-                .from('push_subscriptions')
-                .update({ 
-                  status: 'expired',
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', sub.id);
-              break;
-            }
-            
-            // Wait before retrying (exponential backoff)
-            if (attempt < MAX_RETRIES - 1) {
-              await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-            }
           }
+
+          return {
+            success: false,
+            subscriptionId: sub.id,
+            error: error.message,
+            statusCode: error.statusCode
+          };
         }
-        
-        return { 
-          success: false, 
-          subscriptionId: sub.id,
-          error: lastError?.message,
-          statusCode: lastError?.statusCode
-        };
       })
     );
 
     // Process results
-    const successfulResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
-    const failedResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
-
     const summary = {
       total: results.length,
-      successful: successfulResults.length,
-      failed: failedResults.length,
-      details: results.map(r => {
-        if (r.status === 'fulfilled') {
-          return r.value;
-        } else {
-          return {
-            success: false,
-            error: r.reason?.message || 'Unknown error',
-            stack: r.reason?.stack
-          };
-        }
-      })
+      successful: results.filter(r => r.status === 'fulfilled' && r.value.success).length,
+      failed: results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length,
+      details: results.map(r => r.status === 'fulfilled' ? r.value : { success: false, error: r.reason })
     };
 
-    console.log('[Push Notification] Results summary:', JSON.stringify(summary));
+    console.log('[Push Notification] Results:', JSON.stringify(summary));
 
     return new Response(
       JSON.stringify({ success: true, results: summary }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: summary.failed === results.length ? 502 : (summary.failed > 0 ? 207 : 200)
+        status: 200
       }
     );
+
   } catch (error) {
     console.error('[Push Notification] Error:', error);
-    
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        details: error.stack,
-        type: error.constructor.name
+      JSON.stringify({
+        error: error.message,
+        stack: error.stack
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
