@@ -9,31 +9,53 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
 
   const checkNotificationPermission = async () => {
     try {
       console.log('[Notifications] Starting permission check');
       
+      // Check basic browser support
       if (!('Notification' in window)) {
         console.warn('[Notifications] Notifications API not supported');
+        toast({
+          title: "Notifications non supportées",
+          description: "Votre navigateur ne supporte pas les notifications push",
+          variant: "destructive",
+        });
         return;
       }
 
       if (!('serviceWorker' in navigator)) {
         console.warn('[Notifications] Service Worker API not supported');
+        toast({
+          title: "Notifications non supportées",
+          description: "Votre navigateur ne supporte pas les Service Workers",
+          variant: "destructive",
+        });
         return;
       }
 
+      // Check current permission status
       const currentPermission = await Notification.permission;
       console.log('[Notifications] Current permission:', currentPermission);
       
-      // Vérifier si un service worker est actif
+      // Check active service worker and subscription
       const registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
         const subscription = await registration.pushManager.getSubscription();
         if (subscription) {
-          setPermission('granted');
+          // Verify if the subscription is still valid
+          try {
+            await fetch(subscription.endpoint, { method: 'HEAD' });
+            setPermission('granted');
+          } catch {
+            console.log('[Notifications] Subscription expired, cleaning up...');
+            await subscription.unsubscribe();
+            await unsubscribeFromPushNotifications(interpreterId);
+            setPermission('default');
+          }
         } else {
           setPermission('default');
         }
@@ -43,11 +65,21 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
     } catch (error) {
       console.error('[Notifications] Error checking permissions:', error);
       setPermission('default');
+      toast({
+        title: "Erreur",
+        description: "Impossible de vérifier l'état des notifications",
+        variant: "destructive",
+      });
     }
   };
 
   useEffect(() => {
     checkNotificationPermission();
+    
+    // Set up periodic checks for subscription validity
+    const intervalId = setInterval(checkNotificationPermission, 30 * 60 * 1000); // Check every 30 minutes
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleEnableNotifications = async () => {
@@ -55,7 +87,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
       setIsSubscribing(true);
       console.log('[Notifications] Starting enable process...');
       
-      // 1. Vérifier d'abord la permission
+      // Request permission
       const permissionResult = await Notification.requestPermission();
       console.log('[Notifications] Permission result:', permissionResult);
       
@@ -63,13 +95,22 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
         throw new Error('Permission refusée');
       }
 
-      // 2. Nettoyer les anciens service workers
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
+      // Register service worker
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Service Worker non supporté');
       }
+
+      // Unregister existing service workers
+      const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of existingRegistrations) {
+        await reg.unregister();
+      }
+
+      // Register new service worker
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await registration.update();
       
-      // 3. S'abonner aux notifications
+      // Subscribe to push notifications
       const result = await subscribeToPushNotifications(interpreterId);
       console.log('[Notifications] Subscription result:', result);
 
@@ -120,7 +161,7 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   };
 
   const handleTestNotification = async () => {
-    if (isTesting) return; // Prevent multiple clicks
+    if (isTesting) return;
     
     try {
       setIsTesting(true);
@@ -142,14 +183,22 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
   };
 
   const handleRefresh = async () => {
-    console.log('[Notifications] Refreshing notification state...');
-    await checkNotificationPermission();
-    toast({
-      title: "État des notifications actualisé",
-      description: "L'état des notifications a été vérifié à nouveau",
-    });
+    if (isRefreshing) return;
+    
+    try {
+      setIsRefreshing(true);
+      console.log('[Notifications] Refreshing notification state...');
+      await checkNotificationPermission();
+      toast({
+        title: "État des notifications actualisé",
+        description: "L'état des notifications a été vérifié à nouveau",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
+  // Check browser compatibility
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     return (
       <Button 
@@ -205,10 +254,11 @@ export const NotificationPermission = ({ interpreterId }: { interpreterId: strin
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
+            disabled={isRefreshing}
             className="flex items-center gap-2"
             title="Actualiser l'état des notifications"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
         </>
       )}
