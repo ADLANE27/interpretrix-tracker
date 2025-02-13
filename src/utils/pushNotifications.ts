@@ -132,7 +132,7 @@ export async function unregisterPushNotifications() {
     const { error: updateError } = await supabase
       .from('push_subscriptions')
       .update({
-        status: 'unsubscribed',
+        status: 'expired', // Changed from 'unsubscribed' to 'expired' to match the enum type
         updated_at: new Date().toISOString()
       })
       .eq('interpreter_id', user.id)
