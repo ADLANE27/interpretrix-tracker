@@ -7,7 +7,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX, Bell, BellSlash } from "lucide-react";
+import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -355,7 +355,7 @@ export const MessagesTab = () => {
               {notificationsEnabled ? (
                 <Bell className="h-4 w-4" />
               ) : (
-                <BellSlash className="h-4 w-4" />
+                <BellOff className="h-4 w-4" />
               )}
             </Button>
             <Button
