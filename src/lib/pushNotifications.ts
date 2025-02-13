@@ -46,7 +46,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     });
 
     // Attendre que le service worker soit actif
-    await registration.ready;
+    await navigator.serviceWorker.ready;
 
     // 4. Gérer la souscription
     const existingSubscription = await registration.pushManager.getSubscription();
@@ -119,9 +119,13 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
     console.log('[Push Notifications] Sending test notification to:', interpreterId);
 
     // Vérifier d'abord si le service worker est prêt
-    const registration = await navigator.serviceWorker.ready;
+    await navigator.serviceWorker.ready;
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      throw new Error('Service worker not registered');
+    }
+    
     const subscription = await registration.pushManager.getSubscription();
-
     if (!subscription) {
       throw new Error('No active subscription found');
     }
