@@ -368,6 +368,23 @@ export const InterpreterDashboard = () => {
     setIsSheetOpen(false);
   };
 
+  const enablePushNotifications = async (id: string) => {
+    try {
+      await subscribeToPushNotifications(id);
+      toast({
+        title: "Notifications activées",
+        description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+      });
+    } catch (error: any) {
+      console.error('Error enabling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'activer les notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -400,23 +417,29 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <ThemeToggle />
-                  <HowToUseGuide 
-                    isOpen={isGuideOpen}
-                    onOpenChange={setIsGuideOpen}
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleLogout}
-                    className="flex-1 sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors"
-                    title="Se déconnecter"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => enablePushNotifications(profile.id)}
+                  className="text-sm"
+                >
+                  <Bell className="w-4 h-4 mr-2" />
+                  Activer les notifications
+                </Button>
+                <ThemeToggle />
+                <HowToUseGuide 
+                  isOpen={isGuideOpen}
+                  onOpenChange={setIsGuideOpen}
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="flex-1 sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title="Se déconnecter"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
