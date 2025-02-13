@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 async function registerServiceWorker() {
@@ -50,14 +51,17 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
         .single();
 
       if (dbSub) {
+        console.log('[Push Notifications] Existing subscription found:', dbSub);
         return true;
       }
 
+      console.log('[Push Notifications] Unsubscribing from existing subscription');
       await existingSubscription.unsubscribe();
     }
 
     // Request permission if needed
     if (Notification.permission === 'default') {
+      console.log('[Push Notifications] Requesting permission');
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         throw new Error('Permission refusée pour les notifications');
@@ -65,6 +69,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     }
 
     // Get VAPID key
+    console.log('[Push Notifications] Fetching VAPID key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
       {
@@ -84,6 +89,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
     // Create subscription with converted key
+    console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey
@@ -91,14 +97,22 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     console.log('[Push Notifications] Created subscription:', subscription);
 
-    // Save subscription
+    // Save subscription to database
+    const subscriptionJSON = subscription.toJSON();
+    console.log('[Push Notifications] Saving subscription to database:', {
+      interpreter_id: interpreterId,
+      endpoint: subscription.endpoint,
+      p256dh: subscriptionJSON.keys.p256dh,
+      auth: subscriptionJSON.keys.auth
+    });
+
     const { error: saveError } = await supabase
       .from('push_subscriptions')
       .upsert({
         interpreter_id: interpreterId,
         endpoint: subscription.endpoint,
-        p256dh: subscription.toJSON().keys.p256dh,
-        auth: subscription.toJSON().keys.auth,
+        p256dh: subscriptionJSON.keys.p256dh,
+        auth: subscriptionJSON.keys.auth,
         user_agent: navigator.userAgent,
         status: 'active',
         created_at: new Date().toISOString(),
@@ -110,6 +124,11 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Erreur lors de l\'enregistrement de la souscription');
     }
 
+    console.log('[Push Notifications] Subscription saved successfully');
+
+    // Send a test notification to verify everything works
+    await sendTestNotification(interpreterId);
+
     return true;
   } catch (error) {
     console.error('[Push Notifications] Error:', error);
@@ -118,21 +137,34 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 }
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
-  const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) return true;
+  try {
+    console.log('[Push Notifications] Unsubscribing for interpreter:', interpreterId);
+    
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      console.log('[Push Notifications] No service worker registration found');
+      return true;
+    }
 
-  const subscription = await registration.pushManager.getSubscription();
-  if (subscription) {
-    await subscription.unsubscribe();
-    await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('interpreter_id', interpreterId)
-      .eq('endpoint', subscription.endpoint);
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      console.log('[Push Notifications] Found subscription, unsubscribing');
+      await subscription.unsubscribe();
+      
+      await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('interpreter_id', interpreterId)
+        .eq('endpoint', subscription.endpoint);
+    }
+
+    await registration.unregister();
+    console.log('[Push Notifications] Successfully unsubscribed');
+    return true;
+  } catch (error) {
+    console.error('[Push Notifications] Error unsubscribing:', error);
+    throw error;
   }
-
-  await registration.unregister();
-  return true;
 }
 
 export async function sendTestNotification(interpreterId: string): Promise<void> {
