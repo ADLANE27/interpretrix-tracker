@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -15,29 +16,31 @@ export const useSupabaseConnection = () => {
   const heartbeatCheckIntervalRef = useRef<NodeJS.Timeout>();
   const maxReconnectAttempts = 10;
   const reconnectDelay = 5000;
-  const heartbeatTimeout = 35000; // 35 secondes pour détecter un heartbeat manqué
+  const heartbeatTimeout = 35000;
 
   const requestWakeLock = async () => {
     try {
-      if ('wakeLock' in navigator && !wakeLockRef.current) {
+      if ('wakeLock' in navigator && !wakeLockRef.current && document.visibilityState === 'visible') {
+        console.log('[useSupabaseConnection] Requesting Wake Lock');
         wakeLockRef.current = await navigator.wakeLock.request('screen');
         console.log('[useSupabaseConnection] Wake Lock is active');
         
-        // Réessayer d'obtenir le wakeLock s'il est perdu et si ce n'est pas une déconnexion explicite
         wakeLockRef.current.addEventListener('release', async () => {
           console.log('[useSupabaseConnection] Wake Lock was released');
           wakeLockRef.current = null;
-          if (!isExplicitDisconnectRef.current) {
+          if (!isExplicitDisconnectRef.current && document.visibilityState === 'visible') {
             console.log('[useSupabaseConnection] Attempting to reacquire Wake Lock');
             await requestWakeLock();
           }
         });
       }
     } catch (err) {
-      console.error('[useSupabaseConnection] Wake Lock error:', err);
-      // En cas d'erreur, on réessaie dans 5 secondes si ce n'est pas une déconnexion explicite
-      if (!isExplicitDisconnectRef.current) {
-        setTimeout(() => requestWakeLock(), 5000);
+      // Ne pas logger l'erreur si la page est cachée, c'est un comportement normal
+      if (document.visibilityState === 'visible') {
+        console.error('[useSupabaseConnection] Wake Lock error:', err);
+        if (!isExplicitDisconnectRef.current) {
+          setTimeout(() => requestWakeLock(), 5000);
+        }
       }
     }
   };

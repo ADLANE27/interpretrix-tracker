@@ -1,10 +1,15 @@
 import { supabase } from "@/integrations/supabase/client";
 
 async function registerServiceWorker() {
-  console.log('[SW] Registering service worker');
-  const registration = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
-  return registration;
+  try {
+    console.log('[SW] Registering service worker');
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    return registration;
+  } catch (error) {
+    console.error('[SW] Error registering service worker:', error);
+    throw error;
+  }
 }
 
 // Convert a base64 string to a Uint8Array for the applicationServerKey
@@ -25,20 +30,21 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export async function subscribeToPushNotifications(interpreterId: string): Promise<boolean> {
   try {
-    // Basic feature detection
     if (!('serviceWorker' in navigator) || !('Notification' in window)) {
       throw new Error('Les notifications ne sont pas supportées par votre navigateur');
     }
 
-    // Check permission
     if (Notification.permission === 'denied') {
       throw new Error('Les notifications sont bloquées dans votre navigateur');
     }
 
-    // Register service worker
+    // Vérifier que la page est visible
+    if (document.visibilityState !== 'visible') {
+      throw new Error('La page doit être visible pour activer les notifications');
+    }
+
     const registration = await registerServiceWorker();
     
-    // Check existing subscription
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
       const { data: dbSub } = await supabase
@@ -58,7 +64,6 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       await existingSubscription.unsubscribe();
     }
 
-    // Request permission if needed
     if (Notification.permission === 'default') {
       console.log('[Push Notifications] Requesting permission');
       const permission = await Notification.requestPermission();
@@ -67,8 +72,6 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       }
     }
 
-    // Get VAPID key
-    console.log('[Push Notifications] Fetching VAPID key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
       {
@@ -82,29 +85,16 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Erreur lors de la récupération de la clé VAPID');
     }
 
-    console.log('[Push Notifications] Got VAPID key:', vapidData.vapidPublicKey);
-
-    // Convert the base64 VAPID key to Uint8Array
+    console.log('[Push Notifications] Creating subscription...');
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
-
-    // Create subscription with converted key
-    console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey
     });
 
-    console.log('[Push Notifications] Created subscription:', subscription);
+    console.log('[Push Notifications] Subscription created:', subscription);
 
-    // Save subscription to database
     const subscriptionJSON = subscription.toJSON();
-    console.log('[Push Notifications] Saving subscription to database:', {
-      interpreter_id: interpreterId,
-      endpoint: subscription.endpoint,
-      p256dh: subscriptionJSON.keys.p256dh,
-      auth: subscriptionJSON.keys.auth
-    });
-
     const { error: saveError } = await supabase
       .from('push_subscriptions')
       .upsert({
@@ -123,9 +113,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Erreur lors de l\'enregistrement de la souscription');
     }
 
-    console.log('[Push Notifications] Subscription saved successfully');
-
-    // Send a test notification to verify everything works
+    console.log('[Push Notifications] Testing subscription...');
     await sendTestNotification(interpreterId);
 
     return true;
