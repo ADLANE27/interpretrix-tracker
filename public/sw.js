@@ -164,36 +164,46 @@ self.addEventListener('push', async (event) => {
   try {
     const data = event.data.json();
     console.log('[SW] Push event received:', data);
-    
-    // Préparer le son en fonction du type de mission
-    const soundUrl = data.data?.mission_type === 'immediate' 
-      ? '/sounds/immediate-mission.mp3'
-      : '/sounds/scheduled-mission.mp3';
 
+    // Formater le corps de la notification en fonction du type de mission
+    let body = '';
+    if (data.data?.mission_type === 'immediate') {
+      body = `Mission immédiate\n${data.data.source_language} → ${data.data.target_language}\n${data.data.estimated_duration} minutes`;
+    } else if (data.data?.mission_type === 'scheduled') {
+      const start = new Date(data.data.scheduled_start_time);
+      const end = new Date(data.data.scheduled_end_time);
+      body = `Mission programmée\n${data.data.source_language} → ${data.data.target_language}\n${start.toLocaleString()} - ${end.toLocaleString()}`;
+    }
+    
+    // Configurer les options de notification avec les détails de la mission
     const options = {
-      body: data.body || 'Nouvelle notification',
+      body: body || 'Nouvelle mission disponible',
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       tag: data.data?.mission_id || 'default',
       data: data.data || {},
-      vibrate: [200, 100, 200, 100, 200],
-      sound: soundUrl,
+      vibrate: [200, 100, 200],
       requireInteraction: true,
       actions: [
         {
           action: 'open',
-          title: 'Ouvrir',
+          title: 'Voir la mission',
         }
       ]
     };
 
-    // S'assurer que le son est joué avant d'afficher la notification
+    // Jouer le son de notification approprié
+    const soundUrl = data.data?.mission_type === 'immediate' 
+      ? '/sounds/immediate-mission.mp3'
+      : '/sounds/scheduled-mission.mp3';
+    
     console.log('[SW] Playing notification sound');
     await playNotificationSound(soundUrl);
     
-    console.log('[SW] Showing notification');
+    // Afficher la notification avec les détails de la mission
+    console.log('[SW] Showing notification with options:', options);
     await self.registration.showNotification(
-      data.title || 'Nouvelle mission', 
+      data.data?.mission_type === 'immediate' ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée',
       options
     );
   } catch (error) {
@@ -205,11 +215,9 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   if (event.action === 'open' || !event.action) {
-    if (event.notification.data?.mission_id) {
-      event.waitUntil(
-        clients.openWindow(`/interpreter/missions/${event.notification.data.mission_id}`)
-      );
-    }
+    event.waitUntil(
+      clients.openWindow(`/interpreter/missions/${event.notification.data.mission_id}`)
+    );
   }
 });
 
