@@ -11,7 +11,12 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      }
+    });
   }
 
   try {
@@ -63,16 +68,25 @@ serve(async (req) => {
     // Initialize web-push with VAPID details
     try {
       console.log('[Push Notification] Initializing web-push');
+      
+      // Nettoyer les clés VAPID de tout espace ou caractère non valide
+      const cleanVapidPublicKey = vapidPublicKey.trim().replace(/[^A-Za-z0-9+/]/g, '');
+      const cleanVapidPrivateKey = vapidPrivateKey.trim().replace(/[^A-Za-z0-9+/]/g, '');
+      
       webPush.setVapidDetails(
         'mailto:contact@interpretix.io',
-        vapidPublicKey,
-        vapidPrivateKey
+        cleanVapidPublicKey,
+        cleanVapidPrivateKey
       );
       console.log('[Push Notification] web-push initialized successfully');
     } catch (error) {
       console.error('[Push Notification] Error initializing web-push:', error);
       return new Response(
-        JSON.stringify({ message: 'Failed to initialize push service', error: error.message }),
+        JSON.stringify({ 
+          message: 'Failed to initialize push service', 
+          error: error.message,
+          stack: error.stack 
+        }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500
@@ -131,7 +145,7 @@ serve(async (req) => {
     });
 
     // Send notifications
-    const results = await Promise.all(
+    const results = await Promise.allSettled(
       subscriptions.map(async (sub) => {
         try {
           const subscription = {
@@ -190,25 +204,59 @@ serve(async (req) => {
           return { 
             success: false, 
             subscriptionId: sub.id,
-            error: error.message
+            error: error.message,
+            stack: error.stack
           };
         }
       })
     );
 
-    // Prepare response summary
+    // Analyse des résultats
+    const successfulResults = results.filter(r => r.status === 'fulfilled' && r.value.success);
+    const failedResults = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success));
+
+    // Préparer le résumé
     const summary = {
       total: results.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-      details: results
+      successful: successfulResults.length,
+      failed: failedResults.length,
+      details: results.map(r => {
+        if (r.status === 'fulfilled') {
+          return r.value;
+        } else {
+          return {
+            success: false,
+            error: r.reason?.message || 'Unknown error',
+            stack: r.reason?.stack
+          };
+        }
+      })
     };
 
     console.log('[Push Notification] Notification results:', summary);
 
+    if (summary.successful === 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'All notifications failed',
+          results: summary
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ success: true, results: summary }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: true, 
+        results: summary 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: summary.failed > 0 ? 207 : 200
+      }
     );
   } catch (error) {
     console.error('[Push Notification] Error:', error);
