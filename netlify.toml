@@ -5,7 +5,7 @@
     Service-Worker-Allowed = "/"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "default-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; worker-src 'self';"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co wss://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; worker-src 'self';"
 
 [build]
   command = "npm run build"

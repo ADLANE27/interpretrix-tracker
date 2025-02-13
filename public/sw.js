@@ -1,3 +1,4 @@
+
 // Service Worker for Push Notifications
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -175,8 +176,8 @@ self.addEventListener('push', async (event) => {
       body = `Mission programmée\n${data.data.source_language} → ${data.data.target_language}\n${start.toLocaleString()} - ${end.toLocaleString()}`;
     }
 
-    // Configurer les options de notification
-    const options = {
+    // Configurer les options de notification système
+    const notificationOptions = {
       body: body || data.body || 'Nouvelle mission disponible',
       icon: '/favicon.ico',
       badge: '/favicon.ico',
@@ -184,14 +185,13 @@ self.addEventListener('push', async (event) => {
       data: data.data || {},
       vibrate: [200, 100, 200],
       requireInteraction: true,
-      silent: false, // S'assurer que le son du système est activé
+      renotify: true, // Force une nouvelle notification même si le tag existe
       actions: [
         {
           action: 'open',
           title: 'Voir la mission',
         }
-      ],
-      timestamp: Date.now() // Ajouter un timestamp pour s'assurer que la notification est considérée comme nouvelle
+      ]
     };
 
     // Jouer le son de notification
@@ -199,25 +199,31 @@ self.addEventListener('push', async (event) => {
       ? '/sounds/immediate-mission.mp3'
       : '/sounds/scheduled-mission.mp3';
     
-    console.log('[SW] Playing notification sound');
-    await playNotificationSound(soundUrl);
+    try {
+      await playNotificationSound(soundUrl);
+    } catch (error) {
+      console.error('[SW] Error playing sound:', error);
+    }
     
     // Créer la notification système
-    console.log('[SW] Showing notification with options:', options);
-    const notification = await self.registration.showNotification(
-      data.title || (data.data?.mission_type === 'immediate' ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée'),
-      options
-    );
-
-    // Vérifier que la notification a bien été créée
-    console.log('[SW] Notification created:', notification);
+    try {
+      await self.registration.showNotification(
+        data.title || (data.data?.mission_type === 'immediate' ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée'),
+        notificationOptions
+      );
+      console.log('[SW] System notification created successfully');
+    } catch (error) {
+      console.error('[SW] Error showing notification:', error);
+      throw error;
+    }
 
   } catch (error) {
-    console.error('[SW] Push error:', error);
+    console.error('[SW] Push event error:', error);
   }
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event);
   event.notification.close();
 
   if (event.action === 'open' || !event.action) {
