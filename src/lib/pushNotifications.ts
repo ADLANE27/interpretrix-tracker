@@ -1,30 +1,35 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
   try {
-    // S'assurer que la chaîne est propre avant le traitement
-    const cleanBase64 = base64String
-      .trim()
-      .replace(/[^A-Za-z0-9+/]/g, '') // Ne garder que les caractères valides base64
+    if (!base64String || typeof base64String !== 'string') {
+      throw new Error('Invalid base64 input');
+    }
     
-    const padding = '='.repeat((4 - cleanBase64.length % 4) % 4);
-    const base64 = (cleanBase64 + padding)
+    console.log('[Push Notifications] Converting base64:', base64String);
+    
+    const base64 = base64String
       .replace(/-/g, '+')
       .replace(/_/g, '/');
+      
+    const padding = '='.repeat((4 - base64.length % 4) % 4);
+    const base64Padded = base64 + padding;
+    
+    console.log('[Push Notifications] Padded base64:', base64Padded);
 
-    console.log('[Push Notifications] Processed base64:', base64);
-
-    const rawData = window.atob(base64);
+    const rawData = window.atob(base64Padded);
     const outputArray = new Uint8Array(rawData.length);
 
     for (let i = 0; i < rawData.length; ++i) {
       outputArray[i] = rawData.charCodeAt(i);
     }
+    
+    console.log('[Push Notifications] Successfully converted to Uint8Array');
     return outputArray;
   } catch (error) {
-    console.error('[Push Notifications] Error converting base64 to Uint8Array:', error);
-    throw new Error('Format de clé VAPID invalide. Contactez le support.');
+    console.error('[Push Notifications] Base64 conversion error:', error);
+    console.error('[Push Notifications] Input string:', base64String);
+    throw new Error('Failed to convert VAPID key. Please check the key format.');
   }
 }
 
@@ -32,13 +37,11 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
   try {
     console.log('[Push Notifications] Starting subscription process');
 
-    // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('Notification' in window)) {
       console.error('[Push Notifications] Browser does not support notifications');
       throw new Error('Les notifications push ne sont pas supportées par votre navigateur');
     }
 
-    // 2. Request permission first
     console.log('[Push Notifications] Requesting permission');
     const permission = await Notification.requestPermission();
     console.log('[Push Notifications] Permission result:', permission);
@@ -47,7 +50,6 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Permission refusée pour les notifications');
     }
 
-    // 3. Get VAPID key
     console.log('[Push Notifications] Fetching VAPID key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
@@ -69,20 +71,16 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     console.log('[Push Notifications] Got VAPID key:', vapidData.vapidPublicKey);
     
-    // Convertir la clé VAPID une seule fois
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
     console.log('[Push Notifications] Converted VAPID key to Uint8Array');
 
-    // 4. Unregister ALL existing service workers
     console.log('[Push Notifications] Unregistering all service workers');
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(existingRegistrations.map(reg => reg.unregister()));
 
-    // 5. Register new service worker
     console.log('[Push Notifications] Registering new service worker');
     const registration = await navigator.serviceWorker.register('/sw.js');
     
-    // 6. Wait for the service worker to be ready
     if (registration.installing || registration.waiting) {
       console.log('[Push Notifications] Waiting for service worker to be ready');
       await new Promise<void>((resolve) => {
@@ -101,7 +99,6 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       });
     }
 
-    // 7. Subscribe to push
     console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -110,7 +107,6 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     console.log('[Push Notifications] Push subscription:', subscription);
 
-    // 8. Save subscription
     const subscriptionJSON = subscription.toJSON();
     const { error: insertError } = await supabase
       .from('push_subscriptions')
@@ -150,10 +146,8 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
     for (const registration of registrations) {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
-        // 1. Unsubscribe from push
         await subscription.unsubscribe();
         
-        // 2. Delete from database
         const { error } = await supabase
           .from('push_subscriptions')
           .delete()
@@ -163,7 +157,6 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
         if (error) throw error;
       }
       
-      // 3. Unregister service worker
       await registration.unregister();
     }
 
@@ -178,19 +171,16 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
   try {
     console.log('[Push Notifications] Sending test notification');
     
-    // 1. Verify service worker registration
     const registration = await navigator.serviceWorker.ready;
     if (!registration.pushManager) {
       throw new Error('Push manager not found');
     }
 
-    // 2. Verify subscription
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
       throw new Error('No push subscription found');
     }
 
-    // 3. Send test notification
     const { error } = await supabase.functions.invoke(
       'send-push-notification',
       {
