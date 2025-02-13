@@ -252,45 +252,44 @@ export const useSupabaseConnection = () => {
     }
   };
 
-  const handleReconnect = () => {
+  const handleReconnect = async () => {
     if (isExplicitDisconnectRef.current) return;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        console.log('[useSupabaseConnection] No active session, skipping reconnection');
-        isExplicitDisconnectRef.current = true;
-        clearAllIntervals();
-        if (channelRef.current) {
-          await supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
-        }
-        releaseWakeLock();
-        return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log('[useSupabaseConnection] No active session, skipping reconnection');
+      isExplicitDisconnectRef.current = true;
+      clearAllIntervals();
+      if (channelRef.current) {
+        await supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
+      releaseWakeLock();
+      return;
+    }
 
-      if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-        console.error('[useSupabaseConnection] Max reconnection attempts reached');
-        toast({
-          title: "Erreur de connexion",
-          description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
-          variant: "destructive",
-          duration: 0,
-        });
-        return;
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('[useSupabaseConnection] Max reconnection attempts reached');
+      toast({
+        title: "Erreur de connexion",
+        description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
+        variant: "destructive",
+        duration: 0,
+      });
+      return;
+    }
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (!isExplicitDisconnectRef.current) {
+        console.log('[useSupabaseConnection] Attempting to reconnect...');
+        reconnectAttemptsRef.current++;
+        initializeChannel();
       }
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-
-      reconnectTimeoutRef.current = setTimeout(() => {
-        if (!isExplicitDisconnectRef.current) {
-          console.log('[useSupabaseConnection] Attempting to reconnect...');
-          reconnectAttemptsRef.current++;
-          initializeChannel();
-        }
-      }, reconnectDelay);
-    });
+    }, reconnectDelay);
   };
 
   useEffect(() => {
