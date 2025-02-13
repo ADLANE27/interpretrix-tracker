@@ -31,15 +31,22 @@ serve(async (req) => {
     const cleanKey = vapidPublicKey.trim()
     
     // Validate that the key is a valid base64 URL-safe string
-    // This regex allows for base64url-safe characters: A-Z, a-z, 0-9, -, _, and =
-    if (!/^[A-Za-z0-9\-_=]+$/.test(cleanKey)) {
+    // This regex allows for base64url-safe characters: A-Z, a-z, 0-9, -, _, =, and .
+    if (!/^[A-Za-z0-9\-_=.]+$/.test(cleanKey)) {
       console.error('[VAPID] Invalid key format:', cleanKey)
       throw new Error('Invalid VAPID key format - must be base64url encoded')
     }
 
     try {
       // Test if the key can be properly decoded
-      const decoded = atob(cleanKey.replace(/-/g, '+').replace(/_/g, '/'))
+      const decoded = atob(cleanKey.replace(/[-_.]/g, char => {
+        switch (char) {
+          case '-': return '+';
+          case '_': return '/';
+          case '.': return '=';
+          default: return char;
+        }
+      }))
       console.log('[VAPID] Key successfully validated')
     } catch (error) {
       console.error('[VAPID] Key decode error:', error)
