@@ -10,14 +10,14 @@ import { InterpreterProfile } from "./interpreter/InterpreterProfile";
 import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
-import { NotificationPermission } from "@/components/interpreter/NotificationPermission";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, BookOpen } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
+import { subscribeToPushNotifications } from "@/lib/pushNotifications";
 
 interface Profile {
   id: string;
@@ -50,10 +50,47 @@ export const InterpreterDashboard = () => {
   const [activeTab, setActiveTab] = useState("missions");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [notificationPromptShown, setNotificationPromptShown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    const checkNotificationStatus = async () => {
+      if (!('Notification' in window) || !profile?.id || notificationPromptShown) {
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        const subscription = await registration.pushManager.getSubscription();
+        if (!subscription && Notification.permission === 'default') {
+          const userChoice = window.confirm(
+            "Souhaitez-vous activer les notifications pour être informé des nouvelles missions et mises à jour importantes ?"
+          );
+          if (userChoice) {
+            try {
+              await subscribeToPushNotifications(profile.id);
+              toast({
+                title: "Notifications activées",
+                description: "Vous recevrez des notifications pour les nouvelles missions",
+              });
+            } catch (error: any) {
+              toast({
+                title: "Erreur",
+                description: error.message || "Impossible d'activer les notifications",
+                variant: "destructive",
+              });
+            }
+          }
+          setNotificationPromptShown(true);
+        }
+      }
+    };
+
+    checkNotificationStatus();
+  }, [profile?.id, notificationPromptShown, toast]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
@@ -366,7 +403,6 @@ export const InterpreterDashboard = () => {
                     isOpen={isGuideOpen}
                     onOpenChange={setIsGuideOpen}
                   />
-                  <NotificationPermission interpreterId={profile.id} />
                   <Button
                     variant="outline"
                     size="icon"
