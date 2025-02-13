@@ -26,8 +26,12 @@ serve(async (req) => {
       throw new Error('VAPID public key not configured')
     }
 
-    // Supprimer uniquement les espaces en début et fin
-    const cleanKey = vapidPublicKey.trim()
+    // Clean the key more thoroughly
+    const cleanKey = vapidPublicKey
+      .trim()
+      .replace(/[\n\r\s]/g, '') // Remove all whitespace, newlines, and carriage returns
+    
+    console.log('[VAPID] Key length:', cleanKey.length)
     console.log('[VAPID] Using key:', cleanKey)
     
     return new Response(

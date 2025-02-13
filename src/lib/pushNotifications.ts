@@ -2,18 +2,23 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
+  try {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
 
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  } catch (error) {
+    console.error('[Push Notifications] Error converting base64 to Uint8Array:', error);
+    throw new Error('Invalid VAPID key format');
   }
-  return outputArray;
 }
 
 export async function subscribeToPushNotifications(interpreterId: string): Promise<boolean> {
@@ -23,7 +28,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('Notification' in window)) {
       console.error('[Push Notifications] Browser does not support notifications');
-      throw new Error('Push notifications not supported');
+      throw new Error('Les notifications push ne sont pas supportées par votre navigateur');
     }
 
     // 2. Request permission first
@@ -32,7 +37,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     console.log('[Push Notifications] Permission result:', permission);
     
     if (permission !== 'granted') {
-      throw new Error('Notification permission denied');
+      throw new Error('Permission refusée pour les notifications');
     }
 
     // 3. Get VAPID key
@@ -52,11 +57,18 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
     if (!vapidData?.vapidPublicKey) {
       console.error('[Push Notifications] No VAPID key in response:', vapidData);
-      throw new Error('No VAPID key received');
+      throw new Error('Clé VAPID non reçue');
     }
 
-    console.log('[Push Notifications] Got VAPID key');
-    const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
+    console.log('[Push Notifications] Got VAPID key:', vapidData.vapidPublicKey);
+    
+    try {
+      const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
+      console.log('[Push Notifications] Converted VAPID key to Uint8Array');
+    } catch (error) {
+      console.error('[Push Notifications] Invalid VAPID key format:', error);
+      throw new Error('Format de clé VAPID invalide');
+    }
 
     // 4. Unregister ALL existing service workers
     console.log('[Push Notifications] Unregistering all service workers');
@@ -90,7 +102,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     console.log('[Push Notifications] Subscribing to push notifications');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey
+      applicationServerKey: urlBase64ToUint8Array(vapidData.vapidPublicKey)
     });
 
     console.log('[Push Notifications] Push subscription:', subscription);
