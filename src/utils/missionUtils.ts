@@ -55,13 +55,13 @@ export const isInterpreterAvailableForScheduledMission = async (
 
   try {
     // Get only active missions (accepted or in-progress) for this interpreter
-    // Explicitly exclude deleted missions and only check missions where the interpreter is actually assigned
+    // and exclude deleted missions
     const { data: existingMissions, error: missionsError } = await supabase
       .from('interpretation_missions')
       .select('scheduled_start_time, scheduled_end_time, mission_type, status')
       .eq('assigned_interpreter_id', interpreterId)
       .in('status', ['accepted', 'in_progress'])
-      .eq('status', 'deleted').not(); // Explicitly exclude deleted missions
+      .neq('status', 'deleted');
 
     if (missionsError) {
       console.error('[missionUtils] Error checking existing missions:', missionsError);
@@ -101,7 +101,7 @@ export const isInterpreterAvailableForScheduledMission = async (
       return overlap;
     });
 
-    // Also check for any pending notifications that might create conflicts
+    // Check for any pending notifications that might create conflicts
     const { data: pendingNotifications, error: notificationsError } = await supabase
       .from('mission_notifications')
       .select(`
