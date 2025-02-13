@@ -21,6 +21,8 @@ serve(async (req) => {
 
   try {
     console.log('[Push Notification] Starting push notification service');
+    console.log('[Push Notification] Request method:', req.method);
+    console.log('[Push Notification] Request headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
     
     // Validate request method
     if (req.method !== 'POST') {
@@ -29,6 +31,8 @@ serve(async (req) => {
 
     // Validate Content-Type
     const contentType = req.headers.get('content-type');
+    console.log('[Push Notification] Content-Type:', contentType);
+    
     if (!contentType?.includes('application/json')) {
       throw new Error('Content-Type must be application/json');
     }
@@ -44,6 +48,7 @@ serve(async (req) => {
       }
       
       reqBody = JSON.parse(text);
+      console.log('[Push Notification] Parsed request body:', JSON.stringify(reqBody));
     } catch (error) {
       console.error('[Push Notification] JSON parse error:', error);
       throw new Error(`Invalid JSON in request body: ${error.message}`);
@@ -71,6 +76,8 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
+    console.log('[Push Notification] Environment variables validated');
+
     // Initialize web-push and Supabase client
     webPush.setVapidDetails(
       'mailto:contact@interpretix.io',
@@ -90,6 +97,8 @@ serve(async (req) => {
     if (subscriptionError) {
       throw new Error(`Failed to fetch subscriptions: ${subscriptionError.message}`);
     }
+
+    console.log('[Push Notification] Found subscriptions:', JSON.stringify(subscriptions));
 
     if (!subscriptions?.length) {
       return new Response(
@@ -120,10 +129,15 @@ serve(async (req) => {
               data: message.data || {}
             };
 
+            console.log('[Push Notification] Sending notification to:', sub.endpoint);
+            console.log('[Push Notification] Notification payload:', JSON.stringify(payload));
+
             await webPush.sendNotification(
               subscription,
               JSON.stringify(payload)
             );
+
+            console.log('[Push Notification] Successfully sent notification to:', sub.endpoint);
 
             // Update last successful push timestamp
             await supabase
@@ -137,6 +151,7 @@ serve(async (req) => {
             return { success: true, subscriptionId: sub.id };
           } catch (error) {
             lastError = error;
+            console.error('[Push Notification] Error sending notification:', error);
             
             if (error.statusCode === 410 || error.statusCode === 404) {
               // Subscription is expired or invalid
@@ -186,6 +201,8 @@ serve(async (req) => {
         }
       })
     };
+
+    console.log('[Push Notification] Results summary:', JSON.stringify(summary));
 
     return new Response(
       JSON.stringify({ success: true, results: summary }),
