@@ -7,7 +7,7 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX, Bell, BellSlash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ export const MessagesTab = () => {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundInitialized, setSoundInitialized] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -38,6 +39,117 @@ export const MessagesTab = () => {
       return roles?.some(r => r.role === 'admin') || false;
     }
   });
+
+  // Vérifier le statut des notifications au chargement
+  useEffect(() => {
+    const checkNotificationStatus = async () => {
+      if (!('Notification' in window)) {
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          const subscription = await registration.pushManager.getSubscription();
+          setNotificationsEnabled(!!subscription);
+        }
+      } catch (error) {
+        console.error('[MessagesTab] Error checking notification status:', error);
+      }
+    };
+
+    checkNotificationStatus();
+  }, []);
+
+  const toggleNotifications = async () => {
+    if (!('Notification' in window)) {
+      toast({
+        title: "Non supporté",
+        description: "Votre navigateur ne supporte pas les notifications",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        toast({
+          title: "Erreur",
+          description: "Service Worker non disponible",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (notificationsEnabled) {
+        // Désactiver les notifications
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+          // Supprimer de la base de données si nécessaire
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('endpoint', subscription.endpoint);
+          
+          if (error) throw error;
+        }
+        setNotificationsEnabled(false);
+        toast({
+          title: "Notifications désactivées",
+          description: "Vous ne recevrez plus de notifications push",
+        });
+      } else {
+        // Activer les notifications
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const { data: { vapidPublicKey } } = await supabase.functions.invoke('get-vapid-public-key');
+          
+          if (!vapidPublicKey) {
+            throw new Error('VAPID public key not found');
+          }
+
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: vapidPublicKey
+          });
+
+          // Sauvegarder dans la base de données
+          const { error } = await supabase
+            .from('push_subscriptions')
+            .insert({
+              interpreter_id: (await supabase.auth.getUser()).data.user?.id,
+              endpoint: subscription.endpoint,
+              p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
+              auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+              user_agent: navigator.userAgent
+            });
+
+          if (error) throw error;
+
+          setNotificationsEnabled(true);
+          toast({
+            title: "Notifications activées",
+            description: "Vous recevrez désormais des notifications push",
+          });
+        } else {
+          toast({
+            title: "Permission refusée",
+            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('[MessagesTab] Error toggling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    }
+  };
 
   const initializeSound = () => {
     if (!soundInitialized) {
@@ -233,6 +345,19 @@ export const MessagesTab = () => {
                 <ArrowDown className="h-4 w-4" />
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleNotifications}
+              className="bg-white/80 hover:bg-white shadow-sm hover:shadow border border-gray-100"
+              title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+            >
+              {notificationsEnabled ? (
+                <Bell className="h-4 w-4" />
+              ) : (
+                <BellSlash className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="outline"
               size="icon"
