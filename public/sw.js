@@ -1,21 +1,18 @@
 
-// Service Worker version avec gestion simplifiée
-const SW_VERSION = '1.5.0';
-console.log(`[Service Worker ${SW_VERSION}] Initializing`);
+// Service Worker version
+const SW_VERSION = '1.0.0';
+console.log(`[Service Worker ${SW_VERSION}] Starting`);
 
-// Installation immédiate
 self.addEventListener('install', event => {
   console.log(`[Service Worker ${SW_VERSION}] Installing`);
   self.skipWaiting();
 });
 
-// Activation et prise de contrôle
 self.addEventListener('activate', event => {
   console.log(`[Service Worker ${SW_VERSION}] Activating`);
   event.waitUntil(self.clients.claim());
 });
 
-// Gestion des notifications push
 self.addEventListener('push', event => {
   console.log('[Service Worker] Push received:', event.data?.text());
   
@@ -27,14 +24,8 @@ self.addEventListener('push', event => {
       body: data.body || 'Nouvelle notification',
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      tag: `mission-${Date.now()}`,
       data: data.data || {},
-      renotify: true,
-      requireInteraction: true,
-      actions: [
-        { action: 'accept', title: 'Accepter' },
-        { action: 'decline', title: 'Décliner' }
-      ]
+      requireInteraction: true
     };
 
     event.waitUntil(
@@ -45,10 +36,7 @@ self.addEventListener('push', event => {
   }
 });
 
-// Gestion des clics sur les notifications
 self.addEventListener('notificationclick', event => {
+  console.log('[Service Worker] Notification clicked');
   event.notification.close();
-  event.waitUntil(
-    clients.openWindow('/')
-  );
 });
