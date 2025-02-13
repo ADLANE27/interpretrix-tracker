@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,29 +76,21 @@ export function MissionManagement() {
       setMissions(data || []);
     } catch (error) {
       console.error("Error fetching missions:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les missions",
-        variant: "destructive",
-      });
+      toast.error("Impossible de charger les missions");
     }
   };
 
   const fetchInterpreters = async () => {
     try {
       const { data, error } = await supabase
-        .from("interpreters")
+        .from("interpreter_profiles")
         .select("id, email");
 
       if (error) throw error;
       setInterpreters(data || []);
     } catch (error) {
       console.error("Error fetching interpreters:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les interprètes",
-        variant: "destructive",
-      });
+      toast.error("Impossible de charger les interprètes");
     }
   };
 
@@ -106,11 +99,7 @@ export function MissionManagement() {
       setIsSubmitting(true);
 
       if (!sourceLanguage || !targetLanguage || !selectedInterpreters.length) {
-        toast({
-          title: "Erreur",
-          description: "Veuillez remplir tous les champs obligatoires",
-          variant: "destructive",
-        });
+        toast.error("Veuillez remplir tous les champs obligatoires");
         return;
       }
 
@@ -180,20 +169,13 @@ export function MissionManagement() {
       setScheduledEndTime(null);
       setShowDateSelection(false);
 
-      toast({
-        title: "Mission créée avec succès",
-        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
-      });
+      toast.success(`La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`);
 
       fetchMissions();
 
     } catch (error) {
       console.error('[MissionManagement] Error creating mission:', error);
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de la création de la mission",
-        variant: "destructive",
-      });
+      toast.error("Une erreur est survenue lors de la création de la mission");
     } finally {
       setIsSubmitting(false);
     }
@@ -271,7 +253,7 @@ export function MissionManagement() {
                         {scheduledStartTime ? format(scheduledStartTime, "PPP p") : <span>Choisir une date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                    <PopoverContent className="w-auto p-0" align="center">
                       <Calendar
                         mode="single"
                         selected={scheduledStartTime}
@@ -297,7 +279,7 @@ export function MissionManagement() {
                         {scheduledEndTime ? format(scheduledEndTime, "PPP p") : <span>Choisir une date</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                    <PopoverContent className="w-auto p-0" align="center">
                       <Calendar
                         mode="single"
                         selected={scheduledEndTime}
