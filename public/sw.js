@@ -174,25 +174,27 @@ self.addEventListener('push', async (event) => {
       const end = new Date(data.data.scheduled_end_time);
       body = `Mission programmée\n${data.data.source_language} → ${data.data.target_language}\n${start.toLocaleString()} - ${end.toLocaleString()}`;
     }
-    
-    // Configurer les options de notification avec les détails de la mission
+
+    // Configurer les options de notification
     const options = {
-      body: body || 'Nouvelle mission disponible',
+      body: body || data.body || 'Nouvelle mission disponible',
       icon: '/favicon.ico',
       badge: '/favicon.ico',
       tag: data.data?.mission_id || 'default',
       data: data.data || {},
       vibrate: [200, 100, 200],
       requireInteraction: true,
+      silent: false, // S'assurer que le son du système est activé
       actions: [
         {
           action: 'open',
           title: 'Voir la mission',
         }
-      ]
+      ],
+      timestamp: Date.now() // Ajouter un timestamp pour s'assurer que la notification est considérée comme nouvelle
     };
 
-    // Jouer le son de notification approprié
+    // Jouer le son de notification
     const soundUrl = data.data?.mission_type === 'immediate' 
       ? '/sounds/immediate-mission.mp3'
       : '/sounds/scheduled-mission.mp3';
@@ -200,12 +202,16 @@ self.addEventListener('push', async (event) => {
     console.log('[SW] Playing notification sound');
     await playNotificationSound(soundUrl);
     
-    // Afficher la notification avec les détails de la mission
+    // Créer la notification système
     console.log('[SW] Showing notification with options:', options);
-    await self.registration.showNotification(
-      data.data?.mission_type === 'immediate' ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée',
+    const notification = await self.registration.showNotification(
+      data.title || (data.data?.mission_type === 'immediate' ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée'),
       options
     );
+
+    // Vérifier que la notification a bien été créée
+    console.log('[SW] Notification created:', notification);
+
   } catch (error) {
     console.error('[SW] Push error:', error);
   }
