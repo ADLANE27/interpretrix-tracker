@@ -469,6 +469,10 @@ export const UserManagement = () => {
         admins={adminUsers}
         onToggleStatus={toggleUserStatus}
         onDeleteUser={handleDeleteUser}
+        onResetPassword={(userId) => {
+          setSelectedUserId(userId);
+          setIsResetPasswordOpen(true);
+        }}
       />
 
       <InterpreterList

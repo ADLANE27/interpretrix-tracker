@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { UserCog, Search, Trash2 } from "lucide-react";
+import { UserCog, Search, Trash2, Key } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -35,9 +35,10 @@ interface AdminListProps {
   admins: AdminData[];
   onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
+  onResetPassword: (userId: string) => void;
 }
 
-export const AdminList = ({ admins, onToggleStatus, onDeleteUser }: AdminListProps) => {
+export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPassword }: AdminListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -115,6 +116,13 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser }: AdminListPro
                           onClick={() => onToggleStatus(admin.id, admin.active)}
                         >
                           {admin.active ? "Désactiver" : "Activer"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onResetPassword(admin.id)}
+                        >
+                          <Key className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="destructive"
