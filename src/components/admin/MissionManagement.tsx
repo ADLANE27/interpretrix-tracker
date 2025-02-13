@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -366,7 +365,6 @@ export const MissionManagement = () => {
       let utcEndTime = null;
 
       if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-        // Convert local datetime to UTC
         utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
         utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
         calculatedDuration = Math.round(
@@ -379,43 +377,25 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
 
-      const newMissionData = {
-        source_language: sourceLanguage,
-        target_language: targetLanguage,
-        estimated_duration: calculatedDuration,
-        status: "awaiting_acceptance",
-        notification_expiry: notificationExpiry.toISOString(),
-        notified_interpreters: selectedInterpreters, // This is critical
-        mission_type: missionType,
-        scheduled_start_time: utcStartTime,
-        scheduled_end_time: utcEndTime
-      };
-
-      console.log('[MissionManagement] Creating new mission with data:', newMissionData);
-
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
-        .insert(newMissionData)
+        .insert({
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+          estimated_duration: calculatedDuration,
+          status: "awaiting_acceptance",
+          notification_expiry: notificationExpiry.toISOString(),
+          notified_interpreters: selectedInterpreters,
+          mission_type: missionType,
+          scheduled_start_time: utcStartTime,
+          scheduled_end_time: utcEndTime
+        })
         .select()
         .single();
 
       if (missionError) throw missionError;
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
-
-      const notifications = selectedInterpreters.map(interpreter => ({
-        mission_id: createdMission.id,
-        interpreter_id: interpreter,
-        status: "pending"
-      }));
-
-      const { error: notificationError } = await supabase
-        .from("mission_notifications")
-        .insert(notifications);
-
-      if (notificationError) throw notificationError;
-
-      console.log('[MissionManagement] Notifications created successfully for interpreters:', selectedInterpreters);
       
       setSourceLanguage("");
       setTargetLanguage("");
@@ -428,7 +408,7 @@ export const MissionManagement = () => {
 
       toast({
         title: "Mission créée avec succès",
-        description: `La mission ${newMissionData.mission_type === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
+        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
       });
 
       fetchMissions();
