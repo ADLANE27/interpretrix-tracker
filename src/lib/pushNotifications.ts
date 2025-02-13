@@ -43,41 +43,78 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Les notifications push ne sont pas supportées par votre navigateur');
     }
 
-    // Check if we already have an active subscription
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        console.log('[Push Notifications] Found existing subscription');
-        
-        // Verify if the subscription is still valid in our database
-        const { data: existingDbSub } = await supabase
-          .from('push_subscriptions')
-          .select('*')
-          .eq('interpreter_id', interpreterId)
-          .eq('endpoint', existingSubscription.endpoint)
-          .eq('status', 'active')
-          .single();
+    // First check if permission is already granted before requesting
+    const currentPermission = Notification.permission;
+    console.log('[Push Notifications] Current permission:', currentPermission);
 
-        if (existingDbSub) {
-          console.log('[Push Notifications] Subscription already active in database');
-          return true;
+    if (currentPermission === 'denied') {
+      throw new Error('Les notifications sont bloquées par le navigateur');
+    }
+
+    // Register service worker first
+    console.log('[Push Notifications] Setting up service worker');
+    let serviceWorkerReg = await navigator.serviceWorker.getRegistration();
+    
+    if (!serviceWorkerReg) {
+      console.log('[Push Notifications] No service worker found, registering new one');
+      serviceWorkerReg = await navigator.serviceWorker.register('/sw.js');
+    }
+
+    // Wait for the service worker to be ready
+    if (serviceWorkerReg.installing || serviceWorkerReg.waiting) {
+      console.log('[Push Notifications] Waiting for service worker to be ready');
+      await new Promise<void>((resolve) => {
+        const worker = serviceWorkerReg!.installing || serviceWorkerReg!.waiting;
+        if (!worker) {
+          resolve();
+          return;
         }
+        
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'activated') {
+            console.log('[Push Notifications] Service worker activated');
+            resolve();
+          }
+        });
+      });
+    }
 
-        // If not in database, unsubscribe and continue with new subscription
-        console.log('[Push Notifications] Cleaning up old subscription');
-        await existingSubscription.unsubscribe();
+    // Check for existing subscription
+    const existingSubscription = await serviceWorkerReg.pushManager.getSubscription();
+    if (existingSubscription) {
+      console.log('[Push Notifications] Found existing subscription');
+      
+      // Verify if the subscription is still valid in our database
+      const { data: existingDbSub } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('interpreter_id', interpreterId)
+        .eq('endpoint', existingSubscription.endpoint)
+        .eq('status', 'active')
+        .single();
+
+      if (existingDbSub) {
+        console.log('[Push Notifications] Subscription already active in database');
+        return true;
+      }
+
+      // If not in database, unsubscribe and create new subscription
+      console.log('[Push Notifications] Cleaning up old subscription');
+      await existingSubscription.unsubscribe();
+    }
+
+    // If permission is not granted yet, request it
+    if (currentPermission === 'default') {
+      console.log('[Push Notifications] Requesting permission');
+      const permissionResult = await Notification.requestPermission();
+      console.log('[Push Notifications] Permission result:', permissionResult);
+      
+      if (permissionResult !== 'granted') {
+        throw new Error('Permission refusée pour les notifications');
       }
     }
 
-    console.log('[Push Notifications] Requesting permission');
-    const permission = await Notification.requestPermission();
-    console.log('[Push Notifications] Permission result:', permission);
-    
-    if (permission !== 'granted') {
-      throw new Error('Permission refusée pour les notifications');
-    }
-
+    // Get VAPID key and create subscription
     console.log('[Push Notifications] Fetching VAPID key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
       'get-vapid-public-key',
@@ -102,33 +139,8 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
     console.log('[Push Notifications] Converted VAPID key to Uint8Array');
 
-    // Register new service worker if needed
-    let serviceWorkerReg = await navigator.serviceWorker.getRegistration();
-    if (!serviceWorkerReg) {
-      console.log('[Push Notifications] Registering new service worker');
-      serviceWorkerReg = await navigator.serviceWorker.register('/sw.js');
-    }
-
-    // Wait for the service worker to be ready
-    if (serviceWorkerReg.installing || serviceWorkerReg.waiting) {
-      console.log('[Push Notifications] Waiting for service worker to be ready');
-      await new Promise<void>((resolve) => {
-        const worker = serviceWorkerReg!.installing || serviceWorkerReg!.waiting;
-        if (!worker) {
-          resolve();
-          return;
-        }
-        
-        worker.addEventListener('statechange', () => {
-          if (worker.state === 'activated') {
-            console.log('[Push Notifications] Service worker activated');
-            resolve();
-          }
-        });
-      });
-    }
-
-    console.log('[Push Notifications] Subscribing to push notifications');
+    // Create new subscription
+    console.log('[Push Notifications] Creating new push subscription');
     const subscription = await serviceWorkerReg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
