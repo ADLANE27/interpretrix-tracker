@@ -8,6 +8,22 @@ async function registerServiceWorker() {
   return registration;
 }
 
+// Convert a base64 string to a Uint8Array for the applicationServerKey
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export async function subscribeToPushNotifications(interpreterId: string): Promise<boolean> {
   try {
     // Basic feature detection
@@ -59,14 +75,22 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
     );
 
     if (vapidError || !vapidData?.vapidPublicKey) {
+      console.error('[Push Notifications] VAPID key error:', vapidError);
       throw new Error('Erreur lors de la récupération de la clé VAPID');
     }
 
-    // Create subscription
+    console.log('[Push Notifications] Got VAPID key:', vapidData.vapidPublicKey);
+
+    // Convert the base64 VAPID key to Uint8Array
+    const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
+
+    // Create subscription with converted key
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: vapidData.vapidPublicKey
+      applicationServerKey: applicationServerKey
     });
+
+    console.log('[Push Notifications] Created subscription:', subscription);
 
     // Save subscription
     const { error: saveError } = await supabase
@@ -83,6 +107,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       });
 
     if (saveError) {
+      console.error('[Push Notifications] Save error:', saveError);
       throw new Error('Erreur lors de l\'enregistrement de la souscription');
     }
 
