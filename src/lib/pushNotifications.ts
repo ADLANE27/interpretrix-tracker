@@ -25,6 +25,8 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Push notifications not supported');
     }
 
+    console.log('[Push Notifications] Current notification permission:', Notification.permission);
+
     // Vérifier la permission
     if (Notification.permission === 'denied') {
       throw new Error('Notification permission denied');
@@ -43,42 +45,58 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw new Error('Failed to get VAPID key');
     }
 
+    console.log('[Push Notifications] Got VAPID key');
     const applicationServerKey = urlBase64ToUint8Array(vapidData.vapidPublicKey);
 
     // 3. Nettoyer les anciens service workers
+    console.log('[Push Notifications] Cleaning up old service workers');
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(existingRegistrations.map(reg => reg.unregister()));
 
     // 4. Enregistrer le nouveau Service Worker
+    console.log('[Push Notifications] Registering new service worker');
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/'
     });
 
-    // 5. Attendre que le service worker soit actif
-    await registration.active || await new Promise<void>((resolve) => {
-      registration.addEventListener('activate', () => resolve());
-    });
-
-    // 6. Demander la permission si nécessaire
+    // 5. Demander la permission si nécessaire
     if (Notification.permission === 'default') {
+      console.log('[Push Notifications] Requesting permission');
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         throw new Error('Notification permission not granted');
       }
     }
 
+    // 6. Attendre l'activation du service worker
+    if (!registration.active) {
+      console.log('[Push Notifications] Waiting for service worker activation');
+      await new Promise<void>((resolve) => {
+        registration.addEventListener('activate', () => {
+          console.log('[Push Notifications] Service worker activated');
+          resolve();
+        });
+      });
+    } else {
+      console.log('[Push Notifications] Service worker already active');
+    }
+
     // 7. Gérer la souscription
+    console.log('[Push Notifications] Managing subscription');
     const existingSubscription = await registration.pushManager.getSubscription();
     if (existingSubscription) {
+      console.log('[Push Notifications] Unsubscribing from existing subscription');
       await existingSubscription.unsubscribe();
     }
 
+    console.log('[Push Notifications] Creating new subscription');
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey
     });
 
     // 8. Sauvegarder la souscription
+    console.log('[Push Notifications] Saving subscription to database');
     const subscriptionJSON = subscription.toJSON();
     const { error: insertError } = await supabase
       .from('push_subscriptions')
@@ -99,6 +117,7 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
       throw insertError;
     }
 
+    console.log('[Push Notifications] Subscription process completed successfully');
     return true;
   } catch (error) {
     console.error('[Push Notifications] Subscription error:', error);
@@ -108,11 +127,13 @@ export async function subscribeToPushNotifications(interpreterId: string): Promi
 
 export async function unsubscribeFromPushNotifications(interpreterId: string): Promise<boolean> {
   try {
+    console.log('[Push Notifications] Starting unsubscribe process');
     const registrations = await navigator.serviceWorker.getRegistrations();
     
     for (const registration of registrations) {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
+        console.log('[Push Notifications] Found subscription to remove');
         await subscription.unsubscribe();
         
         const { error } = await supabase
@@ -126,6 +147,7 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
       await registration.unregister();
     }
 
+    console.log('[Push Notifications] Unsubscribe process completed');
     return true;
   } catch (error) {
     console.error('[Push Notifications] Unsubscribe error:', error);
@@ -135,7 +157,8 @@ export async function unsubscribeFromPushNotifications(interpreterId: string): P
 
 export async function sendTestNotification(interpreterId: string): Promise<void> {
   try {
-    console.log('[Push Notifications] Sending test notification to:', interpreterId);
+    console.log('[Push Notifications] Starting test notification process');
+    console.log('[Push Notifications] Current notification permission:', Notification.permission);
 
     // 1. Vérifier la permission
     if (Notification.permission !== 'granted') {
@@ -143,18 +166,30 @@ export async function sendTestNotification(interpreterId: string): Promise<void>
     }
 
     // 2. Vérifier le service worker
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration?.active) {
+    console.log('[Push Notifications] Getting service worker registration');
+    const swRegistrations = await navigator.serviceWorker.getRegistrations();
+    console.log('[Push Notifications] Found service worker registrations:', swRegistrations.length);
+
+    if (swRegistrations.length === 0) {
+      throw new Error('No service worker registrations found');
+    }
+
+    const registration = swRegistrations[0];
+    if (!registration.active) {
       throw new Error('Service worker not active');
     }
 
     // 3. Vérifier la souscription
+    console.log('[Push Notifications] Checking push subscription');
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      throw new Error('No active subscription found');
+      console.log('[Push Notifications] No subscription found, attempting to resubscribe');
+      await subscribeToPushNotifications(interpreterId);
+      throw new Error('Subscription was missing, please try again after resubscribing');
     }
 
     // 4. Envoyer la notification
+    console.log('[Push Notifications] Sending test notification');
     const { data, error } = await supabase.functions.invoke(
       'send-push-notification',
       {
