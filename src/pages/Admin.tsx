@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 import { Button } from '@/components/ui/button';
@@ -171,113 +170,112 @@ const Admin = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Tableau de bord administrateur</h1>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={validateVapidKeys}
+              disabled={isValidating}
+              variant="secondary"
+              className="flex items-center gap-2"
+            >
+              <RotateCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
+              Vérifier les clés
+            </Button>
+            <Button
+              onClick={setupVapidKeys}
+              disabled={isGenerating}
+              className="flex items-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <RotateCw className="h-4 w-4 animate-spin" />
+                  Génération en cours...
+                </>
+              ) : (
+                <>
+                  <Key className="h-4 w-4" />
+                  Régénérer les clés VAPID
+                </>
+              )}
+            </Button>
             <ThemeToggle />
           </div>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Configuration des notifications push</CardTitle>
-            <CardDescription>
-              Gérez les clés VAPID nécessaires pour l'envoi des notifications push
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {generatedKeys && (
-                <Alert className="bg-green-50 dark:bg-green-950 mb-4">
-                  <Key className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <AlertTitle>Nouvelles clés VAPID générées</AlertTitle>
-                  <AlertDescription className="mt-2 space-y-4">
-                    <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
-                      <div className="flex-1">
-                        <p className="font-semibold mb-1">VAPID_PUBLIC_KEY:</p>
-                        <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.publicKey}</p>
+        {(generatedKeys || vapidStatus) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Configuration des notifications push</CardTitle>
+              <CardDescription>
+                État des clés VAPID pour l'envoi des notifications push
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {generatedKeys && (
+                  <Alert className="bg-green-50 dark:bg-green-950 mb-4">
+                    <Key className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <AlertTitle>Nouvelles clés VAPID générées</AlertTitle>
+                    <AlertDescription className="mt-2 space-y-4">
+                      <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
+                        <div className="flex-1">
+                          <p className="font-semibold mb-1">VAPID_PUBLIC_KEY:</p>
+                          <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.publicKey}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => copyToClipboard(generatedKeys.publicKey, "VAPID_PUBLIC_KEY")}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyToClipboard(generatedKeys.publicKey, "VAPID_PUBLIC_KEY")}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
-                      <div className="flex-1">
-                        <p className="font-semibold mb-1">VAPID_PRIVATE_KEY:</p>
-                        <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.privateKey}</p>
+                      <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
+                        <div className="flex-1">
+                          <p className="font-semibold mb-1">VAPID_PRIVATE_KEY:</p>
+                          <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.privateKey}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => copyToClipboard(generatedKeys.privateKey, "VAPID_PRIVATE_KEY")}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => copyToClipboard(generatedKeys.privateKey, "VAPID_PRIVATE_KEY")}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-4">
-                      <Button
-                        variant="secondary"
-                        onClick={copyFullInstructions}
-                        className="w-full flex items-center gap-2"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copier les instructions complètes
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
+                      <div className="mt-4">
+                        <Button
+                          variant="secondary"
+                          onClick={copyFullInstructions}
+                          className="w-full flex items-center gap-2"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copier les instructions complètes
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-              {vapidStatus && (
-                <Alert className={`${vapidStatus.isValid ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
-                  {vapidStatus.isValid ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  )}
-                  <AlertTitle>
-                    {vapidStatus.isValid ? 'Clés VAPID valides' : 'Problème avec les clés VAPID'}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {vapidStatus.isValid 
-                      ? 'Les notifications push peuvent être utilisées.'
-                      : vapidStatus.errorMessage || 'Les clés VAPID ne sont pas valides.'}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button
-                  onClick={setupVapidKeys}
-                  disabled={isGenerating}
-                  className="flex items-center gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RotateCw className="h-4 w-4 animate-spin" />
-                      Génération en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Key className="h-4 w-4" />
-                      Générer nouvelles clés VAPID
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={validateVapidKeys}
-                  disabled={isValidating}
-                  className="flex items-center gap-2"
-                >
-                  <RotateCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
-                  Vérifier les clés
-                </Button>
+                {vapidStatus && (
+                  <Alert className={`${vapidStatus.isValid ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                    {vapidStatus.isValid ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    )}
+                    <AlertTitle>
+                      {vapidStatus.isValid ? 'Clés VAPID valides' : 'Problème avec les clés VAPID'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {vapidStatus.isValid 
+                        ? 'Les notifications push peuvent être utilisées.'
+                        : vapidStatus.errorMessage || 'Les clés VAPID ne sont pas valides.'}
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <AdminDashboard />
       </div>
