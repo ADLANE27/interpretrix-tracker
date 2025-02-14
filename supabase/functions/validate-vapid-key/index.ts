@@ -23,7 +23,11 @@ serve(async (req) => {
 
     // Check if keys are present
     if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys are not set in environment variables');
+      const missingKeys = [];
+      if (!vapidPublicKey) missingKeys.push('VAPID_PUBLIC_KEY');
+      if (!vapidPrivateKey) missingKeys.push('VAPID_PRIVATE_KEY');
+      
+      throw new Error(`Missing environment variables: ${missingKeys.join(', ')}`);
     }
 
     // Validate base64url format (only contains A-Z, a-z, 0-9, -, _)
