@@ -2,93 +2,154 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'npm:@supabase/supabase-js';
 
+// Enhanced CORS headers for maximum compatibility
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
+  'Access-Control-Max-Age': '86400',
 };
 
+// Validate VAPID key format
+function isValidVapidKey(key: string): boolean {
+  // Must be base64url format
+  return /^[A-Za-z0-9\-_]+$/.test(key) && key.length >= 20;
+}
+
+// Retry mechanism for database operations
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.error(`[VAPID] Attempt ${attempt}/${maxRetries} failed:`, error);
+      if (attempt === maxRetries) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+    }
+  }
+  throw new Error('All retry attempts failed');
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Enhanced CORS handling
   if (req.method === 'OPTIONS') {
     return new Response(null, {
-      headers: corsHeaders
+      headers: corsHeaders,
+      status: 204
     });
   }
 
+  console.log('[VAPID] Function invoked with method:', req.method);
+
   try {
-    console.log('[VAPID] Getting public key');
-    
-    // Get VAPID key from Supabase database
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Validate environment variables early
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    // Try getting key from secrets table first
-    const { data: secretData, error: secretError } = await supabaseAdmin
-      .from('secrets')
-      .select('value')
-      .eq('name', 'VAPID_PUBLIC_KEY')
-      .single();
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[VAPID] Missing required environment variables');
+      throw new Error('Server configuration error');
+    }
 
-    if (secretError) {
-      console.error('[VAPID] Error getting key from secrets:', secretError);
-      
-      // Fall back to environment variable
-      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-      
-      if (!vapidPublicKey) {
-        console.error('[VAPID] Public key not found in environment');
-        throw new Error('VAPID public key not configured');
-      }
+    // Initialize Supabase client with retry mechanism
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-      // Validate the key format
-      if (!/^[A-Za-z0-9\-_]+$/.test(vapidPublicKey)) {
-        console.error('[VAPID] Invalid public key format from env');
-        throw new Error('Invalid VAPID public key format');
-      }
+    // Multiple sources strategy with fallbacks
+    let vapidPublicKey: string | null = null;
+    let source: string = '';
 
-      console.log('[VAPID] Successfully retrieved public key from env');
-      return new Response(
-        JSON.stringify({ vapidPublicKey }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
-        }
+    try {
+      // 1. Try secrets table first
+      console.log('[VAPID] Attempting to fetch from secrets table...');
+      const { data: secretData, error: secretError } = await retryOperation(async () => 
+        await supabaseAdmin
+          .from('secrets')
+          .select('value')
+          .eq('name', 'VAPID_PUBLIC_KEY')
+          .single()
       );
+
+      if (!secretError && secretData?.value) {
+        vapidPublicKey = secretData.value;
+        source = 'secrets';
+        console.log('[VAPID] Successfully retrieved from secrets table');
+      } else {
+        console.log('[VAPID] Not found in secrets table, checking environment...');
+      }
+    } catch (dbError) {
+      console.error('[VAPID] Database error:', dbError);
     }
 
-    if (!secretData?.value) {
-      console.error('[VAPID] No value found in secrets');
-      throw new Error('VAPID public key not found');
+    // 2. Try environment variable as fallback
+    if (!vapidPublicKey) {
+      vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || null;
+      if (vapidPublicKey) {
+        source = 'environment';
+        console.log('[VAPID] Retrieved from environment variable');
+      }
     }
 
-    // Validate the key format
-    if (!/^[A-Za-z0-9\-_]+$/.test(secretData.value)) {
-      console.error('[VAPID] Invalid public key format from secrets');
+    // Final validation
+    if (!vapidPublicKey) {
+      console.error('[VAPID] Public key not found in any source');
+      throw new Error('VAPID public key not configured');
+    }
+
+    if (!isValidVapidKey(vapidPublicKey)) {
+      console.error('[VAPID] Invalid key format from source:', source);
       throw new Error('Invalid VAPID public key format');
     }
 
-    console.log('[VAPID] Successfully retrieved public key from secrets');
-
+    // Success response with detailed metadata
+    console.log('[VAPID] Successfully retrieved public key from:', source);
+    
     return new Response(
-      JSON.stringify({ vapidPublicKey: secretData.value }),
+      JSON.stringify({
+        vapidPublicKey,
+        metadata: {
+          source,
+          timestamp: new Date().toISOString(),
+          keyLength: vapidPublicKey.length,
+          isValid: true
+        }
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
         status: 200
       }
     );
 
   } catch (error) {
-    console.error('[VAPID] Error:', error);
+    console.error('[VAPID] Critical error:', error);
+    
+    // Enhanced error response
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message,
         errorCode: 'VAPID_KEY_ERROR',
-        details: 'Error retrieving VAPID public key. Please ensure it is properly configured.'
+        details: 'Error retrieving VAPID public key. Please ensure it is properly configured.',
+        timestamp: new Date().toISOString(),
+        debug: {
+          hasEnvVar: !!Deno.env.get('VAPID_PUBLIC_KEY'),
+          hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
+          hasServiceRole: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+          stack: error.stack
+        }
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
         status: 500
       }
     );
