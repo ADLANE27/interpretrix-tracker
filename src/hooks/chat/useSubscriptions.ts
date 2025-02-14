@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useEffect, useRef } from 'react';
 
-const handleVisibilityChange = (channel: RealtimeChannel) => {
+const handleVisibilityChange = (channel: RealtimeChannel | null) => {
+  if (!channel) return;
+  
   if (document.visibilityState === 'visible') {
     channel.subscribe();
   } else {
@@ -23,14 +25,15 @@ export const useSubscriptions = (
   const errorCountRef = useRef(0);
   const initialDelayRef = useRef<NodeJS.Timeout>();
   const isSubscribingRef = useRef(false);
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const messageChannelRef = useRef<RealtimeChannel | null>(null);
+  const mentionChannelRef = useRef<RealtimeChannel | null>(null);
+  const visibilityHandlersRef = useRef<(() => void)[]>([]);
 
   const handleSubscriptionError = () => {
     errorCountRef.current += 1;
     
-    // N'afficher l'erreur qu'après 3 tentatives échouées
     if (errorCountRef.current >= 3) {
-      errorCountRef.current = 0; // Reset le compteur
+      errorCountRef.current = 0;
       toast({
         title: "Problème de connexion",
         description: "Tentative de reconnexion en cours...",
@@ -40,16 +43,23 @@ export const useSubscriptions = (
     setRetryCount(retryCount + 1);
   };
 
+  const cleanupVisibilityHandlers = () => {
+    visibilityHandlersRef.current.forEach(handler => {
+      document.removeEventListener('visibilitychange', handler);
+    });
+    visibilityHandlersRef.current = [];
+  };
+
   const subscribeToMessages = () => {
-    if (isSubscribingRef.current || channelRef.current) {
-      console.log('[Chat] Already subscribed or subscribing, skipping.');
-      return;
+    if (isSubscribingRef.current || messageChannelRef.current) {
+      console.log('[Chat] Messages already subscribed or subscribing, skipping.');
+      return messageChannelRef.current;
     }
 
     isSubscribingRef.current = true;
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
-    channelRef.current = supabase
+    messageChannelRef.current = supabase
       .channel(`messages:${channelId}`)
       .on(
         'postgres_changes',
@@ -72,7 +82,7 @@ export const useSubscriptions = (
         }
       )
       .subscribe((status) => {
-        console.log('[Chat] Subscription status:', status);
+        console.log('[Chat] Messages subscription status:', status);
         if (status === 'SUBSCRIBED') {
           isSubscribingRef.current = false;
           errorCountRef.current = 0;
@@ -83,15 +93,22 @@ export const useSubscriptions = (
         }
       });
 
-    document.addEventListener('visibilitychange', () => handleVisibilityChange(channelRef.current!));
+    const messageVisibilityHandler = () => handleVisibilityChange(messageChannelRef.current);
+    document.addEventListener('visibilitychange', messageVisibilityHandler);
+    visibilityHandlersRef.current.push(messageVisibilityHandler);
 
-    return channelRef.current;
+    return messageChannelRef.current;
   };
 
   const subscribeToMentions = () => {
+    if (mentionChannelRef.current) {
+      console.log('[Chat] Mentions already subscribed, skipping.');
+      return mentionChannelRef.current;
+    }
+
     console.log('[Chat] Setting up mentions subscription');
     
-    const channel = supabase
+    mentionChannelRef.current = supabase
       .channel(`mentions:${channelId}`)
       .on(
         'postgres_changes',
@@ -111,36 +128,50 @@ export const useSubscriptions = (
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Chat] Mentions subscription status:', status);
+      });
 
-    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
+    const mentionVisibilityHandler = () => handleVisibilityChange(mentionChannelRef.current);
+    document.addEventListener('visibilitychange', mentionVisibilityHandler);
+    visibilityHandlersRef.current.push(mentionVisibilityHandler);
 
-    return channel;
+    return mentionChannelRef.current;
   };
 
-  // Cleanup function
   useEffect(() => {
-    if (initialDelayRef.current) {
-      clearTimeout(initialDelayRef.current);
+    console.log('[Chat] Setting up subscriptions for channel:', channelId);
+    
+    // Clean up previous subscriptions
+    if (messageChannelRef.current) {
+      supabase.removeChannel(messageChannelRef.current);
+      messageChannelRef.current = null;
     }
+    if (mentionChannelRef.current) {
+      supabase.removeChannel(mentionChannelRef.current);
+      mentionChannelRef.current = null;
+    }
+    cleanupVisibilityHandlers();
+    
+    // Set up new subscriptions
+    subscribeToMessages();
+    subscribeToMentions();
 
-    // Initial subscription
-    const messageChannel = subscribeToMessages();
-    const mentionChannel = subscribeToMentions();
-
-    // Cleanup on unmount
+    // Cleanup on unmount or channelId change
     return () => {
       console.log('[Chat] Cleaning up subscriptions');
-      if (messageChannel) {
-        supabase.removeChannel(messageChannel);
+      if (messageChannelRef.current) {
+        supabase.removeChannel(messageChannelRef.current);
+        messageChannelRef.current = null;
       }
-      if (mentionChannel) {
-        supabase.removeChannel(mentionChannel);
+      if (mentionChannelRef.current) {
+        supabase.removeChannel(mentionChannelRef.current);
+        mentionChannelRef.current = null;
       }
       if (initialDelayRef.current) {
         clearTimeout(initialDelayRef.current);
       }
-      channelRef.current = null;
+      cleanupVisibilityHandlers();
       isSubscribingRef.current = false;
     };
   }, [channelId]); // Only re-run if channelId changes
