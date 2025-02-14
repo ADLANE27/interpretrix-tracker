@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import webPush from 'npm:web-push';
 import { createClient } from 'npm:@supabase/supabase-js';
 
 const corsHeaders = {
@@ -9,76 +10,151 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const requestBody = await req.text();
-    console.log('[Test Notification] Received request body:', requestBody);
-
-    let interpreterId;
-    try {
-      const parsed = JSON.parse(requestBody);
-      interpreterId = parsed.interpreterId;
-    } catch (e) {
-      console.error('[Test Notification] Error parsing request body:', e);
-      throw new Error('Invalid request body');
-    }
-
+    const { interpreterId } = await req.json();
+    
     if (!interpreterId) {
       throw new Error('Interpreter ID is required');
     }
-
-    console.log('[Test Notification] Sending test notification to:', interpreterId);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase configuration');
+      throw new Error('Missing configuration');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call send-push-notification with test notification data
-    console.log('[Test Notification] Invoking send-push-notification function');
-    
-    const { data, error } = await supabase.functions.invoke('send-push-notification', {
-      body: {
-        interpreterIds: [interpreterId],
-        title: '🔔 Test des notifications',
-        body: 'Bravo ! Les notifications sont maintenant activées sur votre appareil.',
-        data: { 
-          type: 'test',
-          timestamp: new Date().toISOString()
-        }
-      }
-    });
+    // Get active VAPID keys
+    const { data: vapidKeys, error: vapidError } = await supabase
+      .from('vapid_keys')
+      .select('public_key, private_key')
+      .eq('is_active', true)
+      .single();
 
-    if (error) {
-      console.error('[Test Notification] Error:', error);
-      throw error;
+    if (vapidError || !vapidKeys) {
+      console.error('[Push] Error getting VAPID keys:', vapidError);
+      throw new Error('Could not get VAPID keys');
     }
 
-    console.log('[Test Notification] Success:', data);
-
-    return new Response(
-      JSON.stringify({ success: true, data }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
+    // Configure web-push with VAPID keys
+    webPush.setVapidDetails(
+      'mailto:contact@interpretix.io',
+      vapidKeys.public_key,
+      vapidKeys.private_key
     );
 
-  } catch (error) {
-    console.error('[Test Notification] Error:', error);
+    // Get active subscriptions for the interpreter
+    const { data: subscriptions, error: subError } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('interpreter_id', interpreterId)
+      .eq('status', 'active');
+
+    if (subError) {
+      console.error('[Push] Error getting subscriptions:', subError);
+      throw subError;
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          message: 'No active subscriptions found',
+          success: false 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404 
+        }
+      );
+    }
+
+    // Send test notification to all active subscriptions
+    const results = await Promise.allSettled(
+      subscriptions.map(async (sub) => {
+        try {
+          const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          };
+
+          await webPush.sendNotification(
+            pushSubscription,
+            JSON.stringify({
+              title: '👋 Test de notification',
+              body: 'Les notifications push sont maintenant activées !',
+              data: {
+                timestamp: new Date().toISOString()
+              }
+            })
+          );
+
+          // Update last successful push timestamp
+          await supabase
+            .from('push_subscriptions')
+            .update({ 
+              last_successful_push: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', sub.id);
+
+          return { success: true, subscription: sub.id };
+        } catch (error: any) {
+          console.error('[Push] Error sending notification:', error);
+
+          // Handle expired subscriptions
+          if (error.statusCode === 410 || error.statusCode === 404) {
+            await supabase
+              .from('push_subscriptions')
+              .update({ 
+                status: 'expired',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sub.id);
+          }
+
+          return { 
+            success: false, 
+            subscription: sub.id,
+            error: error.message,
+            statusCode: error.statusCode 
+          };
+        }
+      })
+    );
+
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: true, 
+        results,
+        metadata: {
+          totalSubscriptions: subscriptions.length,
+          timestamp: new Date().toISOString()
+        }
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 200 
+      }
+    );
+  } catch (error) {
+    console.error('[Push] Error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: error.message,
+        success: false,
+        timestamp: new Date().toISOString()
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
       }
     );
   }
