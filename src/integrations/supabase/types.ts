@@ -443,39 +443,57 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
-          created_at: string
-          fcm_token: string | null
+          auth: string
+          created_at: string | null
+          endpoint: string
           id: string
           interpreter_id: string
           last_successful_push: string | null
-          platform: string | null
+          p256dh: string
           status: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at: string
+          updated_at: string | null
           user_agent: string | null
         }
         Insert: {
-          created_at?: string
-          fcm_token?: string | null
+          auth: string
+          created_at?: string | null
+          endpoint: string
           id?: string
           interpreter_id: string
           last_successful_push?: string | null
-          platform?: string | null
+          p256dh: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string
+          updated_at?: string | null
           user_agent?: string | null
         }
         Update: {
-          created_at?: string
-          fcm_token?: string | null
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
           id?: string
           interpreter_id?: string
           last_successful_push?: string | null
-          platform?: string | null
+          p256dh?: string
           status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string
+          updated_at?: string | null
           user_agent?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions_backup: {
         Row: {
