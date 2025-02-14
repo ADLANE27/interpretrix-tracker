@@ -333,24 +333,6 @@ export const InterpreterDashboard = () => {
     setIsSheetOpen(false);
   };
 
-  if (!authChecked || !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="animate-pulse text-lg text-center">Chargement de votre profil...</div>
-      </div>
-    );
-  }
-
-  if (!profile.password_changed) {
-    return (
-      <PasswordChangeDialog
-        isOpen={true}
-        onClose={() => {}}
-        onSuccess={fetchProfile}
-      />
-    );
-  }
-
   useEffect(() => {
     const checkNotificationStatus = async () => {
       if (!('Notification' in window)) {
@@ -441,6 +423,24 @@ export const InterpreterDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [profile?.id, notificationsEnabled]);
+
+  if (!authChecked || !profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="animate-pulse text-lg text-center">Chargement de votre profil...</div>
+      </div>
+    );
+  }
+
+  if (!profile.password_changed) {
+    return (
+      <PasswordChangeDialog
+        isOpen={true}
+        onClose={() => {}}
+        onSuccess={fetchProfile}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
