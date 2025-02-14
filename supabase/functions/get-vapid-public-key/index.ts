@@ -18,24 +18,61 @@ serve(async (req) => {
   try {
     console.log('[VAPID] Getting public key');
     
-    // First try getting from environment variable
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    // Get VAPID key from Supabase database
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
-    if (!vapidPublicKey) {
-      console.error('[VAPID] Public key not found in environment');
-      throw new Error('VAPID public key not configured');
+    // Try getting key from secrets table first
+    const { data: secretData, error: secretError } = await supabaseAdmin
+      .from('secrets')
+      .select('value')
+      .eq('name', 'VAPID_PUBLIC_KEY')
+      .single();
+
+    if (secretError) {
+      console.error('[VAPID] Error getting key from secrets:', secretError);
+      
+      // Fall back to environment variable
+      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+      
+      if (!vapidPublicKey) {
+        console.error('[VAPID] Public key not found in environment');
+        throw new Error('VAPID public key not configured');
+      }
+
+      // Validate the key format
+      if (!/^[A-Za-z0-9\-_]+$/.test(vapidPublicKey)) {
+        console.error('[VAPID] Invalid public key format from env');
+        throw new Error('Invalid VAPID public key format');
+      }
+
+      console.log('[VAPID] Successfully retrieved public key from env');
+      return new Response(
+        JSON.stringify({ vapidPublicKey }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      );
+    }
+
+    if (!secretData?.value) {
+      console.error('[VAPID] No value found in secrets');
+      throw new Error('VAPID public key not found');
     }
 
     // Validate the key format
-    if (!/^[A-Za-z0-9\-_]+$/.test(vapidPublicKey)) {
-      console.error('[VAPID] Invalid public key format');
+    if (!/^[A-Za-z0-9\-_]+$/.test(secretData.value)) {
+      console.error('[VAPID] Invalid public key format from secrets');
       throw new Error('Invalid VAPID public key format');
     }
 
-    console.log('[VAPID] Successfully retrieved public key');
+    console.log('[VAPID] Successfully retrieved public key from secrets');
 
     return new Response(
-      JSON.stringify({ vapidPublicKey }),
+      JSON.stringify({ vapidPublicKey: secretData.value }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -45,7 +82,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[VAPID] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        errorCode: 'VAPID_KEY_ERROR',
+        details: 'Error retrieving VAPID public key. Please ensure it is properly configured.'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
