@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,12 +12,13 @@ import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
+import { requestNotificationPermission, showNotification } from "@/utils/notifications";
 
 interface Profile {
   id: string;
@@ -55,6 +55,7 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   // Add the connection hook
   useSupabaseConnection();
@@ -349,6 +350,82 @@ export const InterpreterDashboard = () => {
     );
   }
 
+  useEffect(() => {
+    const checkNotificationStatus = async () => {
+      if (!('Notification' in window)) {
+        return;
+      }
+      setNotificationsEnabled(Notification.permission === 'granted');
+    };
+
+    checkNotificationStatus();
+  }, []);
+
+  const enableNotifications = async () => {
+    try {
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        setNotificationsEnabled(true);
+        toast({
+          title: "Notifications activées",
+          description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+        });
+      }
+    } catch (error) {
+      console.error('[InterpreterDashboard] Error enabling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'activer les notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add notification handling to realtime subscription
+  useEffect(() => {
+    if (!profile?.id || !notificationsEnabled) return;
+
+    const channel = supabase.channel('interpreter-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mission_notifications',
+          filter: `interpreter_id=eq.${profile.id}`
+        },
+        async (payload) => {
+          try {
+            const { data: mission } = await supabase
+              .from('interpretation_missions')
+              .select('*')
+              .eq('id', payload.new.mission_id)
+              .single();
+
+            if (mission) {
+              const isImmediate = mission.mission_type === 'immediate';
+              showNotification(
+                isImmediate ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée',
+                {
+                  body: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                  icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png',
+                  requireInteraction: isImmediate,
+                  silent: false
+                }
+              );
+            }
+          } catch (error) {
+            console.error('[InterpreterDashboard] Error handling mission notification:', error);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id, notificationsEnabled]);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
@@ -364,6 +441,16 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-2">
+                {!notificationsEnabled && (
+                  <Button 
+                    variant="outline" 
+                    onClick={enableNotifications}
+                    className="text-sm"
+                  >
+                    <Bell className="w-4 h-4 mr-2" />
+                    Activer les notifications
+                  </Button>
+                )}
                 <ThemeToggle />
                 <HowToUseGuide 
                   isOpen={isGuideOpen}
