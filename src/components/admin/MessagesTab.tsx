@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
@@ -13,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from "@/lib/pushNotifications";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -27,151 +27,133 @@ export const MessagesTab = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Check if user is admin
-  const { data: isAdmin } = useQuery({
-    queryKey: ['isUserAdmin'],
-    queryFn: async () => {
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
-      
-      return roles?.some(r => r.role === 'admin') || false;
-    }
-  });
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const cleanupTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Vérifier le statut des notifications au chargement
-  useEffect(() => {
-    const checkNotificationStatus = async () => {
-      if (!('Notification' in window)) {
-        return;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          const subscription = await registration.pushManager.getSubscription();
-          setNotificationsEnabled(!!subscription);
-        }
-      } catch (error) {
-        console.error('[MessagesTab] Error checking notification status:', error);
-      }
-    };
-
-    checkNotificationStatus();
-  }, []);
-
-  const toggleNotifications = async () => {
-    if (!('Notification' in window)) {
-      toast({
-        title: "Non supporté",
-        description: "Votre navigateur ne supporte pas les notifications",
-        variant: "destructive",
-      });
-      return;
+  const setupRealtimeSubscription = () => {
+    console.log('[MessagesTab] Setting up realtime subscription');
+    
+    // Cleanup any existing subscription
+    if (channelRef.current) {
+      console.log('[MessagesTab] Removing existing channel');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
 
-    try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        toast({
-          title: "Erreur",
-          description: "Service Worker non disponible",
-          variant: "destructive",
-        });
-        return;
+    // Create a new channel with proper configuration
+    channelRef.current = supabase.channel('mission-updates', {
+      config: {
+        broadcast: { self: true },
+        presence: { key: 'mission-updates' },
       }
+    });
 
-      if (notificationsEnabled) {
-        // Désactiver les notifications
-        const subscription = await registration.pushManager.getSubscription();
-        if (subscription) {
-          await subscription.unsubscribe();
-          // Supprimer de la base de données si nécessaire
-          const { error } = await supabase
-            .from('push_subscriptions')
-            .delete()
-            .eq('endpoint', subscription.endpoint);
+    // Add subscription handlers
+    channelRef.current
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        async (payload: any) => {
+          console.log('[MessagesTab] New mission created:', payload);
           
-          if (error) throw error;
-        }
-        setNotificationsEnabled(false);
-        toast({
-          title: "Notifications désactivées",
-          description: "Vous ne recevrez plus de notifications push",
-        });
-      } else {
-        // Activer les notifications
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const { data: { vapidPublicKey } } = await supabase.functions.invoke('get-vapid-public-key');
-          
-          if (!vapidPublicKey) {
-            throw new Error('VAPID public key not found');
-          }
-
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: vapidPublicKey
-          });
-
-          // Sauvegarder dans la base de données
-          const { error } = await supabase
-            .from('push_subscriptions')
-            .insert({
-              interpreter_id: (await supabase.auth.getUser()).data.user?.id,
-              endpoint: subscription.endpoint,
-              p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
-              auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
-              user_agent: navigator.userAgent
+          if (payload.new) {
+            const mission = payload.new;
+            const isImmediate = mission.mission_type === 'immediate';
+            
+            toast({
+              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+              variant: isImmediate ? "destructive" : "default",
+              duration: 10000,
             });
 
-          if (error) throw error;
+            if (soundEnabled) {
+              try {
+                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
+                await playNotificationSound(mission.mission_type);
+              } catch (error) {
+                console.error('[MessagesTab] Error playing sound:', error);
+              }
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[MessagesTab] Subscription status:', status);
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[MessagesTab] Successfully subscribed to mission updates');
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[MessagesTab] Channel error, will retry in 5s');
+          if (cleanupTimeoutRef.current) {
+            clearTimeout(cleanupTimeoutRef.current);
+          }
+          cleanupTimeoutRef.current = setTimeout(() => {
+            setupRealtimeSubscription();
+          }, 5000);
+        }
+      });
+  };
 
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      console.log('[MessagesTab] Tab became visible, refreshing subscription');
+      setupRealtimeSubscription();
+    }
+  };
+
+  useEffect(() => {
+    console.log('[MessagesTab] Component mounted');
+    setupRealtimeSubscription();
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup function
+    return () => {
+      console.log('[MessagesTab] Component unmounting, cleaning up');
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      if (cleanupTimeoutRef.current) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+      
+      if (channelRef.current) {
+        console.log('[MessagesTab] Removing channel subscription');
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, []); // Empty dependency array since we want this to run once on mount
+
+  const toggleNotifications = async () => {
+    try {
+      if (notificationsEnabled) {
+        const success = await unsubscribeFromPushNotifications();
+        if (success) {
+          setNotificationsEnabled(false);
+        }
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+        const success = await subscribeToPushNotifications(user.id);
+        if (success) {
           setNotificationsEnabled(true);
-          toast({
-            title: "Notifications activées",
-            description: "Vous recevrez désormais des notifications push",
-          });
-        } else {
-          toast({
-            title: "Permission refusée",
-            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
-            variant: "destructive",
-          });
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('[MessagesTab] Error toggling notifications:', error);
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue",
         variant: "destructive",
       });
-    }
-  };
-
-  const initializeSound = () => {
-    if (!soundInitialized) {
-      console.log('[MessagesTab] Initializing sounds...');
-      try {
-        // Create and play a silent buffer to enable audio
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        setSoundInitialized(true);
-        
-        // Force preload the notification sounds
-        playNotificationSound('immediate', true).catch(console.error);
-        playNotificationSound('scheduled', true).catch(console.error);
-        
-        console.log('[MessagesTab] Sounds initialized successfully');
-      } catch (error) {
-        console.error('[MessagesTab] Error initializing sounds:', error);
-      }
     }
   };
 
@@ -232,79 +214,6 @@ export const MessagesTab = () => {
       document.removeEventListener('touchstart', handleUserInteraction);
     };
   }, []);
-
-  useEffect(() => {
-    console.log('[MessagesTab] Setting up realtime subscription...');
-    const channel = supabase
-      .channel('realtime-mission-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        async (payload: any) => {
-          console.log('[MessagesTab] New mission created:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const mission = payload.new as any;
-            
-            if (!mission) {
-              console.error('[MessagesTab] Invalid mission payload');
-              return;
-            }
-
-            const isImmediate = mission.mission_type === 'immediate';
-            
-            console.log('[MessagesTab] Showing toast notification');
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
-
-            if (soundEnabled) {
-              try {
-                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
-                await playNotificationSound(mission.mission_type);
-              } catch (error) {
-                console.error('[MessagesTab] Error playing sound:', error);
-                // Try to reinitialize sound on error
-                initializeSound();
-                try {
-                  await playNotificationSound(mission.mission_type);
-                } catch (retryError) {
-                  console.error('[MessagesTab] Retry failed:', retryError);
-                }
-              }
-            }
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MessagesTab] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MessagesTab] Successfully subscribed to mission updates');
-        }
-        
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MessagesTab] Error subscribing to mission updates');
-          toast({
-            title: "Erreur",
-            description: "Impossible de recevoir les mises à jour en temps réel",
-            variant: "destructive",
-          });
-        }
-      });
-
-    return () => {
-      console.log('[MessagesTab] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [soundEnabled, toast, isMobile]);
 
   return (
     <div className={cn(
