@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut, X, Key } from "lucide-react";
+import { Search, LogOut, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +17,6 @@ import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
 import { RealtimeChannel } from "@supabase/supabase-js";
-import { generateAndStoreVapidKeys } from "@/lib/generateVapidKeys";
 
 interface Interpreter {
   id: string;
@@ -82,24 +81,6 @@ export const AdminDashboard = () => {
       toast({
         title: "Erreur",
         description: "Impossible de charger la liste des interprètes",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleGenerateVapidKeys = async () => {
-    try {
-      const result = await generateAndStoreVapidKeys();
-      console.log('VAPID keys generated:', result);
-      toast({
-        title: "Succès",
-        description: "Nouvelles clés VAPID générées et stockées avec succès",
-      });
-    } catch (error) {
-      console.error('Error generating VAPID keys:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de générer les nouvelles clés VAPID",
         variant: "destructive",
       });
     }
@@ -279,14 +260,6 @@ export const AdminDashboard = () => {
                 <TabsTrigger value="users">Utilisateurs</TabsTrigger>
                 <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
               </TabsList>
-              <Button 
-                onClick={handleGenerateVapidKeys}
-                variant="outline"
-                className="gap-2"
-              >
-                <Key className="h-4 w-4" />
-                Regénérer les clés VAPID
-              </Button>
             </div>
             <Button 
               variant="outline" 
@@ -418,69 +391,23 @@ export const AdminDashboard = () => {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {interpreters
-                  .filter(interpreter => {
-                    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-                    const matchesName = nameFilter === "" || 
-                      `${interpreter.first_name} ${interpreter.last_name}`
-                        .toLowerCase()
-                        .includes(nameFilter.toLowerCase());
-                    
-                    const matchesSourceLanguage = sourceLanguageFilter === "all" || 
-                      interpreter.languages.some(lang => {
-                        const [source] = lang.split(" → ");
-                        return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
-                      });
-
-                    const matchesTargetLanguage = targetLanguageFilter === "all" || 
-                      interpreter.languages.some(lang => {
-                        const [, target] = lang.split(" → ");
-                        return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
-                      });
-
-                    const matchesPhone = phoneFilter === "" || 
-                      (interpreter.phone_number && 
-                       interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
-
-                    const matchesBirthCountry = birthCountryFilter === "all" ||
-                      (interpreter.birth_country === birthCountryFilter);
-
-                    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
-                      interpreter.employment_status === employmentStatusFilter;
-
-                    return matchesStatus && 
-                           matchesName && 
-                           matchesSourceLanguage && 
-                           matchesTargetLanguage && 
-                           matchesPhone && 
-                           matchesBirthCountry &&
-                           matchesEmploymentStatus;
-                  })
-                  .sort((a, b) => {
-                    if (rateSort === "rate-asc") {
-                      const rateA = (a.tarif_15min ?? 0);
-                      const rateB = (b.tarif_15min ?? 0);
-                      return rateA - rateB;
-                    }
-                    return 0;
-                  })
-                  .map((interpreter) => (
-                    <InterpreterCard
-                      key={interpreter.id}
-                      interpreter={{
-                        id: interpreter.id,
-                        name: `${interpreter.first_name} ${interpreter.last_name}`,
-                        status: interpreter.status || "unavailable",
-                        employment_status: interpreter.employment_status,
-                        languages: interpreter.languages,
-                        tarif_15min: interpreter.tarif_15min,
-                        tarif_5min: interpreter.tarif_5min,
-                        phone_number: interpreter.phone_number,
-                        next_mission_start: interpreter.next_mission_start,
-                        next_mission_duration: interpreter.next_mission_duration,
-                      }}
-                    />
-                  ))}
+                {filteredInterpreters.map((interpreter) => (
+                  <InterpreterCard
+                    key={interpreter.id}
+                    interpreter={{
+                      id: interpreter.id,
+                      name: `${interpreter.first_name} ${interpreter.last_name}`,
+                      status: interpreter.status || "unavailable",
+                      employment_status: interpreter.employment_status,
+                      languages: interpreter.languages,
+                      tarif_15min: interpreter.tarif_15min,
+                      tarif_5min: interpreter.tarif_5min,
+                      phone_number: interpreter.phone_number,
+                      next_mission_start: interpreter.next_mission_start,
+                      next_mission_duration: interpreter.next_mission_duration,
+                    }}
+                  />
+                ))}
               </div>
             </div>
           </TabsContent>
