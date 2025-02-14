@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { validateVapidKeys } from "./validateVapidKeys";
 
 export async function generateAndStoreVapidKeys() {
   try {
