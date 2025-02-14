@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'npm:@supabase/supabase-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,83 +8,63 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      headers: { ...corsHeaders }
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('[VAPID] Starting key validation');
-    
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    // Get the VAPID keys from environment variables
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
-    // Get the current active VAPID key
-    const { data: activeKey, error: keyError } = await supabaseAdmin
-      .from('vapid_keys')
-      .select('public_key, private_key')
-      .eq('is_active', true)
-      .single();
-
-    if (keyError) {
-      console.error('[VAPID] Error fetching VAPID key:', keyError);
-      throw new Error('Failed to fetch VAPID key');
-    }
-
-    if (!activeKey) {
-      console.log('[VAPID] No active VAPID key found');
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: 'No active VAPID key found' 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404
-        }
-      );
-    }
-
-    // Validate key format
-    const isValidFormat = (key: string) => /^[A-Za-z0-9\-_]+$/.test(key);
-    const publicKeyValid = isValidFormat(activeKey.public_key);
-    const privateKeyValid = isValidFormat(activeKey.private_key);
-
-    // Log validation results
-    console.log('[VAPID] Validation results:', {
-      publicKeyValid,
-      privateKeyValid,
-      publicKeyLength: activeKey.public_key.length,
-      privateKeyLength: activeKey.private_key.length
+    console.log('[VAPID] Validating keys:', {
+      publicKeyLength: vapidPublicKey?.length,
+      privateKeyLength: vapidPrivateKey?.length
     });
 
+    // Check if keys are present
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('VAPID keys are not set in environment variables');
+    }
+
+    // Validate base64url format (only contains A-Z, a-z, 0-9, -, _)
+    const isValidBase64Url = (str: string) => /^[A-Za-z0-9\-_]+$/.test(str);
+
+    if (!isValidBase64Url(vapidPublicKey) || !isValidBase64Url(vapidPrivateKey)) {
+      throw new Error('VAPID keys are not in valid base64url format');
+    }
+
+    // Additional length validation (VAPID keys should be around 87-88 characters for public, 43-44 for private)
+    if (vapidPublicKey.length < 85 || vapidPublicKey.length > 90) {
+      throw new Error('VAPID public key has invalid length');
+    }
+
+    if (vapidPrivateKey.length < 40 || vapidPrivateKey.length > 45) {
+      throw new Error('VAPID private key has invalid length');
+    }
+
+    console.log('[VAPID] Keys validated successfully');
+
     return new Response(
-      JSON.stringify({
-        valid: publicKeyValid && privateKeyValid,
-        publicKeyValid,
-        privateKeyValid,
-        details: {
-          publicKey: publicKeyValid ? 'valid' : 'invalid format',
-          privateKey: privateKeyValid ? 'valid' : 'invalid format'
-        }
+      JSON.stringify({ 
+        valid: true,
+        message: 'VAPID keys are valid'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+        status: 200 
       }
     );
   } catch (error) {
-    console.error('[VAPID] Error validating VAPID key:', error);
+    console.error('[VAPID] Validation error:', error);
+
     return new Response(
       JSON.stringify({ 
-        valid: false, 
+        valid: false,
         error: error.message 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 400 
       }
     );
   }
