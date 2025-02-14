@@ -477,6 +477,42 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions_backup: {
+        Row: {
+          created_at: string | null
+          fcm_token: string | null
+          id: string | null
+          interpreter_id: string | null
+          last_successful_push: string | null
+          platform: string | null
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fcm_token?: string | null
+          id?: string | null
+          interpreter_id?: string | null
+          last_successful_push?: string | null
+          platform?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fcm_token?: string | null
+          id?: string | null
+          interpreter_id?: string | null
+          last_successful_push?: string | null
+          platform?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       secrets: {
         Row: {
           created_at: string
