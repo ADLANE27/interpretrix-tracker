@@ -1,19 +1,24 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 // Utility to safely encode binary data to base64url format
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   try {
-    // Convert ArrayBuffer to Uint8Array
-    const bytes = new Uint8Array(buffer);
-    // Create binary string
-    const binaryString = String.fromCharCode.apply(null, Array.from(bytes));
-    // Base64 encode and convert to base64url format
-    return btoa(binaryString)
+    // Convert ArrayBuffer to base64 using a more reliable method
+    const uint8Array = new Uint8Array(buffer);
+    const numbers = uint8Array;
+    const length = numbers.length;
+    const strings = new Array(length);
+    for (let i = 0; i < length; i++) {
+      strings[i] = String.fromCharCode(numbers[i]);
+    }
+    const base64 = btoa(strings.join(''));
+    
+    // Convert to base64url format
+    return base64
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
-      .replace(/=+$/, '');
+      .replace(/=/g, '');
   } catch (error) {
     console.error('[Push] Error in arrayBufferToBase64:', error);
     throw new Error('Failed to encode binary data');
@@ -23,23 +28,30 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 // Utility to convert a base64url string to Uint8Array
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   try {
-    // Convert base64url to regular base64
-    const base64 = base64String
+    // Add missing padding
+    const base64Regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+    let base64 = base64String
       .replace(/-/g, '+')
       .replace(/_/g, '/');
-
+    
     // Add padding if needed
-    const paddedBase64 = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+    while (base64.length % 4 !== 0) {
+      base64 += '=';
+    }
+
+    // Validate base64 string
+    if (!base64Regex.test(base64)) {
+      throw new Error('Invalid base64 format');
+    }
 
     // Decode base64
-    const rawData = atob(paddedBase64);
-    
-    // Convert to Uint8Array
+    const rawData = atob(base64);
     const outputArray = new Uint8Array(rawData.length);
+
     for (let i = 0; i < rawData.length; ++i) {
       outputArray[i] = rawData.charCodeAt(i);
     }
-    
+
     return outputArray;
   } catch (error) {
     console.error('[Push] Error in urlBase64ToUint8Array:', error);
