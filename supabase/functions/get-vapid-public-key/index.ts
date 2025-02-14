@@ -1,12 +1,10 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'npm:@supabase/supabase-js';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 // Enhanced CORS headers for maximum compatibility
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -47,71 +45,25 @@ serve(async (req) => {
 
   try {
     // Validate environment variables early
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('[VAPID] Missing required environment variables');
-      throw new Error('Server configuration error');
-    }
-
-    // Initialize Supabase client with retry mechanism
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // Multiple sources strategy with fallbacks
-    let vapidPublicKey: string | null = null;
-    let source: string = '';
-
-    try {
-      // 1. Try secrets table first
-      console.log('[VAPID] Attempting to fetch from secrets table...');
-      const { data: secretData, error: secretError } = await retryOperation(async () => 
-        await supabaseAdmin
-          .from('secrets')
-          .select('value')
-          .eq('name', 'VAPID_PUBLIC_KEY')
-          .single()
-      );
-
-      if (!secretError && secretData?.value) {
-        vapidPublicKey = secretData.value;
-        source = 'secrets';
-        console.log('[VAPID] Successfully retrieved from secrets table');
-      } else {
-        console.log('[VAPID] Not found in secrets table, checking environment...');
-      }
-    } catch (dbError) {
-      console.error('[VAPID] Database error:', dbError);
-    }
-
-    // 2. Try environment variable as fallback
     if (!vapidPublicKey) {
-      vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || null;
-      if (vapidPublicKey) {
-        source = 'environment';
-        console.log('[VAPID] Retrieved from environment variable');
-      }
-    }
-
-    // Final validation
-    if (!vapidPublicKey) {
-      console.error('[VAPID] Public key not found in any source');
+      console.error('[VAPID] Missing VAPID_PUBLIC_KEY');
       throw new Error('VAPID public key not configured');
     }
 
     if (!isValidVapidKey(vapidPublicKey)) {
-      console.error('[VAPID] Invalid key format from source:', source);
+      console.error('[VAPID] Invalid key format');
       throw new Error('Invalid VAPID public key format');
     }
 
-    // Success response with detailed metadata
-    console.log('[VAPID] Successfully retrieved public key from:', source);
+    // Success response with metadata
+    console.log('[VAPID] Successfully retrieved public key');
     
     return new Response(
       JSON.stringify({
         vapidPublicKey,
         metadata: {
-          source,
           timestamp: new Date().toISOString(),
           keyLength: vapidPublicKey.length,
           isValid: true
@@ -139,8 +91,6 @@ serve(async (req) => {
         timestamp: new Date().toISOString(),
         debug: {
           hasEnvVar: !!Deno.env.get('VAPID_PUBLIC_KEY'),
-          hasSupabaseUrl: !!Deno.env.get('SUPABASE_URL'),
-          hasServiceRole: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
           stack: error.stack
         }
       }),
