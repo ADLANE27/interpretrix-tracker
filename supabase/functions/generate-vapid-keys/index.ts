@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import webPush from 'npm:web-push';
+import { createClient } from 'npm:@supabase/supabase-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[VAPID] Generating new VAPID keys');
     const vapidKeys = webPush.generateVAPIDKeys();
     
-    // Store the keys in Supabase secrets
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -23,6 +24,34 @@ serve(async (req) => {
       throw new Error('Missing configuration');
     }
 
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // First, deactivate any existing VAPID keys
+    const { error: updateError } = await supabase
+      .from('vapid_keys')
+      .update({ is_active: false })
+      .eq('is_active', true);
+
+    if (updateError) {
+      console.error('[VAPID] Error deactivating old keys:', updateError);
+      throw updateError;
+    }
+
+    // Insert new VAPID keys
+    const { error: insertError } = await supabase
+      .from('vapid_keys')
+      .insert({
+        public_key: vapidKeys.publicKey,
+        private_key: vapidKeys.privateKey,
+        is_active: true
+      });
+
+    if (insertError) {
+      console.error('[VAPID] Error inserting new keys:', insertError);
+      throw insertError;
+    }
+
+    // Store keys in Supabase secrets for edge functions
     const secretsResponse = await fetch(`${supabaseUrl}/rest/v1/secrets`, {
       method: 'POST',
       headers: {
@@ -37,13 +66,18 @@ serve(async (req) => {
     });
 
     if (!secretsResponse.ok) {
-      throw new Error('Failed to store VAPID keys');
+      throw new Error('Failed to store VAPID keys in secrets');
     }
+
+    console.log('[VAPID] Successfully generated and stored new VAPID keys');
 
     return new Response(
       JSON.stringify({ 
         publicKey: vapidKeys.publicKey,
-        privateKey: vapidKeys.privateKey 
+        metadata: {
+          timestamp: new Date().toISOString(),
+          success: true
+        }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -51,6 +85,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error('[VAPID] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

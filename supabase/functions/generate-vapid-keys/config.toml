@@ -1,1 +1,4 @@
+
 project_id = "bblpiatmtnlhnbavhkau"
+[functions.generate-vapid-keys]
+verify_jwt = true
