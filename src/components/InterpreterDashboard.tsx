@@ -467,10 +467,20 @@ export const InterpreterDashboard = () => {
                 <Button 
                   variant={notificationsEnabled ? "default" : "outline"}
                   onClick={toggleNotifications}
-                  className="text-sm"
+                  className={`text-sm relative pl-11 pr-4 transition-all duration-200 ${
+                    notificationsEnabled 
+                      ? 'bg-primary hover:bg-primary/90' 
+                      : 'bg-secondary/20 hover:bg-secondary/30'
+                  }`}
                 >
-                  <Bell className={`w-4 h-4 mr-2 ${notificationsEnabled ? 'text-white' : ''}`} />
-                  {notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                  <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
+                    notificationsEnabled ? 'bg-white' : 'bg-gray-400'
+                  }`}>
+                    <Bell className={`w-4 h-4 ${
+                      notificationsEnabled ? 'text-primary' : 'text-gray-600'
+                    }`} />
+                  </span>
+                  {notificationsEnabled ? "Notifications activées" : "Notifications désactivées"}
                 </Button>
                 <ThemeToggle />
                 <HowToUseGuide 
