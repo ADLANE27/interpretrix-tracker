@@ -18,17 +18,18 @@ serve(async (req) => {
   try {
     console.log('[VAPID] Getting public key');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // First try getting from environment variable
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
 
-    if (!supabaseUrl || !supabaseKey || !vapidPublicKey) {
-      console.error('[VAPID] Missing environment variables:', {
-        hasUrl: !!supabaseUrl,
-        hasKey: !!supabaseKey,
-        hasVapidKey: !!vapidPublicKey
-      });
-      throw new Error('Missing required environment variables');
+    if (!vapidPublicKey) {
+      console.error('[VAPID] Public key not found in environment');
+      throw new Error('VAPID public key not configured');
+    }
+
+    // Validate the key format
+    if (!/^[A-Za-z0-9\-_]+$/.test(vapidPublicKey)) {
+      console.error('[VAPID] Invalid public key format');
+      throw new Error('Invalid VAPID public key format');
     }
 
     console.log('[VAPID] Successfully retrieved public key');

@@ -15,6 +15,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('[VAPID] Starting key validation');
+    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -28,11 +30,12 @@ serve(async (req) => {
       .single();
 
     if (keyError) {
-      console.error('Error fetching VAPID key:', keyError);
+      console.error('[VAPID] Error fetching VAPID key:', keyError);
       throw new Error('Failed to fetch VAPID key');
     }
 
     if (!activeKey) {
+      console.log('[VAPID] No active VAPID key found');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -50,6 +53,14 @@ serve(async (req) => {
     const publicKeyValid = isValidFormat(activeKey.public_key);
     const privateKeyValid = isValidFormat(activeKey.private_key);
 
+    // Log validation results
+    console.log('[VAPID] Validation results:', {
+      publicKeyValid,
+      privateKeyValid,
+      publicKeyLength: activeKey.public_key.length,
+      privateKeyLength: activeKey.private_key.length
+    });
+
     return new Response(
       JSON.stringify({
         valid: publicKeyValid && privateKeyValid,
@@ -66,7 +77,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error validating VAPID key:', error);
+    console.error('[VAPID] Error validating VAPID key:', error);
     return new Response(
       JSON.stringify({ 
         valid: false, 

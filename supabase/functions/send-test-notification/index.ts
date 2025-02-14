@@ -27,25 +27,29 @@ serve(async (req) => {
       throw new Error('Invalid request body');
     }
 
+    if (!interpreterId) {
+      throw new Error('Interpreter ID is required');
+    }
+
     console.log('[Test Notification] Sending test notification to:', interpreterId);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing configuration');
+      throw new Error('Missing Supabase configuration');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Call send-push-notification with standardized format
+    // Call send-push-notification with test notification data
     console.log('[Test Notification] Invoking send-push-notification function');
     
     const { data, error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         interpreterIds: [interpreterId],
-        title: '🔔 Test de notification',
-        body: 'Si vous voyez cette notification, tout fonctionne correctement !',
+        title: '🔔 Test des notifications',
+        body: 'Bravo ! Les notifications sont maintenant activées sur votre appareil.',
         data: { 
           type: 'test',
           timestamp: new Date().toISOString()
