@@ -23,6 +23,7 @@ export const useSubscriptions = (
   const errorCountRef = useRef(0);
   const initialDelayRef = useRef<NodeJS.Timeout>();
   const isSubscribingRef = useRef(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const handleSubscriptionError = () => {
     errorCountRef.current += 1;
@@ -40,12 +41,15 @@ export const useSubscriptions = (
   };
 
   const subscribeToMessages = () => {
-    if (isSubscribingRef.current) return;
-    isSubscribingRef.current = true;
+    if (isSubscribingRef.current || channelRef.current) {
+      console.log('[Chat] Already subscribed or subscribing, skipping.');
+      return;
+    }
 
+    isSubscribingRef.current = true;
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
-    const channel = supabase
+    channelRef.current = supabase
       .channel(`messages:${channelId}`)
       .on(
         'postgres_changes',
@@ -79,9 +83,9 @@ export const useSubscriptions = (
         }
       });
 
-    document.addEventListener('visibilitychange', () => handleVisibilityChange(channel));
+    document.addEventListener('visibilitychange', () => handleVisibilityChange(channelRef.current!));
 
-    return channel;
+    return channelRef.current;
   };
 
   const subscribeToMentions = () => {
@@ -116,12 +120,30 @@ export const useSubscriptions = (
 
   // Cleanup function
   useEffect(() => {
+    if (initialDelayRef.current) {
+      clearTimeout(initialDelayRef.current);
+    }
+
+    // Initial subscription
+    const messageChannel = subscribeToMessages();
+    const mentionChannel = subscribeToMentions();
+
+    // Cleanup on unmount
     return () => {
+      console.log('[Chat] Cleaning up subscriptions');
+      if (messageChannel) {
+        supabase.removeChannel(messageChannel);
+      }
+      if (mentionChannel) {
+        supabase.removeChannel(mentionChannel);
+      }
       if (initialDelayRef.current) {
         clearTimeout(initialDelayRef.current);
       }
+      channelRef.current = null;
+      isSubscribingRef.current = false;
     };
-  }, []);
+  }, [channelId]); // Only re-run if channelId changes
 
   return {
     handleSubscriptionError,
