@@ -51,22 +51,19 @@ serve(async (req) => {
       throw insertError;
     }
 
-    // Store keys in Supabase secrets for edge functions
-    const secretsResponse = await fetch(`${supabaseUrl}/rest/v1/secrets`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify([
+    // Store keys in Supabase secrets
+    const { error: secretsError } = await supabase
+      .from('secrets')
+      .insert([
         { name: 'VAPID_PUBLIC_KEY', value: vapidKeys.publicKey },
         { name: 'VAPID_PRIVATE_KEY', value: vapidKeys.privateKey }
       ])
-    });
+      .onConflict('name')
+      .merge();
 
-    if (!secretsResponse.ok) {
-      throw new Error('Failed to store VAPID keys in secrets');
+    if (secretsError) {
+      console.error('[VAPID] Error storing secrets:', secretsError);
+      throw secretsError;
     }
 
     console.log('[VAPID] Successfully generated and stored new VAPID keys');
@@ -87,7 +84,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[VAPID] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        errorCode: 'VAPID_KEY_ERROR',
+        details: 'Error generating or storing VAPID keys'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
