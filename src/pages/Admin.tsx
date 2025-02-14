@@ -247,7 +247,7 @@ const Admin = () => {
                 </Alert>
               )}
               
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={setupVapidKeys}
                   disabled={isGenerating}
@@ -266,7 +266,7 @@ const Admin = () => {
                   )}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={validateVapidKeys}
                   disabled={isValidating}
                   className="flex items-center gap-2"
