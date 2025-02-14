@@ -8,7 +8,7 @@ import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, RotateCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RotateCw, Copy } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Admin = () => {
@@ -16,6 +16,10 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [generatedKeys, setGeneratedKeys] = useState<{
+    publicKey: string;
+    privateKey: string;
+  } | null>(null);
   const [vapidStatus, setVapidStatus] = useState<{
     isValid: boolean;
     errorMessage?: string;
@@ -56,11 +60,28 @@ const Admin = () => {
     }
   };
 
+  const copyToClipboard = async (text: string, description: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copié !",
+        description: `${description} copié dans le presse-papiers`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de copier dans le presse-papiers",
+        variant: "destructive",
+      });
+    }
+  };
+
   const setupVapidKeys = async () => {
     try {
       setIsGenerating(true);
       const keys = await generateAndStoreVapidKeys();
       console.log('[VAPID] Keys generated successfully:', keys);
+      setGeneratedKeys(keys);
       toast({
         title: "Succès",
         description: "Les clés VAPID ont été générées avec succès",
@@ -76,30 +97,6 @@ const Admin = () => {
       });
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const sendTestNotification = async (interpreterId: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('send-test-notification', {
-        body: { interpreterId }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Notification envoyée",
-        description: "La notification de test a été envoyée avec succès",
-      });
-
-      console.log('[Push] Test notification sent:', data);
-    } catch (error) {
-      console.error('[Push] Error sending test notification:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer la notification de test",
-        variant: "destructive",
-      });
     }
   };
 
@@ -169,6 +166,41 @@ const Admin = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {generatedKeys && (
+                <Alert className="bg-green-50 dark:bg-green-950 mb-4">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <AlertTitle>Nouvelles clés VAPID générées</AlertTitle>
+                  <AlertDescription className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
+                      <div className="flex-1">
+                        <p className="font-semibold mb-1">Clé publique:</p>
+                        <p className="text-sm break-all">{generatedKeys.publicKey}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyToClipboard(generatedKeys.publicKey, "Clé publique")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
+                      <div className="flex-1">
+                        <p className="font-semibold mb-1">Clé privée:</p>
+                        <p className="text-sm break-all">{generatedKeys.privateKey}</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => copyToClipboard(generatedKeys.privateKey, "Clé privée")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {vapidStatus && (
                 <Alert className={`${vapidStatus.isValid ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
                   {vapidStatus.isValid ? (
@@ -183,12 +215,6 @@ const Admin = () => {
                     {vapidStatus.isValid 
                       ? 'Les notifications push peuvent être utilisées.'
                       : vapidStatus.errorMessage || 'Les clés VAPID ne sont pas valides.'}
-                    {vapidStatus.details && (
-                      <ul className="mt-2 list-disc list-inside">
-                        <li>Clé publique : {vapidStatus.details.publicKey}</li>
-                        <li>Clé privée : {vapidStatus.details.privateKey}</li>
-                      </ul>
-                    )}
                   </AlertDescription>
                 </Alert>
               )}
@@ -229,4 +255,3 @@ const Admin = () => {
 };
 
 export default Admin;
-
