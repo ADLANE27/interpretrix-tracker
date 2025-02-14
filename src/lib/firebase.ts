@@ -59,3 +59,6 @@ export const onMessageListener = () =>
 
 // Export the Firebase app instance
 export const firebaseApp = app;
+
+// Export messaging instance
+export { messaging };
