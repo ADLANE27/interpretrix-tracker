@@ -443,39 +443,72 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
-          auth: string
           created_at: string
-          endpoint: string
+          fcm_token: string | null
           id: string
           interpreter_id: string
           last_successful_push: string | null
-          p256dh: string
+          platform: string | null
           status: Database["public"]["Enums"]["subscription_status"] | null
           updated_at: string
           user_agent: string | null
         }
         Insert: {
-          auth: string
           created_at?: string
-          endpoint: string
+          fcm_token?: string | null
           id?: string
           interpreter_id: string
           last_successful_push?: string | null
-          p256dh: string
+          platform?: string | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
           updated_at?: string
           user_agent?: string | null
         }
         Update: {
-          auth?: string
           created_at?: string
-          endpoint?: string
+          fcm_token?: string | null
           id?: string
           interpreter_id?: string
           last_successful_push?: string | null
-          p256dh?: string
+          platform?: string | null
           status?: Database["public"]["Enums"]["subscription_status"] | null
           updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions_backup: {
+        Row: {
+          created_at: string | null
+          fcm_token: string | null
+          id: string | null
+          interpreter_id: string | null
+          last_successful_push: string | null
+          platform: string | null
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fcm_token?: string | null
+          id?: string | null
+          interpreter_id?: string | null
+          last_successful_push?: string | null
+          platform?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fcm_token?: string | null
+          id?: string | null
+          interpreter_id?: string | null
+          last_successful_push?: string | null
+          platform?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          updated_at?: string | null
           user_agent?: string | null
         }
         Relationships: []
