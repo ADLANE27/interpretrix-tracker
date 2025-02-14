@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { requestNotificationPermission, showNotification } from "@/utils/notifications";
+import { playNotificationSound } from "@/utils/notificationSounds";
 
 interface Profile {
   id: string;
@@ -404,13 +405,18 @@ export const InterpreterDashboard = () => {
 
             if (mission) {
               const isImmediate = mission.mission_type === 'immediate';
+              
+              // Play sound notification
+              await playNotificationSound(isImmediate ? 'immediate' : 'scheduled');
+              
+              // Show browser notification
               showNotification(
                 isImmediate ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée',
                 {
                   body: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
                   icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png',
                   requireInteraction: isImmediate,
-                  silent: false
+                  silent: true // We handle sound separately with playNotificationSound
                 }
               );
             }
