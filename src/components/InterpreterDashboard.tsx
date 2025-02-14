@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,8 +18,8 @@ import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
+import { subscribeToPushNotifications } from "@/lib/pushNotifications";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
-import { subscribeToPushNotifications } from "@/lib/notificationUtils";
 
 interface Profile {
   id: string;
