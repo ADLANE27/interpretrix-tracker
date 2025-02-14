@@ -54,12 +54,12 @@ export const isInterpreterAvailableForScheduledMission = async (
   });
 
   try {
-    // Utiliser une seule condition pour le statut avec or
+    // Check active missions (accepted or in_progress)
     const { data: existingMissions, error: missionsError } = await supabase
       .from('interpretation_missions')
       .select('id, scheduled_start_time, scheduled_end_time, mission_type, status')
       .eq('assigned_interpreter_id', interpreterId)
-      .not('status', 'eq', 'deleted');
+      .in('status', ['accepted', 'in_progress']);
 
     if (missionsError) {
       console.error('[missionUtils] Error checking existing missions:', missionsError);
@@ -68,20 +68,9 @@ export const isInterpreterAvailableForScheduledMission = async (
 
     console.log('[missionUtils] Found existing missions:', existingMissions);
 
-    // Filtrer les missions actives après avoir récupéré les données
-    const activeMissions = existingMissions?.filter(mission => 
-      ['accepted', 'in_progress'].includes(mission.status)
-    ) || [];
-
-    if (activeMissions.length === 0) {
-      console.log('[missionUtils] No active missions found, interpreter is available');
-      return true;
-    }
-
-    // Check for overlap with any existing active missions
-    const hasConflict = activeMissions.some(mission => {
+    // Check for overlap with existing missions
+    const hasConflict = existingMissions?.some(mission => {
       if (!mission.scheduled_start_time || !mission.scheduled_end_time) {
-        console.log('[missionUtils] Mission missing scheduled times:', mission);
         return false;
       }
 
@@ -104,7 +93,7 @@ export const isInterpreterAvailableForScheduledMission = async (
       return overlap;
     });
 
-    // Check for any pending notifications that might create conflicts
+    // Check for pending notifications that might create conflicts
     const { data: pendingNotifications, error: notificationsError } = await supabase
       .from('mission_notifications')
       .select(`
@@ -118,8 +107,7 @@ export const isInterpreterAvailableForScheduledMission = async (
         )
       `)
       .eq('interpreter_id', interpreterId)
-      .eq('status', 'pending')
-      .not('interpretation_missions.status', 'eq', 'deleted');
+      .eq('status', 'pending');
 
     if (notificationsError) {
       console.error('[missionUtils] Error checking pending notifications:', notificationsError);
