@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from "@/lib/pushNotifications";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -22,10 +24,28 @@ export const MessagesTab = () => {
   const [showChannels, setShowChannels] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundInitialized, setSoundInitialized] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+
+  // Check admin status
+  const { data: userRole } = useQuery({
+    queryKey: ['userRole'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      return data?.role;
+    }
+  });
+
+  const isAdmin = userRole === 'admin';
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const cleanupTimeoutRef = useRef<NodeJS.Timeout>();
@@ -130,6 +150,26 @@ export const MessagesTab = () => {
     };
   }, []); // Empty dependency array since we want this to run once on mount
 
+  const handleChannelSelect = (channelId: string) => {
+    setSelectedChannelId(channelId);
+  };
+
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+    setShowChannels(false);
+  };
+
+  const toggleSound = () => {
+    setSoundEnabled(!soundEnabled);
+    toast({
+      title: soundEnabled ? "Sons désactivés" : "Sons activés",
+      description: soundEnabled 
+        ? "Les notifications sonores ont été désactivées" 
+        : "Les notifications sonores ont été activées",
+      duration: 3000,
+    });
+  };
+
   const toggleNotifications = async () => {
     try {
       if (notificationsEnabled) {
@@ -157,29 +197,6 @@ export const MessagesTab = () => {
     }
   };
 
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-    initializeSound();
-  };
-
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-    setShowChannels(false);
-    initializeSound();
-  };
-
-  const toggleSound = () => {
-    setSoundEnabled(!soundEnabled);
-    initializeSound();
-    toast({
-      title: soundEnabled ? "Sons désactivés" : "Sons activés",
-      description: soundEnabled 
-        ? "Les notifications sonores ont été désactivées" 
-        : "Les notifications sonores ont été activées",
-      duration: 3000,
-    });
-  };
-
   const scrollToBottom = () => {
     const chatContainer = document.querySelector('.chat-messages-container');
     if (chatContainer) {
@@ -195,25 +212,6 @@ export const MessagesTab = () => {
     const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 100;
     setShowScrollButton(!isNearBottom);
   };
-
-  useEffect(() => {
-    console.log('[MessagesTab] Setting up user interaction listeners');
-    const handleUserInteraction = () => {
-      console.log('[MessagesTab] User interaction detected, initializing sound');
-      initializeSound();
-      // Remove event listeners after first interaction
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('touchstart', handleUserInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, []);
 
   return (
     <div className={cn(
