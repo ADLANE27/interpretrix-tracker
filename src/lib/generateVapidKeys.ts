@@ -17,17 +17,16 @@ export async function generateAndStoreVapidKeys() {
       throw error;
     }
 
-    if (!data || !data.publicKey || !data.privateKey) {
+    if (!data || !data.publicKey) {
       console.error('[VAPID] Invalid response:', data);
       throw new Error('Invalid response from key generation service');
     }
 
     // Validate key format
     const isValidFormat = (key: string) => /^[A-Za-z0-9\-_]+$/.test(key);
-    if (!isValidFormat(data.publicKey) || !isValidFormat(data.privateKey)) {
+    if (!isValidFormat(data.publicKey)) {
       console.error('[VAPID] Invalid key format:', {
-        publicKey: data.publicKey,
-        privateKey: '(hidden)'
+        publicKey: data.publicKey
       });
       throw new Error('Generated keys are not in the correct format');
     }
