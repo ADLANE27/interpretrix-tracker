@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -99,16 +98,17 @@ export async function registerPushNotifications() {
     }
 
     // Get VAPID public key
-    const { data: { vapidPublicKey }, error: vapidError } = 
+    const { data: vapidData, error: vapidError } = 
       await supabase.functions.invoke('get-vapid-public-key');
 
-    if (vapidError || !vapidPublicKey) {
+    if (vapidError || !vapidData?.vapidPublicKey) {
       console.error('[Push] Error getting VAPID key:', vapidError);
       throw new Error('Could not get VAPID key');
     }
 
     // Validate VAPID key format
-    if (!isValidBase64Url(vapidPublicKey)) {
+    const isValidFormat = (key: string) => /^[A-Za-z0-9\-_]+$/.test(key);
+    if (!isValidFormat(vapidData.vapidPublicKey)) {
       console.error('[Push] Invalid VAPID key format');
       throw new Error('Invalid VAPID key format');
     }
@@ -130,7 +130,7 @@ export async function registerPushNotifications() {
     try {
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        applicationServerKey: urlBase64ToUint8Array(vapidData.vapidPublicKey)
       });
 
       console.log('[Push] Push subscription obtained');

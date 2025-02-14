@@ -31,7 +31,14 @@ export async function generateAndStoreVapidKeys() {
       throw new Error('Generated keys are not in the correct format');
     }
 
-    console.log('[VAPID] Keys generated successfully');
+    // Validate the generated keys
+    const validationResult = await validateVapidKeys();
+    if (!validationResult.valid) {
+      console.error('[VAPID] Key validation failed:', validationResult);
+      throw new Error('Generated keys failed validation');
+    }
+
+    console.log('[VAPID] Keys generated and validated successfully');
     return data;
   } catch (error) {
     console.error('[VAPID] Error in generateAndStoreVapidKeys:', error);
