@@ -351,6 +351,8 @@ export const InterpreterDashboard = () => {
   }, []);
 
   const toggleNotifications = async () => {
+    console.log('[InterpreterDashboard] Toggle notifications clicked. Current state:', notificationsEnabled);
+    
     if (notificationsEnabled) {
       // Disable notifications
       setNotificationsEnabled(false);
@@ -359,17 +361,36 @@ export const InterpreterDashboard = () => {
         title: "Notifications désactivées",
         description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
       });
+      console.log('[InterpreterDashboard] Notifications disabled');
     } else {
       // Try to enable notifications
       try {
+        console.log('[InterpreterDashboard] Requesting notification permission...');
         const granted = await requestNotificationPermission();
+        console.log('[InterpreterDashboard] Permission result:', granted);
+        
         if (granted) {
           setNotificationsEnabled(true);
           localStorage.setItem('notificationsEnabled', 'true');
+          
+          // Send a test notification
+          showNotification('Test de notification', {
+            body: 'Les notifications sont maintenant activées',
+            icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png'
+          });
+          
           toast({
             title: "Notifications activées",
             description: "Vous recevrez désormais les notifications pour les nouvelles missions",
           });
+          console.log('[InterpreterDashboard] Notifications enabled successfully');
+        } else {
+          toast({
+            title: "Notifications bloquées",
+            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
+            variant: "destructive",
+          });
+          console.log('[InterpreterDashboard] Permission denied by user');
         }
       } catch (error) {
         console.error('[InterpreterDashboard] Error enabling notifications:', error);
