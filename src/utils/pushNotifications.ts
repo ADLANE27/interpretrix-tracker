@@ -1,24 +1,34 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+// Validate base64url string format
+const isValidBase64Url = (str: string): boolean => {
+  return /^[-A-Za-z0-9_]*$/.test(str);
+};
 
 // Utility to safely encode binary data to base64url format
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   try {
-    // Convert ArrayBuffer to base64 using a more reliable method
-    const uint8Array = new Uint8Array(buffer);
-    const numbers = uint8Array;
-    const length = numbers.length;
-    const strings = new Array(length);
-    for (let i = 0; i < length; i++) {
-      strings[i] = String.fromCharCode(numbers[i]);
+    // Create a Uint8Array view of the buffer
+    const view = new Uint8Array(buffer);
+    
+    // Process data in chunks to prevent stack overflow
+    const chunks = [];
+    for (let i = 0; i < view.length; i += 1024) {
+      chunks.push(String.fromCharCode.apply(null, 
+        Array.from(view.subarray(i, i + 1024))
+      ));
     }
-    const base64 = btoa(strings.join(''));
+    
+    // Join chunks and encode as base64
+    const b64 = btoa(chunks.join(''));
     
     // Convert to base64url format
-    return base64
+    return b64
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
-      .replace(/=/g, '');
+      .replace(/=+$/, '');
   } catch (error) {
     console.error('[Push] Error in arrayBufferToBase64:', error);
     throw new Error('Failed to encode binary data');
@@ -28,35 +38,49 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 // Utility to convert a base64url string to Uint8Array
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   try {
-    // Add missing padding
-    const base64Regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
-    let base64 = base64String
+    // Validate input
+    if (!isValidBase64Url(base64String)) {
+      throw new Error('Invalid base64url string format');
+    }
+
+    // Convert from base64url to base64
+    const b64 = base64String
       .replace(/-/g, '+')
       .replace(/_/g, '/');
     
-    // Add padding if needed
-    while (base64.length % 4 !== 0) {
-      base64 += '=';
+    // Add proper padding
+    const padLen = (4 - (b64.length % 4)) % 4;
+    const padded = b64 + '='.repeat(padLen);
+    
+    // Decode base64 to binary string
+    const raw = atob(padded);
+    
+    // Convert to Uint8Array
+    const buffer = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) {
+      buffer[i] = raw.charCodeAt(i);
     }
-
-    // Validate base64 string
-    if (!base64Regex.test(base64)) {
-      throw new Error('Invalid base64 format');
-    }
-
-    // Decode base64
-    const rawData = atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-
-    return outputArray;
+    
+    return buffer;
   } catch (error) {
     console.error('[Push] Error in urlBase64ToUint8Array:', error);
     throw new Error('Invalid base64 string');
   }
+}
+
+// Helper to safely extract subscription keys
+function getSubscriptionKeys(subscription: PushSubscription) {
+  const p256dh = subscription.getKey('p256dh');
+  const auth = subscription.getKey('auth');
+  
+  if (!p256dh || !auth) {
+    throw new Error('Missing required encryption keys');
+  }
+  
+  return {
+    p256dh: arrayBufferToBase64(p256dh),
+    auth: arrayBufferToBase64(auth)
+  };
 }
 
 export async function registerPushNotifications() {
@@ -81,6 +105,12 @@ export async function registerPushNotifications() {
     if (vapidError || !vapidPublicKey) {
       console.error('[Push] Error getting VAPID key:', vapidError);
       throw new Error('Could not get VAPID key');
+    }
+
+    // Validate VAPID key format
+    if (!isValidBase64Url(vapidPublicKey)) {
+      console.error('[Push] Invalid VAPID key format');
+      throw new Error('Invalid VAPID key format');
     }
 
     // Register service worker if not already registered
@@ -113,9 +143,7 @@ export async function registerPushNotifications() {
 
       // Safely encode the subscription keys
       try {
-        const p256dhKey = arrayBufferToBase64(subscription.getKey('p256dh')!);
-        const authKey = arrayBufferToBase64(subscription.getKey('auth')!);
-
+        const keys = getSubscriptionKeys(subscription);
         console.log('[Push] Keys encoded successfully');
 
         // Save subscription to database
@@ -124,8 +152,8 @@ export async function registerPushNotifications() {
           .upsert({
             interpreter_id: user.id,
             endpoint: subscription.endpoint,
-            p256dh: p256dhKey,
-            auth: authKey,
+            p256dh: keys.p256dh,
+            auth: keys.auth,
             user_agent: navigator.userAgent,
             status: 'active'
           }, {
