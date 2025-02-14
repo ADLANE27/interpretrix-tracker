@@ -83,7 +83,8 @@ export const MessagesTab = () => {
           if (payload.new) {
             const mission = payload.new;
             const isImmediate = mission.mission_type === 'immediate';
-            
+
+            // Show toast notification (in-app)
             toast({
               title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
               description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
@@ -91,6 +92,7 @@ export const MessagesTab = () => {
               duration: 10000,
             });
 
+            // Play sound if enabled (in-app)
             if (soundEnabled) {
               try {
                 console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);

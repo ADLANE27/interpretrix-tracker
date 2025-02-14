@@ -27,16 +27,6 @@ self.addEventListener('push', async (event) => {
       renotify: true
     };
 
-    // Play sound based on mission type
-    if (data.data?.mission_type) {
-      const audio = new Audio(
-        data.data.mission_type === 'immediate' 
-          ? '/sounds/immediate-mission.mp3'
-          : '/sounds/scheduled-mission.mp3'
-      );
-      await audio.play().catch(console.error);
-    }
-
     await self.registration.showNotification(
       data.title || 'Nouvelle notification',
       notificationOptions
