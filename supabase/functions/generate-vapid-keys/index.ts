@@ -43,7 +43,8 @@ serve(async (req) => {
       .insert({
         public_key: vapidKeys.publicKey,
         private_key: vapidKeys.privateKey,
-        is_active: true
+        is_active: true,
+        status: 'active'
       });
 
     if (insertError) {
@@ -96,3 +97,4 @@ serve(async (req) => {
     );
   }
 });
+

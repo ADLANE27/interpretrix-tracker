@@ -579,6 +579,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vapid_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          private_key: string
+          public_key: string
+          status: "default" | "valid" | "invalid" | "expired"
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          private_key: string
+          public_key: string
+          status?: "default" | "valid" | "invalid" | "expired"
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          private_key?: string
+          public_key?: string
+          status?: "default" | "valid" | "invalid" | "expired"
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       interpreters_with_next_mission: {
@@ -889,6 +925,7 @@ export type Database = {
         | "mental_health"
         | "financial"
         | "diplomatic"
+      key_status: "active" | "expired" | "revoked"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }
