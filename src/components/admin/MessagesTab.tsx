@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from "@/lib/pushNotifications";
+import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from "@/lib/notificationUtils";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
