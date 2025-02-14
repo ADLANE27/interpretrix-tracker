@@ -362,23 +362,33 @@ export const InterpreterDashboard = () => {
     checkNotificationStatus();
   }, []);
 
-  const enableNotifications = async () => {
-    try {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        setNotificationsEnabled(true);
+  const toggleNotifications = async () => {
+    if (notificationsEnabled) {
+      // Just disable notifications in our app state
+      setNotificationsEnabled(false);
+      toast({
+        title: "Notifications désactivées",
+        description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
+      });
+    } else {
+      // Try to enable notifications
+      try {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          setNotificationsEnabled(true);
+          toast({
+            title: "Notifications activées",
+            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+          });
+        }
+      } catch (error) {
+        console.error('[InterpreterDashboard] Error enabling notifications:', error);
         toast({
-          title: "Notifications activées",
-          description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+          title: "Erreur",
+          description: "Impossible d'activer les notifications",
+          variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error('[InterpreterDashboard] Error enabling notifications:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'activer les notifications",
-        variant: "destructive",
-      });
     }
   };
 
@@ -447,16 +457,14 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-2">
-                {!notificationsEnabled && (
-                  <Button 
-                    variant="outline" 
-                    onClick={enableNotifications}
-                    className="text-sm"
-                  >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Activer les notifications
-                  </Button>
-                )}
+                <Button 
+                  variant={notificationsEnabled ? "default" : "outline"}
+                  onClick={toggleNotifications}
+                  className="text-sm"
+                >
+                  <Bell className={`w-4 h-4 mr-2 ${notificationsEnabled ? 'text-white' : ''}`} />
+                  {notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                </Button>
                 <ThemeToggle />
                 <HowToUseGuide 
                   isOpen={isGuideOpen}
