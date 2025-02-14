@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Mission {
   id: string;
@@ -36,6 +37,7 @@ interface Mission {
     profile_picture_url: string | null;
     status: string;
   };
+  notifications?: MissionNotification[];
 }
 
 interface MissionNotification {
@@ -198,7 +200,7 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
               )}
 
               {/* Display notification statuses if available */}
-              {mission.notifications && (
+              {mission.notifications && mission.notifications.length > 0 && (
                 <div className="mt-2">
                   <h4 className="text-sm font-medium mb-2">Notifications :</h4>
                   <div className="flex flex-wrap gap-2">
@@ -217,7 +219,16 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                           </span>
                         )}
                         {notification.status === "cancelled_system" && (
-                          <AlertCircle className="h-4 w-4 text-yellow-500" title={`Raison : ${notification.cancellation_reason || 'Non spécifiée'}`} />
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Raison : {notification.cancellation_reason || 'Non spécifiée'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         )}
                       </div>
                     ))}
