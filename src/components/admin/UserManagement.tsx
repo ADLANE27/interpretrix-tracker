@@ -61,7 +61,7 @@ const formatInterpreterForDisplay = (interpreter: any) => {
   };
 };
 
-export const UserManagement = () => {
+export const UserManagement = ({ sendTestNotification, isSendingTest }: UserManagementProps) => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
@@ -487,6 +487,8 @@ export const UserManagement = () => {
           setSelectedUserId(userId);
           setIsResetPasswordOpen(true);
         }}
+        onTestNotification={sendTestNotification}
+        isSendingTest={isSendingTest}
       />
 
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>

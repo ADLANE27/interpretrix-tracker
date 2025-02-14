@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { generateAndStoreVapidKeys } from '@/lib/generateVapidKeys';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, RotateCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, RotateCw, Bell } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Admin = () => {
@@ -16,6 +15,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [vapidStatus, setVapidStatus] = useState<{
     isValid: boolean;
     errorMessage?: string;
@@ -81,6 +81,9 @@ const Admin = () => {
 
   const sendTestNotification = async (interpreterId: string) => {
     try {
+      setIsSendingTest(true);
+      console.log('[Push] Sending test notification to interpreter:', interpreterId);
+
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
         body: { interpreterId }
       });
@@ -100,6 +103,8 @@ const Admin = () => {
         description: "Impossible d'envoyer la notification de test",
         variant: "destructive",
       });
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -164,7 +169,8 @@ const Admin = () => {
           <CardHeader>
             <CardTitle>Configuration des notifications push</CardTitle>
             <CardDescription>
-              Gérez les clés VAPID nécessaires pour l'envoi des notifications push
+              Gérez les clés VAPID nécessaires pour l'envoi des notifications push.
+              Une fois configurées, vous pouvez envoyer une notification de test à un interprète depuis la liste des interprètes.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -222,11 +228,10 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        <AdminDashboard />
+        <AdminDashboard sendTestNotification={sendTestNotification} isSendingTest={isSendingTest} />
       </div>
     </div>
   );
 };
 
 export default Admin;
-
