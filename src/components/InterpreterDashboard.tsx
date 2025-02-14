@@ -56,9 +56,11 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    const savedPreference = localStorage.getItem('notificationsEnabled');
+    return savedPreference ? savedPreference === 'true' : false;
+  });
 
-  // Add the connection hook
   useSupabaseConnection();
 
   useEffect(() => {
@@ -338,7 +340,11 @@ export const InterpreterDashboard = () => {
       if (!('Notification' in window)) {
         return;
       }
-      setNotificationsEnabled(Notification.permission === 'granted');
+      const browserPermission = Notification.permission === 'granted';
+      const savedPreference = localStorage.getItem('notificationsEnabled') === 'true';
+      
+      // Only enable if both browser permission is granted AND user preference is true
+      setNotificationsEnabled(browserPermission && savedPreference);
     };
 
     checkNotificationStatus();
@@ -346,8 +352,9 @@ export const InterpreterDashboard = () => {
 
   const toggleNotifications = async () => {
     if (notificationsEnabled) {
-      // Just disable notifications in our app state
+      // Disable notifications
       setNotificationsEnabled(false);
+      localStorage.setItem('notificationsEnabled', 'false');
       toast({
         title: "Notifications désactivées",
         description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
@@ -358,6 +365,7 @@ export const InterpreterDashboard = () => {
         const granted = await requestNotificationPermission();
         if (granted) {
           setNotificationsEnabled(true);
+          localStorage.setItem('notificationsEnabled', 'true');
           toast({
             title: "Notifications activées",
             description: "Vous recevrez désormais les notifications pour les nouvelles missions",
@@ -374,7 +382,6 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  // Add notification handling to realtime subscription
   useEffect(() => {
     if (!profile?.id || !notificationsEnabled) return;
 
