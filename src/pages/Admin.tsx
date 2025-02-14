@@ -79,6 +79,30 @@ const Admin = () => {
     }
   };
 
+  const sendTestNotification = async (interpreterId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-test-notification', {
+        body: { interpreterId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Notification envoyée",
+        description: "La notification de test a été envoyée avec succès",
+      });
+
+      console.log('[Push] Test notification sent:', data);
+    } catch (error) {
+      console.error('[Push] Error sending test notification:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer la notification de test",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
