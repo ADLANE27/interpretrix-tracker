@@ -8,7 +8,7 @@ import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2, RotateCw, Copy } from "lucide-react";
+import { AlertCircle, CheckCircle2, RotateCw, Copy, Key } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Admin = () => {
@@ -19,6 +19,7 @@ const Admin = () => {
   const [generatedKeys, setGeneratedKeys] = useState<{
     publicKey: string;
     privateKey: string;
+    copyInstructions: string;
   } | null>(null);
   const [vapidStatus, setVapidStatus] = useState<{
     isValid: boolean;
@@ -66,6 +67,23 @@ const Admin = () => {
       toast({
         title: "Copié !",
         description: `${description} copié dans le presse-papiers`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de copier dans le presse-papiers",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyFullInstructions = async () => {
+    if (!generatedKeys) return;
+    try {
+      await navigator.clipboard.writeText(generatedKeys.copyInstructions);
+      toast({
+        title: "Instructions copiées !",
+        description: "Les instructions complètes ont été copiées dans le presse-papiers",
       });
     } catch (err) {
       toast({
@@ -168,33 +186,43 @@ const Admin = () => {
             <div className="space-y-4">
               {generatedKeys && (
                 <Alert className="bg-green-50 dark:bg-green-950 mb-4">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <Key className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <AlertTitle>Nouvelles clés VAPID générées</AlertTitle>
-                  <AlertDescription className="mt-2 space-y-2">
+                  <AlertDescription className="mt-2 space-y-4">
                     <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
                       <div className="flex-1">
-                        <p className="font-semibold mb-1">Clé publique:</p>
-                        <p className="text-sm break-all">{generatedKeys.publicKey}</p>
+                        <p className="font-semibold mb-1">VAPID_PUBLIC_KEY:</p>
+                        <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.publicKey}</p>
                       </div>
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => copyToClipboard(generatedKeys.publicKey, "Clé publique")}
+                        onClick={() => copyToClipboard(generatedKeys.publicKey, "VAPID_PUBLIC_KEY")}
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="flex items-center justify-between gap-2 bg-background/50 p-2 rounded">
                       <div className="flex-1">
-                        <p className="font-semibold mb-1">Clé privée:</p>
-                        <p className="text-sm break-all">{generatedKeys.privateKey}</p>
+                        <p className="font-semibold mb-1">VAPID_PRIVATE_KEY:</p>
+                        <p className="text-sm font-mono break-all bg-background/80 p-2 rounded">{generatedKeys.privateKey}</p>
                       </div>
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => copyToClipboard(generatedKeys.privateKey, "Clé privée")}
+                        onClick={() => copyToClipboard(generatedKeys.privateKey, "VAPID_PRIVATE_KEY")}
                       >
                         <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="mt-4">
+                      <Button
+                        variant="secondary"
+                        onClick={copyFullInstructions}
+                        className="w-full flex items-center gap-2"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Copier les instructions complètes
                       </Button>
                     </div>
                   </AlertDescription>
@@ -231,7 +259,10 @@ const Admin = () => {
                       Génération en cours...
                     </>
                   ) : (
-                    'Regénérer les clés VAPID'
+                    <>
+                      <Key className="h-4 w-4" />
+                      Générer nouvelles clés VAPID
+                    </>
                   )}
                 </Button>
                 <Button
