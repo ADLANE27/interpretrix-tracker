@@ -172,16 +172,17 @@ export const MessagesTab = () => {
 
   const toggleNotifications = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       if (notificationsEnabled) {
-        const success = await unsubscribeFromPushNotifications();
+        const success = await unsubscribeFromPushNotifications(user.id);
         if (success) {
           setNotificationsEnabled(false);
         }
       } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error("User not authenticated");
-        }
         const success = await subscribeToPushNotifications(user.id);
         if (success) {
           setNotificationsEnabled(true);
