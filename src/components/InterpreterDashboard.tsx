@@ -13,12 +13,11 @@ import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, Bell } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
-import { subscribeToPushNotifications } from "@/lib/pushNotifications";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 
 interface Profile {
@@ -52,50 +51,13 @@ export const InterpreterDashboard = () => {
   const [activeTab, setActiveTab] = useState("missions");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [notificationPromptShown, setNotificationPromptShown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Ajouter le hook de connexion
+  // Add the connection hook
   useSupabaseConnection();
-
-  useEffect(() => {
-    const checkNotificationStatus = async () => {
-      if (!('Notification' in window) || !profile?.id || notificationPromptShown) {
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        const subscription = await registration.pushManager.getSubscription();
-        if (!subscription && Notification.permission === 'default') {
-          const userChoice = window.confirm(
-            "Souhaitez-vous activer les notifications pour être informé des nouvelles missions et mises à jour importantes ?"
-          );
-          if (userChoice) {
-            try {
-              await subscribeToPushNotifications(profile.id);
-              toast({
-                title: "Notifications activées",
-                description: "Vous recevrez des notifications pour les nouvelles missions",
-              });
-            } catch (error: any) {
-              toast({
-                title: "Erreur",
-                description: error.message || "Impossible d'activer les notifications",
-                variant: "destructive",
-              });
-            }
-          }
-          setNotificationPromptShown(true);
-        }
-      }
-    };
-
-    checkNotificationStatus();
-  }, [profile?.id, notificationPromptShown, toast]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
@@ -369,23 +331,6 @@ export const InterpreterDashboard = () => {
     setIsSheetOpen(false);
   };
 
-  const enablePushNotifications = async (id: string) => {
-    try {
-      await subscribeToPushNotifications(id);
-      toast({
-        title: "Notifications activées",
-        description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-      });
-    } catch (error: any) {
-      console.error('Error enabling notifications:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible d'activer les notifications",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -419,14 +364,6 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => enablePushNotifications(profile.id)}
-                  className="text-sm"
-                >
-                  <Bell className="w-4 h-4 mr-2" />
-                  Activer les notifications
-                </Button>
                 <ThemeToggle />
                 <HowToUseGuide 
                   isOpen={isGuideOpen}
