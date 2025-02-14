@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
@@ -7,13 +7,12 @@ import { CreateChannelDialog } from "./CreateChannelDialog";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Chat } from "@/components/chat/Chat";
-import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX, Bell, BellOff } from "lucide-react";
+import { Maximize2, Minimize2, ArrowDown, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { subscribeToPushNotifications, unsubscribeFromPushNotifications } from "@/lib/pushNotifications";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
@@ -24,7 +23,6 @@ export const MessagesTab = () => {
   const [showChannels, setShowChannels] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -104,53 +102,8 @@ export const MessagesTab = () => {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[MessagesTab] Subscription status:', status);
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[MessagesTab] Successfully subscribed to mission updates');
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[MessagesTab] Channel error, will retry in 5s');
-          if (cleanupTimeoutRef.current) {
-            clearTimeout(cleanupTimeoutRef.current);
-          }
-          cleanupTimeoutRef.current = setTimeout(() => {
-            setupRealtimeSubscription();
-          }, 5000);
-        }
-      });
+      .subscribe();
   };
-
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'visible') {
-      console.log('[MessagesTab] Tab became visible, refreshing subscription');
-      setupRealtimeSubscription();
-    }
-  };
-
-  useEffect(() => {
-    console.log('[MessagesTab] Component mounted');
-    setupRealtimeSubscription();
-
-    // Add visibility change listener
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup function
-    return () => {
-      console.log('[MessagesTab] Component unmounting, cleaning up');
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      if (cleanupTimeoutRef.current) {
-        clearTimeout(cleanupTimeoutRef.current);
-      }
-      
-      if (channelRef.current) {
-        console.log('[MessagesTab] Removing channel subscription');
-        supabase.removeChannel(channelRef.current);
-      }
-    };
-  }, []); // Empty dependency array since we want this to run once on mount
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
@@ -170,34 +123,6 @@ export const MessagesTab = () => {
         : "Les notifications sonores ont été activées",
       duration: 3000,
     });
-  };
-
-  const toggleNotifications = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      if (notificationsEnabled) {
-        const success = await unsubscribeFromPushNotifications(user.id);
-        if (success) {
-          setNotificationsEnabled(false);
-        }
-      } else {
-        const success = await subscribeToPushNotifications(user.id);
-        if (success) {
-          setNotificationsEnabled(true);
-        }
-      }
-    } catch (error) {
-      console.error('[MessagesTab] Error toggling notifications:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue",
-        variant: "destructive",
-      });
-    }
   };
 
   const scrollToBottom = () => {
@@ -255,19 +180,6 @@ export const MessagesTab = () => {
                 <ArrowDown className="h-4 w-4" />
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleNotifications}
-              className="bg-white/80 hover:bg-white shadow-sm hover:shadow border border-gray-100"
-              title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
-            >
-              {notificationsEnabled ? (
-                <Bell className="h-4 w-4" />
-              ) : (
-                <BellOff className="h-4 w-4" />
-              )}
-            </Button>
             <Button
               variant="outline"
               size="icon"
