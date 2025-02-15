@@ -39,6 +39,13 @@ export type Database = {
             referencedRelation: "chat_channels"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "channel_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
         ]
       }
       chat_channels: {
@@ -66,7 +73,15 @@ export type Database = {
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chat_channels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       chat_messages: {
         Row: {
@@ -117,6 +132,13 @@ export type Database = {
             referencedRelation: "chat_messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
         ]
       }
       interpretation_missions: {
@@ -125,6 +147,7 @@ export type Database = {
           assignment_time: string | null
           client_name: string | null
           created_at: string
+          created_by: string | null
           estimated_duration: number
           id: string
           mission_type: string
@@ -142,6 +165,7 @@ export type Database = {
           assignment_time?: string | null
           client_name?: string | null
           created_at?: string
+          created_by?: string | null
           estimated_duration: number
           id?: string
           mission_type?: string
@@ -159,6 +183,7 @@ export type Database = {
           assignment_time?: string | null
           client_name?: string | null
           created_at?: string
+          created_by?: string | null
           estimated_duration?: number
           id?: string
           mission_type?: string
@@ -191,6 +216,13 @@ export type Database = {
             columns: ["assigned_interpreter_id"]
             isOneToOne: false
             referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_missions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
             referencedColumns: ["id"]
           },
         ]
@@ -366,7 +398,15 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_mentions: {
         Row: {
@@ -402,6 +442,13 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "chat_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_mentions_mentioned_user_id_fkey"
+            columns: ["mentioned_user_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
             referencedColumns: ["id"]
           },
           {
@@ -472,6 +519,13 @@ export type Database = {
             columns: ["mission_id"]
             isOneToOne: false
             referencedRelation: "interpretation_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "mission_details"
             referencedColumns: ["id"]
           },
         ]
@@ -619,7 +673,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vapid_keys: {
         Row: {
@@ -675,7 +737,15 @@ export type Database = {
           status: string | null
           target_language: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_profiles_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: true
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       interpreters_with_next_mission: {
         Row: {
@@ -706,7 +776,77 @@ export type Database = {
           updated_at: string | null
           vat_number: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mission_creators: {
+        Row: {
+          email: string | null
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+        }
         Relationships: []
+      }
+      mission_details: {
+        Row: {
+          assigned_interpreter_id: string | null
+          assignment_time: string | null
+          client_name: string | null
+          created_at: string | null
+          created_by: string | null
+          creator_email: string | null
+          creator_first_name: string | null
+          creator_last_name: string | null
+          estimated_duration: number | null
+          id: string | null
+          mission_type: string | null
+          notification_expiry: string | null
+          notified_interpreters: string[] | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
+          source_language: string | null
+          status: string | null
+          target_language: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpretation_missions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

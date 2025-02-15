@@ -37,6 +37,9 @@ interface Mission {
     profile_picture_url: string | null;
     status: string;
   };
+  creator_email?: string;
+  creator_first_name?: string;
+  creator_last_name?: string;
 }
 
 interface Interpreter {
@@ -47,6 +50,13 @@ interface Interpreter {
   status: string;
   profile_picture_url: string | null;
   tarif_15min: number;
+}
+
+interface Creator {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
 }
 
 export const MissionManagement = () => {
@@ -68,39 +78,59 @@ export const MissionManagement = () => {
   const [startDateFilter, setStartDateFilter] = useState<string>("");
   const [endDateFilter, setEndDateFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+  const [creatorFilter, setCreatorFilter] = useState<string>("all");
+  const [creators, setCreators] = useState<Creator[]>([]);
 
-  const fetchMissions = async () => {
-    try {
-      console.log('[MissionManagement] Fetching missions');
+  useEffect(() => {
+    const fetchMissions = async () => {
+      try {
+        console.log('[MissionManagement] Fetching missions');
+        const { data, error } = await supabase
+          .from("interpretation_missions")
+          .select(`
+            *,
+            interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+              id,
+              first_name,
+              last_name,
+              profile_picture_url,
+              status
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        
+        console.log('[MissionManagement] Missions fetched successfully:', data);
+        setMissions(data as Mission[]);
+        setLoading(false);
+      } catch (error) {
+        console.error('[MissionManagement] Error fetching missions:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les missions",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+
+    fetchMissions();
+    const fetchCreators = async () => {
       const { data, error } = await supabase
-        .from("interpretation_missions")
-        .select(`
-          *,
-          interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
-            id,
-            first_name,
-            last_name,
-            profile_picture_url,
-            status
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+        .from('mission_creators')
+        .select('*');
       
-      console.log('[MissionManagement] Missions fetched successfully:', data);
-      setMissions(data as Mission[]);
-      setLoading(false);
-    } catch (error) {
-      console.error('[MissionManagement] Error fetching missions:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les missions",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
-  };
+      if (error) {
+        console.error('Error fetching creators:', error);
+        return;
+      }
+
+      setCreators(data || []);
+    };
+
+    fetchCreators();
+  }, []);
 
   const setupRealtimeSubscription = () => {
     console.log('[MissionManagement] Setting up realtime subscription');
@@ -384,6 +414,17 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté pour créer une mission",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert({
@@ -395,7 +436,8 @@ export const MissionManagement = () => {
           notified_interpreters: selectedInterpreters,
           mission_type: missionType,
           scheduled_start_time: utcStartTime,
-          scheduled_end_time: utcEndTime
+          scheduled_end_time: utcEndTime,
+          created_by: user.id // Add creator information
         })
         .select()
         .single();
@@ -440,6 +482,11 @@ export const MissionManagement = () => {
 
     // Filter by mission type
     if (missionTypeFilter !== 'all' && mission.mission_type !== missionTypeFilter) {
+      return false;
+    }
+
+    // Filter by creator
+    if (creatorFilter !== 'all' && mission.creator_email !== creatorFilter) {
       return false;
     }
 
@@ -662,7 +709,6 @@ export const MissionManagement = () => {
         </form>
       </Card>
 
-      {/* Mission List with Filters */}
       <Card className="p-6">
         <div className="space-y-4">
           <div className="flex justify-between items-center mb-4">
@@ -674,7 +720,7 @@ export const MissionManagement = () => {
             >
               <Filter className="h-4 w-4" />
               Filtres
-              {(statusFilter !== 'all' || missionTypeFilter !== 'all' || languageFilter || startDateFilter || endDateFilter) && (
+              {(statusFilter !== 'all' || missionTypeFilter !== 'all' || languageFilter || startDateFilter || endDateFilter || creatorFilter !== 'all') && (
                 <Badge variant="secondary" className="ml-2">Actifs</Badge>
               )}
             </Button>
@@ -747,6 +793,26 @@ export const MissionManagement = () => {
                       onChange={(e) => setEndDateFilter(e.target.value)}
                     />
                   </div>
+
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Créateur</Label>
+                    <Select 
+                      value={creatorFilter} 
+                      onValueChange={setCreatorFilter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filtrer par créateur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous</SelectItem>
+                        {creators.map((creator) => (
+                          <SelectItem key={creator.id} value={creator.email}>
+                            {creator.first_name} {creator.last_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <Button 
@@ -758,6 +824,7 @@ export const MissionManagement = () => {
                     setLanguageFilter('');
                     setStartDateFilter('');
                     setEndDateFilter('');
+                    setCreatorFilter('all');
                   }}
                 >
                   Réinitialiser les filtres

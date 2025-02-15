@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -36,6 +36,9 @@ interface Mission {
     profile_picture_url: string | null;
     status: string;
   };
+  creator_email?: string;
+  creator_first_name?: string;
+  creator_last_name?: string;
 }
 
 interface MissionListProps {
@@ -99,6 +102,14 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                       locale: fr,
                     })}
                   </p>
+                  {mission.creator_first_name && (
+                    <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+                      <UserCircle className="h-4 w-4" />
+                      <span>
+                        Créée par {mission.creator_first_name} {mission.creator_last_name}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
