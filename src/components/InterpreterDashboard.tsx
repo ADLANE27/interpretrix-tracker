@@ -18,8 +18,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
-import { requestNotificationPermission, showNotification } from "@/utils/notifications";
-import { playNotificationSound } from "@/utils/notificationSounds";
+import { 
+  isNotificationsSupported, 
+  getNotificationPermission, 
+  requestNotificationPermission, 
+  showNotification,
+  getSavedNotificationPreference,
+  saveNotificationPreference 
+} from "@/utils/notifications";
 
 interface Profile {
   id: string;
