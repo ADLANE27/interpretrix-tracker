@@ -56,10 +56,8 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    const savedPreference = localStorage.getItem('notificationsEnabled');
-    return savedPreference ? savedPreference === 'true' : false;
-  });
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsSupported, setNotificationsSupported] = useState(true);
 
   useSupabaseConnection();
 
@@ -337,14 +335,22 @@ export const InterpreterDashboard = () => {
 
   useEffect(() => {
     const checkNotificationStatus = async () => {
-      if (!('Notification' in window)) {
+      if (!isNotificationsSupported()) {
+        setNotificationsSupported(false);
+        setNotificationsEnabled(false);
+        localStorage.setItem('notificationsEnabled', 'false');
         return;
       }
-      const browserPermission = Notification.permission === 'granted';
+
+      const browserPermission = getNotificationPermission();
       const savedPreference = localStorage.getItem('notificationsEnabled') === 'true';
       
       // Only enable if both browser permission is granted AND user preference is true
-      setNotificationsEnabled(browserPermission && savedPreference);
+      setNotificationsEnabled(browserPermission === 'granted' && savedPreference);
+      
+      if (browserPermission === 'denied') {
+        localStorage.setItem('notificationsEnabled', 'false');
+      }
     };
 
     checkNotificationStatus();
@@ -353,6 +359,15 @@ export const InterpreterDashboard = () => {
   const toggleNotifications = async () => {
     console.log('[InterpreterDashboard] Toggle notifications clicked. Current state:', notificationsEnabled);
     
+    if (!notificationsSupported) {
+      toast({
+        title: "Notifications non supportées",
+        description: "Votre navigateur ne supporte pas les notifications",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (notificationsEnabled) {
       // Disable notifications
       setNotificationsEnabled(false);
@@ -363,6 +378,18 @@ export const InterpreterDashboard = () => {
       });
       console.log('[InterpreterDashboard] Notifications disabled');
     } else {
+      // Check current permission first
+      const currentPermission = getNotificationPermission();
+      
+      if (currentPermission === 'denied') {
+        toast({
+          title: "Notifications bloquées",
+          description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Try to enable notifications
       try {
         console.log('[InterpreterDashboard] Requesting notification permission...');
@@ -493,6 +520,8 @@ export const InterpreterDashboard = () => {
                       ? 'bg-primary hover:bg-primary/90' 
                       : 'bg-secondary/20 hover:bg-secondary/30'
                   }`}
+                  disabled={!notificationsSupported}
+                  title={!notificationsSupported ? "Votre navigateur ne supporte pas les notifications" : undefined}
                 >
                   <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
                     notificationsEnabled ? 'bg-white' : 'bg-gray-400'
@@ -601,3 +630,11 @@ export const InterpreterDashboard = () => {
     </div>
   );
 };
+
+function isNotificationsSupported() {
+  return 'Notification' in window;
+}
+
+function getNotificationPermission() {
+  return Notification.permission;
+}
