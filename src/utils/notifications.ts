@@ -1,136 +1,77 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-const ONESIGNAL_INIT_TIMEOUT = 10000; // 10 seconds timeout
-const ONESIGNAL_CHECK_INTERVAL = 100; // Check every 100ms
+const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 let oneSignalInitialized = false;
 
-// OneSignal initialization script with retry mechanism
+// Initialize OneSignal only when needed
 const initializeOneSignal = async (): Promise<boolean> => {
-  if (!window.OneSignal) {
-    console.error('[OneSignal] OneSignal is not loaded');
-    return false;
-  }
-
   if (oneSignalInitialized) {
     console.log('[OneSignal] Already initialized');
     return true;
   }
 
   try {
+    if (!window.OneSignal) {
+      console.error('[OneSignal] OneSignal is not loaded');
+      return false;
+    }
+
     console.log('[OneSignal] Initializing...');
     window.OneSignal.init({
-      appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
+      appId: ONESIGNAL_APP_ID,
       notifyButton: {
         enable: false,
       },
       allowLocalhostAsSecureOrigin: true,
     });
 
-    // Give OneSignal time to initialize
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
     oneSignalInitialized = true;
-    console.log('[OneSignal] Initialization complete');
-    
-    // Check permission after initialization
-    const permission = Notification.permission;
-    console.log('[OneSignal] Current permission:', permission);
-
-    if (permission === 'granted') {
-      try {
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-        console.log('[OneSignal] Is subscribed:', isSubscribed);
-        if (isSubscribed) {
-          await registerDevice();
-        }
-      } catch (error) {
-        console.error('[OneSignal] Error checking subscription:', error);
-      }
-    }
-
+    console.log('[OneSignal] Initialized successfully');
     return true;
   } catch (error) {
     console.error('[OneSignal] Initialization error:', error);
-    oneSignalInitialized = false;
     return false;
   }
-};
-
-// Wait for OneSignal to be available and initialize it
-const waitForOneSignal = async (): Promise<boolean> => {
-  console.log('[OneSignal] Waiting for OneSignal to be available...');
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    
-    const checkOneSignal = async () => {
-      if (window.OneSignal) {
-        console.log('[OneSignal] OneSignal found, initializing...');
-        const success = await initializeOneSignal();
-        resolve(success);
-        return;
-      }
-
-      if (Date.now() - startTime > ONESIGNAL_INIT_TIMEOUT) {
-        console.error('[OneSignal] Timeout waiting for OneSignal to load');
-        resolve(false);
-        return;
-      }
-
-      setTimeout(checkOneSignal, ONESIGNAL_CHECK_INTERVAL);
-    };
-
-    checkOneSignal();
-  });
-};
-
-export const isNotificationsSupported = async (): Promise<boolean> => {
-  if (typeof Notification === 'undefined') {
-    console.log('[OneSignal] Notifications API not supported');
-    return false;
-  }
-
-  console.log('[OneSignal] Checking if notifications are supported...');
-  const isOneSignalAvailable = await waitForOneSignal();
-  console.log('[OneSignal] Notifications supported:', isOneSignalAvailable);
-  return isOneSignalAvailable;
-};
-
-export const getNotificationPermission = (): NotificationPermission => {
-  if (typeof Notification === 'undefined') return 'denied';
-  return Notification.permission;
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
-    console.log('[OneSignal] Requesting notification permission...');
-    
-    if (!oneSignalInitialized) {
-      const isAvailable = await waitForOneSignal();
-      if (!isAvailable) {
-        console.error('[OneSignal] OneSignal is not available');
-        return false;
+    // First check if notifications are supported
+    if (!('Notification' in window)) {
+      console.log('[OneSignal] Notifications not supported');
+      return false;
+    }
+
+    // Initialize OneSignal if not already done
+    const initialized = await initializeOneSignal();
+    if (!initialized) {
+      console.error('[OneSignal] Failed to initialize OneSignal');
+      return false;
+    }
+
+    // Show the browser's native notification prompt
+    console.log('[OneSignal] Requesting permission...');
+    const permission = await window.OneSignal.showNativePrompt();
+    console.log('[OneSignal] Permission result:', permission);
+
+    if (permission === 'granted') {
+      // Register the device with OneSignal
+      const registered = await registerDevice();
+      if (registered) {
+        console.log('[OneSignal] Device registered successfully');
+        return true;
       }
     }
 
-    console.log('[OneSignal] Showing native prompt...');
-    const permission = await window.OneSignal.showNativePrompt();
-    console.log('[OneSignal] Permission result:', permission);
-    
-    if (permission === 'granted') {
-      console.log('[OneSignal] Permission granted, registering device...');
-      await registerDevice();
-      saveNotificationPreference(true);
-    }
-    
-    return permission === 'granted';
+    return false;
   } catch (error) {
     console.error('[OneSignal] Error requesting permission:', error);
     return false;
   }
 };
 
-export const registerDevice = async () => {
+export const registerDevice = async (): Promise<boolean> => {
   try {
     if (!window.OneSignal) {
       console.error('[OneSignal] OneSignal is not loaded');
@@ -154,7 +95,7 @@ export const registerDevice = async () => {
     }
 
     // Register subscription in database
-    console.log('[OneSignal] Registering subscription in database...');
+    console.log('[OneSignal] Registering subscription...');
     const { error: subError } = await supabase
       .from('onesignal_subscriptions')
       .upsert({
@@ -169,10 +110,10 @@ export const registerDevice = async () => {
 
     if (subError) {
       console.error('[OneSignal] Error registering subscription:', subError);
-      throw subError;
+      return false;
     }
 
-    console.log('[OneSignal] Device registered successfully');
+    console.log('[OneSignal] Subscription registered successfully');
     return true;
   } catch (error) {
     console.error('[OneSignal] Error registering device:', error);
@@ -180,7 +121,7 @@ export const registerDevice = async () => {
   }
 };
 
-export const unregisterDevice = async () => {
+export const unregisterDevice = async (): Promise<boolean> => {
   try {
     if (!window.OneSignal) {
       console.error('[OneSignal] OneSignal is not loaded');
@@ -201,7 +142,7 @@ export const unregisterDevice = async () => {
       return false;
     }
 
-    // Update subscription status in database
+    // Update subscription status
     console.log('[OneSignal] Unregistering device...');
     const { error: updateError } = await supabase
       .from('onesignal_subscriptions')
@@ -214,12 +155,11 @@ export const unregisterDevice = async () => {
 
     if (updateError) {
       console.error('[OneSignal] Error updating subscription:', updateError);
-      throw updateError;
+      return false;
     }
 
     // Unsubscribe from OneSignal
     await window.OneSignal.setSubscription(false);
-
     console.log('[OneSignal] Device unregistered successfully');
     return true;
   } catch (error) {
@@ -228,33 +168,26 @@ export const unregisterDevice = async () => {
   }
 };
 
-const getPlatform = () => {
+const getPlatform = (): string => {
   const userAgent = navigator.userAgent.toLowerCase();
   if (/android/i.test(userAgent)) return 'android';
   if (/iphone|ipad|ipod/i.test(userAgent)) return 'ios';
   return 'web';
 };
 
-// Storage functions for notification preferences
-const NOTIFICATION_PREFERENCE_KEY = 'notificationPreference';
-
-export const getSavedNotificationPreference = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(NOTIFICATION_PREFERENCE_KEY) === 'true';
+// Simplified permission check
+export const getNotificationPermission = async (): Promise<NotificationPermission> => {
+  if (!('Notification' in window)) return 'denied';
+  return Notification.permission;
 };
 
-export const saveNotificationPreference = (enabled: boolean): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(NOTIFICATION_PREFERENCE_KEY, enabled.toString());
-};
-
-// Function to show native notification (fallback)
-export const showNotification = (title: string, options: NotificationOptions = {}) => {
-  if (!window.OneSignal) {
-    console.error('[OneSignal] OneSignal is not loaded');
-    return;
+// Check if notifications are currently enabled
+export const isNotificationsEnabled = async (): Promise<boolean> => {
+  try {
+    if (!window.OneSignal) return false;
+    return await window.OneSignal.isPushNotificationsEnabled();
+  } catch (error) {
+    console.error('[OneSignal] Error checking notification status:', error);
+    return false;
   }
-
-  // OneSignal handles the notifications, no need for native notifications
-  console.log('[OneSignal] Notification will be handled by OneSignal');
 };

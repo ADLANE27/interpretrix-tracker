@@ -19,14 +19,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { 
-  isNotificationsSupported, 
-  getNotificationPermission, 
-  requestNotificationPermission, 
-  showNotification,
-  getSavedNotificationPreference,
-  saveNotificationPreference,
   registerDevice,
-  unregisterDevice 
+  unregisterDevice,
+  requestNotificationPermission,
+  isNotificationsEnabled,
 } from "@/utils/notifications";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { AnimatePresence, motion } from "framer-motion";
@@ -66,11 +62,9 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
-    return getSavedNotificationPreference();
-  });
-  const [notificationsSupported, setNotificationsSupported] = useState(true);
-  const [isCheckingNotifications, setIsCheckingNotifications] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [isCheckingNotifications, setIsCheckingNotifications] = useState(false);
+  const { toast } = useToast();
 
   useSupabaseConnection();
 
@@ -347,58 +341,38 @@ export const InterpreterDashboard = () => {
   };
 
   useEffect(() => {
-    const checkNotificationSupport = async () => {
-      setIsCheckingNotifications(true);
-      const supported = await isNotificationsSupported();
-      setNotificationsSupported(supported);
-      
-      if (!supported) {
-        setNotificationsEnabled(false);
-        saveNotificationPreference(false);
-      } else {
-        const permission = getNotificationPermission();
-        if (permission === 'granted') {
-          setNotificationsEnabled(true);
-          saveNotificationPreference(true);
-        } else {
-          setNotificationsEnabled(false);
-          saveNotificationPreference(false);
-        }
-      }
-      setIsCheckingNotifications(false);
+    const checkNotificationStatus = async () => {
+      const enabled = await isNotificationsEnabled();
+      setNotificationsEnabled(enabled);
     };
-
-    checkNotificationSupport();
+    
+    checkNotificationStatus();
   }, []);
 
   const toggleNotifications = async () => {
     try {
       setIsCheckingNotifications(true);
-      
+
       if (notificationsEnabled) {
         // Disable notifications
-        await unregisterDevice();
-        setNotificationsEnabled(false);
-        saveNotificationPreference(false);
-        toast({
-          title: "Notifications désactivées",
-          description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
-        });
+        const success = await unregisterDevice();
+        if (success) {
+          setNotificationsEnabled(false);
+          toast({
+            title: "Notifications désactivées",
+            description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
+          });
+        }
       } else {
-        // Try to enable notifications
+        // Request permission and enable notifications
         const granted = await requestNotificationPermission();
-        console.log('[Notifications] Permission request result:', granted);
-        
         if (granted) {
           setNotificationsEnabled(true);
-          saveNotificationPreference(true);
           toast({
             title: "Notifications activées",
             description: "Vous recevrez désormais les notifications pour les nouvelles missions",
           });
         } else {
-          setNotificationsEnabled(false);
-          saveNotificationPreference(false);
           toast({
             title: "Notifications bloquées",
             description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
@@ -407,67 +381,16 @@ export const InterpreterDashboard = () => {
         }
       }
     } catch (error) {
-      console.error('[Notifications] Error toggling notifications:', error);
+      console.error('[Notifications] Error:', error);
       toast({
         title: "Erreur",
         description: "Impossible de gérer les notifications",
         variant: "destructive",
       });
-      setNotificationsEnabled(false);
-      saveNotificationPreference(false);
     } finally {
       setIsCheckingNotifications(false);
     }
   };
-
-  useEffect(() => {
-    if (!profile?.id || !notificationsEnabled) return;
-
-    const channel = supabase.channel('interpreter-missions')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'mission_notifications',
-          filter: `interpreter_id=eq.${profile.id}`
-        },
-        async (payload) => {
-          try {
-            const { data: mission } = await supabase
-              .from('interpretation_missions')
-              .select('*')
-              .eq('id', payload.new.mission_id)
-              .single();
-
-            if (mission) {
-              const isImmediate = mission.mission_type === 'immediate';
-              
-              // Play sound notification
-              await playNotificationSound(isImmediate ? 'immediate' : 'scheduled');
-              
-              // Show browser notification
-              showNotification(
-                isImmediate ? '🚨 Nouvelle mission immédiate' : '📅 Nouvelle mission programmée',
-                {
-                  body: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                  icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png',
-                  requireInteraction: isImmediate,
-                  silent: true // We handle sound separately with playNotificationSound
-                }
-              );
-            }
-          } catch (error) {
-            console.error('[InterpreterDashboard] Error handling mission notification:', error);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [profile?.id, notificationsEnabled]);
 
   if (!authChecked || !profile) {
     return (
@@ -520,7 +443,7 @@ export const InterpreterDashboard = () => {
                       ? 'bg-primary hover:bg-primary/90' 
                       : 'bg-secondary/20 hover:bg-secondary/30'
                   }`}
-                  disabled={!notificationsSupported || isCheckingNotifications}
+                  disabled={isCheckingNotifications}
                 >
                   <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
                     notificationsEnabled ? 'bg-white' : 'bg-gray-400'
