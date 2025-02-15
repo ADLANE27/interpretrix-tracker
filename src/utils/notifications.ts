@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 let oneSignalInitialized = false;
 let initializationPromise: Promise<boolean> | null = null;
+let cleanupTimeoutRef: NodeJS.Timeout | null = null;
 
 // Get the base domain for webhooks
 const getWebhookDomain = (): string => {
@@ -33,8 +34,19 @@ const isBrowserSupported = (): boolean => {
   return true;
 };
 
+// Cleanup function to reset initialization state
+const cleanup = () => {
+  if (cleanupTimeoutRef) {
+    clearTimeout(cleanupTimeoutRef);
+    cleanupTimeoutRef = null;
+  }
+  initializationPromise = null;
+};
+
 // Initialize OneSignal only when needed
 const initializeOneSignal = async (): Promise<boolean> => {
+  cleanup(); // Clear any existing cleanup timeouts
+
   // If already initialized, return true
   if (oneSignalInitialized) {
     console.log('[OneSignal] Already initialized');
@@ -61,41 +73,48 @@ const initializeOneSignal = async (): Promise<boolean> => {
         throw new Error('OneSignal not loaded');
       }
 
+      // Only proceed if not already initialized globally
+      if (typeof window.OneSignal._initialized !== 'undefined') {
+        console.log('[OneSignal] OneSignal already initialized globally');
+        oneSignalInitialized = true;
+        return true;
+      }
+
       const webhookDomain = getWebhookDomain();
       console.log('[OneSignal] Using webhook domain:', webhookDomain);
 
-      // Only initialize if not already done
-      if (!oneSignalInitialized) {
-        console.log('[OneSignal] Starting initialization...');
-        await window.OneSignal.init({
-          appId: ONESIGNAL_APP_ID,
-          notifyButton: {
-            enable: false,
-          },
-          allowLocalhostAsSecureOrigin: true,
-          subdomainName: "interpretix",
-          webhooks: {
-            cors: true,
-            'notification.displayed': webhookDomain,
-            'notification.clicked': webhookDomain,
-            'notification.dismissed': webhookDomain
-          },
-          persistNotification: false,
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          path: '/'
-        });
+      console.log('[OneSignal] Starting initialization...');
+      await window.OneSignal.init({
+        appId: ONESIGNAL_APP_ID,
+        notifyButton: {
+          enable: false,
+        },
+        allowLocalhostAsSecureOrigin: true,
+        subdomainName: "interpretix",
+        webhooks: {
+          cors: true,
+          'notification.displayed': webhookDomain,
+          'notification.clicked': webhookDomain,
+          'notification.dismissed': webhookDomain
+        },
+        persistNotification: false,
+        serviceWorkerPath: '/OneSignalSDKWorker.js',
+        path: '/'
+      });
 
-        oneSignalInitialized = true;
-        console.log('[OneSignal] Initialized successfully');
-      }
-
+      oneSignalInitialized = true;
+      console.log('[OneSignal] Initialized successfully');
+      
       return true;
     } catch (error) {
       console.error('[OneSignal] Initialization error:', error);
+      oneSignalInitialized = false;
       throw error;
     } finally {
-      // Clear the initialization promise
-      initializationPromise = null;
+      // Set a cleanup timeout
+      cleanupTimeoutRef = setTimeout(() => {
+        cleanup();
+      }, 5000);
     }
   })();
 
