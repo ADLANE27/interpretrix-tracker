@@ -11,3 +11,4 @@ self.addEventListener('notificationclick', function(event) {
   console.log('[ServiceWorker] Notification click received.');
   event.notification.close();
 });
+
