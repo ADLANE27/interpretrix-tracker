@@ -24,7 +24,9 @@ import {
   requestNotificationPermission, 
   showNotification,
   getSavedNotificationPreference,
-  saveNotificationPreference 
+  saveNotificationPreference,
+  registerDevice,
+  unregisterDevice 
 } from "@/utils/notifications";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { AnimatePresence, motion } from "framer-motion";
