@@ -273,16 +273,8 @@ export const AdminDashboard = () => {
 
           <TabsContent value="interpreters">
             <div className="space-y-6">
-              <div className="flex justify-between items-center mb-4">
+              <div className="mb-4">
                 <h2 className="text-2xl font-bold">Liste des interprètes</h2>
-                <Button
-                  variant="outline"
-                  onClick={resetAllFilters}
-                  className="gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Supprimer tous les filtres
-                </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -371,17 +363,27 @@ export const AdminDashboard = () => {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="rate-sort">Trier par tarif</Label>
-                  <Select value={rateSort} onValueChange={setRateSort}>
-                    <SelectTrigger id="rate-sort">
-                      <SelectValue placeholder="Trier par tarif" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Pas de tri</SelectItem>
-                      <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 items-start">
+                    <Select value={rateSort} onValueChange={setRateSort}>
+                      <SelectTrigger id="rate-sort">
+                        <SelectValue placeholder="Trier par tarif" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Pas de tri</SelectItem>
+                        <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      onClick={resetAllFilters}
+                      className="gap-2 whitespace-nowrap"
+                    >
+                      <X className="h-4 w-4" />
+                      Supprimer tous les filtres
+                    </Button>
+                  </div>
                 </div>
               </div>
 
