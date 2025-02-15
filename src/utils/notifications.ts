@@ -30,7 +30,8 @@ const initializeOneSignal = async (): Promise<boolean> => {
     // Wait for initialization to complete
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    const permission = await window.OneSignal.getNotificationPermission();
+    // Check current permission status
+    const permission = await Notification.permission;
     console.log('[OneSignal] Current permission:', permission);
 
     if (permission === 'granted') {

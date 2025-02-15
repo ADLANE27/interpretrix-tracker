@@ -12,5 +12,7 @@ interface Window {
     showNativePrompt: () => Promise<NotificationPermission>;
     getUserId: () => Promise<string>;
     setSubscription: (enabled: boolean) => Promise<void>;
+    getNotificationPermission: () => Promise<NotificationPermission>;
+    isPushNotificationsEnabled: () => Promise<boolean>;
   };
 }
