@@ -307,6 +307,53 @@ export interface Database {
           user_agent?: string | null
         }
       }
+      onesignal_subscriptions: {
+        Row: {
+          id: string
+          interpreter_id: string
+          player_id: string
+          platform: string
+          user_agent: string | null
+          status: string
+          notification_count: number
+          last_notification_sent: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          interpreter_id: string
+          player_id: string
+          platform: string
+          user_agent?: string | null
+          status?: string
+          notification_count?: number
+          last_notification_sent?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          interpreter_id?: string
+          player_id?: string
+          platform?: string
+          user_agent?: string | null
+          status?: string
+          notification_count?: number
+          last_notification_sent?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onesignal_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       secrets: {
         Row: {
           id: string

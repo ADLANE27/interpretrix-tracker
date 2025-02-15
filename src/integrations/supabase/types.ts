@@ -530,6 +530,67 @@ export type Database = {
           },
         ]
       }
+      onesignal_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          interpreter_id: string
+          last_notification_sent: string | null
+          notification_count: number | null
+          platform: string
+          player_id: string
+          status: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interpreter_id: string
+          last_notification_sent?: string | null
+          notification_count?: number | null
+          platform: string
+          player_id: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interpreter_id?: string
+          last_notification_sent?: string | null
+          notification_count?: number | null
+          platform?: string
+          player_id?: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onesignal_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "onesignal_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onesignal_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
