@@ -355,6 +355,15 @@ export const InterpreterDashboard = () => {
       if (!supported) {
         setNotificationsEnabled(false);
         saveNotificationPreference(false);
+      } else {
+        const permission = getNotificationPermission();
+        if (permission === 'granted') {
+          setNotificationsEnabled(true);
+          saveNotificationPreference(true);
+        } else {
+          setNotificationsEnabled(false);
+          saveNotificationPreference(false);
+        }
       }
       setIsCheckingNotifications(false);
     };
@@ -363,78 +372,51 @@ export const InterpreterDashboard = () => {
   }, []);
 
   const toggleNotifications = async () => {
-    console.log('[InterpreterDashboard] Toggle notifications clicked. Current state:', notificationsEnabled);
-    
-    if (!notificationsSupported) {
-      toast({
-        title: "Notifications non supportées",
-        description: "Votre navigateur ne supporte pas les notifications",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (notificationsEnabled) {
-      // Disable notifications
-      setNotificationsEnabled(false);
-      saveNotificationPreference(false);
-      await unregisterDevice();
-      toast({
-        title: "Notifications désactivées",
-        description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
-      });
-      console.log('[InterpreterDashboard] Notifications disabled');
-    } else {
-      // Check current permission first
-      const currentPermission = getNotificationPermission();
+    try {
+      setIsCheckingNotifications(true);
       
-      if (currentPermission === 'denied') {
+      if (notificationsEnabled) {
+        // Disable notifications
+        await unregisterDevice();
+        setNotificationsEnabled(false);
+        saveNotificationPreference(false);
         toast({
-          title: "Notifications bloquées",
-          description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
-          variant: "destructive",
+          title: "Notifications désactivées",
+          description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
         });
-        return;
-      }
-
-      // Try to enable notifications
-      try {
-        console.log('[InterpreterDashboard] Requesting notification permission...');
+      } else {
+        // Try to enable notifications
         const granted = await requestNotificationPermission();
-        console.log('[InterpreterDashboard] Permission result:', granted);
+        console.log('[Notifications] Permission request result:', granted);
         
         if (granted) {
           setNotificationsEnabled(true);
           saveNotificationPreference(true);
-          await registerDevice();
-          
-          // Send a test notification
-          showNotification('Test de notification', {
-            body: 'Les notifications sont maintenant activées',
-            icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png'
-          });
-          
           toast({
             title: "Notifications activées",
             description: "Vous recevrez désormais les notifications pour les nouvelles missions",
           });
-          console.log('[InterpreterDashboard] Notifications enabled successfully');
         } else {
+          setNotificationsEnabled(false);
+          saveNotificationPreference(false);
           toast({
             title: "Notifications bloquées",
             description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
             variant: "destructive",
           });
-          console.log('[InterpreterDashboard] Permission denied by user');
         }
-      } catch (error) {
-        console.error('[InterpreterDashboard] Error enabling notifications:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible d'activer les notifications",
-          variant: "destructive",
-        });
       }
+    } catch (error) {
+      console.error('[Notifications] Error toggling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de gérer les notifications",
+        variant: "destructive",
+      });
+      setNotificationsEnabled(false);
+      saveNotificationPreference(false);
+    } finally {
+      setIsCheckingNotifications(false);
     }
   };
 
@@ -539,13 +521,6 @@ export const InterpreterDashboard = () => {
                       : 'bg-secondary/20 hover:bg-secondary/30'
                   }`}
                   disabled={!notificationsSupported || isCheckingNotifications}
-                  title={
-                    isCheckingNotifications 
-                      ? "Vérification du support des notifications..." 
-                      : !notificationsSupported 
-                        ? "Votre navigateur ne supporte pas les notifications" 
-                        : undefined
-                  }
                 >
                   <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
                     notificationsEnabled ? 'bg-white' : 'bg-gray-400'
