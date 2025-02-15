@@ -1,121 +1,152 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 let oneSignalInitialized = false;
+let initializationPromise: Promise<void> | null = null;
 
 // Get the base domain for webhooks
 const getWebhookDomain = (): string => {
-  // Default to www domain as it's set in OneSignal dashboard
   return 'https://www.interpretix.netlify.app';
 };
 
 // Check if browser supports notifications
 const isBrowserSupported = (): boolean => {
-  // Check for basic notification support
   if (!('Notification' in window)) {
     console.log('[OneSignal] Basic notifications not supported');
     return false;
   }
 
-  // Check for service worker support (required for push notifications)
   if (!('serviceWorker' in navigator)) {
     console.log('[OneSignal] Service Workers not supported');
     return false;
   }
 
-  // Check if it's a secure context (required for notifications)
   if (!window.isSecureContext) {
     console.log('[OneSignal] Not in a secure context');
+    return false;
+  }
+
+  if (!window.OneSignal) {
+    console.log('[OneSignal] OneSignal SDK not loaded');
     return false;
   }
 
   return true;
 };
 
-// Initialize OneSignal only when needed
-const initializeOneSignal = async (): Promise<boolean> => {
+// Initialize OneSignal with proper error handling
+const initializeOneSignal = async (): Promise<void> => {
   if (oneSignalInitialized) {
     console.log('[OneSignal] Already initialized');
-    return true;
+    return;
   }
 
-  try {
-    // Check browser support first
-    if (!isBrowserSupported()) {
-      console.error('[OneSignal] Browser does not support required features');
-      throw new Error('Browser does not support required features');
-    }
-
-    if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal script not loaded');
-      throw new Error('OneSignal not loaded');
-    }
-
-    const webhookDomain = getWebhookDomain();
-    console.log('[OneSignal] Using webhook domain:', webhookDomain);
-
-    console.log('[OneSignal] Initializing...');
-    await window.OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      notifyButton: {
-        enable: false,
-      },
-      allowLocalhostAsSecureOrigin: true,
-      subdomainName: "interpretix",
-      webhooks: {
-        cors: true,
-        'notification.displayed': webhookDomain,
-        'notification.clicked': webhookDomain,
-        'notification.dismissed': webhookDomain
-      },
-      persistNotification: false,
-      serviceWorkerPath: '/OneSignalSDKWorker.js',
-      path: '/'
-    });
-
-    oneSignalInitialized = true;
-    console.log('[OneSignal] Initialized successfully');
-    return true;
-  } catch (error) {
-    console.error('[OneSignal] Initialization error:', error);
-    throw error;
+  if (initializationPromise) {
+    console.log('[OneSignal] Initialization in progress');
+    return initializationPromise;
   }
+
+  initializationPromise = (async () => {
+    try {
+      if (!isBrowserSupported()) {
+        throw new Error('Browser does not support required features');
+      }
+
+      const webhookDomain = getWebhookDomain();
+      console.log('[OneSignal] Using webhook domain:', webhookDomain);
+
+      await window.OneSignal.init({
+        appId: ONESIGNAL_APP_ID,
+        autoResubscribe: true,
+        allowLocalhostAsSecureOrigin: true,
+        serviceWorkerParam: { scope: '/' },
+        serviceWorkerPath: '/OneSignalSDKWorker.js',
+        subdomainName: "interpretix",
+        promptOptions: {
+          slidedown: {
+            prompts: [{
+              type: "push",
+              autoPrompt: true,
+              text: {
+                actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
+                acceptButton: "Autoriser",
+                cancelButton: "Plus tard"
+              },
+              delay: {
+                pageViews: 1,
+                timeDelay: 0
+              }
+            }]
+          }
+        },
+        welcomeNotification: {
+          disable: false,
+          title: "Interpretix",
+          message: "Merci d'avoir activé les notifications !"
+        },
+        notifyButton: {
+          enable: false
+        },
+        persistNotification: false,
+        webhooks: {
+          cors: true,
+          'notification.displayed': webhookDomain,
+          'notification.clicked': webhookDomain,
+          'notification.dismissed': webhookDomain
+        }
+      });
+
+      oneSignalInitialized = true;
+      console.log('[OneSignal] Initialized successfully');
+    } catch (error) {
+      console.error('[OneSignal] Initialization error:', error);
+      oneSignalInitialized = false;
+      throw error;
+    } finally {
+      initializationPromise = null;
+    }
+  })();
+
+  return initializationPromise;
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
-    // First check browser support
     if (!isBrowserSupported()) {
       throw new Error("Votre navigateur ne supporte pas les notifications");
     }
 
-    // Initialize OneSignal
+    // Initialize OneSignal first
     await initializeOneSignal();
 
-    // Get existing permission first
-    const permission = await Notification.requestPermission();
-    console.log('[OneSignal] Browser permission:', permission);
+    // Check current permission
+    const currentPermission = await window.OneSignal.getNotificationPermission();
+    console.log('[OneSignal] Current permission:', currentPermission);
+
+    if (currentPermission === 'denied') {
+      throw new Error("Veuillez autoriser les notifications dans les paramètres de votre navigateur");
+    }
+
+    // Show the OneSignal prompt
+    await window.OneSignal.showSlidedownPrompt();
+
+    // Wait for permission response
+    const permission = await window.OneSignal.getNotificationPermission();
+    console.log('[OneSignal] Updated permission:', permission);
 
     if (permission === 'granted') {
-      // Try OneSignal registration
-      try {
-        const registered = await registerDevice();
-        if (registered) {
-          console.log('[OneSignal] Device registered successfully');
-          return true;
-        }
-      } catch (registerError) {
-        console.error('[OneSignal] Registration error:', registerError);
-        throw new Error("Impossible d'activer les notifications OneSignal");
+      const registered = await registerDevice();
+      if (registered) {
+        console.log('[OneSignal] Device registered successfully');
+        return true;
       }
-    } else {
-      throw new Error("Veuillez autoriser les notifications dans les paramètres de votre navigateur");
     }
 
     return false;
   } catch (error: any) {
     console.error('[OneSignal] Permission error:', error);
-    throw error; // Propagate the error with user-friendly message
+    throw error;
   }
 };
 
@@ -160,6 +191,10 @@ export const registerDevice = async (): Promise<boolean> => {
       console.error('[OneSignal] Error registering subscription:', subError);
       return false;
     }
+
+    // Add interpreter tag
+    await window.OneSignal.sendTag('role', 'interpreter');
+    await window.OneSignal.sendTag('interpreter_id', user.id);
 
     console.log('[OneSignal] Subscription registered successfully');
     return true;
@@ -206,6 +241,9 @@ export const unregisterDevice = async (): Promise<boolean> => {
       return false;
     }
 
+    // Remove tags
+    await window.OneSignal.deleteTags(['role', 'interpreter_id']);
+
     // Unsubscribe from OneSignal
     await window.OneSignal.setSubscription(false);
     console.log('[OneSignal] Device unregistered successfully');
@@ -223,38 +261,30 @@ const getPlatform = (): string => {
   return 'web';
 };
 
-// Simplified permission check
 export const getNotificationPermission = async (): Promise<NotificationPermission> => {
-  if (!isBrowserSupported()) {
-    return 'denied';
-  }
-
   try {
-    return Notification.permission;
+    if (!isBrowserSupported()) {
+      return 'denied';
+    }
+
+    return await window.OneSignal.getNotificationPermission();
   } catch (error) {
     console.error('[OneSignal] Error checking permission:', error);
     return 'denied';
   }
 };
 
-// Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
-  if (!isBrowserSupported()) {
-    return false;
-  }
-
   try {
-    const permission = await getNotificationPermission();
-    if (permission !== 'granted') {
+    if (!isBrowserSupported()) {
       return false;
     }
 
-    // Only check OneSignal if we have browser permission
-    if (window.OneSignal) {
-      return await window.OneSignal.isPushNotificationsEnabled();
+    if (!window.OneSignal) {
+      return false;
     }
 
-    return false;
+    return await window.OneSignal.isPushNotificationsEnabled();
   } catch (error) {
     console.error('[OneSignal] Error checking notification status:', error);
     return false;
