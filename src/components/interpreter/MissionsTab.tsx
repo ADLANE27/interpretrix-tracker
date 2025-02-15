@@ -110,7 +110,7 @@ export const MissionsTab = () => {
         mission => !declinedMissions.has(mission.id)
       ) || [];
       
-      console.log('[MissionsTab] Fetched missions:', filteredMissions);
+      console.log('[MissionsTab] Fetched and filtered missions:', filteredMissions);
       setMissions(filteredMissions as Mission[]);
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
@@ -354,28 +354,30 @@ export const MissionsTab = () => {
 
         console.log('[MissionsTab] Mission accepted successfully');
       } else {
-        console.log('[MissionsTab] Declining mission');
-        const { error: declineError } = await supabase
-          .from('mission_notifications')
-          .update({ 
-            status: 'declined',
-            updated_at: new Date().toISOString()
-          })
-          .eq('mission_id', missionId)
-          .eq('interpreter_id', user.id);
+        console.log('[MissionsTab] Calling handle_mission_decline RPC');
+        const { error: declineError } = await supabase.rpc('handle_mission_decline', {
+          p_mission_id: missionId,
+          p_interpreter_id: user.id
+        });
 
         if (declineError) {
           console.error('[MissionsTab] Error declining mission:', declineError);
           throw declineError;
         }
 
+        // Remove the declined mission from local state
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
         console.log('[MissionsTab] Mission declined successfully');
       }
 
       fetchMissions();
-    } catch (error) {
+    } catch (error: any) {
       console.error('[MissionsTab] Error updating mission:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
