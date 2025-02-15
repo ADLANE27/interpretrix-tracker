@@ -50,9 +50,10 @@ serve(async (req) => {
       throw subError;
     }
 
-    console.log('[OneSignal] Found subscriptions:', subscriptions.length);
+    console.log('[OneSignal] Found subscriptions:', subscriptions);
 
     if (subscriptions.length === 0) {
+      console.log('[OneSignal] No active subscriptions found');
       return new Response(
         JSON.stringify({
           success: true,
@@ -68,6 +69,11 @@ serve(async (req) => {
 
     // Get player IDs for all subscriptions
     const playerIds = subscriptions.map(sub => sub.player_id);
+    console.log('[OneSignal] Player IDs:', playerIds);
+
+    if (!Deno.env.get('ONESIGNAL_APP_ID') || !Deno.env.get('ONESIGNAL_REST_API_KEY')) {
+      throw new Error('OneSignal credentials not configured');
+    }
 
     // Prepare OneSignal notification payload
     const oneSignalPayload = {
@@ -82,8 +88,11 @@ serve(async (req) => {
       android_channel_id: "interpretrix-missions",
       ios_sound: "notification.wav",
       android_sound: "notification",
-      priority: 10
+      priority: 10,
+      large_icon: "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png"
     };
+
+    console.log('[OneSignal] Sending notification with payload:', oneSignalPayload);
 
     // Send notification via OneSignal
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -96,13 +105,12 @@ serve(async (req) => {
     });
 
     const responseData = await response.json();
+    console.log('[OneSignal] OneSignal API response:', responseData);
 
     if (!response.ok) {
       console.error('[OneSignal] Error sending notification:', responseData);
       throw new Error(responseData.errors?.[0] || 'Failed to send notification');
     }
-
-    console.log('[OneSignal] Notification sent successfully:', responseData);
 
     // Record notifications in history
     const notificationRecords = interpreterIds.map(interpreterId => ({
