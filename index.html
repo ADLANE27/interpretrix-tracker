@@ -6,87 +6,68 @@
     <link rel="icon" type="image/png" href="/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-    <!-- Load OneSignal with explicit type -->
-    <script type="application/javascript" src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" defer></script>
-    <!-- Initialize OneSignal after SDK is loaded -->
-    <script type="application/javascript">
+    <!-- Load OneSignal SDK first -->
+    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+    <script>
+      window.OneSignal = window.OneSignal || [];
+      
       // Create a promise to track OneSignal initialization
       window.oneSignalInitPromise = new Promise((resolve, reject) => {
         window.resolveOneSignal = resolve;
         window.rejectOneSignal = reject;
       });
 
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      
-      // Wait for both DOM content and Service Worker API
-      const initializeOneSignal = () => {
-        if (!('serviceWorker' in navigator)) {
-          console.error('[OneSignal] Service Worker API not available');
-          window.rejectOneSignal(new Error('Service Worker API not available'));
-          return;
-        }
-
-        console.log('[OneSignal] DOM ready and Service Worker API available, starting initialization...');
-        
-        OneSignalDeferred.push(async function(OneSignal) {
-          try {
-            console.log('[OneSignal] Initializing...');
-            await OneSignal.init({
-              appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
-              allowLocalhostAsSecureOrigin: true,
-              serviceWorkerParam: { scope: '/' },
-              serviceWorkerPath: '/OneSignalSDKWorker.js',
-              promptOptions: {
-                slidedown: {
-                  prompts: [{
-                    type: "push",
-                    autoPrompt: true,
-                    text: {
-                      actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
-                      acceptButton: "Autoriser",
-                      cancelButton: "Plus tard"
-                    }
-                  }]
-                }
-              },
-              welcomeNotification: {
-                disable: false,
-                title: "Interpretix",
-                message: "Merci d'avoir activé les notifications !"
+      OneSignal.push(async function() {
+        try {
+          console.log('[OneSignal] Initializing...');
+          await OneSignal.init({
+            appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
+            allowLocalhostAsSecureOrigin: true,
+            serviceWorkerParam: { scope: '/' },
+            serviceWorkerPath: '/OneSignalSDKWorker.js',
+            promptOptions: {
+              slidedown: {
+                prompts: [{
+                  type: "push",
+                  autoPrompt: true,
+                  text: {
+                    actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
+                    acceptButton: "Autoriser",
+                    cancelButton: "Plus tard"
+                  }
+                }]
               }
-            });
-            
-            console.log('[OneSignal] Initialization successful');
-            window.resolveOneSignal();
+            },
+            welcomeNotification: {
+              disable: false,
+              title: "Interpretix",
+              message: "Merci d'avoir activé les notifications !"
+            }
+          });
+          
+          console.log('[OneSignal] Initialization successful');
+          window.resolveOneSignal();
 
-            // Add debug listeners
-            OneSignal.on('notificationDisplay', function(event) {
-              console.log('[OneSignal] Notification displayed:', event);
-            });
-            
-            OneSignal.on('notificationDismiss', function(event) {
-              console.log('[OneSignal] Notification dismissed:', event);
-            });
-            
-            OneSignal.on('notificationPermissionChange', function(permissionChange) {
-              console.log('[OneSignal] Permission changed:', permissionChange);
-            });
-            
-          } catch (error) {
-            console.error('[OneSignal] Initialization error:', error);
-            window.rejectOneSignal(error);
-          }
-        });
-      };
-
-      // Wait for DOM content to be loaded
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeOneSignal);
-      } else {
-        initializeOneSignal();
-      }
+          // Add debug listeners
+          OneSignal.on('notificationDisplay', function(event) {
+            console.log('[OneSignal] Notification displayed:', event);
+          });
+          
+          OneSignal.on('notificationDismiss', function(event) {
+            console.log('[OneSignal] Notification dismissed:', event);
+          });
+          
+          OneSignal.on('notificationPermissionChange', function(permissionChange) {
+            console.log('[OneSignal] Permission changed:', permissionChange);
+          });
+          
+        } catch (error) {
+          console.error('[OneSignal] Initialization error:', error);
+          window.rejectOneSignal(error);
+        }
+      });
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     </noscript>

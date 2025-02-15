@@ -1,5 +1,4 @@
 
-// This file should be at the root level of your public directory
 importScripts("https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js");
 
 self.addEventListener('push', function(event) {
@@ -11,4 +10,3 @@ self.addEventListener('notificationclick', function(event) {
   console.log('[ServiceWorker] Notification click received.');
   event.notification.close();
 });
-

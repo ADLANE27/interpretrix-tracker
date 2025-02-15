@@ -8,3 +8,8 @@
   Feature-Policy: notifications *, push *, vibrate *
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Cross-Origin-Resource-Policy: cross-origin
+
+/OneSignalSDKWorker.js
+  Content-Type: application/javascript
+  Service-Worker-Allowed: /
+  Cache-Control: no-cache
