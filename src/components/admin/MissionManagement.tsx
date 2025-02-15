@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export const MissionManagement = () => {
   const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreters, setSelectedInterpreters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sourceLanguage, setSourceLanguage] = useState("Français"); // Définir Français par défaut
+  const [sourceLanguage, setSourceLanguage] = useState("Français");
   const [targetLanguage, setTargetLanguage] = useState("");
   const [estimatedDuration, setEstimatedDuration] = useState("");
   const [missionType, setMissionType] = useState<'immediate' | 'scheduled'>('immediate');
@@ -81,41 +82,43 @@ export const MissionManagement = () => {
   const [creatorFilter, setCreatorFilter] = useState<string>("all");
   const [creators, setCreators] = useState<Creator[]>([]);
 
+  const fetchMissions = async () => {
+    try {
+      console.log('[MissionManagement] Fetching missions');
+      const { data, error } = await supabase
+        .from("mission_details")
+        .select(`
+          *,
+          interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
+            id,
+            first_name,
+            last_name,
+            profile_picture_url,
+            status
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      console.log('[MissionManagement] Missions fetched successfully:', data);
+      setMissions(data as Mission[]);
+      setLoading(false);
+    } catch (error) {
+      console.error('[MissionManagement] Error fetching missions:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les missions",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMissions = async () => {
-      try {
-        console.log('[MissionManagement] Fetching missions');
-        const { data, error } = await supabase
-          .from("interpretation_missions")
-          .select(`
-            *,
-            interpreter_profiles!interpretation_missions_assigned_interpreter_id_fkey (
-              id,
-              first_name,
-              last_name,
-              profile_picture_url,
-              status
-            )
-          `)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        
-        console.log('[MissionManagement] Missions fetched successfully:', data);
-        setMissions(data as Mission[]);
-        setLoading(false);
-      } catch (error) {
-        console.error('[MissionManagement] Error fetching missions:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les missions",
-          variant: "destructive",
-        });
-        setLoading(false);
-      }
-    };
-
     fetchMissions();
+    const cleanup = setupRealtimeSubscription();
+    
     const fetchCreators = async () => {
       const { data, error } = await supabase
         .from('mission_creators')
@@ -130,6 +133,11 @@ export const MissionManagement = () => {
     };
 
     fetchCreators();
+    
+    // Cleanup function
+    return () => {
+      cleanup();
+    };
   }, []);
 
   const setupRealtimeSubscription = () => {
