@@ -2,7 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 let oneSignalInitialized = false;
-let initializationPromise: Promise<boolean> | null = null;
 
 // Get the base domain for webhooks
 const getWebhookDomain = (): string => {
@@ -33,84 +32,12 @@ const isBrowserSupported = (): boolean => {
   return true;
 };
 
-// Initialize OneSignal only when needed
-const initializeOneSignal = async (): Promise<boolean> => {
-  // If already initialized, return true
-  if (oneSignalInitialized) {
-    console.log('[OneSignal] Already initialized');
-    return true;
-  }
-
-  // If initialization is in progress, return the existing promise
-  if (initializationPromise) {
-    console.log('[OneSignal] Initialization already in progress');
-    return initializationPromise;
-  }
-
-  // Create new initialization promise
-  initializationPromise = (async () => {
-    try {
-      // Check browser support first
-      if (!isBrowserSupported()) {
-        console.error('[OneSignal] Browser does not support required features');
-        throw new Error('Browser does not support required features');
-      }
-
-      if (!window.OneSignal) {
-        console.error('[OneSignal] OneSignal script not loaded');
-        throw new Error('OneSignal not loaded');
-      }
-
-      const webhookDomain = getWebhookDomain();
-      console.log('[OneSignal] Using webhook domain:', webhookDomain);
-
-      // Only initialize if not already done
-      if (!oneSignalInitialized) {
-        console.log('[OneSignal] Starting initialization...');
-        await window.OneSignal.init({
-          appId: ONESIGNAL_APP_ID,
-          notifyButton: {
-            enable: false,
-          },
-          allowLocalhostAsSecureOrigin: true,
-          subdomainName: "interpretix",
-          webhooks: {
-            cors: true,
-            'notification.displayed': webhookDomain,
-            'notification.clicked': webhookDomain,
-            'notification.dismissed': webhookDomain
-          },
-          persistNotification: false,
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          path: '/'
-        });
-
-        oneSignalInitialized = true;
-        console.log('[OneSignal] Initialized successfully');
-      }
-
-      return true;
-    } catch (error) {
-      console.error('[OneSignal] Initialization error:', error);
-      throw error;
-    } finally {
-      // Clear the initialization promise
-      initializationPromise = null;
-    }
-  })();
-
-  return initializationPromise;
-};
-
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     // First check browser support
     if (!isBrowserSupported()) {
       throw new Error("Votre navigateur ne supporte pas les notifications");
     }
-
-    // Initialize OneSignal
-    await initializeOneSignal();
 
     // Get existing permission first
     const permission = await Notification.requestPermission();
@@ -243,7 +170,6 @@ const getPlatform = (): string => {
   return 'web';
 };
 
-// Simplified permission check
 export const getNotificationPermission = async (): Promise<NotificationPermission> => {
   if (!isBrowserSupported()) {
     return 'denied';
@@ -257,7 +183,6 @@ export const getNotificationPermission = async (): Promise<NotificationPermissio
   }
 };
 
-// Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   if (!isBrowserSupported()) {
     return false;

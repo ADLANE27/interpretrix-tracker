@@ -16,7 +16,6 @@ interface Window {
       };
       persistNotification?: boolean;
       serviceWorkerPath?: string;
-      serviceWorkerUpdaterPath?: string;
       path?: string;
     }) => Promise<void>;
     showSlidedownPrompt: () => void;
@@ -27,4 +26,5 @@ interface Window {
     isPushNotificationsEnabled: () => Promise<boolean>;
     isPushNotificationsSupported: () => Promise<boolean>;
   };
+  OneSignalDeferred: ((OneSignal: Window['OneSignal']) => void)[];
 }
