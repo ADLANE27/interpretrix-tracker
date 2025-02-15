@@ -1,120 +1,89 @@
+
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const InterpreterLoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password.trim(),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (authError) {
-        if (authError.message.includes("Invalid login credentials")) {
-          throw new Error("Email ou mot de passe incorrect");
+      if (error) {
+        throw error;
+      }
+
+      // After successful login, wait for OneSignal initialization
+      if (window.oneSignalInitPromise) {
+        try {
+          await window.oneSignalInitPromise;
+          console.log('[OneSignal] Successfully initialized after login');
+        } catch (error) {
+          console.error('[OneSignal] Failed to initialize after login:', error);
+          // Don't block login if OneSignal fails
         }
-        throw new Error(authError.message);
-      }
-
-      if (!authData.user) {
-        throw new Error("Aucune donnée utilisateur retournée");
-      }
-
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', authData.user.id)
-        .single();
-
-      if (rolesError) {
-        throw new Error("Erreur lors de la vérification du rôle");
-      }
-
-      if (roles?.role !== 'interpreter') {
-        await supabase.auth.signOut();
-        throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
       }
 
       toast({
         title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté en tant qu'interprète",
+        description: "Bienvenue !",
       });
-      
-      navigate("/interpreter");
+
+      // Navigate to dashboard after successful login
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Une erreur est survenue lors de la connexion",
+        description: error.message || "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border-0">
-      <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] bg-clip-text text-transparent">
-          Espace Interprète
-        </h2>
-        <p className="text-sm text-[#8E9196]">
-          Connectez-vous à votre espace personnel
-        </p>
-      </div>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-[#403E43]">
-            Email
-          </label>
+    <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+      <h2 className="text-2xl font-bold mb-6 text-center">Connexion Interprète</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
           <Input
-            id="email"
             type="email"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#f5a51d] focus:border-transparent transition-all duration-200"
-            disabled={isLoading}
-            placeholder="interpreter@example.com"
+            className="w-full"
           />
         </div>
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-[#403E43]">
-            Mot de passe
-          </label>
+        <div>
           <Input
-            id="password"
             type="password"
+            placeholder="Mot de passe"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#f5a51d] focus:border-transparent transition-all duration-200"
-            disabled={isLoading}
-            placeholder="••••••••"
+            className="w-full"
           />
         </div>
-        <Button 
-          type="submit" 
-          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] hover:from-[#f6b53d] hover:to-[#f7c55d] rounded-lg shadow-md hover:shadow-lg disabled:opacity-70"
-          disabled={isLoading}
-        >
-          {isLoading ? "Connexion en cours..." : "Se connecter"}
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Connexion..." : "Se connecter"}
         </Button>
       </form>
-    </Card>
+    </div>
   );
 };
