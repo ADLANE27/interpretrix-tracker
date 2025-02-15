@@ -349,6 +349,8 @@ export const InterpreterDashboard = () => {
   }, []);
 
   const toggleNotifications = async () => {
+    if (isCheckingNotifications) return;
+
     try {
       setIsCheckingNotifications(true);
 
