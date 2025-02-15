@@ -17,7 +17,7 @@
   "permissions": ["notifications", "push"],
   "scope": "/",
   "serviceworker": {
-    "src": "/sw.js",
+    "src": "/OneSignalSDKWorker.js",
     "scope": "/"
   }
 }
