@@ -1,7 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
-// OneSignal initialization script
+const ONESIGNAL_INIT_TIMEOUT = 10000; // 10 seconds timeout
+const ONESIGNAL_CHECK_INTERVAL = 100; // Check every 100ms
+
+// OneSignal initialization script with retry mechanism
 const initializeOneSignal = () => {
   if (!window.OneSignal) {
     console.error('[OneSignal] OneSignal is not loaded');
@@ -19,8 +21,37 @@ const initializeOneSignal = () => {
   window.OneSignal.showSlidedownPrompt();
 };
 
-export const isNotificationsSupported = (): boolean => {
-  return !!window.OneSignal;
+// Wait for OneSignal to be available
+const waitForOneSignal = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    
+    const checkOneSignal = () => {
+      // If OneSignal is available, resolve true
+      if (window.OneSignal) {
+        console.log('[OneSignal] Successfully loaded');
+        resolve(true);
+        return;
+      }
+
+      // If we've exceeded the timeout, resolve false
+      if (Date.now() - startTime > ONESIGNAL_INIT_TIMEOUT) {
+        console.error('[OneSignal] Timeout waiting for OneSignal to load');
+        resolve(false);
+        return;
+      }
+
+      // Otherwise, check again after interval
+      setTimeout(checkOneSignal, ONESIGNAL_CHECK_INTERVAL);
+    };
+
+    checkOneSignal();
+  });
+};
+
+export const isNotificationsSupported = async (): Promise<boolean> => {
+  const isOneSignalAvailable = await waitForOneSignal();
+  return isOneSignalAvailable;
 };
 
 export const getNotificationPermission = (): NotificationPermission => {
@@ -30,7 +61,8 @@ export const getNotificationPermission = (): NotificationPermission => {
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
-    if (!window.OneSignal) {
+    const isAvailable = await waitForOneSignal();
+    if (!isAvailable) {
       console.error('[OneSignal] OneSignal is not loaded');
       return false;
     }

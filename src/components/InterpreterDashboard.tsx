@@ -67,9 +67,8 @@ export const InterpreterDashboard = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     return getSavedNotificationPreference();
   });
-  const [notificationsSupported, setNotificationsSupported] = useState(() => {
-    return isNotificationsSupported();
-  });
+  const [notificationsSupported, setNotificationsSupported] = useState(true);
+  const [isCheckingNotifications, setIsCheckingNotifications] = useState(true);
 
   useSupabaseConnection();
 
@@ -346,41 +345,19 @@ export const InterpreterDashboard = () => {
   };
 
   useEffect(() => {
-    const checkNotificationStatus = () => {
-      if (!isNotificationsSupported()) {
-        setNotificationsSupported(false);
+    const checkNotificationSupport = async () => {
+      setIsCheckingNotifications(true);
+      const supported = await isNotificationsSupported();
+      setNotificationsSupported(supported);
+      
+      if (!supported) {
         setNotificationsEnabled(false);
         saveNotificationPreference(false);
-        return;
       }
-
-      const browserPermission = getNotificationPermission();
-      const savedPreference = getSavedNotificationPreference();
-      
-      // Only enable if both browser permission is granted AND user preference is true
-      const shouldBeEnabled = browserPermission === 'granted' && savedPreference;
-      setNotificationsEnabled(shouldBeEnabled);
-      
-      // If browser denied permission, update saved preference
-      if (browserPermission === 'denied') {
-        saveNotificationPreference(false);
-      }
+      setIsCheckingNotifications(false);
     };
 
-    // Check on mount
-    checkNotificationStatus();
-
-    // Add visibility change listener to recheck when tab becomes visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        checkNotificationStatus();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    checkNotificationSupport();
   }, []);
 
   const toggleNotifications = async () => {
@@ -399,6 +376,7 @@ export const InterpreterDashboard = () => {
       // Disable notifications
       setNotificationsEnabled(false);
       saveNotificationPreference(false);
+      await unregisterDevice();
       toast({
         title: "Notifications désactivées",
         description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
@@ -426,6 +404,7 @@ export const InterpreterDashboard = () => {
         if (granted) {
           setNotificationsEnabled(true);
           saveNotificationPreference(true);
+          await registerDevice();
           
           // Send a test notification
           showNotification('Test de notification', {
@@ -557,8 +536,14 @@ export const InterpreterDashboard = () => {
                       ? 'bg-primary hover:bg-primary/90' 
                       : 'bg-secondary/20 hover:bg-secondary/30'
                   }`}
-                  disabled={!notificationsSupported}
-                  title={!notificationsSupported ? "Votre navigateur ne supporte pas les notifications" : undefined}
+                  disabled={!notificationsSupported || isCheckingNotifications}
+                  title={
+                    isCheckingNotifications 
+                      ? "Vérification du support des notifications..." 
+                      : !notificationsSupported 
+                        ? "Votre navigateur ne supporte pas les notifications" 
+                        : undefined
+                  }
                 >
                   <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
                     notificationsEnabled ? 'bg-white' : 'bg-gray-400'
@@ -567,7 +552,12 @@ export const InterpreterDashboard = () => {
                       notificationsEnabled ? 'text-primary' : 'text-gray-600'
                     }`} />
                   </span>
-                  {notificationsEnabled ? "Notifications activées" : "Notifications désactivées"}
+                  {isCheckingNotifications 
+                    ? "Vérification..." 
+                    : notificationsEnabled 
+                      ? "Notifications activées" 
+                      : "Notifications désactivées"
+                  }
                 </Button>
                 <ThemeToggle />
                 <HowToUseGuide 
