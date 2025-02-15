@@ -9,7 +9,7 @@ const initializeOneSignal = () => {
   }
 
   window.OneSignal.init({
-    appId: import.meta.env.VITE_ONESIGNAL_APP_ID || "",
+    appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
     notifyButton: {
       enable: false,
     },
