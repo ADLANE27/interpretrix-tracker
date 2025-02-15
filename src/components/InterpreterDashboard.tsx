@@ -365,29 +365,24 @@ export const InterpreterDashboard = () => {
           });
         }
       } else {
-        // Request permission and enable notifications
-        const granted = await requestNotificationPermission();
-        if (granted) {
-          setNotificationsEnabled(true);
-          toast({
-            title: "Notifications activées",
-            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-          });
-        } else {
+        // Enable notifications with better error handling
+        try {
+          const granted = await requestNotificationPermission();
+          if (granted) {
+            setNotificationsEnabled(true);
+            toast({
+              title: "Notifications activées",
+              description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+            });
+          }
+        } catch (error: any) {
           toast({
             title: "Notifications bloquées",
-            description: "Veuillez autoriser les notifications dans les paramètres de votre navigateur",
+            description: error.message || "Une erreur est survenue lors de l'activation des notifications",
             variant: "destructive",
           });
         }
       }
-    } catch (error) {
-      console.error('[Notifications] Error:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de gérer les notifications",
-        variant: "destructive",
-      });
     } finally {
       setIsCheckingNotifications(false);
     }
