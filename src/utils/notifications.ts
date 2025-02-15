@@ -1,4 +1,6 @@
 
+import { supabase } from "@/integrations/supabase/client";
+
 // OneSignal initialization script
 const initializeOneSignal = () => {
   if (!window.OneSignal) {
