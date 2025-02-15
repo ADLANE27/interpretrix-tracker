@@ -39,27 +39,45 @@ const isBrowserSupported = async (): Promise<{ supported: boolean; reason?: stri
   }
 };
 
-// Wait for OneSignal to be ready
-const waitForOneSignal = async (timeout = 5000): Promise<boolean> => {
+// Wait for OneSignal to be ready with more robust checking
+const waitForOneSignal = async (timeout = 10000): Promise<boolean> => {
+  console.log('[OneSignal] Waiting for initialization...');
   const start = Date.now();
   
+  // First, wait for the OneSignal object to be available
   while (Date.now() - start < timeout) {
+    if (typeof window.OneSignal !== 'undefined') {
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  if (typeof window.OneSignal === 'undefined') {
+    console.error('[OneSignal] OneSignal object not found after timeout');
+    return false;
+  }
+
+  // Then wait for successful API call
+  const apiCheckStart = Date.now();
+  while (Date.now() - apiCheckStart < timeout) {
     try {
-      // Try to get notification permission as a way to check if OneSignal is ready
       await window.OneSignal.getNotificationPermission();
+      console.log('[OneSignal] Successfully initialized');
       return true;
     } catch (error) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log('[OneSignal] Waiting for initialization...', error);
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
   
+  console.error('[OneSignal] Initialization timed out');
   return false;
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
-    // Wait for OneSignal to be ready
-    const isReady = await waitForOneSignal();
+    // Wait for OneSignal to be ready with increased timeout
+    const isReady = await waitForOneSignal(15000); // Increased timeout to 15 seconds
     if (!isReady) {
       console.error('[OneSignal] Timeout waiting for OneSignal initialization');
       throw new Error("L'initialisation des notifications a échoué");
@@ -230,6 +248,11 @@ export const getNotificationPermission = async (): Promise<NotificationPermissio
       return 'denied';
     }
 
+    const isReady = await waitForOneSignal(10000);
+    if (!isReady) {
+      return 'denied';
+    }
+
     return await window.OneSignal.getNotificationPermission();
   } catch (error) {
     console.error('[OneSignal] Error checking permission:', error);
@@ -244,7 +267,7 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
       return false;
     }
 
-    const isReady = await waitForOneSignal();
+    const isReady = await waitForOneSignal(10000);
     if (!isReady) {
       return false;
     }
