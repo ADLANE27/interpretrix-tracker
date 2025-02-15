@@ -10,6 +10,16 @@ export const getNotificationPermission = () => {
   return Notification.permission;
 };
 
+// Function to get saved notification preference
+export const getSavedNotificationPreference = () => {
+  return localStorage.getItem('notificationsEnabled') === 'true';
+};
+
+// Function to save notification preference
+export const saveNotificationPreference = (enabled: boolean) => {
+  localStorage.setItem('notificationsEnabled', enabled.toString());
+};
+
 export const requestNotificationPermission = async () => {
   if (!isNotificationsSupported()) {
     console.log('[Notifications] Browser does not support notifications');
@@ -45,8 +55,9 @@ export const showNotification = (title: string, options?: NotificationOptions) =
   }
 
   try {
-    new Notification(title, options);
+    const notification = new Notification(title, options);
     console.log('[Notifications] Notification shown:', { title, options });
+    return notification;
   } catch (error) {
     console.error('[Notifications] Error showing notification:', error);
   }

@@ -56,8 +56,12 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [notificationsSupported, setNotificationsSupported] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    return getSavedNotificationPreference();
+  });
+  const [notificationsSupported, setNotificationsSupported] = useState(() => {
+    return isNotificationsSupported();
+  });
 
   useSupabaseConnection();
 
@@ -334,26 +338,41 @@ export const InterpreterDashboard = () => {
   };
 
   useEffect(() => {
-    const checkNotificationStatus = async () => {
+    const checkNotificationStatus = () => {
       if (!isNotificationsSupported()) {
         setNotificationsSupported(false);
         setNotificationsEnabled(false);
-        localStorage.setItem('notificationsEnabled', 'false');
+        saveNotificationPreference(false);
         return;
       }
 
       const browserPermission = getNotificationPermission();
-      const savedPreference = localStorage.getItem('notificationsEnabled') === 'true';
+      const savedPreference = getSavedNotificationPreference();
       
       // Only enable if both browser permission is granted AND user preference is true
-      setNotificationsEnabled(browserPermission === 'granted' && savedPreference);
+      const shouldBeEnabled = browserPermission === 'granted' && savedPreference;
+      setNotificationsEnabled(shouldBeEnabled);
       
+      // If browser denied permission, update saved preference
       if (browserPermission === 'denied') {
-        localStorage.setItem('notificationsEnabled', 'false');
+        saveNotificationPreference(false);
       }
     };
 
+    // Check on mount
     checkNotificationStatus();
+
+    // Add visibility change listener to recheck when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkNotificationStatus();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const toggleNotifications = async () => {
@@ -371,7 +390,7 @@ export const InterpreterDashboard = () => {
     if (notificationsEnabled) {
       // Disable notifications
       setNotificationsEnabled(false);
-      localStorage.setItem('notificationsEnabled', 'false');
+      saveNotificationPreference(false);
       toast({
         title: "Notifications désactivées",
         description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
@@ -398,7 +417,7 @@ export const InterpreterDashboard = () => {
         
         if (granted) {
           setNotificationsEnabled(true);
-          localStorage.setItem('notificationsEnabled', 'true');
+          saveNotificationPreference(true);
           
           // Send a test notification
           showNotification('Test de notification', {
@@ -637,4 +656,12 @@ function isNotificationsSupported() {
 
 function getNotificationPermission() {
   return Notification.permission;
+}
+
+function getSavedNotificationPreference() {
+  return localStorage.getItem('notificationsEnabled') === 'true';
+}
+
+function saveNotificationPreference(enabled: boolean) {
+  localStorage.setItem('notificationsEnabled', enabled ? 'true' : 'false');
 }
