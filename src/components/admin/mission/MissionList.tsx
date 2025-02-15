@@ -14,10 +14,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Trash2, AlertCircle } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Mission {
   id: string;
@@ -37,17 +36,6 @@ interface Mission {
     profile_picture_url: string | null;
     status: string;
   };
-  notifications?: MissionNotification[];
-}
-
-interface MissionNotification {
-  status: "pending" | "accepted" | "declined" | "cancelled" | "cancelled_system";
-  cancellation_reason?: string;
-  interpreter_id: string;
-  interpreter_profiles?: {
-    first_name: string;
-    last_name: string;
-  };
 }
 
 interface MissionListProps {
@@ -61,30 +49,27 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "accepted":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+        return "bg-green-500 text-white";
       case "declined":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+        return "bg-red-500 text-white";
       case "cancelled":
-      case "cancelled_system":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+        return "bg-gray-500 text-white";
+      case "awaiting_acceptance":
+        return "bg-yellow-500 text-white";
       default:
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+        return "bg-blue-500 text-white";
     }
   };
 
-  const formatStatus = (status: string, reason?: string) => {
+  const formatStatus = (status: string) => {
     switch (status) {
       case "accepted":
         return "Acceptée";
       case "declined":
-        return "Refusée par l'interprète";
+        return "Refusée";
       case "cancelled":
         return "Annulée";
-      case "cancelled_system":
-        return `Annulée automatiquement${reason ? ` (${reason})` : ''}`;
-      case "pending":
+      case "awaiting_acceptance":
         return "En attente";
       default:
         return status;
@@ -153,13 +138,13 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">
+                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
                   {mission.mission_type === "immediate"
                     ? `Mission immédiate - ${mission.estimated_duration} minutes`
                     : "Mission programmée"}
                 </Badge>
                 {mission.mission_type === "scheduled" && (
-                  <Badge variant="outline">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                     {format(
                       new Date(mission.scheduled_start_time!),
                       "d MMMM yyyy HH:mm",
@@ -173,10 +158,7 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                     )}
                   </Badge>
                 )}
-                <Badge
-                  className={getStatusBadgeColor(mission.status)}
-                  variant="secondary"
-                >
+                <Badge variant="secondary" className={getStatusBadgeColor(mission.status)}>
                   {formatStatus(mission.status)}
                 </Badge>
               </div>
@@ -190,49 +172,10 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                   </span>
                   <Badge
                     variant="secondary"
-                    className={getStatusBadgeColor(
-                      mission.interpreter_profiles.status
-                    )}
+                    className={getStatusBadgeColor(mission.interpreter_profiles.status)}
                   >
-                    {mission.interpreter_profiles.status}
+                    {formatStatus(mission.interpreter_profiles.status)}
                   </Badge>
-                </div>
-              )}
-
-              {/* Display notification statuses if available */}
-              {mission.notifications && mission.notifications.length > 0 && (
-                <div className="mt-2">
-                  <h4 className="text-sm font-medium mb-2">Notifications :</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {mission.notifications.map((notification: MissionNotification, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Badge
-                          className={getStatusBadgeColor(notification.status)}
-                          variant="secondary"
-                        >
-                          {formatStatus(notification.status, notification.cancellation_reason)}
-                        </Badge>
-                        {notification.interpreter_profiles && (
-                          <span className="text-sm">
-                            {notification.interpreter_profiles.first_name}{" "}
-                            {notification.interpreter_profiles.last_name}
-                          </span>
-                        )}
-                        {notification.status === "cancelled_system" && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <AlertCircle className="h-4 w-4 text-yellow-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                Raison : {notification.cancellation_reason || 'Non spécifiée'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>

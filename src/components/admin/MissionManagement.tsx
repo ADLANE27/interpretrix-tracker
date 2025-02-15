@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
@@ -68,6 +67,7 @@ export const MissionManagement = () => {
   const [languageFilter, setLanguageFilter] = useState<string>("");
   const [startDateFilter, setStartDateFilter] = useState<string>("");
   const [endDateFilter, setEndDateFilter] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchMissions = async () => {
     try {
@@ -662,25 +662,30 @@ export const MissionManagement = () => {
         </form>
       </Card>
 
-      {/* Mission List with Filters Popover */}
+      {/* Mission List with Filters */}
       <Card className="p-6">
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Liste des missions</h3>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Filter className="h-4 w-4" />
-                  Filtres
-                  {(statusFilter !== 'all' || missionTypeFilter !== 'all' || languageFilter || startDateFilter || endDateFilter) && (
-                    <Badge variant="secondary" className="ml-2">Actifs</Badge>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Type de mission</Label>
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filtres
+              {(statusFilter !== 'all' || missionTypeFilter !== 'all' || languageFilter || startDateFilter || endDateFilter) && (
+                <Badge variant="secondary" className="ml-2">Actifs</Badge>
+              )}
+            </Button>
+          </div>
+
+          {showFilters && (
+            <Card className="p-4 mb-4 bg-muted/50">
+              <div className="grid gap-4">
+                <div className="flex flex-wrap gap-4">
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Type de mission</Label>
                     <Select 
                       value={missionTypeFilter} 
                       onValueChange={(value: 'all' | 'immediate' | 'scheduled') => setMissionTypeFilter(value)}
@@ -696,8 +701,8 @@ export const MissionManagement = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Statut</Label>
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Statut</Label>
                     <Select 
                       value={statusFilter} 
                       onValueChange={(value: string) => setStatusFilter(value)}
@@ -715,8 +720,8 @@ export const MissionManagement = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Langues</Label>
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Langues</Label>
                     <Input
                       type="text"
                       placeholder="Filtrer par langues"
@@ -725,8 +730,8 @@ export const MissionManagement = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Date de début</Label>
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Date de début</Label>
                     <Input
                       type="date"
                       value={startDateFilter}
@@ -734,32 +739,32 @@ export const MissionManagement = () => {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Date de fin</Label>
+                  <div className="w-[200px]">
+                    <Label className="mb-2">Date de fin</Label>
                     <Input
                       type="date"
                       value={endDateFilter}
                       onChange={(e) => setEndDateFilter(e.target.value)}
                     />
                   </div>
-
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => {
-                      setStatusFilter('all');
-                      setMissionTypeFilter('all');
-                      setLanguageFilter('');
-                      setStartDateFilter('');
-                      setEndDateFilter('');
-                    }}
-                  >
-                    Réinitialiser les filtres
-                  </Button>
                 </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-fit"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setMissionTypeFilter('all');
+                    setLanguageFilter('');
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                  }}
+                >
+                  Réinitialiser les filtres
+                </Button>
+              </div>
+            </Card>
+          )}
 
           <MissionList
             missions={filteredMissions}
