@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -433,6 +432,7 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Create the mission first
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert({
@@ -445,7 +445,7 @@ export const MissionManagement = () => {
           mission_type: missionType,
           scheduled_start_time: utcStartTime,
           scheduled_end_time: utcEndTime,
-          created_by: user.id // Add creator information
+          created_by: user.id
         })
         .select()
         .single();
@@ -453,6 +453,46 @@ export const MissionManagement = () => {
       if (missionError) throw missionError;
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
+
+      // Directly send push notifications using the edge function
+      const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
+        'send-push-notification',
+        {
+          body: {
+            interpreterIds: selectedInterpreters,
+            title: missionType === 'immediate' 
+              ? '🚨 Nouvelle mission immédiate'
+              : '📅 Nouvelle mission programmée',
+            body: missionType === 'immediate'
+              ? `${sourceLanguage} → ${targetLanguage} - ${calculatedDuration} minutes`
+              : `${sourceLanguage} → ${targetLanguage} - du ${new Date(scheduledStartTime).toLocaleString()} au ${new Date(scheduledEndTime).toLocaleString()}`,
+            data: {
+              mission_id: createdMission.id,
+              mission_type: missionType,
+              source_language: sourceLanguage,
+              target_language: targetLanguage,
+              estimated_duration: calculatedDuration,
+              scheduled_start_time: utcStartTime,
+              scheduled_end_time: utcEndTime
+            }
+          }
+        }
+      );
+
+      if (notificationError) {
+        console.error('[MissionManagement] Error sending notifications:', notificationError);
+        toast({
+          title: "Mission créée",
+          description: "La mission a été créée mais il y a eu une erreur lors de l'envoi des notifications",
+          variant: "destructive",
+        });
+      } else {
+        console.log('[MissionManagement] Notifications sent successfully:', notificationResult);
+        toast({
+          title: "Mission créée avec succès",
+          description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
+        });
+      }
       
       setSourceLanguage("");
       setTargetLanguage("");
@@ -462,11 +502,6 @@ export const MissionManagement = () => {
       setMissionType('immediate');
       setScheduledStartTime("");
       setScheduledEndTime("");
-
-      toast({
-        title: "Mission créée avec succès",
-        description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
-      });
 
       fetchMissions();
 
