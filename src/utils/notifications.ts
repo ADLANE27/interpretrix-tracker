@@ -18,13 +18,20 @@ const initializeOneSignal = async (): Promise<boolean> => {
     }
 
     console.log('[OneSignal] Initializing...');
-    window.OneSignal.init({
+    await window.OneSignal.init({
       appId: ONESIGNAL_APP_ID,
       notifyButton: {
         enable: false,
       },
       allowLocalhostAsSecureOrigin: true,
     });
+
+    // Check if the environment supports notifications
+    const supported = await window.OneSignal.isPushNotificationsSupported();
+    if (!supported) {
+      console.error('[OneSignal] Push notifications not supported in this environment');
+      return false;
+    }
 
     oneSignalInitialized = true;
     console.log('[OneSignal] Initialized successfully');
@@ -50,17 +57,38 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       return false;
     }
 
+    // Check if the environment supports notifications
+    const supported = await window.OneSignal.isPushNotificationsSupported();
+    if (!supported) {
+      console.error('[OneSignal] Push notifications not supported in this environment');
+      return false;
+    }
+
     // Show the browser's native notification prompt
     console.log('[OneSignal] Requesting permission...');
-    const permission = await window.OneSignal.showNativePrompt();
-    console.log('[OneSignal] Permission result:', permission);
+    try {
+      const permission = await window.OneSignal.showNativePrompt();
+      console.log('[OneSignal] Permission result:', permission);
 
-    if (permission === 'granted') {
-      // Register the device with OneSignal
-      const registered = await registerDevice();
-      if (registered) {
-        console.log('[OneSignal] Device registered successfully');
-        return true;
+      if (permission === 'granted') {
+        // Register the device with OneSignal
+        const registered = await registerDevice();
+        if (registered) {
+          console.log('[OneSignal] Device registered successfully');
+          return true;
+        }
+      }
+    } catch (promptError) {
+      console.error('[OneSignal] Error showing prompt:', promptError);
+      
+      // Fallback to checking current permission
+      const currentPermission = await getNotificationPermission();
+      if (currentPermission === 'granted') {
+        const registered = await registerDevice();
+        if (registered) {
+          console.log('[OneSignal] Device registered successfully via fallback');
+          return true;
+        }
       }
     }
 
@@ -177,14 +205,35 @@ const getPlatform = (): string => {
 
 // Simplified permission check
 export const getNotificationPermission = async (): Promise<NotificationPermission> => {
-  if (!('Notification' in window)) return 'denied';
-  return Notification.permission;
+  try {
+    if (!('Notification' in window)) return 'denied';
+    
+    // Try to get OneSignal permission first
+    if (window.OneSignal) {
+      const enabled = await window.OneSignal.isPushNotificationsEnabled();
+      if (enabled) return 'granted';
+    }
+    
+    // Fallback to browser permission
+    return Notification.permission;
+  } catch (error) {
+    console.error('[OneSignal] Error checking permission:', error);
+    return 'denied';
+  }
 };
 
 // Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
     if (!window.OneSignal) return false;
+    
+    // First check if the environment supports notifications
+    const supported = await window.OneSignal.isPushNotificationsSupported();
+    if (!supported) {
+      console.log('[OneSignal] Push notifications not supported in this environment');
+      return false;
+    }
+    
     return await window.OneSignal.isPushNotificationsEnabled();
   } catch (error) {
     console.error('[OneSignal] Error checking notification status:', error);
