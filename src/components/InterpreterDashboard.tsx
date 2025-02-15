@@ -656,24 +656,3 @@ export const InterpreterDashboard = () => {
     </div>
   );
 };
-
-function isNotificationsSupported() {
-  return 'Notification' in window;
-}
-
-function getNotificationPermission() {
-  return Notification.permission;
-}
-
-function getSavedNotificationPreference() {
-  return localStorage.getItem('notificationsEnabled') === 'true';
-}
-
-function saveNotificationPreference(enabled: boolean) {
-  localStorage.setItem('notificationsEnabled', enabled ? 'true' : 'false');
-}
-
-function playNotificationSound(type: 'immediate' | 'scheduled') {
-  const audio = new Audio(`/lovable-uploads/${type}.mp3`);
-  audio.play();
-}
