@@ -4,3 +4,7 @@
   Service-Worker-Allowed: /
   Cache-Control: no-cache
   Content-Security-Policy: default-src 'self' cdn.onesignal.com onesignal.com *.onesignal.com https://*.supabase.co wss://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co https://*.onesignal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.onesignal.com onesignal.com *.onesignal.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; worker-src 'self' blob: cdn.onesignal.com; frame-src 'self' onesignal.com *.onesignal.com; child-src 'self' blob: onesignal.com *.onesignal.com; manifest-src 'self' onesignal.com *.onesignal.com;
+  Permissions-Policy: notifications=*, push=*, vibrate=*
+  Feature-Policy: notifications *, push *, vibrate *
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Resource-Policy: cross-origin
