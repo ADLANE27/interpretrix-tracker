@@ -7,17 +7,7 @@ interface Window {
         enable: boolean;
       };
       allowLocalhostAsSecureOrigin?: boolean;
-      subdomainName?: string;
-      webhooks?: {
-        cors?: boolean;
-        'notification.displayed'?: string;
-        'notification.clicked'?: string;
-        'notification.dismissed'?: string;
-      };
-      persistNotification?: boolean;
-      serviceWorkerPath?: string;
-      path?: string;
-    }) => Promise<void>;
+    }) => void;
     showSlidedownPrompt: () => void;
     showNativePrompt: () => Promise<NotificationPermission>;
     getUserId: () => Promise<string>;
@@ -26,5 +16,4 @@ interface Window {
     isPushNotificationsEnabled: () => Promise<boolean>;
     isPushNotificationsSupported: () => Promise<boolean>;
   };
-  OneSignalDeferred: ((OneSignal: Window['OneSignal']) => void)[];
 }
