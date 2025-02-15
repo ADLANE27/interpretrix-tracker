@@ -64,7 +64,6 @@ export const InterpreterDashboard = () => {
   const isMobile = useIsMobile();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isCheckingNotifications, setIsCheckingNotifications] = useState(false);
-  const { toast } = useToast();
 
   useSupabaseConnection();
 
