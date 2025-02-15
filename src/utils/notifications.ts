@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 let oneSignalInitialized = false;
 
+// Get the base domain for webhooks
+const getWebhookDomain = (): string => {
+  // Default to www domain as it's set in OneSignal dashboard
+  return 'https://www.interpretix.netlify.app';
+};
+
 // Check if browser supports notifications
 const isBrowserSupported = (): boolean => {
   // Check for basic notification support
@@ -45,6 +51,9 @@ const initializeOneSignal = async (): Promise<boolean> => {
       throw new Error('OneSignal not loaded');
     }
 
+    const webhookDomain = getWebhookDomain();
+    console.log('[OneSignal] Using webhook domain:', webhookDomain);
+
     console.log('[OneSignal] Initializing...');
     await window.OneSignal.init({
       appId: ONESIGNAL_APP_ID,
@@ -55,11 +64,13 @@ const initializeOneSignal = async (): Promise<boolean> => {
       subdomainName: "interpretix",
       webhooks: {
         cors: true,
-        'notification.displayed': 'https://interpretix.netlify.app',
-        'notification.clicked': 'https://interpretix.netlify.app',
-        'notification.dismissed': 'https://interpretix.netlify.app'
+        'notification.displayed': webhookDomain,
+        'notification.clicked': webhookDomain,
+        'notification.dismissed': webhookDomain
       },
-      persistNotification: false
+      persistNotification: false,
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+      path: '/'
     });
 
     oneSignalInitialized = true;

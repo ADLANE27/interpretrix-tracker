@@ -7,7 +7,18 @@ interface Window {
         enable: boolean;
       };
       allowLocalhostAsSecureOrigin?: boolean;
-    }) => void;
+      subdomainName?: string;
+      webhooks?: {
+        cors?: boolean;
+        'notification.displayed'?: string;
+        'notification.clicked'?: string;
+        'notification.dismissed'?: string;
+      };
+      persistNotification?: boolean;
+      serviceWorkerPath?: string;
+      serviceWorkerUpdaterPath?: string;
+      path?: string;
+    }) => Promise<void>;
     showSlidedownPrompt: () => void;
     showNativePrompt: () => Promise<NotificationPermission>;
     getUserId: () => Promise<string>;
