@@ -1,14 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
-let oneSignalInitialized = false;
-let initializationPromise: Promise<void> | null = null;
-
-// Get the base domain for webhooks
-const getWebhookDomain = (): string => {
-  return 'https://www.interpretix.netlify.app';
-};
 
 // Check if browser supports notifications
 const isBrowserSupported = (): boolean => {
@@ -35,90 +27,11 @@ const isBrowserSupported = (): boolean => {
   return true;
 };
 
-// Initialize OneSignal with proper error handling
-const initializeOneSignal = async (): Promise<void> => {
-  if (oneSignalInitialized) {
-    console.log('[OneSignal] Already initialized');
-    return;
-  }
-
-  if (initializationPromise) {
-    console.log('[OneSignal] Initialization in progress');
-    return initializationPromise;
-  }
-
-  initializationPromise = (async () => {
-    try {
-      if (!isBrowserSupported()) {
-        throw new Error('Browser does not support required features');
-      }
-
-      const webhookDomain = getWebhookDomain();
-      console.log('[OneSignal] Using webhook domain:', webhookDomain);
-
-      await window.OneSignal.init({
-        appId: ONESIGNAL_APP_ID,
-        autoResubscribe: true,
-        allowLocalhostAsSecureOrigin: true,
-        serviceWorkerParam: { scope: '/' },
-        serviceWorkerPath: '/OneSignalSDKWorker.js',
-        subdomainName: "interpretix",
-        promptOptions: {
-          slidedown: {
-            prompts: [{
-              type: "push",
-              autoPrompt: true,
-              text: {
-                actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
-                acceptButton: "Autoriser",
-                cancelButton: "Plus tard"
-              },
-              delay: {
-                pageViews: 1,
-                timeDelay: 0
-              }
-            }]
-          }
-        },
-        welcomeNotification: {
-          disable: false,
-          title: "Interpretix",
-          message: "Merci d'avoir activé les notifications !"
-        },
-        notifyButton: {
-          enable: false
-        },
-        persistNotification: false,
-        webhooks: {
-          cors: true,
-          'notification.displayed': webhookDomain,
-          'notification.clicked': webhookDomain,
-          'notification.dismissed': webhookDomain
-        }
-      });
-
-      oneSignalInitialized = true;
-      console.log('[OneSignal] Initialized successfully');
-    } catch (error) {
-      console.error('[OneSignal] Initialization error:', error);
-      oneSignalInitialized = false;
-      throw error;
-    } finally {
-      initializationPromise = null;
-    }
-  })();
-
-  return initializationPromise;
-};
-
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     if (!isBrowserSupported()) {
       throw new Error("Votre navigateur ne supporte pas les notifications");
     }
-
-    // Initialize OneSignal first
-    await initializeOneSignal();
 
     // Check current permission
     const currentPermission = await window.OneSignal.getNotificationPermission();
