@@ -61,6 +61,11 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [missionTypeFilter, setMissionTypeFilter] = useState<'all' | 'immediate' | 'scheduled'>('all');
+  const [languageFilter, setLanguageFilter] = useState<string>("");
+  const [startDateFilter, setStartDateFilter] = useState<string>("");
+  const [endDateFilter, setEndDateFilter] = useState<string>("");
 
   const fetchMissions = async () => {
     try {
@@ -425,6 +430,33 @@ export const MissionManagement = () => {
     }
   };
 
+  const filteredMissions = missions.filter(mission => {
+    // Filter by status
+    if (statusFilter && mission.status !== statusFilter) {
+      return false;
+    }
+
+    // Filter by mission type
+    if (missionTypeFilter !== 'all' && mission.mission_type !== missionTypeFilter) {
+      return false;
+    }
+
+    // Filter by language
+    if (languageFilter && !`${mission.source_language} → ${mission.target_language}`.includes(languageFilter)) {
+      return false;
+    }
+
+    // Filter by date range
+    if (startDateFilter && mission.scheduled_start_time && new Date(mission.scheduled_start_time) < new Date(startDateFilter)) {
+      return false;
+    }
+    if (endDateFilter && mission.scheduled_start_time && new Date(mission.scheduled_start_time) > new Date(endDateFilter)) {
+      return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <Card className="p-6">
@@ -628,15 +660,79 @@ export const MissionManagement = () => {
         </form>
       </Card>
 
-      {/* Mission List */}
+      {/* Mission List with Filters */}
       <Card className="p-6">
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Liste des missions</h3>
           </div>
 
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="space-y-2">
+              <Label>Type de mission</Label>
+              <Select 
+                value={missionTypeFilter} 
+                onValueChange={(value: 'all' | 'immediate' | 'scheduled') => setMissionTypeFilter(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrer par type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="immediate">Immédiate</SelectItem>
+                  <SelectItem value="scheduled">Programmée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Statut</Label>
+              <Select value={statusFilter || ''} onValueChange={(value) => setStatusFilter(value || null)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrer par statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="awaiting_acceptance">En attente</SelectItem>
+                  <SelectItem value="accepted">Acceptée</SelectItem>
+                  <SelectItem value="declined">Refusée</SelectItem>
+                  <SelectItem value="cancelled">Annulée</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Langues</Label>
+              <Input
+                type="text"
+                placeholder="Filtrer par langues"
+                value={languageFilter}
+                onChange={(e) => setLanguageFilter(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Date de début</Label>
+              <Input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Date de fin</Label>
+              <Input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+              />
+            </div>
+          </div>
+
           <MissionList
-            missions={missions}
+            missions={filteredMissions}
             onDelete={handleDeleteMission}
           />
         </div>
