@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay } from "date-fns";
+import { format, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock, User, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,18 +88,39 @@ export const AdminMissionsCalendar = () => {
     };
   }, []);
 
+  // Get missions based on view mode
+  const getVisibleMissions = () => {
+    if (!selectedDate) return [];
+
+    switch (viewMode) {
+      case 'week': {
+        const weekStart = startOfWeek(selectedDate, { locale: fr });
+        const weekEnd = endOfWeek(selectedDate, { locale: fr });
+        return missions.filter(mission => {
+          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+          return missionDate >= weekStart && missionDate <= weekEnd;
+        });
+      }
+      case 'day':
+        return missions.filter(mission => {
+          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+          return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
+        });
+      default: // month
+        return missions.filter(mission => {
+          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+          return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
+        });
+    }
+  };
+
   // Get all dates that have missions
   const datesWithMissions = missions
     .map((mission) => startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone)))
     .filter((date): date is Date => date !== null);
 
-  // Filter missions for the selected date
-  const missionsForSelectedDate = missions.filter((mission) => {
-    if (!selectedDate) return false;
-    
-    const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
-    return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
-  });
+  // Get missions to display based on view mode
+  const visibleMissions = getVisibleMissions();
 
   return (
     <div className="space-y-4">
@@ -142,17 +163,19 @@ export const AdminMissionsCalendar = () => {
 
         <Card className="p-4">
           <h3 className="font-semibold mb-4">
-            {selectedDate
-              ? format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })
-              : "Sélectionnez une date"}
+            {selectedDate && (
+              viewMode === 'week' 
+                ? `Semaine du ${format(startOfWeek(selectedDate, { locale: fr }), "d MMMM yyyy", { locale: fr })}`
+                : format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })
+            )}
           </h3>
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {missionsForSelectedDate.length === 0 ? (
+            {visibleMissions.length === 0 ? (
               <p className="text-sm text-gray-500">
-                Aucune mission programmée pour cette date
+                Aucune mission programmée pour cette période
               </p>
             ) : (
-              missionsForSelectedDate.map((mission) => {
+              visibleMissions.map((mission) => {
                 const startTime = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
                 const endTime = toZonedTime(new Date(mission.scheduled_end_time), userTimeZone);
 
@@ -181,17 +204,9 @@ export const AdminMissionsCalendar = () => {
 
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-purple-500" />
-                          <div className="text-sm">
-                            <span className="font-medium">
-                              {mission.interpreter_first_name} {mission.interpreter_last_name}
-                            </span>
-                            <Badge 
-                              variant="secondary" 
-                              className="ml-2"
-                            >
-                              {mission.interpreter_status}
-                            </Badge>
-                          </div>
+                          <span className="text-sm font-medium">
+                            {mission.interpreter_first_name} {mission.interpreter_last_name}
+                          </span>
                         </div>
 
                         {mission.client_name && (
