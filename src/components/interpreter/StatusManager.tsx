@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { 
   CheckCircle2, 
   XCircle, 
-  PauseCircle
+  PauseCircle,
+  PhoneCall
 } from "lucide-react";
 
 interface StatusManagerProps {
@@ -17,6 +18,11 @@ const statusConfig = {
     color: "bg-interpreter-available hover:bg-green-600",
     label: "Disponible",
     icon: CheckCircle2
+  },
+  busy: { 
+    color: "bg-interpreter-busy hover:bg-blue-600",
+    label: "En appel",
+    icon: PhoneCall
   },
   unavailable: { 
     color: "bg-interpreter-unavailable hover:bg-red-600",
@@ -36,7 +42,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       <h3 className="text-lg font-semibold text-gray-900">
         Gérer ma disponibilité
       </h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(statusConfig).map(([key, value]) => {
           const Icon = value.icon;
           return (
