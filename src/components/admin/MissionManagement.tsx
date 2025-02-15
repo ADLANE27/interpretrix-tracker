@@ -61,7 +61,7 @@ export const MissionManagement = () => {
   const [scheduledEndTime, setScheduledEndTime] = useState("");
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | string>('all');
   const [missionTypeFilter, setMissionTypeFilter] = useState<'all' | 'immediate' | 'scheduled'>('all');
   const [languageFilter, setLanguageFilter] = useState<string>("");
   const [startDateFilter, setStartDateFilter] = useState<string>("");
@@ -432,7 +432,7 @@ export const MissionManagement = () => {
 
   const filteredMissions = missions.filter(mission => {
     // Filter by status
-    if (statusFilter && mission.status !== statusFilter) {
+    if (statusFilter !== 'all' && mission.status !== statusFilter) {
       return false;
     }
 
@@ -688,12 +688,15 @@ export const MissionManagement = () => {
 
             <div className="space-y-2">
               <Label>Statut</Label>
-              <Select value={statusFilter || ''} onValueChange={(value) => setStatusFilter(value || null)}>
+              <Select 
+                value={statusFilter} 
+                onValueChange={(value: string) => setStatusFilter(value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Filtrer par statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous</SelectItem>
+                  <SelectItem value="all">Tous</SelectItem>
                   <SelectItem value="awaiting_acceptance">En attente</SelectItem>
                   <SelectItem value="accepted">Acceptée</SelectItem>
                   <SelectItem value="declined">Refusée</SelectItem>
