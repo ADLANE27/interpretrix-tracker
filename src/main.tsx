@@ -3,8 +3,13 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-// Only clean up old service workers on load
+// Only clean up old service workers on load if Service Worker API is available
 window.addEventListener('load', async () => {
+  if (!('serviceWorker' in navigator)) {
+    console.error('[ServiceWorker] Service Worker API not available');
+    return;
+  }
+
   try {
     console.log('[ServiceWorker] Starting cleanup...');
     

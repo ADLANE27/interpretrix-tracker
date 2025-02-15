@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
     <!-- Load OneSignal with explicit type -->
-    <script type="application/javascript" src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" async></script>
+    <script type="application/javascript" src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" defer></script>
     <!-- Initialize OneSignal after SDK is loaded -->
     <script type="application/javascript">
       // Create a promise to track OneSignal initialization
@@ -19,8 +19,15 @@
 
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       
-      window.addEventListener('DOMContentLoaded', function() {
-        console.log('[OneSignal] DOM ready, starting initialization...');
+      // Wait for both DOM content and Service Worker API
+      const initializeOneSignal = () => {
+        if (!('serviceWorker' in navigator)) {
+          console.error('[OneSignal] Service Worker API not available');
+          window.rejectOneSignal(new Error('Service Worker API not available'));
+          return;
+        }
+
+        console.log('[OneSignal] DOM ready and Service Worker API available, starting initialization...');
         
         OneSignalDeferred.push(async function(OneSignal) {
           try {
@@ -71,7 +78,14 @@
             window.rejectOneSignal(error);
           }
         });
-      });
+      };
+
+      // Wait for DOM content to be loaded
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeOneSignal);
+      } else {
+        initializeOneSignal();
+      }
     </script>
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
