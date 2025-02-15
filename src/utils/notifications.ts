@@ -1,36 +1,81 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
-// Check if browser supports notifications
-const isBrowserSupported = (): boolean => {
+// Enhanced browser support check with detailed logging
+const isBrowserSupported = (): { supported: boolean; reason?: string } => {
+  // Check basic notification support
   if (!('Notification' in window)) {
     console.log('[OneSignal] Basic notifications not supported');
-    return false;
+    return { supported: false, reason: 'notifications_not_supported' };
   }
 
+  // Check service worker support
   if (!('serviceWorker' in navigator)) {
     console.log('[OneSignal] Service Workers not supported');
-    return false;
+    return { supported: false, reason: 'service_worker_not_supported' };
   }
 
+  // Check secure context (HTTPS)
   if (!window.isSecureContext) {
     console.log('[OneSignal] Not in a secure context');
-    return false;
+    return { supported: false, reason: 'not_secure_context' };
   }
 
-  if (!window.OneSignal) {
+  // Check OneSignal SDK
+  if (typeof window.OneSignal === 'undefined') {
     console.log('[OneSignal] OneSignal SDK not loaded');
-    return false;
+    return { supported: false, reason: 'onesignal_not_loaded' };
   }
 
-  return true;
+  // Check if OneSignal is properly initialized
+  if (!window.OneSignal.initialized) {
+    console.log('[OneSignal] OneSignal not initialized');
+    return { supported: false, reason: 'onesignal_not_initialized' };
+  }
+
+  return { supported: true };
+};
+
+// Wait for OneSignal to be ready
+const waitForOneSignal = async (timeout = 5000): Promise<boolean> => {
+  const start = Date.now();
+  
+  while (Date.now() - start < timeout) {
+    if (window.OneSignal?.initialized) {
+      return true;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  return false;
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
-    if (!isBrowserSupported()) {
-      throw new Error("Votre navigateur ne supporte pas les notifications");
+    // Wait for OneSignal to be ready
+    const isReady = await waitForOneSignal();
+    if (!isReady) {
+      console.error('[OneSignal] Timeout waiting for OneSignal initialization');
+      throw new Error("L'initialisation des notifications a échoué");
+    }
+
+    // Check browser support
+    const { supported, reason } = isBrowserSupported();
+    if (!supported) {
+      console.error('[OneSignal] Browser support check failed:', reason);
+      
+      // Map reason to user-friendly error message
+      const errorMessages: Record<string, string> = {
+        notifications_not_supported: "Votre navigateur ne supporte pas les notifications",
+        service_worker_not_supported: "Votre navigateur ne supporte pas les notifications",
+        not_secure_context: "Les notifications requièrent une connexion sécurisée (HTTPS)",
+        onesignal_not_loaded: "Le système de notifications n'est pas chargé",
+        onesignal_not_initialized: "Le système de notifications n'est pas initialisé"
+      };
+
+      throw new Error(errorMessages[reason] || "Votre navigateur ne supporte pas les notifications");
     }
 
     // Check current permission
@@ -176,7 +221,8 @@ const getPlatform = (): string => {
 
 export const getNotificationPermission = async (): Promise<NotificationPermission> => {
   try {
-    if (!isBrowserSupported()) {
+    const { supported } = isBrowserSupported();
+    if (!supported) {
       return 'denied';
     }
 
@@ -189,11 +235,13 @@ export const getNotificationPermission = async (): Promise<NotificationPermissio
 
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
-    if (!isBrowserSupported()) {
+    const { supported } = isBrowserSupported();
+    if (!supported) {
       return false;
     }
 
-    if (!window.OneSignal) {
+    const isReady = await waitForOneSignal();
+    if (!isReady) {
       return false;
     }
 
