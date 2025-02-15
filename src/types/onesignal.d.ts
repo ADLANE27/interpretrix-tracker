@@ -1,10 +1,16 @@
 
 interface Window {
-  OneSignal?: {
-    init: (config: any) => void;
-    getUserId: () => Promise<string>;
-    showNativePrompt: () => Promise<NotificationPermission>;
+  OneSignal: {
+    init: (config: {
+      appId: string;
+      notifyButton?: {
+        enable: boolean;
+      };
+      allowLocalhostAsSecureOrigin?: boolean;
+    }) => void;
     showSlidedownPrompt: () => void;
+    showNativePrompt: () => Promise<NotificationPermission>;
+    getUserId: () => Promise<string>;
     setSubscription: (enabled: boolean) => Promise<void>;
   };
 }

@@ -169,3 +169,4 @@ export const showNotification = (title: string, options: NotificationOptions = {
   // OneSignal handles the notifications, no need for native notifications
   console.log('[OneSignal] Notification will be handled by OneSignal');
 };
+
