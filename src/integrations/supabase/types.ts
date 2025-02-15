@@ -176,6 +176,13 @@ export type Database = {
             foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
             columns: ["assigned_interpreter_id"]
             isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
+            columns: ["assigned_interpreter_id"]
+            isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -221,6 +228,13 @@ export type Database = {
             foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
             columns: ["interpreter_id"]
             isOneToOne: true
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: true
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -256,6 +270,13 @@ export type Database = {
           target_language?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "interpreter_languages_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
           {
             foreignKeyName: "interpreter_languages_interpreter_id_fkey"
             columns: ["interpreter_id"]
@@ -422,6 +443,13 @@ export type Database = {
             foreignKeyName: "mission_notifications_interpreter_id_fkey"
             columns: ["interpreter_id"]
             isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -431,6 +459,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "interpreters_with_next_mission"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["mission_id"]
           },
           {
             foreignKeyName: "mission_notifications_mission_id_fkey"
@@ -479,6 +514,13 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
           {
             foreignKeyName: "push_subscriptions_interpreter_id_fkey"
             columns: ["interpreter_id"]
@@ -617,6 +659,24 @@ export type Database = {
       }
     }
     Views: {
+      calendar_missions: {
+        Row: {
+          client_name: string | null
+          estimated_duration: number | null
+          interpreter_first_name: string | null
+          interpreter_id: string | null
+          interpreter_last_name: string | null
+          interpreter_status: string | null
+          mission_id: string | null
+          profile_picture_url: string | null
+          scheduled_end_time: string | null
+          scheduled_start_time: string | null
+          source_language: string | null
+          status: string | null
+          target_language: string | null
+        }
+        Relationships: []
+      }
       interpreters_with_next_mission: {
         Row: {
           address: Json | null

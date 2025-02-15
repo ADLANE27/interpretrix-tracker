@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { AdminMissionsCalendar } from "./AdminMissionsCalendar";
 
 interface Interpreter {
   id: string;
@@ -256,6 +257,7 @@ export const AdminDashboard = () => {
               <TabsList>
                 <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
                 <TabsTrigger value="missions">Missions</TabsTrigger>
+                <TabsTrigger value="calendar">Calendrier</TabsTrigger>
                 <TabsTrigger value="messages">Messages</TabsTrigger>
                 <TabsTrigger value="users">Utilisateurs</TabsTrigger>
                 <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
@@ -416,6 +418,10 @@ export const AdminDashboard = () => {
 
           <TabsContent value="missions">
             <MissionManagement />
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <AdminMissionsCalendar />
           </TabsContent>
 
           <TabsContent value="messages">
