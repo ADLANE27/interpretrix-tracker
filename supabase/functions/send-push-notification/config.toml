@@ -1,0 +1,4 @@
+
+project_id = "bblpiatmtnlhnbavhkau"
+[global.extensions]
+webpush = "1.0"
