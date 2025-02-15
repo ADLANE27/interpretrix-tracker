@@ -14,5 +14,6 @@ interface Window {
     setSubscription: (enabled: boolean) => Promise<void>;
     getNotificationPermission: () => Promise<NotificationPermission>;
     isPushNotificationsEnabled: () => Promise<boolean>;
+    isPushNotificationsSupported: () => Promise<boolean>;
   };
 }

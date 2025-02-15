@@ -26,10 +26,9 @@ const initializeOneSignal = async (): Promise<boolean> => {
       allowLocalhostAsSecureOrigin: true,
     });
 
-    // Check if the environment supports notifications
-    const supported = await window.OneSignal.isPushNotificationsSupported();
-    if (!supported) {
-      console.error('[OneSignal] Push notifications not supported in this environment');
+    // Check if notifications are supported in this environment
+    if (!('Notification' in window)) {
+      console.error('[OneSignal] Notifications API not supported');
       return false;
     }
 
@@ -54,13 +53,6 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     const initialized = await initializeOneSignal();
     if (!initialized) {
       console.error('[OneSignal] Failed to initialize OneSignal');
-      return false;
-    }
-
-    // Check if the environment supports notifications
-    const supported = await window.OneSignal.isPushNotificationsSupported();
-    if (!supported) {
-      console.error('[OneSignal] Push notifications not supported in this environment');
       return false;
     }
 
@@ -227,10 +219,9 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
     if (!window.OneSignal) return false;
     
-    // First check if the environment supports notifications
-    const supported = await window.OneSignal.isPushNotificationsSupported();
-    if (!supported) {
-      console.log('[OneSignal] Push notifications not supported in this environment');
+    // Check if notifications are supported in this environment
+    if (!('Notification' in window)) {
+      console.log('[OneSignal] Notifications not supported in this environment');
       return false;
     }
     
