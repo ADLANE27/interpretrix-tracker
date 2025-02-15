@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
@@ -53,6 +52,14 @@ const initializeOneSignal = async (): Promise<boolean> => {
         enable: false,
       },
       allowLocalhostAsSecureOrigin: true,
+      subdomainName: "interpretix",
+      webhooks: {
+        cors: true,
+        'notification.displayed': 'https://interpretix.netlify.app',
+        'notification.clicked': 'https://interpretix.netlify.app',
+        'notification.dismissed': 'https://interpretix.netlify.app'
+      },
+      persistNotification: false
     });
 
     oneSignalInitialized = true;
@@ -60,7 +67,7 @@ const initializeOneSignal = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('[OneSignal] Initialization error:', error);
-    throw error; // Propagate error for better handling
+    throw error;
   }
 };
 
