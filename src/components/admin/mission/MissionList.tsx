@@ -181,12 +181,6 @@ export const MissionList = ({ missions, onDelete }: MissionListProps) => {
                     {mission.interpreter_profiles.first_name}{" "}
                     {mission.interpreter_profiles.last_name}
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className={getStatusBadgeColor(mission.interpreter_profiles.status)}
-                  >
-                    {formatStatus(mission.interpreter_profiles.status)}
-                  </Badge>
                 </div>
               )}
             </div>
