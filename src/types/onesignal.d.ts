@@ -100,4 +100,7 @@ interface Window {
     logout: () => Promise<void>;
   };
   OneSignalDeferred?: ((OneSignal: Window['OneSignal']) => void)[];
+  oneSignalInitPromise?: Promise<void>;
+  resolveOneSignal?: () => void;
+  rejectOneSignal?: (error: any) => void;
 }
