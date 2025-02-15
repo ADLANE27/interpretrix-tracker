@@ -27,37 +27,43 @@ const initializeOneSignal = async (): Promise<boolean> => {
       allowLocalhostAsSecureOrigin: true,
     });
 
-    // Wait for initialization to complete
+    // Give OneSignal time to initialize
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Check current permission status
-    const permission = await Notification.permission;
+    oneSignalInitialized = true;
+    console.log('[OneSignal] Initialization complete');
+    
+    // Check permission after initialization
+    const permission = Notification.permission;
     console.log('[OneSignal] Current permission:', permission);
 
     if (permission === 'granted') {
-      const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-      console.log('[OneSignal] Is subscribed:', isSubscribed);
-      if (isSubscribed) {
-        await registerDevice();
+      try {
+        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
+        console.log('[OneSignal] Is subscribed:', isSubscribed);
+        if (isSubscribed) {
+          await registerDevice();
+        }
+      } catch (error) {
+        console.error('[OneSignal] Error checking subscription:', error);
       }
     }
 
-    oneSignalInitialized = true;
-    console.log('[OneSignal] Initialization complete');
     return true;
   } catch (error) {
     console.error('[OneSignal] Initialization error:', error);
+    oneSignalInitialized = false;
     return false;
   }
 };
 
 // Wait for OneSignal to be available and initialize it
 const waitForOneSignal = async (): Promise<boolean> => {
+  console.log('[OneSignal] Waiting for OneSignal to be available...');
   return new Promise((resolve) => {
     const startTime = Date.now();
     
     const checkOneSignal = async () => {
-      // If OneSignal is available, initialize it
       if (window.OneSignal) {
         console.log('[OneSignal] OneSignal found, initializing...');
         const success = await initializeOneSignal();
@@ -65,14 +71,12 @@ const waitForOneSignal = async (): Promise<boolean> => {
         return;
       }
 
-      // If we've exceeded the timeout, resolve false
       if (Date.now() - startTime > ONESIGNAL_INIT_TIMEOUT) {
         console.error('[OneSignal] Timeout waiting for OneSignal to load');
         resolve(false);
         return;
       }
 
-      // Otherwise, check again after interval
       setTimeout(checkOneSignal, ONESIGNAL_CHECK_INTERVAL);
     };
 
@@ -81,6 +85,11 @@ const waitForOneSignal = async (): Promise<boolean> => {
 };
 
 export const isNotificationsSupported = async (): Promise<boolean> => {
+  if (typeof Notification === 'undefined') {
+    console.log('[OneSignal] Notifications API not supported');
+    return false;
+  }
+
   console.log('[OneSignal] Checking if notifications are supported...');
   const isOneSignalAvailable = await waitForOneSignal();
   console.log('[OneSignal] Notifications supported:', isOneSignalAvailable);
@@ -88,20 +97,22 @@ export const isNotificationsSupported = async (): Promise<boolean> => {
 };
 
 export const getNotificationPermission = (): NotificationPermission => {
-  if (!window.OneSignal) return 'denied';
+  if (typeof Notification === 'undefined') return 'denied';
   return Notification.permission;
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     console.log('[OneSignal] Requesting notification permission...');
-    const isAvailable = await waitForOneSignal();
-    if (!isAvailable) {
-      console.error('[OneSignal] OneSignal is not available');
-      return false;
+    
+    if (!oneSignalInitialized) {
+      const isAvailable = await waitForOneSignal();
+      if (!isAvailable) {
+        console.error('[OneSignal] OneSignal is not available');
+        return false;
+      }
     }
 
-    // Request permission through OneSignal
     console.log('[OneSignal] Showing native prompt...');
     const permission = await window.OneSignal.showNativePrompt();
     console.log('[OneSignal] Permission result:', permission);
@@ -109,6 +120,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     if (permission === 'granted') {
       console.log('[OneSignal] Permission granted, registering device...');
       await registerDevice();
+      saveNotificationPreference(true);
     }
     
     return permission === 'granted';
@@ -227,10 +239,12 @@ const getPlatform = () => {
 const NOTIFICATION_PREFERENCE_KEY = 'notificationPreference';
 
 export const getSavedNotificationPreference = (): boolean => {
+  if (typeof window === 'undefined') return false;
   return localStorage.getItem(NOTIFICATION_PREFERENCE_KEY) === 'true';
 };
 
 export const saveNotificationPreference = (enabled: boolean): void => {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(NOTIFICATION_PREFERENCE_KEY, enabled.toString());
 };
 
