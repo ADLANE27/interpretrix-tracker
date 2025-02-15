@@ -7,10 +7,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-    <!-- Load OneSignal first -->
-    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js"></script>
+    <!-- Load OneSignal with explicit type -->
+    <script type="application/javascript" src="https://cdn.onesignal.com/sdks/OneSignalSDK.page.js" async></script>
     <!-- Initialize OneSignal after SDK is loaded -->
-    <script>
+    <script type="application/javascript">
       // Create a promise to track OneSignal initialization
       window.oneSignalInitPromise = new Promise((resolve, reject) => {
         window.resolveOneSignal = resolve;
@@ -19,8 +19,7 @@
 
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       
-      // Wait for DOM to be ready
-      document.addEventListener('DOMContentLoaded', function() {
+      window.addEventListener('DOMContentLoaded', function() {
         console.log('[OneSignal] DOM ready, starting initialization...');
         
         OneSignalDeferred.push(async function(OneSignal) {
@@ -81,7 +80,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
