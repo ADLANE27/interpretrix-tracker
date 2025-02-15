@@ -26,6 +26,7 @@ import {
   getSavedNotificationPreference,
   saveNotificationPreference 
 } from "@/utils/notifications";
+import { playNotificationSound } from "@/utils/notificationSounds";
 
 interface Profile {
   id: string;
@@ -670,4 +671,9 @@ function getSavedNotificationPreference() {
 
 function saveNotificationPreference(enabled: boolean) {
   localStorage.setItem('notificationsEnabled', enabled ? 'true' : 'false');
+}
+
+function playNotificationSound(type: 'immediate' | 'scheduled') {
+  const audio = new Audio(`/lovable-uploads/${type}.mp3`);
+  audio.play();
 }
