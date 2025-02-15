@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
@@ -67,7 +68,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     // First check browser support
     if (!isBrowserSupported()) {
-      throw new Error('Votre navigateur ne supporte pas les notifications');
+      throw new Error("Votre navigateur ne supporte pas les notifications");
     }
 
     // Initialize OneSignal
@@ -87,10 +88,10 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
         }
       } catch (registerError) {
         console.error('[OneSignal] Registration error:', registerError);
-        throw new Error('Impossible d'activer les notifications OneSignal');
+        throw new Error("Impossible d'activer les notifications OneSignal");
       }
     } else {
-      throw new Error('Veuillez autoriser les notifications dans les paramètres de votre navigateur');
+      throw new Error("Veuillez autoriser les notifications dans les paramètres de votre navigateur");
     }
 
     return false;
