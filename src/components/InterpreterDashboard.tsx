@@ -27,6 +27,7 @@ import {
   saveNotificationPreference 
 } from "@/utils/notifications";
 import { playNotificationSound } from "@/utils/notificationSounds";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface Profile {
   id: string;
@@ -508,7 +509,13 @@ export const InterpreterDashboard = () => {
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="animate-pulse text-lg text-center">Chargement de votre profil...</div>
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }}
+          className="animate-pulse text-lg text-center"
+        >
+          Chargement de votre profil...
+        </motion.div>
       </div>
     );
   }
@@ -527,7 +534,11 @@ export const InterpreterDashboard = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300"
+          >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader
                 firstName={profile.first_name}
@@ -574,16 +585,21 @@ export const InterpreterDashboard = () => {
                 </Button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300"
+          >
             <StatusManager
               currentStatus={profile.status}
               onStatusChange={handleStatusChange}
             />
-          </div>
+          </motion.div>
 
-          <Card className="shadow-sm dark:bg-gray-800 transition-colors duration-300">
+          <Card className="shadow-sm dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
             {isMobile ? (
               <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
                 <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
@@ -630,13 +646,24 @@ export const InterpreterDashboard = () => {
               </Tabs>
             )}
 
-            <div className="p-2 sm:p-6 min-h-[600px]">
-              {activeTab === "missions" && <MissionsTab />}
-              {activeTab === "calendar" && canAccessCalendar && (
-                <MissionsCalendar missions={scheduledMissions} />
-              )}
-              {activeTab === "messaging" && <MessagingTab />}
-              {activeTab === "profile" && <InterpreterProfile />}
+            <div className="relative h-[calc(100vh-300px)] min-h-[600px] max-h-[800px] overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute inset-0 p-2 sm:p-6 overflow-auto"
+                >
+                  {activeTab === "missions" && <MissionsTab />}
+                  {activeTab === "calendar" && canAccessCalendar && (
+                    <MissionsCalendar missions={scheduledMissions} />
+                  )}
+                  {activeTab === "messaging" && <MessagingTab />}
+                  {activeTab === "profile" && <InterpreterProfile />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </Card>
 
