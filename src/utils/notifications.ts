@@ -5,6 +5,19 @@ import { playNotificationSound } from "@/utils/notificationSounds";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
+// Wait for OneSignal initialization
+const waitForOneSignal = async () => {
+  try {
+    console.log('[OneSignal] Waiting for initialization...');
+    await window.oneSignalInitPromise;
+    console.log('[OneSignal] Initialization confirmed');
+    return true;
+  } catch (error) {
+    console.error('[OneSignal] Error waiting for initialization:', error);
+    return false;
+  }
+};
+
 // Register device with OneSignal and Supabase
 const registerDevice = async (playerId: string): Promise<boolean> => {
   try {
@@ -50,9 +63,17 @@ const registerDevice = async (playerId: string): Promise<boolean> => {
 // Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
+    console.log('[OneSignal] Starting permission request...');
+    
+    // Wait for OneSignal initialization
+    const initialized = await waitForOneSignal();
+    if (!initialized) {
+      throw new Error('OneSignal non initialisé');
+    }
+
     if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal not initialized');
-      throw new Error('OneSignal not initialized');
+      console.error('[OneSignal] OneSignal not available');
+      throw new Error('OneSignal non disponible');
     }
 
     // First check if already subscribed

@@ -17,6 +17,44 @@ window.oneSignalInitPromise = new Promise((resolve, reject) => {
   window.rejectOneSignal = reject;
 });
 
+// Initialize OneSignal
+const initializeOneSignal = async () => {
+  try {
+    console.log('[OneSignal] Starting initialization...');
+    
+    if (!window.OneSignal) {
+      console.error('[OneSignal] OneSignal SDK not loaded');
+      throw new Error('OneSignal SDK not loaded');
+    }
+
+    await window.OneSignal.init({
+      appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
+      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerParam: { scope: '/' },
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+      promptOptions: {
+        slidedown: {
+          prompts: [{
+            type: "push",
+            autoPrompt: false,
+            text: {
+              actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
+              acceptButton: "Autoriser",
+              cancelButton: "Plus tard"
+            }
+          }]
+        }
+      }
+    });
+
+    console.log('[OneSignal] Initialization completed successfully');
+    window.resolveOneSignal?.();
+  } catch (error) {
+    console.error('[OneSignal] Initialization failed:', error);
+    window.rejectOneSignal?.(error);
+  }
+};
+
 // Only clean up old service workers on load if Service Worker API is available
 window.addEventListener('load', async () => {
   if (!('serviceWorker' in navigator)) {
@@ -27,6 +65,9 @@ window.addEventListener('load', async () => {
   try {
     console.log('[ServiceWorker] Starting cleanup...');
     
+    // Initialize OneSignal first
+    await initializeOneSignal();
+    
     // Unregister any existing service workers except OneSignal's
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
@@ -36,11 +77,7 @@ window.addEventListener('load', async () => {
       }
     }
 
-    // Wait for OneSignal initialization to complete
-    if (window.oneSignalInitPromise) {
-      await window.oneSignalInitPromise;
-      console.log('[OneSignal] Initialization completed');
-    }
+    console.log('[OneSignal] Setup completed');
   } catch (error) {
     console.error('[ServiceWorker/OneSignal] Setup error:', error);
   }
