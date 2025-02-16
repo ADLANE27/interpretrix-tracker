@@ -65,6 +65,29 @@ const registerDevice = async (playerId: string): Promise<boolean> => {
   }
 };
 
+// Show custom permission message
+const showCustomPermissionMessage = () => {
+  toast({
+    title: "Notifications bloquées",
+    description: "Pour recevoir les nouvelles missions, veuillez autoriser les notifications dans les paramètres de votre navigateur.",
+    variant: "destructive",
+    duration: 10000,
+    action: (
+      <button
+        onClick={() => {
+          // Open browser settings
+          if (typeof Notification !== 'undefined' && Notification.requestPermission) {
+            Notification.requestPermission();
+          }
+        }}
+        className="bg-white text-red-600 px-3 py-2 rounded-md text-sm font-medium hover:bg-red-50"
+      >
+        Autoriser
+      </button>
+    ),
+  });
+};
+
 // Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
@@ -91,6 +114,13 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
         return await registerDevice(playerId);
       }
       return true;
+    }
+
+    // Check if notifications are denied
+    if (Notification.permission === "denied") {
+      console.log('[OneSignal] Notifications are denied');
+      showCustomPermissionMessage();
+      return false;
     }
 
     // If not subscribed, show the prompt
