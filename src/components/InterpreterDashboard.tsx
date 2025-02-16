@@ -12,20 +12,13 @@ import { ProfileHeader } from "./interpreter/ProfileHeader";
 import { StatusManager } from "./interpreter/StatusManager";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { MissionsCalendar } from "./interpreter/MissionsCalendar";
-import { LogOut, Menu, Bell } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
-import { 
-  requestNotificationPermission,
-  unregisterDevice,
-  isNotificationsEnabled,
-} from "@/utils/notifications";
-import { playNotificationSound } from "@/utils/notificationSounds";
 import { AnimatePresence, motion } from "framer-motion";
-import { Switch } from "@/components/ui/switch";
 
 interface Profile {
   id: string;
@@ -62,8 +55,6 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [isCheckingNotifications, setIsCheckingNotifications] = useState(true);
 
   useSupabaseConnection();
 
@@ -339,78 +330,6 @@ export const InterpreterDashboard = () => {
     setIsSheetOpen(false);
   };
 
-  useEffect(() => {
-    const checkNotificationStatus = async () => {
-      if (!profile?.id) return;
-
-      try {
-        setIsCheckingNotifications(true);
-        console.log('[Dashboard] Checking notification status for user:', profile.id);
-        const enabled = await isNotificationsEnabled();
-        console.log('[Dashboard] Current notification status:', enabled);
-        setNotificationsEnabled(enabled);
-      } catch (error) {
-        console.error('[Dashboard] Error checking notification status:', error);
-        setNotificationsEnabled(false);
-      } finally {
-        setIsCheckingNotifications(false);
-      }
-    };
-
-    checkNotificationStatus();
-  }, [profile?.id]);
-
-  const toggleNotifications = async () => {
-    if (isCheckingNotifications) {
-      console.log('[Dashboard] Still checking notifications, ignoring toggle');
-      return;
-    }
-
-    try {
-      setIsCheckingNotifications(true);
-      console.log('[Dashboard] Current notification state:', notificationsEnabled);
-
-      if (notificationsEnabled) {
-        console.log('[Dashboard] Attempting to disable notifications');
-        const success = await unregisterDevice();
-        if (success) {
-          setNotificationsEnabled(false);
-          toast({
-            title: "Notifications désactivées",
-            description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
-          });
-        } else {
-          throw new Error("Échec de la désactivation des notifications");
-        }
-      } else {
-        console.log('[Dashboard] Attempting to enable notifications');
-        const granted = await requestNotificationPermission();
-        if (granted) {
-          setNotificationsEnabled(true);
-          toast({
-            title: "Notifications activées",
-            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-          });
-        } else {
-          throw new Error("Les notifications n'ont pas pu être activées");
-        }
-      }
-    } catch (error: any) {
-      console.error('[Dashboard] Error toggling notifications:', error);
-      // Refresh the actual status to ensure UI is in sync
-      const currentStatus = await isNotificationsEnabled();
-      setNotificationsEnabled(currentStatus);
-      
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la gestion des notifications"
-      });
-    } finally {
-      setIsCheckingNotifications(false);
-    }
-  };
-
   if (!authChecked || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -454,31 +373,6 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={notificationsEnabled}
-                    onCheckedChange={toggleNotifications}
-                    disabled={isCheckingNotifications}
-                    className={`${
-                      notificationsEnabled 
-                        ? 'bg-green-500 hover:bg-green-600' 
-                        : 'bg-red-500 hover:bg-red-600'
-                    } transition-colors duration-200`}
-                  />
-                  <span className="text-sm font-medium">
-                    {isCheckingNotifications 
-                      ? "Vérification..." 
-                      : notificationsEnabled 
-                        ? "Notifications activées" 
-                        : "Notifications désactivées"
-                    }
-                  </span>
-                  <Bell className={`h-4 w-4 ${
-                    notificationsEnabled 
-                      ? 'text-green-500' 
-                      : 'text-red-500'
-                  }`} />
-                </div>
                 <ThemeToggle />
                 <Button
                   variant="ghost"
