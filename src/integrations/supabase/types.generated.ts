@@ -300,82 +300,44 @@ export interface Database {
       }
       push_subscriptions: {
         Row: {
-          id: string
-          interpreter_id: string
           endpoint: string
+          user_agent: string | null
           auth: string
           p256dh: string
-          created_at: string
-          updated_at: string
-          status: "active" | "expired" | "error" | null
+          updated_at: string | null
+          created_at: string | null
           last_successful_push: string | null
-          user_agent: string | null
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          interpreter_id: string
+          id: string
         }
         Insert: {
-          id?: string
-          interpreter_id: string
           endpoint: string
+          user_agent?: string | null
           auth: string
           p256dh: string
-          created_at?: string
-          updated_at?: string
-          status?: "active" | "expired" | "error" | null
+          updated_at?: string | null
+          created_at?: string | null
           last_successful_push?: string | null
-          user_agent?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"] | null
+          interpreter_id: string
+          id?: string
         }
         Update: {
-          id?: string
-          interpreter_id?: string
           endpoint?: string
+          user_agent?: string | null
           auth?: string
           p256dh?: string
-          created_at?: string
-          updated_at?: string
-          status?: "active" | "expired" | "error" | null
+          updated_at?: string | null
+          created_at?: string | null
           last_successful_push?: string | null
-          user_agent?: string | null
-        }
-      }
-      onesignal_subscriptions: {
-        Row: {
-          id: string
-          interpreter_id: string
-          player_id: string
-          platform: string
-          user_agent: string | null
-          status: string
-          notification_count: number
-          last_notification_sent: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          interpreter_id: string
-          player_id: string
-          platform: string
-          user_agent?: string | null
-          status?: string
-          notification_count?: number
-          last_notification_sent?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
+          status?: Database["public"]["Enums"]["subscription_status"] | null
           interpreter_id?: string
-          player_id?: string
-          platform?: string
-          user_agent?: string | null
-          status?: string
-          notification_count?: number
-          last_notification_sent?: string | null
-          created_at?: string
-          updated_at?: string
+          id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "onesignal_subscriptions_interpreter_id_fkey"
+            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
             columns: ["interpreter_id"]
             isOneToOne: false
             referencedRelation: "interpreter_profiles"
@@ -494,6 +456,7 @@ export interface Database {
       channel_type: "admin_only" | "internal" | "external" | "mixed"
       employment_status: "salaried" | "self_employed"
       user_role: "admin" | "interpreter"
+      subscription_status: "active" | "expired" | "error"
     }
     CompositeTypes: {
       [_ in never]: never

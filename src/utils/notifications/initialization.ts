@@ -1,6 +1,14 @@
 
-// Basic initialization without OneSignal
-export const waitForOneSignal = async () => {
-  // Simply return true as we're not using OneSignal anymore
-  return true;
+export const initializeNotifications = async () => {
+  try {
+    // Request notification permission
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    }
+    return false;
+  } catch (error) {
+    console.error('Error initializing notifications:', error);
+    return false;
+  }
 };

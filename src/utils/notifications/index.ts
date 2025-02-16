@@ -1,54 +1,24 @@
 
-import { toast } from "@/components/ui/use-toast";
-import { playNotificationSound } from "@/utils/notificationSounds";
+import { supabase } from "@/integrations/supabase/client";
 
-// Basic notification functionality without OneSignal
-export const requestNotificationPermission = async (): Promise<boolean> => {
+export async function sendNotification(userId: string, title: string, body: string) {
   try {
-    if (!('Notification' in window)) {
-      toast({
-        title: "Non supporté",
-        description: "Les notifications ne sont pas supportées sur votre navigateur",
-        variant: "destructive",
-        duration: 5000,
-      });
-      return false;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
 
-    const permission = await Notification.requestPermission();
-    
-    if (permission === 'granted') {
-      // Play notification sound on success
-      await playNotificationSound('scheduled');
-      
-      toast({
-        title: "Notifications activées",
-        description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-        duration: 3000,
-      });
-      
-      return true;
-    } else {
-      throw new Error('Permission not granted');
-    }
-  } catch (error: any) {
-    console.error('Notification Error:', error);
-    toast({
-      title: "Erreur",
-      description: error.message || "Une erreur est survenue lors de l'activation des notifications",
-      variant: "destructive",
-      duration: 5000,
+    await supabase.from('notification_history').insert({
+      recipient_id: userId,
+      notification_type: 'mission',
+      content: {
+        title,
+        body,
+        sender_id: user.id
+      }
     });
+
+    return true;
+  } catch (error) {
+    console.error('Error sending notification:', error);
     return false;
   }
-};
-
-// Check if notifications are enabled
-export const isNotificationsEnabled = async (): Promise<boolean> => {
-  return Notification.permission === 'granted';
-};
-
-// Unregister device from notifications
-export const unregisterDevice = async (): Promise<boolean> => {
-  return true;
-};
+}

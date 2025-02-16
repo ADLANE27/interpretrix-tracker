@@ -1,19 +1,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-// Basic device registration without OneSignal
-export const registerDevice = async (): Promise<boolean> => {
+export const registerDevice = async () => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('No authenticated user');
-      return false;
-    }
+    if (!user) throw new Error('User not authenticated');
 
-    console.log('Device registered for user:', user.id);
+    // Just log device registration for now
+    console.log('Device registered for notifications');
     return true;
   } catch (error) {
-    console.error('Error in registerDevice:', error);
+    console.error('Error registering device:', error);
     return false;
   }
 };
