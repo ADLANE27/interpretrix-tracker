@@ -10,6 +10,7 @@ declare global {
     resolveOneSignal?: () => void;
     rejectOneSignal?: (error: any) => void;
     oneSignalInitialized?: boolean;
+    _oneSignalInitialized?: boolean; // Add flag for initialization status
   }
 }
 
@@ -38,12 +39,18 @@ const cleanupServiceWorkers = async () => {
   }
 };
 
-// Initialize OneSignal with retry logic
+// Initialize OneSignal with improved retry logic and initialization check
 const initializeOneSignal = async (retryCount = 0) => {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // 1 second
 
   try {
+    // Check if already initialized
+    if (window._oneSignalInitialized) {
+      console.log('[OneSignal] Already initialized, skipping...');
+      return;
+    }
+
     // Clean up service workers first
     await cleanupServiceWorkers();
     
@@ -52,36 +59,40 @@ const initializeOneSignal = async (retryCount = 0) => {
     if (!window.OneSignal) {
       if (retryCount < MAX_RETRIES) {
         console.log(`[OneSignal] SDK not loaded, retrying in ${RETRY_DELAY}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (retryCount + 1)));
         return initializeOneSignal(retryCount + 1);
       }
       throw new Error('OneSignal SDK not loaded after retries');
     }
 
-    // Initialize OneSignal
-    await window.OneSignal.init({
-      appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
-      allowLocalhostAsSecureOrigin: true,
-      serviceWorkerParam: { scope: '/' },
-      serviceWorkerPath: '/OneSignalSDKWorker.js',
-      promptOptions: {
-        slidedown: {
-          prompts: [{
-            type: "push" as const,
-            autoPrompt: false,
-            text: {
-              actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
-              acceptButton: "Autoriser",
-              cancelButton: "Plus tard"
-            },
-            delay: {
-              pageViews: 1,
-              timeDelay: 0
-            }
-          }]
+    // Initialize OneSignal only if not already initialized
+    if (!window._oneSignalInitialized) {
+      await window.OneSignal.init({
+        appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
+        allowLocalhostAsSecureOrigin: true,
+        serviceWorkerParam: { scope: '/' },
+        serviceWorkerPath: '/OneSignalSDKWorker.js',
+        promptOptions: {
+          slidedown: {
+            prompts: [{
+              type: "push" as const,
+              autoPrompt: false,
+              text: {
+                actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
+                acceptButton: "Autoriser",
+                cancelButton: "Plus tard"
+              },
+              delay: {
+                pageViews: 1,
+                timeDelay: 0
+              }
+            }]
+          }
         }
-      }
-    });
+      });
+      
+      window._oneSignalInitialized = true; // Set initialization flag
+    }
 
     // Check if we need to resubscribe
     const isPushEnabled = await window.OneSignal.isPushNotificationsEnabled();
@@ -104,8 +115,9 @@ const initializeOneSignal = async (retryCount = 0) => {
   } catch (error) {
     console.error('[OneSignal] Initialization failed:', error);
     if (retryCount < MAX_RETRIES) {
-      console.log(`[OneSignal] Retrying in ${RETRY_DELAY}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      const nextDelay = RETRY_DELAY * (retryCount + 1);
+      console.log(`[OneSignal] Retrying in ${nextDelay}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, nextDelay));
       return initializeOneSignal(retryCount + 1);
     }
     window.rejectOneSignal?.(error);
