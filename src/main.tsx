@@ -30,24 +30,18 @@ const cleanupServiceWorkers = async () => {
     console.log('[ServiceWorker] Found registrations:', registrations.length);
     
     for (const registration of registrations) {
-      if (!registration.scope.includes('OneSignal')) {
-        await registration.unregister();
-        console.log('[ServiceWorker] Unregistered:', registration.scope);
-      }
+      await registration.unregister();
+      console.log('[ServiceWorker] Unregistered:', registration.scope);
     }
   } catch (error) {
     console.error('[ServiceWorker] Cleanup error:', error);
   }
 };
 
-// Initialize OneSignal
-const initializeOneSignal = async () => {
-  // If already initialized, resolve the promise and return
-  if (window.oneSignalInitialized) {
-    console.log('[OneSignal] Already initialized, resolving promise...');
-    window.resolveOneSignal?.();
-    return;
-  }
+// Initialize OneSignal with retry logic
+const initializeOneSignal = async (retryCount = 0) => {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 1000; // 1 second
 
   try {
     // Clean up service workers first
@@ -56,17 +50,25 @@ const initializeOneSignal = async () => {
     console.log('[OneSignal] Starting initialization...');
     
     if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal SDK not loaded');
-      throw new Error('OneSignal SDK not loaded');
+      if (retryCount < MAX_RETRIES) {
+        console.log(`[OneSignal] SDK not loaded, retrying in ${RETRY_DELAY}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return initializeOneSignal(retryCount + 1);
+      }
+      throw new Error('OneSignal SDK not loaded after retries');
     }
 
-    // Force cleanup any existing subscription
+    // Ensure clean slate
     try {
-      await window.OneSignal.setSubscription(false);
+      const existingSubscription = await window.OneSignal.isPushNotificationsEnabled();
+      if (existingSubscription) {
+        await window.OneSignal.setSubscription(false);
+      }
     } catch (error) {
-      console.log('[OneSignal] No existing subscription to clean');
+      console.log('[OneSignal] Error checking subscription:', error);
     }
 
+    // Initialize OneSignal
     await window.OneSignal.init({
       appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
       allowLocalhostAsSecureOrigin: true,
@@ -91,26 +93,37 @@ const initializeOneSignal = async () => {
       }
     });
 
-    // Mark as initialized
-    window.oneSignalInitialized = true;
     console.log('[OneSignal] Initialization completed successfully');
+    window.oneSignalInitialized = true;
     window.resolveOneSignal?.();
   } catch (error) {
     console.error('[OneSignal] Initialization failed:', error);
+    if (retryCount < MAX_RETRIES) {
+      console.log(`[OneSignal] Retrying in ${RETRY_DELAY}ms... (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return initializeOneSignal(retryCount + 1);
+    }
     window.rejectOneSignal?.(error);
     throw error;
   }
 };
 
-// Initialize on page load
-window.addEventListener('load', async () => {
-  try {
-    console.log('[OneSignal] Page loaded, starting initialization...');
-    await initializeOneSignal();
-    console.log('[OneSignal] Setup completed');
-  } catch (error) {
+// Initialize after DOM is fully loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeOneSignal().catch(error => {
+      console.error('[OneSignal] Setup error:', error);
+      // Continue loading the app even if OneSignal fails
+      createRoot(document.getElementById("root")!).render(<App />);
+    });
+  });
+} else {
+  // DOM already loaded
+  initializeOneSignal().catch(error => {
     console.error('[OneSignal] Setup error:', error);
-  }
-});
+    // Continue loading the app even if OneSignal fails
+  });
+}
 
+// Always render the app, regardless of OneSignal status
 createRoot(document.getElementById("root")!).render(<App />);
