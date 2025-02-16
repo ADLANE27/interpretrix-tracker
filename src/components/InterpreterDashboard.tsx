@@ -479,6 +479,16 @@ export const InterpreterDashboard = () => {
                       : 'text-red-500'
                   }`} />
                 </div>
+                <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="rounded-full w-9 h-9"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span className="sr-only">Se déconnecter</span>
+                </Button>
               </div>
             </div>
           </motion.div>
