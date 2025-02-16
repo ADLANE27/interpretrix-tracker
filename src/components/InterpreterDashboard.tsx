@@ -25,6 +25,7 @@ import {
 } from "@/utils/notifications";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { AnimatePresence, motion } from "framer-motion";
+import { Switch } from "@/components/ui/switch";
 
 interface Profile {
   id: string;
@@ -430,21 +431,34 @@ export const InterpreterDashboard = () => {
                 onAvatarClick={() => fileInputRef.current?.click()}
                 onDeletePicture={handleProfilePictureDelete}
               />
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline"
-                  onClick={toggleNotifications}
-                  className="text-sm gap-2 bg-background hover:bg-accent hover:text-accent-foreground"
-                  disabled={isCheckingNotifications}
-                >
-                  <Bell className="h-4 w-4" />
-                  {isCheckingNotifications 
-                    ? "Vérification..." 
-                    : notificationsEnabled 
-                      ? "Notifications activées" 
-                      : "Notifications désactivées"
-                  }
-                </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={notificationsEnabled}
+                      onCheckedChange={toggleNotifications}
+                      disabled={isCheckingNotifications}
+                      className={`${
+                        notificationsEnabled 
+                          ? 'bg-green-500 hover:bg-green-600' 
+                          : 'bg-red-500 hover:bg-red-600'
+                      } transition-colors duration-200`}
+                    />
+                    <span className="text-sm font-medium">
+                      {isCheckingNotifications 
+                        ? "Vérification..." 
+                        : notificationsEnabled 
+                          ? "Notifications activées" 
+                          : "Notifications désactivées"
+                      }
+                    </span>
+                    <Bell className={`h-4 w-4 ${
+                      notificationsEnabled 
+                        ? 'text-green-500' 
+                        : 'text-red-500'
+                    }`} />
+                  </div>
+                </div>
                 <ThemeToggle />
                 <HowToUseGuide 
                   isOpen={isGuideOpen}
