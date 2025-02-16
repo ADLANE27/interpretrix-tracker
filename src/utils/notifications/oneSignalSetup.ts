@@ -55,4 +55,3 @@ export const setInterpreterTags = async (interpreterData: {
     return false;
   }
 };
-

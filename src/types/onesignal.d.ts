@@ -110,4 +110,3 @@ interface Window {
   resolveOneSignal?: () => void;
   rejectOneSignal?: (error: any) => void;
 }
-
