@@ -21,8 +21,9 @@ const App = () => {
       
       if (OneSignal.init) return; // Already initialized
       
-      OneSignal.push(() => {
-        OneSignal.init({
+      // Create a deferred array for initialization
+      const initOneSignal = () => {
+        window.OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/push/onesignal/' },
@@ -47,7 +48,15 @@ const App = () => {
             }
           }
         });
-      });
+      };
+
+      // Add initialization to OneSignal's queue
+      if (Array.isArray(window.OneSignal)) {
+        window.OneSignal.push(initOneSignal);
+      } else {
+        // If OneSignal is already initialized, call directly
+        initOneSignal();
+      }
     }
   }, []);
 
