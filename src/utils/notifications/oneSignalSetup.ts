@@ -29,3 +29,30 @@ export const setExternalUserId = async (interpreterId: string) => {
   }
 };
 
+// Set interpreter tags for better targeting
+export const setInterpreterTags = async (interpreterData: {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  languages: { source: string; target: string }[];
+}) => {
+  try {
+    const OneSignal = getOneSignal();
+    const tags = {
+      interpreter_id: interpreterData.id,
+      first_name: interpreterData.first_name,
+      last_name: interpreterData.last_name,
+      email: interpreterData.email,
+      languages: interpreterData.languages.map(lang => `${lang.source}→${lang.target}`).join(',')
+    };
+    
+    await OneSignal.sendTags(tags);
+    console.log('[OneSignal] Tags set successfully:', tags);
+    return true;
+  } catch (error) {
+    console.error('[OneSignal] Error setting tags:', error);
+    return false;
+  }
+};
+
