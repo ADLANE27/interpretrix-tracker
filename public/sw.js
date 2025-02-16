@@ -1,5 +1,7 @@
+
 const CACHE_NAME = 'interpreter-app-v1';
 const OFFLINE_URL = '/offline.html';
+const SYNC_TAG = 'interpreter-sync';
 
 // Assets to cache
 const ASSETS_TO_CACHE = [
@@ -37,45 +39,132 @@ self.addEventListener('activate', (event) => {
         })
       );
       await (self as any).clients.claim();
+
+      // Register for periodic sync if supported
+      try {
+        if ('periodicSync' in registration) {
+          const status = await navigator.permissions.query({
+            name: 'periodic-background-sync',
+          } as PermissionDescriptor);
+
+          if (status.state === 'granted') {
+            await registration.periodicSync.register(SYNC_TAG, {
+              minInterval: 60 * 1000, // Minimum 1 minute
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Periodic sync registration failed:', error);
+      }
     })()
   );
 });
 
-// Fetch event - handle offline functionality
+// Sync event - handle background sync
+self.addEventListener('sync', (event) => {
+  if (event.tag === SYNC_TAG) {
+    event.waitUntil(syncInterpreterData());
+  }
+});
+
+// Periodic sync event - handle periodic background sync
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === SYNC_TAG) {
+    event.waitUntil(syncInterpreterData());
+  }
+});
+
+// Function to sync interpreter data
+async function syncInterpreterData() {
+  try {
+    const response = await fetch('/api/interpreters/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) throw new Error('Sync failed');
+
+    const data = await response.json();
+    
+    // Update all clients with new data
+    const clients = await (self as any).clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SYNC_COMPLETED',
+        data: data
+      });
+    });
+
+    return data;
+  } catch (error) {
+    console.error('Sync failed:', error);
+    throw error;
+  }
+}
+
+// Fetch event - handle offline functionality and network-first strategy for API requests
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // Only handle GET requests
   if (request.method !== 'GET') return;
 
+  // Special handling for API requests
+  if (request.url.includes('/api/')) {
+    event.respondWith(
+      (async () => {
+        try {
+          // Try network first
+          const networkResponse = await fetch(request);
+          
+          // Clone the response before using it
+          const responseToCache = networkResponse.clone();
+          
+          // Cache the response for offline use
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, responseToCache);
+          
+          return networkResponse;
+        } catch (error) {
+          // If network fails, try cache
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) {
+            // Schedule a background sync
+            try {
+              await registration.sync.register(SYNC_TAG);
+            } catch (e) {
+              console.error('Background sync registration failed:', e);
+            }
+            return cachedResponse;
+          }
+          throw error;
+        }
+      })()
+    );
+    return;
+  }
+
+  // Default fetch handling for non-API requests
   event.respondWith(
     (async () => {
-      // Try to get the resource from the network
       try {
         const networkResponse = await fetch(request);
-        
-        // Save successful responses in cache
         if (networkResponse && networkResponse.ok) {
           const cache = await caches.open(CACHE_NAME);
           cache.put(request, networkResponse.clone());
         }
-        
         return networkResponse;
       } catch (error) {
-        // If network fails, try to get from cache
         const cachedResponse = await caches.match(request);
-        
         if (cachedResponse) {
           return cachedResponse;
         }
-
-        // If resource isn't in cache, return offline page for document requests
         if (request.mode === 'navigate') {
           const cache = await caches.open(CACHE_NAME);
           return cache.match(OFFLINE_URL);
         }
-
-        // Otherwise just throw the error
         throw error;
       }
     })()

@@ -18,6 +18,7 @@ import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { AdminMissionsCalendar } from "./AdminMissionsCalendar";
+import { useBackgroundSync } from '@/hooks/useBackgroundSync';
 
 interface Interpreter {
   id: string;
@@ -247,6 +248,21 @@ export const AdminDashboard = () => {
       }
       return 0;
     });
+
+  useBackgroundSync({
+    onSyncComplete: (data) => {
+      console.log('[AdminDashboard] Sync completed, updating interpreter data');
+      fetchInterpreters();
+    },
+    onSyncError: (error) => {
+      console.error('[AdminDashboard] Sync error:', error);
+      toast({
+        title: "Erreur de synchronisation",
+        description: "La mise à jour des données a échoué. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    }
+  });
 
   return (
     <>

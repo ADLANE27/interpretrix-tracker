@@ -235,6 +235,8 @@ export type Database = {
           is_online: boolean | null
           last_heartbeat: string | null
           last_seen_at: string | null
+          last_sync_at: string | null
+          sync_status: string | null
           updated_at: string
         }
         Insert: {
@@ -244,6 +246,8 @@ export type Database = {
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
+          last_sync_at?: string | null
+          sync_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -253,6 +257,8 @@ export type Database = {
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
+          last_sync_at?: string | null
+          sync_status?: string | null
           updated_at?: string
         }
         Relationships: [
