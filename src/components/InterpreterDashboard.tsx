@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { AnimatePresence, motion } from "framer-motion";
+import { NotificationManager } from "./notifications/NotificationManager";
 
 interface Profile {
   id: string;
