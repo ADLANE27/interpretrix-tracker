@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ThemeToggle } from "./ThemeToggle";
 
 interface ProfileHeaderProps {
   firstName: string;
@@ -101,14 +100,10 @@ export const ProfileHeader = ({
             {status === "available" && "Disponible"}
             {status === "unavailable" && "Indisponible"}
             {status === "pause" && "En pause"}
-            {status === "busy" && "En mission"}
+            {status === "busy" && "En appel"}
           </span>
         </div>
-      </div>
-      <div className="ml-auto">
-        <ThemeToggle />
       </div>
     </div>
   );
 };
-

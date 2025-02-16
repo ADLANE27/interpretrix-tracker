@@ -135,6 +135,15 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
         >
           En pause
         </Button>
+        <Button
+          variant={status === 'busy' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleStatusChange('busy')}
+          disabled={isLoading}
+          className={status === 'busy' ? 'bg-interpreter-busy hover:bg-interpreter-busy/90' : ''}
+        >
+          En appel
+        </Button>
       </div>
       <div className="flex items-center gap-4">
         <NotificationManager />
@@ -142,4 +151,3 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     </div>
   );
 };
-
