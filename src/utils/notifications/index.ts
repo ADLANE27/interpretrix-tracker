@@ -1,13 +1,15 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { getOneSignal, getPlayerId, setExternalUserId, setInterpreterTags } from './oneSignalSetup';
+import { getOneSignal, registerDevice } from './oneSignalSetup';
 
+// Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     console.log('[OneSignal] Starting permission request...');
     
+    // First check if notifications are supported
     if (!('Notification' in window)) {
       toast({
         title: "Non supporté",
@@ -19,81 +21,53 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     }
 
     try {
-      const OneSignal = getOneSignal();
-      
       // Get current user and profile
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
 
-      // Get interpreter profile data
       const { data: profile, error: profileError } = await supabase
         .from('interpreter_profiles')
-        .select('*')
+        .select('first_name, last_name, email')
         .eq('id', user.id)
         .single();
 
       if (profileError || !profile) {
-        throw new Error('Could not fetch interpreter profile');
+        throw new Error('Could not fetch user profile');
       }
 
-      // Set the external user ID for targeting
-      await setExternalUserId(user.id);
+      // Get initialized OneSignal instance
+      const OneSignal = getOneSignal();
       
-      // Show the OneSignal prompt and wait for response
+      // Show native prompt first to get permission
+      console.log('[OneSignal] Requesting notification permission...');
       const permission = await OneSignal.showNativePrompt();
       
-      if (permission !== 'granted') {
+      if (permission === 'granted') {
+        // Register device with OneSignal
+        await registerDevice(user.id, {
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          email: profile.email
+        });
+        
+        // Play notification sound on success
+        await playNotificationSound('scheduled');
+        
+        toast({
+          title: "Notifications activées",
+          description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+          duration: 3000,
+        });
+        
+        return true;
+      } else {
         throw new Error('Permission not granted');
       }
-      
-      // Get OneSignal player ID
-      const playerId = await getPlayerId();
-      if (!playerId) {
-        throw new Error('Could not get OneSignal player ID');
-      }
-
-      // Set interpreter tags
-      await setInterpreterTags({
-        id: user.id,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        email: profile.email,
-        languages: profile.languages.map((lang: string) => {
-          const [source, target] = lang.split('→');
-          return { source: source.trim(), target: target.trim() };
-        })
-      });
-
-      // Store subscription in database
-      const { error: subscriptionError } = await supabase
-        .from('onesignal_subscriptions')
-        .upsert({
-          interpreter_id: user.id,
-          player_id: playerId,
-          platform: 'web',
-          status: 'active',
-          user_agent: navigator.userAgent
-        });
-
-      if (subscriptionError) {
-        console.error('[OneSignal] Error storing subscription:', subscriptionError);
-      }
-      
-      // Play notification sound on success
-      await playNotificationSound('scheduled');
-      
-      toast({
-        title: "Notifications activées",
-        description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-        duration: 3000,
-      });
-      
-      return true;
-    } catch (error: any) {
+    } catch (error) {
       console.error('[OneSignal] Error:', error);
-      throw new Error("Les notifications n'ont pas pu être activées: " + error.message);
+      throw error;
     }
   } catch (error: any) {
     console.error('[OneSignal] Error:', error);
@@ -107,43 +81,40 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
 };
 
+// Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
     const OneSignal = getOneSignal();
-    const isEnabled = await OneSignal.isPushNotificationsEnabled();
-    console.log('[OneSignal] Notifications enabled:', isEnabled);
-    return isEnabled;
+    return await OneSignal.isPushNotificationsEnabled();
   } catch (error) {
     console.error('[OneSignal] Status check error:', error);
     return false;
   }
 };
 
+// Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
-    const OneSignal = getOneSignal();
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (!user) {
       throw new Error('User not authenticated');
     }
 
-    // Disable OneSignal subscription
-    await OneSignal.setSubscription(false);
-    
-    // Update subscription status in database
-    const playerId = await getPlayerId();
-    if (playerId) {
-      const { error: updateError } = await supabase
-        .from('onesignal_subscriptions')
-        .update({ status: 'unsubscribed' })
-        .match({ interpreter_id: user.id, player_id: playerId });
-
-      if (updateError) {
-        console.error('[OneSignal] Error updating subscription status:', updateError);
-      }
+    // Get player ID
+    const playerId = await getOneSignal().getUserId();
+    if (!playerId) {
+      throw new Error('No OneSignal player ID found');
     }
-    
+
+    // Update subscription status in database
+    const { error } = await supabase
+      .from('onesignal_subscriptions')
+      .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
+      .eq('interpreter_id', user.id)
+      .eq('player_id', playerId);
+
+    if (error) throw error;
+
     toast({
       title: "Notifications désactivées",
       description: "Vous ne recevrez plus de notifications",
