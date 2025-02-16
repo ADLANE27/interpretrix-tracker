@@ -49,7 +49,7 @@ export const initializeOneSignal = async (): Promise<void> => {
 };
 
 // Utility function to get the initialized OneSignal instance
-const getOneSignal = (): OneSignalFunctions => {
+export const getOneSignal = (): OneSignalFunctions => {
   if (!window.OneSignal || Array.isArray(window.OneSignal)) {
     throw new Error('OneSignal not initialized');
   }

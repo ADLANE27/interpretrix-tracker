@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { getPlayerId, getSubscriptionStatus } from './oneSignalSetup';
+import { getPlayerId, getSubscriptionStatus, getOneSignal } from './oneSignalSetup';
 import { showCustomPermissionMessage } from './permissionHandling';
 
 // Request notification permissions and register device
@@ -40,8 +40,15 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       return false;
     }
 
-    // Show the OneSignal prompt
-    await window.OneSignal.showSlidedownPrompt();
+    try {
+      // Get initialized OneSignal instance
+      const OneSignal = getOneSignal();
+      // Show the OneSignal prompt
+      await OneSignal.showSlidedownPrompt();
+    } catch (error) {
+      console.error('[OneSignal] Error showing prompt:', error);
+      return false;
+    }
     
     // Wait for subscription status change
     const maxWaitTime = 30000; // 30 seconds
@@ -146,10 +153,17 @@ const registerDevice = async (playerId: string): Promise<boolean> => {
       return false;
     }
 
-    // Set interpreter ID tag in OneSignal
-    await window.OneSignal.sendTag('interpreter_id', user.id);
-    console.log('[OneSignal] Device registered successfully');
-    return true;
+    try {
+      // Get initialized OneSignal instance
+      const OneSignal = getOneSignal();
+      // Set interpreter ID tag
+      await OneSignal.sendTag('interpreter_id', user.id);
+      console.log('[OneSignal] Device registered successfully');
+      return true;
+    } catch (tagError) {
+      console.error('[OneSignal] Error setting tag:', tagError);
+      return false;
+    }
   } catch (error) {
     console.error('[OneSignal] Error in registerDevice:', error);
     return false;
@@ -188,10 +202,17 @@ export const unregisterDevice = async (): Promise<boolean> => {
       return false;
     }
 
-    // Then disable OneSignal subscription
-    await window.OneSignal.setSubscription(false);
-    console.log('[OneSignal] Subscription disabled successfully');
-    return true;
+    try {
+      // Get initialized OneSignal instance
+      const OneSignal = getOneSignal();
+      // Disable OneSignal subscription
+      await OneSignal.setSubscription(false);
+      console.log('[OneSignal] Subscription disabled successfully');
+      return true;
+    } catch (error) {
+      console.error('[OneSignal] Error disabling subscription:', error);
+      return false;
+    }
   } catch (error) {
     console.error('[OneSignal] Unregister error:', error);
     return false;
