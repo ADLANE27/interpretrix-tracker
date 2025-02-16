@@ -98,6 +98,8 @@ type OneSignalFunctions = {
   getSMSId: () => Promise<string | undefined>;
   setEmail: (email: string) => Promise<void>;
   setSMSNumber: (smsNumber: string) => Promise<void>;
+  setExternalUserId: (externalUserId: string) => Promise<void>;
+  removeExternalUserId: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -108,3 +110,4 @@ interface Window {
   resolveOneSignal?: () => void;
   rejectOneSignal?: (error: any) => void;
 }
+
