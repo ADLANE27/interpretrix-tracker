@@ -1,12 +1,15 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "../ThemeToggle";
 import { NotificationManager } from '../notifications/NotificationManager';
 
+type Status = "available" | "unavailable" | "pause";
+
 export const StatusManager = () => {
-  const [status, setStatus] = useState<"available" | "unavailable" | "pause">("available");
+  const [status, setStatus] = useState<Status>("available");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -31,7 +34,7 @@ export const StatusManager = () => {
             variant: "destructive",
           });
         } else if (profile?.status) {
-          setStatus(profile.status);
+          setStatus(profile.status as Status);
         }
       } catch (error) {
         console.error('Error fetching status:', error);
@@ -48,7 +51,7 @@ export const StatusManager = () => {
     fetchStatus();
   }, [toast]);
 
-  const handleStatusChange = async (newStatus: "available" | "unavailable" | "pause") => {
+  const handleStatusChange = async (newStatus: Status) => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
