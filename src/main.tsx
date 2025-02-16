@@ -21,6 +21,25 @@ if (!window.oneSignalInitPromise) {
   });
 }
 
+// Function to clean up existing service workers
+const cleanupServiceWorkers = async () => {
+  if (!('serviceWorker' in navigator)) return;
+  
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    console.log('[ServiceWorker] Found registrations:', registrations.length);
+    
+    for (const registration of registrations) {
+      if (!registration.scope.includes('OneSignal')) {
+        await registration.unregister();
+        console.log('[ServiceWorker] Unregistered:', registration.scope);
+      }
+    }
+  } catch (error) {
+    console.error('[ServiceWorker] Cleanup error:', error);
+  }
+};
+
 // Initialize OneSignal
 const initializeOneSignal = async () => {
   // If already initialized, resolve the promise and return
@@ -31,6 +50,9 @@ const initializeOneSignal = async () => {
   }
 
   try {
+    // Clean up service workers first
+    await cleanupServiceWorkers();
+    
     console.log('[OneSignal] Starting initialization...');
     
     if (!window.OneSignal) {
@@ -38,21 +60,12 @@ const initializeOneSignal = async () => {
       throw new Error('OneSignal SDK not loaded');
     }
 
-    // Check if already subscribed, which indicates initialization
+    // Force cleanup any existing OneSignal service worker
     try {
-      const isPushSupported = await window.OneSignal.isPushNotificationsSupported();
-      if (isPushSupported) {
-        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-        if (isSubscribed) {
-          console.log('[OneSignal] Already subscribed, marking as initialized...');
-          window.oneSignalInitialized = true;
-          window.resolveOneSignal?.();
-          return;
-        }
-      }
+      await window.OneSignal.slidedown.promptDismiss();
+      await window.OneSignal.setSubscription(false);
     } catch (error) {
-      // If these methods fail, OneSignal is not initialized yet
-      console.log('[OneSignal] Not yet initialized, proceeding with initialization...');
+      console.log('[OneSignal] No existing subscription to clean');
     }
 
     await window.OneSignal.init({
@@ -86,35 +99,18 @@ const initializeOneSignal = async () => {
   } catch (error) {
     console.error('[OneSignal] Initialization failed:', error);
     window.rejectOneSignal?.(error);
-    throw error; // Re-throw to be caught by the load event listener
+    throw error;
   }
 };
 
-// Only clean up old service workers on load if Service Worker API is available
+// Initialize on page load
 window.addEventListener('load', async () => {
-  if (!('serviceWorker' in navigator)) {
-    console.error('[ServiceWorker] Service Worker API not available');
-    return;
-  }
-
   try {
-    console.log('[ServiceWorker] Starting cleanup...');
-    
-    // Initialize OneSignal first
+    console.log('[OneSignal] Page loaded, starting initialization...');
     await initializeOneSignal();
-    
-    // Unregister any existing service workers except OneSignal's
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (const registration of registrations) {
-      if (!registration.scope.includes('OneSignal')) {
-        await registration.unregister();
-        console.log('[ServiceWorker] Unregistered old service worker:', registration.scope);
-      }
-    }
-
     console.log('[OneSignal] Setup completed');
   } catch (error) {
-    console.error('[ServiceWorker/OneSignal] Setup error:', error);
+    console.error('[OneSignal] Setup error:', error);
   }
 });
 
