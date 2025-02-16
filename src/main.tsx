@@ -9,6 +9,7 @@ declare global {
     oneSignalInitPromise?: Promise<void>;
     resolveOneSignal?: () => void;
     rejectOneSignal?: (error: any) => void;
+    oneSignalInitialized?: boolean;
   }
 }
 
@@ -19,6 +20,13 @@ window.oneSignalInitPromise = new Promise((resolve, reject) => {
 
 // Initialize OneSignal
 const initializeOneSignal = async () => {
+  // Check if already initialized
+  if (window.oneSignalInitialized) {
+    console.log('[OneSignal] Already initialized, skipping...');
+    window.resolveOneSignal?.();
+    return;
+  }
+
   try {
     console.log('[OneSignal] Starting initialization...');
     
@@ -35,18 +43,24 @@ const initializeOneSignal = async () => {
       promptOptions: {
         slidedown: {
           prompts: [{
-            type: "push",
+            type: "push" as const,
             autoPrompt: false,
             text: {
               actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
               acceptButton: "Autoriser",
               cancelButton: "Plus tard"
+            },
+            delay: {
+              pageViews: 1,
+              timeDelay: 0
             }
           }]
         }
       }
     });
 
+    // Mark as initialized
+    window.oneSignalInitialized = true;
     console.log('[OneSignal] Initialization completed successfully');
     window.resolveOneSignal?.();
   } catch (error) {
