@@ -13,12 +13,6 @@ type OneSignalFunctions = {
   push: (f: () => void) => void; // Added this line to match the type in onesignal.d.ts
 };
 
-declare global {
-  interface Window {
-    OneSignal: (OneSignalFunctions & { push: (f: () => void) => void }) | any[];
-  }
-}
-
 // Utility function to get the initialized OneSignal instance
 export const getOneSignal = (): OneSignalFunctions => {
   if (!window.OneSignal || Array.isArray(window.OneSignal)) {
@@ -94,4 +88,3 @@ export const registerDevice = async (interpreterId: string, interpreterData: {
     throw error;
   }
 };
-
