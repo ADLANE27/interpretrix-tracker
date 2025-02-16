@@ -386,6 +386,9 @@ export const InterpreterDashboard = () => {
         console.log('[Dashboard] Attempting to enable notifications');
         const granted = await requestNotificationPermission();
         if (granted) {
+          if (window.oneSignalInitPromise) {
+            await window.oneSignalInitPromise;
+          }
           setNotificationsEnabled(true);
           toast({
             title: "Notifications activées",
