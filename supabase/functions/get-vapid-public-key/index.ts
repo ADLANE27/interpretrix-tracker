@@ -1,72 +1,88 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'npm:@supabase/supabase-js';
+import { serve } from 'https://deno.fresh.dev/std@v1/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface Database {
+  public: {
+    Tables: {
+      vapid_keys: {
+        Row: {
+          id: string;
+          public_key: string;
+          private_key: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          expires_at: string | null;
+          status: 'active' | 'expired' | 'revoked';
+        };
+      };
+    };
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    console.log('[VAPID] Getting public key');
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // Create Supabase client
+    const supabaseClient = createClient<Database>(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing configuration');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Try to get the active VAPID key from the database
-    const { data: vapidKey, error: dbError } = await supabase
+    // Get active VAPID key
+    const { data, error } = await supabaseClient
       .from('vapid_keys')
       .select('public_key')
       .eq('is_active', true)
+      .eq('status', 'active')
       .single();
 
-    if (dbError) {
-      console.error('[VAPID] Database error:', dbError);
-      throw dbError;
+    if (error) {
+      throw error;
     }
 
-    if (!vapidKey) {
-      console.error('[VAPID] No active VAPID key found');
+    if (!data) {
       throw new Error('No active VAPID key found');
     }
 
-    console.log('[VAPID] Successfully retrieved public key');
-    
     return new Response(
       JSON.stringify({
-        vapidPublicKey: vapidKey.public_key,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          keyLength: vapidKey.public_key.length
-        }
+        vapidPublicKey: data.public_key,
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     );
   } catch (error) {
-    console.error('[VAPID] Error:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message,
-        errorCode: 'VAPID_KEY_ERROR',
-        details: 'Error retrieving VAPID public key'
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+      {
+        status: 400,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     );
   }
