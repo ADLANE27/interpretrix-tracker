@@ -15,18 +15,15 @@ const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 const App = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Ensure OneSignal is properly typed
-      if (!window.OneSignal) {
-        window.OneSignal = [] as any;
-      }
+      window.OneSignal = window.OneSignal || [];
       
-      if ((window.OneSignal as any).init) {
+      if (window.OneSignal.init) {
         console.log('[OneSignal] Already initialized');
         return;
       }
       
       const initOneSignal = () => {
-        (window.OneSignal as any).init({
+        window.OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/push/onesignal/' },
@@ -53,9 +50,8 @@ const App = () => {
         });
       };
 
-      // Add initialization to OneSignal's queue
       if (Array.isArray(window.OneSignal)) {
-        (window.OneSignal as any[]).push(initOneSignal);
+        window.OneSignal.push(initOneSignal);
       } else {
         initOneSignal();
       }
