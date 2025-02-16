@@ -58,16 +58,6 @@ const initializeOneSignal = async (retryCount = 0) => {
       throw new Error('OneSignal SDK not loaded after retries');
     }
 
-    // Ensure clean slate
-    try {
-      const existingSubscription = await window.OneSignal.isPushNotificationsEnabled();
-      if (existingSubscription) {
-        await window.OneSignal.setSubscription(false);
-      }
-    } catch (error) {
-      console.log('[OneSignal] Error checking subscription:', error);
-    }
-
     // Initialize OneSignal
     await window.OneSignal.init({
       appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
@@ -93,6 +83,21 @@ const initializeOneSignal = async (retryCount = 0) => {
       }
     });
 
+    // Check if we need to resubscribe
+    const isPushEnabled = await window.OneSignal.isPushNotificationsEnabled();
+    console.log('[OneSignal] Push notifications enabled:', isPushEnabled);
+    
+    if (isPushEnabled) {
+      // Ensure we have a valid player ID
+      const playerId = await window.OneSignal.getUserId();
+      console.log('[OneSignal] Current player ID:', playerId);
+      
+      if (!playerId) {
+        console.log('[OneSignal] No player ID found, resubscribing...');
+        await window.OneSignal.registerForPushNotifications();
+      }
+    }
+
     console.log('[OneSignal] Initialization completed successfully');
     window.oneSignalInitialized = true;
     window.resolveOneSignal?.();
@@ -108,23 +113,25 @@ const initializeOneSignal = async (retryCount = 0) => {
   }
 };
 
-// Initialize after DOM is fully loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    initializeOneSignal().catch(error => {
-      console.error('[OneSignal] Setup error:', error);
-      // Continue loading the app even if OneSignal fails
-      createRoot(document.getElementById("root")!).render(<App />);
-    });
-  });
-} else {
-  // DOM already loaded
-  initializeOneSignal().catch(error => {
+// Create root element once
+const root = createRoot(document.getElementById("root")!);
+
+// Initialize OneSignal and render app
+const startApp = async () => {
+  try {
+    await initializeOneSignal();
+  } catch (error) {
     console.error('[OneSignal] Setup error:', error);
-    // Continue loading the app even if OneSignal fails
-  });
+    // Continue even if OneSignal fails
+  } finally {
+    // Render app only once
+    root.render(<App />);
+  }
+};
+
+// Start the app when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
 }
-
-// Always render the app, regardless of OneSignal status
-createRoot(document.getElementById("root")!).render(<App />);
-
