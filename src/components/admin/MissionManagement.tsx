@@ -16,7 +16,6 @@ import { parseISO, formatISO } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { Filter } from "lucide-react";
 
-// Sort languages alphabetically
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
 interface Mission {
@@ -454,18 +453,27 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
-      // Directly send push notifications using the edge function
-      const { data: notificationResult, error: notificationError } = await supabase.functions.invoke(
-        'send-push-notification',
-        {
-          body: {
-            interpreterIds: selectedInterpreters,
-            title: missionType === 'immediate' 
-              ? '🚨 Nouvelle mission immédiate'
-              : '📅 Nouvelle mission programmée',
-            body: missionType === 'immediate'
-              ? `${sourceLanguage} → ${targetLanguage} - ${calculatedDuration} minutes`
-              : `${sourceLanguage} → ${targetLanguage} - du ${new Date(scheduledStartTime).toLocaleString()} au ${new Date(scheduledEndTime).toLocaleString()}`,
+      // Send OneSignal notifications to selected interpreters
+      try {
+        const OneSignal = await fetch('https://onesignal.com/api/v1/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + '2f15c47a-f369-4206-b077-eaddd8075b04'
+          },
+          body: JSON.stringify({
+            app_id: "2f15c47a-f369-4206-b077-eaddd8075b04",
+            include_external_user_ids: selectedInterpreters,
+            contents: {
+              en: missionType === 'immediate'
+                ? `${sourceLanguage} → ${targetLanguage} - ${calculatedDuration} minutes`
+                : `${sourceLanguage} → ${targetLanguage} - du ${new Date(scheduledStartTime).toLocaleString()} au ${new Date(scheduledEndTime).toLocaleString()}`
+            },
+            headings: {
+              en: missionType === 'immediate' 
+                ? '🚨 Nouvelle mission immédiate'
+                : '📅 Nouvelle mission programmée'
+            },
             data: {
               mission_id: createdMission.id,
               mission_type: missionType,
@@ -475,35 +483,38 @@ export const MissionManagement = () => {
               scheduled_start_time: utcStartTime,
               scheduled_end_time: utcEndTime
             }
-          }
-        }
-      );
+          })
+        });
 
-      if (notificationError) {
-        console.error('[MissionManagement] Error sending notifications:', notificationError);
+        if (!OneSignal.ok) {
+          throw new Error('Failed to send notifications');
+        }
+
+        console.log('[MissionManagement] Notifications sent successfully');
+        toast({
+          title: "Mission créée avec succès",
+          description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
+        });
+        
+        setSourceLanguage("");
+        setTargetLanguage("");
+        setEstimatedDuration("");
+        setSelectedInterpreters([]);
+        setAvailableInterpreters([]);
+        setMissionType('immediate');
+        setScheduledStartTime("");
+        setScheduledEndTime("");
+
+        fetchMissions();
+
+      } catch (error) {
+        console.error('[MissionManagement] Error sending notifications:', error);
         toast({
           title: "Mission créée",
           description: "La mission a été créée mais il y a eu une erreur lors de l'envoi des notifications",
           variant: "destructive",
         });
-      } else {
-        console.log('[MissionManagement] Notifications sent successfully:', notificationResult);
-        toast({
-          title: "Mission créée avec succès",
-          description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes ont été notifiés`,
-        });
       }
-      
-      setSourceLanguage("");
-      setTargetLanguage("");
-      setEstimatedDuration("");
-      setSelectedInterpreters([]);
-      setAvailableInterpreters([]);
-      setMissionType('immediate');
-      setScheduledStartTime("");
-      setScheduledEndTime("");
-
-      fetchMissions();
 
     } catch (error) {
       console.error('[MissionManagement] Error in createMission:', error);
