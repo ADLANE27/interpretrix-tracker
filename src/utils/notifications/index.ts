@@ -2,93 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { Button } from "@/components/ui/button";
-import React from "react";
-
-const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
-
-// Wait for OneSignal initialization with timeout
-const waitForOneSignal = async (timeout = 10000) => {
-  try {
-    console.log('[OneSignal] Waiting for initialization...');
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('OneSignal initialization timeout')), timeout);
-    });
-    await Promise.race([window.oneSignalInitPromise, timeoutPromise]);
-    console.log('[OneSignal] Initialization confirmed');
-    return true;
-  } catch (error) {
-    console.error('[OneSignal] Error waiting for initialization:', error);
-    return false;
-  }
-};
-
-// Register device with OneSignal and Supabase
-const registerDevice = async (playerId: string): Promise<boolean> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('[OneSignal] No authenticated user');
-      return false;
-    }
-
-    console.log('[OneSignal] Registering device for user:', user.id);
-
-    // Register subscription in database
-    const { error } = await supabase
-      .from('onesignal_subscriptions')
-      .upsert({
-        interpreter_id: user.id,
-        player_id: playerId,
-        platform: 'web',
-        status: 'active',
-        user_agent: navigator.userAgent,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('[OneSignal] Error registering device:', error);
-      return false;
-    }
-
-    // Set interpreter ID tag
-    try {
-      await window.OneSignal.sendTag('interpreter_id', user.id);
-      console.log('[OneSignal] Device registered successfully');
-      return true;
-    } catch (tagError) {
-      console.error('[OneSignal] Error setting tag:', tagError);
-      return false;
-    }
-  } catch (error) {
-    console.error('[OneSignal] Error in registerDevice:', error);
-    return false;
-  }
-};
-
-// Show custom permission message
-const showCustomPermissionMessage = () => {
-  toast({
-    title: "Notifications bloquées",
-    description: "Pour recevoir les nouvelles missions, veuillez autoriser les notifications dans les paramètres de votre navigateur.",
-    variant: "destructive",
-    duration: 10000,
-    action: (
-      <Button
-        onClick={() => {
-          if (typeof Notification !== 'undefined' && Notification.requestPermission) {
-            Notification.requestPermission();
-          }
-        }}
-        variant="outline"
-        className="bg-white text-red-600 hover:bg-red-50"
-      >
-        Autoriser
-      </Button>
-    ),
-  });
-};
+import { waitForOneSignal } from './initialization';
+import { registerDevice } from './deviceRegistration';
+import { showCustomPermissionMessage } from './permissionHandling';
 
 // Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
