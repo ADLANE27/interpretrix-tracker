@@ -51,3 +51,4 @@ self.addEventListener('notificationclick', function(event) {
 self.addEventListener('error', function(event) {
   console.error('[ServiceWorker] Error:', event.error);
 });
+
