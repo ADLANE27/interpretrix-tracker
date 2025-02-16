@@ -18,6 +18,8 @@
     </script>
     <!-- Load OneSignal SDK -->
     <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+    <!-- Load GPT Engineer script for mobile compatibility -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <!-- Initialize OneSignal -->
     <script>
       OneSignal.push(async function() {
@@ -35,7 +37,7 @@
               slidedown: {
                 prompts: [{
                   type: "push",
-                  autoPrompt: true, // Changed to true for immediate prompt
+                  autoPrompt: true,
                   text: {
                     actionMessage: "Voulez-vous recevoir les notifications de nouvelles missions ?",
                     acceptButton: "Autoriser",
@@ -72,8 +74,6 @@
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     </noscript>
-    <!-- Add Lovable script -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <title>Interprète App</title>
   </head>
   <body>
@@ -81,4 +81,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
