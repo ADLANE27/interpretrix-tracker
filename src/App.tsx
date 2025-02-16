@@ -14,21 +14,23 @@ const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
 const App = () => {
   useEffect(() => {
-    // Initialize OneSignal
     if (typeof window !== 'undefined') {
-      window.OneSignal = window.OneSignal || [];
-      const OneSignal = window.OneSignal;
+      // Ensure OneSignal is properly typed
+      if (!window.OneSignal) {
+        window.OneSignal = [] as any;
+      }
       
-      if (OneSignal.init) return; // Already initialized
+      if ((window.OneSignal as any).init) {
+        console.log('[OneSignal] Already initialized');
+        return;
+      }
       
-      // Create a deferred array for initialization
       const initOneSignal = () => {
-        window.OneSignal.init({
+        (window.OneSignal as any).init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/push/onesignal/' },
           serviceWorkerPath: '/push/onesignal/OneSignalSDKWorker.js',
-          subdomainName: "interpretix", // Add this line
           promptOptions: {
             slidedown: {
               prompts: [
@@ -53,9 +55,8 @@ const App = () => {
 
       // Add initialization to OneSignal's queue
       if (Array.isArray(window.OneSignal)) {
-        window.OneSignal.push(initOneSignal);
+        (window.OneSignal as any[]).push(initOneSignal);
       } else {
-        // If OneSignal is already initialized, call directly
         initOneSignal();
       }
     }
