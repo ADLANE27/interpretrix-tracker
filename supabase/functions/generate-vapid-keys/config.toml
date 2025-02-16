@@ -1,4 +1,4 @@
 
 project_id = "bblpiatmtnlhnbavhkau"
-[functions.generate-vapid-keys]
-verify_jwt = true
+[global.extensions]
+webpush = "1.0"

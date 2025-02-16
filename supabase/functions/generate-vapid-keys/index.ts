@@ -1,7 +1,7 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'npm:@supabase/supabase-js';
-import webPush from 'npm:web-push';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import webpush from 'npm:web-push';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,44 +9,76 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('[VAPID] Starting key generation process');
-    
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    // Generate VAPID keys
-    const vapidKeys = webPush.generateVAPIDKeys();
-    console.log('[VAPID] Keys generated successfully');
+    // Verify admin authorization
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
 
-    // Store the keys in the database
-    const { error: insertError } = await supabaseAdmin
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      throw new Error('Invalid authentication');
+    }
+
+    // Check if user is admin
+    const { data: roles, error: roleError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (roleError || roles?.role !== 'admin') {
+      throw new Error('Unauthorized - Admin access required');
+    }
+
+    // Generate new VAPID keys
+    const vapidKeys = webpush.generateVAPIDKeys();
+    console.log('[VAPID] Generated new keys');
+
+    // Store keys in database
+    const { data: keyData, error: keyError } = await supabaseAdmin
       .from('vapid_keys')
       .insert({
         public_key: vapidKeys.publicKey,
         private_key: vapidKeys.privateKey,
-        is_active: true,
+        created_by: user.id,
+        is_active: true, // This will trigger our RLS policy to deactivate other keys
         status: 'active'
-      });
+      })
+      .select()
+      .single();
 
-    if (insertError) {
-      console.error('[VAPID] Error inserting keys:', insertError);
-      throw insertError;
+    if (keyError) {
+      console.error('[VAPID] Error storing keys:', keyError);
+      throw new Error('Failed to store VAPID keys');
     }
 
-    console.log('[VAPID] Keys stored in database successfully');
+    console.log('[VAPID] Keys stored successfully');
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
+        success: true,
         publicKey: vapidKeys.publicKey,
-        privateKey: vapidKeys.privateKey,
-        message: 'VAPID keys generated and stored successfully'
+        created_at: keyData.created_at
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,10 +89,13 @@ serve(async (req) => {
   } catch (error) {
     console.error('[VAPID] Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message,
+        details: 'Failed to generate VAPID keys'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: error.message.includes('Unauthorized') ? 403 : 500
       }
     );
   }
