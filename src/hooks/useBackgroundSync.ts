@@ -12,6 +12,7 @@ export const useBackgroundSync = (options: BackgroundSyncOptions = {}) => {
 
   const requestSync = useCallback(async () => {
     try {
+      console.log('[useBackgroundSync] Requesting sync...');
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         await navigator.serviceWorker.ready;
         await navigator.serviceWorker.controller.postMessage({
@@ -19,7 +20,7 @@ export const useBackgroundSync = (options: BackgroundSyncOptions = {}) => {
         });
       }
     } catch (error) {
-      console.error('Failed to request sync:', error);
+      console.error('[useBackgroundSync] Failed to request sync:', error);
       onSyncError?.(error as Error);
     }
   }, [onSyncError]);
@@ -27,6 +28,7 @@ export const useBackgroundSync = (options: BackgroundSyncOptions = {}) => {
   useEffect(() => {
     const handleSyncMessage = (event: MessageEvent) => {
       if (event.data && event.data.type === 'SYNC_COMPLETED') {
+        console.log('[useBackgroundSync] Sync completed:', event.data);
         onSyncComplete?.(event.data.data);
       }
     };
@@ -34,21 +36,24 @@ export const useBackgroundSync = (options: BackgroundSyncOptions = {}) => {
     // Listen for sync completion messages from service worker
     navigator.serviceWorker?.addEventListener('message', handleSyncMessage);
 
-    // Set up real-time subscription for interpreter status changes
-    const channel = supabase.channel('interpreter_status_changes')
+    // Set up real-time subscription for all relevant tables
+    const channel = supabase.channel('sync_status_changes')
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
-          table: 'interpreter_connection_status',
+          table: 'sync_status',
+          filter: `status=eq.pending`
         },
         (payload) => {
-          // Request a sync when we detect changes
+          console.log('[useBackgroundSync] Sync status change detected:', payload);
           requestSync();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[useBackgroundSync] Channel subscription status:', status);
+      });
 
     return () => {
       navigator.serviceWorker?.removeEventListener('message', handleSyncMessage);

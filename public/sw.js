@@ -77,29 +77,58 @@ self.addEventListener('periodicsync', (event) => {
 // Function to sync interpreter data
 async function syncInterpreterData() {
   try {
-    const response = await fetch('/api/interpreters/sync', {
-      method: 'POST',
+    console.log('[ServiceWorker] Starting data sync...');
+    
+    // Get pending sync items
+    const pendingSyncResponse = await fetch('/api/sync/pending', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    if (!response.ok) throw new Error('Sync failed');
+    if (!pendingSyncResponse.ok) {
+      throw new Error('Failed to fetch pending sync items');
+    }
 
-    const data = await response.json();
-    
-    // Update all clients with new data
+    const pendingSyncItems = await pendingSyncResponse.json();
+    console.log('[ServiceWorker] Pending sync items:', pendingSyncItems);
+
+    // Process each pending sync item
+    const syncPromises = pendingSyncItems.map(async (item) => {
+      const response = await fetch(`/api/sync/${item.data_type}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sync_version: item.sync_version,
+          last_sync_at: item.last_sync_at
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync failed for ${item.data_type}`);
+      }
+
+      return response.json();
+    });
+
+    const results = await Promise.all(syncPromises);
+    console.log('[ServiceWorker] Sync completed:', results);
+
+    // Notify all clients about the sync completion
     const clients = await (self as any).clients.matchAll();
     clients.forEach(client => {
       client.postMessage({
         type: 'SYNC_COMPLETED',
-        data: data
+        data: results
       });
     });
 
-    return data;
+    return results;
   } catch (error) {
-    console.error('Sync failed:', error);
+    console.error('[ServiceWorker] Sync failed:', error);
     throw error;
   }
 }
