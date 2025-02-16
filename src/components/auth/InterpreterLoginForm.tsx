@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { waitForOneSignal } from "@/utils/notifications/initialization";
 
 export const InterpreterLoginForm = () => {
   const [email, setEmail] = useState("");
@@ -14,7 +13,6 @@ export const InterpreterLoginForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Memoize form handlers for better performance
   const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
   }, []);
@@ -26,32 +24,21 @@ export const InterpreterLoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (loading) return; // Prevent double submission
+    if (loading) return;
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      // After successful login, initialize OneSignal with a shorter timeout
-      if (window.oneSignalInitPromise) {
-        try {
-          const initialized = await waitForOneSignal(5000); // Reduced timeout
-          console.log('[OneSignal] Initialization after login:', initialized ? 'success' : 'failed');
-        } catch (error) {
-          console.error('[OneSignal] Login initialization error:', error);
-          // Continue with login even if OneSignal fails
-        }
-      }
-
       toast({
         title: "Connexion réussie",
         description: "Bienvenue !",
-        duration: 3000, // Shorter toast duration for better UX
+        duration: 3000,
       });
 
       // Pre-warm the dashboard route
