@@ -60,9 +60,8 @@ const initializeOneSignal = async () => {
       throw new Error('OneSignal SDK not loaded');
     }
 
-    // Force cleanup any existing OneSignal service worker
+    // Force cleanup any existing subscription
     try {
-      await window.OneSignal.slidedown.promptDismiss();
       await window.OneSignal.setSubscription(false);
     } catch (error) {
       console.log('[OneSignal] No existing subscription to clean');
