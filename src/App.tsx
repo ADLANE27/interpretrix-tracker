@@ -3,17 +3,23 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router-dom";
 import { useEffect, useState, Suspense, lazy } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import NotFound from "./pages/NotFound";
 
-// Lazy load components
+// Lazy load components with preload
 const Index = lazy(() => import("./pages/Index"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const InterpreterLogin = lazy(() => import("./pages/InterpreterLogin"));
 const Profile = lazy(() => import("./pages/Profile"));
+
+// Preload critical routes
+const preloadRoutes = () => {
+  const routes = [Index, AdminLogin, InterpreterLogin, Profile];
+  routes.forEach(route => route.preload?.());
+};
 
 // Configure React Query for better caching
 const queryClient = new QueryClient({
@@ -27,7 +33,7 @@ const queryClient = new QueryClient({
   },
 });
 
-// Loading spinner component
+// Loading spinner component with reduced motion
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
@@ -40,6 +46,7 @@ const App = () => {
 
   useEffect(() => {
     checkUser();
+    preloadRoutes(); // Preload routes when app mounts
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       checkUser();
     });
@@ -98,18 +105,18 @@ const App = () => {
                       >
                         <h1 className="text-3xl font-bold">Bienvenue</h1>
                         <div className="flex gap-4">
-                          <a 
-                            href="/admin/login" 
+                          <Link 
+                            to="/admin/login" 
                             className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg"
                           >
                             Espace Administrateur
-                          </a>
-                          <a 
-                            href="/interpreter/login" 
+                          </Link>
+                          <Link 
+                            to="/interpreter/login" 
                             className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg"
                           >
                             Espace Interprète
-                          </a>
+                          </Link>
                         </div>
                       </motion.div>
                       <footer className="text-center py-4 text-gray-600 text-sm">
