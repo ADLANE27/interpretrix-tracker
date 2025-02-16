@@ -369,7 +369,7 @@ export const InterpreterDashboard = () => {
           const granted = await requestNotificationPermission();
           if (granted) {
             setNotificationsEnabled(true);
-            playNotificationSound();
+            playNotificationSound('scheduled');
             toast({
               title: "Notifications activées",
               description: "Vous recevrez désormais les notifications pour les nouvelles missions",
