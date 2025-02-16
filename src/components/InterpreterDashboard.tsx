@@ -369,6 +369,7 @@ export const InterpreterDashboard = () => {
           const granted = await requestNotificationPermission();
           if (granted) {
             setNotificationsEnabled(true);
+            playNotificationSound();
             toast({
               title: "Notifications activées",
               description: "Vous recevrez désormais les notifications pour les nouvelles missions",
@@ -450,8 +451,8 @@ export const InterpreterDashboard = () => {
                   {isCheckingNotifications 
                     ? "Vérification..." 
                     : notificationsEnabled 
-                      ? "Notifications activées" 
-                      : "Notifications désactivées"
+                      ? "Les notifications sont activées" 
+                      : "Activer les notifications"
                   }
                 </Button>
                 <ThemeToggle />
