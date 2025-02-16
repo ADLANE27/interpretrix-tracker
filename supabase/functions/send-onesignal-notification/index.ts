@@ -94,31 +94,6 @@ serve(async (req) => {
 
     console.log('[OneSignal] Sending notification with payload:', oneSignalPayload);
 
-    // Create notification history entries
-    const notificationRecords = interpreterIds.map(interpreterId => ({
-      interpreter_id: interpreterId,
-      mission_id: data?.mission_id,
-      notification_type: data?.type || 'mission',
-      title,
-      message: body,
-      status: 'sent',
-      metadata: {
-        oneSignalPayload,
-        data
-      }
-    }));
-
-    // Insert notification history records
-    const { data: historyEntries, error: historyError } = await supabaseAdmin
-      .from('notification_history')
-      .insert(notificationRecords)
-      .select();
-
-    if (historyError) {
-      console.error('[OneSignal] Error recording notification history:', historyError);
-      throw historyError;
-    }
-
     // Send notification via OneSignal
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
@@ -134,38 +109,32 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error('[OneSignal] Error sending notification:', responseData);
-      
-      // Record delivery failures
-      const deliveryStatusRecords = historyEntries.map(entry => ({
-        notification_id: entry.id,
-        delivery_status: 'error',
-        error_message: responseData.errors?.[0] || 'Failed to send notification',
-        retry_count: 0
-      }));
-
-      await supabaseAdmin
-        .from('notification_delivery_status')
-        .insert(deliveryStatusRecords);
-
       throw new Error(responseData.errors?.[0] || 'Failed to send notification');
     }
 
-    // Record successful deliveries
-    const deliveryStatusRecords = historyEntries.map(entry => ({
-      notification_id: entry.id,
-      delivery_status: 'sent',
-      retry_count: 0
+    // Record notifications in history
+    const notificationRecords = interpreterIds.map(interpreterId => ({
+      interpreter_id: interpreterId,
+      mission_id: data?.mission_id,
+      notification_type: data?.type || 'mission',
+      title,
+      message: body,
+      status: 'sent',
+      metadata: {
+        oneSignalResponse: responseData,
+        data
+      }
     }));
 
-    const { error: deliveryStatusError } = await supabaseAdmin
-      .from('notification_delivery_status')
-      .insert(deliveryStatusRecords);
+    const { error: historyError } = await supabaseAdmin
+      .from('notification_history')
+      .insert(notificationRecords);
 
-    if (deliveryStatusError) {
-      console.error('[OneSignal] Error recording delivery status:', deliveryStatusError);
+    if (historyError) {
+      console.error('[OneSignal] Error recording notification history:', historyError);
     }
 
-    // Update subscription stats
+    // Update last_notification_sent and increment notification_count
     const { error: updateError } = await supabaseAdmin
       .from('onesignal_subscriptions')
       .update({ 
@@ -204,4 +173,3 @@ serve(async (req) => {
     );
   }
 });
-

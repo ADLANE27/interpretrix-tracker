@@ -137,25 +137,11 @@ export const registerDevice = async (): Promise<boolean> => {
       return false;
     }
 
-    // Wait for OneSignal to be ready
-    await window.OneSignal.init({
-      appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
-      allowLocalhostAsSecureOrigin: true,
-    });
-
-    // Get OneSignal Player ID with retry
-    let playerId = null;
-    let retryCount = 0;
-    while (!playerId && retryCount < 3) {
-      playerId = await window.OneSignal.getUserId();
-      if (!playerId) {
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-
+    // Get OneSignal Player ID
+    console.log('[OneSignal] Getting player ID...');
+    const playerId = await window.OneSignal.getUserId();
     if (!playerId) {
-      console.error('[OneSignal] Failed to get player ID after retries');
+      console.error('[OneSignal] No player ID available');
       return false;
     }
     console.log('[OneSignal] Player ID:', playerId);
@@ -167,44 +153,28 @@ export const registerDevice = async (): Promise<boolean> => {
       return false;
     }
 
-    // Register subscription in database with retry
-    let subscriptionError = null;
-    retryCount = 0;
-    while (retryCount < 3) {
-      const { error: subError } = await supabase
-        .from('onesignal_subscriptions')
-        .upsert({
-          interpreter_id: user.id,
-          player_id: playerId,
-          platform: getPlatform(),
-          user_agent: navigator.userAgent,
-          status: 'active',
-          notification_count: 0,
-          last_notification_sent: null
-        }, {
-          onConflict: 'interpreter_id,player_id'
-        });
+    // Register subscription in database
+    console.log('[OneSignal] Registering subscription...');
+    const { error: subError } = await supabase
+      .from('onesignal_subscriptions')
+      .upsert({
+        interpreter_id: user.id,
+        player_id: playerId,
+        platform: getPlatform(),
+        user_agent: navigator.userAgent,
+        status: 'active'
+      }, {
+        onConflict: 'interpreter_id,player_id'
+      });
 
-      if (!subError) {
-        subscriptionError = null;
-        break;
-      }
-
-      subscriptionError = subError;
-      retryCount++;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-
-    if (subscriptionError) {
-      console.error('[OneSignal] Error registering subscription after retries:', subscriptionError);
+    if (subError) {
+      console.error('[OneSignal] Error registering subscription:', subError);
       return false;
     }
 
-    // Add interpreter tags
-    await Promise.all([
-      window.OneSignal.sendTag('role', 'interpreter'),
-      window.OneSignal.sendTag('interpreter_id', user.id)
-    ]);
+    // Add interpreter tag
+    await window.OneSignal.sendTag('role', 'interpreter');
+    await window.OneSignal.sendTag('interpreter_id', user.id);
 
     console.log('[OneSignal] Subscription registered successfully');
     return true;
@@ -308,4 +278,3 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
     return false;
   }
 };
-

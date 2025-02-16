@@ -5,7 +5,7 @@
     Service-Worker-Allowed = "/"
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "default-src 'self' cdn.onesignal.com onesignal.com *.onesignal.com https://*.supabase.co wss://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co https://*.onesignal.com https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.onesignal.com onesignal.com *.onesignal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' https:; worker-src 'self' blob: cdn.onesignal.com; frame-src 'self' onesignal.com *.onesignal.com; child-src 'self' blob: onesignal.com *.onesignal.com; manifest-src 'self' onesignal.com *.onesignal.com;"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onesignal.com https://onesignal.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co https://*.onesignal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.onesignal.com https://onesignal.com https://*.onesignal.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; worker-src 'self' https://cdn.onesignal.com; frame-src 'self' https://onesignal.com https://*.onesignal.com; child-src 'self' https://onesignal.com https://*.onesignal.com; manifest-src 'self' https://onesignal.com https://*.onesignal.com;"
 
 [build]
   command = "npm run build"
@@ -27,4 +27,3 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
