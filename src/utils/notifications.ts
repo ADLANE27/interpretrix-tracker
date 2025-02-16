@@ -1,4 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
@@ -17,17 +19,8 @@ const waitForOneSignal = async (timeout = 10000): Promise<boolean> => {
       throw new Error('OneSignal failed to load');
     }
 
-    // Initialize OneSignal
-    await window.OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      allowLocalhostAsSecureOrigin: true,
-      serviceWorkerPath: '/OneSignalSDKWorker.js',
-    });
-
-    // Resolve the global initialization promise
-    if (window.resolveOneSignal) {
-      window.resolveOneSignal();
-    }
+    // Wait for the initialization promise to resolve
+    await window.oneSignalInitPromise;
 
     console.log('[OneSignal] Successfully initialized');
     return true;
@@ -131,19 +124,34 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     // Check browser support
     const { supported, reason } = await checkBrowserSupport();
     if (!supported) {
-      throw new Error(reason || 'Les notifications ne sont pas supportées');
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: reason || 'Les notifications ne sont pas supportées'
+      });
+      return false;
     }
 
     // Wait for OneSignal initialization
     const isReady = await waitForOneSignal();
     if (!isReady) {
-      throw new Error('L\'initialisation des notifications a échoué');
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: 'L\'initialisation des notifications a échoué'
+      });
+      return false;
     }
 
     // Check current permission
     const currentPermission = await window.OneSignal.getNotificationPermission();
     if (currentPermission === 'denied') {
-      throw new Error('Les notifications sont bloquées dans les paramètres du navigateur');
+      toast({
+        variant: "destructive",
+        title: "Notifications bloquées",
+        description: 'Les notifications sont bloquées dans les paramètres du navigateur'
+      });
+      return false;
     }
 
     // Show the OneSignal prompt
@@ -154,7 +162,12 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     if (permission === 'granted') {
       const registered = await registerDevice();
       if (!registered) {
-        throw new Error('Erreur lors de l\'enregistrement du dispositif');
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: 'Erreur lors de l\'enregistrement du dispositif'
+        });
+        return false;
       }
       return true;
     }
@@ -162,7 +175,12 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     return false;
   } catch (error: any) {
     console.error('[OneSignal] Permission error:', error);
-    throw error;
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: error.message || 'Une erreur est survenue'
+    });
+    return false;
   }
 };
 
