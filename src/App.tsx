@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,17 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import NotFound from "./pages/NotFound";
 
-// Lazy load components with preload
+// Lazy load components
 const Index = lazy(() => import("./pages/Index"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const InterpreterLogin = lazy(() => import("./pages/InterpreterLogin"));
 const Profile = lazy(() => import("./pages/Profile"));
-
-// Preload critical routes
-const preloadRoutes = () => {
-  const routes = [Index, AdminLogin, InterpreterLogin, Profile];
-  routes.forEach(route => route.preload?.());
-};
 
 // Configure React Query for better caching
 const queryClient = new QueryClient({
@@ -46,7 +39,6 @@ const App = () => {
 
   useEffect(() => {
     checkUser();
-    preloadRoutes(); // Preload routes when app mounts
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       checkUser();
     });

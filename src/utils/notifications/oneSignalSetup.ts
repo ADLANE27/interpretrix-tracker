@@ -5,10 +5,11 @@ export const initializeOneSignal = async (): Promise<void> => {
   try {
     if (!window.OneSignal) {
       console.log('[OneSignal] Loading OneSignal SDK...');
-      window.OneSignal = window.OneSignal || [];
+      // Initialize as empty array first
+      window.OneSignal = [] as any;
       
       // Initialize with recommended settings
-      window.OneSignal.push(() => {
+      window.OneSignal.push(function() {
         window.OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,

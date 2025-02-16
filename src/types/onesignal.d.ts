@@ -98,7 +98,7 @@ interface Window {
     setEmail: (email: string) => Promise<void>;
     setSMSNumber: (smsNumber: string) => Promise<void>;
     logout: () => Promise<void>;
-  };
+  } | any[];
   OneSignalDeferred?: ((OneSignal: Window['OneSignal']) => void)[];
   oneSignalInitPromise?: Promise<void>;
   resolveOneSignal?: () => void;
