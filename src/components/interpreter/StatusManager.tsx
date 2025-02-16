@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { ThemeToggle } from './ThemeToggle';
 import { NotificationManager } from '../notifications/NotificationManager';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
