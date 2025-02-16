@@ -19,9 +19,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { 
-  registerDevice,
-  unregisterDevice,
   requestNotificationPermission,
+  unregisterDevice,
   isNotificationsEnabled,
 } from "@/utils/notifications";
 import { playNotificationSound } from "@/utils/notificationSounds";
