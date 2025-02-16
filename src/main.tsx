@@ -94,7 +94,7 @@ const initializeOneSignal = async (retryCount = 0) => {
       
       if (!playerId) {
         console.log('[OneSignal] No player ID found, resubscribing...');
-        await window.OneSignal.setSubscription(true); // Fixed: Using setSubscription instead of registerForPushNotifications
+        await window.OneSignal.setSubscription(true);
       }
     }
 
@@ -135,4 +135,3 @@ if (document.readyState === 'loading') {
 } else {
   startApp();
 }
-
