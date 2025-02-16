@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForOneSignal } from "@/utils/notifications/initialization";
+import { requestNotificationPermission } from "@/utils/notifications";
 
 export const InterpreterLoginForm = () => {
   const [email, setEmail] = useState("");
@@ -41,6 +42,10 @@ export const InterpreterLoginForm = () => {
       if (window.oneSignalInitPromise) {
         try {
           const initialized = await waitForOneSignal(5000); // Reduced timeout
+          if (initialized) {
+            console.log('[OneSignal] Requesting notification permission after login');
+            await requestNotificationPermission(); // Ask for notification permission
+          }
           console.log('[OneSignal] Initialization after login:', initialized ? 'success' : 'failed');
         } catch (error) {
           console.error('[OneSignal] Login initialization error:', error);
