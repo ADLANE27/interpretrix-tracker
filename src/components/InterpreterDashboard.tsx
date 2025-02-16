@@ -432,27 +432,17 @@ export const InterpreterDashboard = () => {
               />
               <div className="flex items-center gap-2">
                 <Button 
-                  variant={notificationsEnabled ? "default" : "outline"}
+                  variant="outline"
                   onClick={toggleNotifications}
-                  className={`text-sm relative pl-11 pr-4 transition-all duration-200 ${
-                    notificationsEnabled 
-                      ? 'bg-primary hover:bg-primary/90' 
-                      : 'bg-secondary/20 hover:bg-secondary/30'
-                  }`}
+                  className="text-sm gap-2 bg-background hover:bg-accent hover:text-accent-foreground"
                   disabled={isCheckingNotifications}
                 >
-                  <span className={`absolute left-2 p-1 rounded-full transition-colors duration-200 ${
-                    notificationsEnabled ? 'bg-white' : 'bg-gray-400'
-                  }`}>
-                    <Bell className={`w-4 h-4 ${
-                      notificationsEnabled ? 'text-primary' : 'text-gray-600'
-                    }`} />
-                  </span>
+                  <Bell className="h-4 w-4" />
                   {isCheckingNotifications 
                     ? "Vérification..." 
                     : notificationsEnabled 
-                      ? "Les notifications sont activées" 
-                      : "Activer les notifications"
+                      ? "Notifications activées" 
+                      : "Notifications désactivées"
                   }
                 </Button>
                 <ThemeToggle />
