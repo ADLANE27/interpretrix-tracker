@@ -1,8 +1,8 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { waitForOneSignal } from './initialization';
-import { registerDevice } from './deviceRegistration';
+import { getPlayerId, getSubscriptionStatus } from './oneSignalSetup';
 import { showCustomPermissionMessage } from './permissionHandling';
 
 // Request notification permissions and register device
@@ -11,7 +11,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     console.log('[OneSignal] Starting permission request...');
     
     // First check if notifications are supported
-    if (!areNotificationsSupported()) {
+    if (!('Notification' in window)) {
       toast({
         title: "Non supporté",
         description: "Les notifications ne sont pas supportées sur votre navigateur",
@@ -21,23 +21,12 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       return false;
     }
     
-    // Wait for OneSignal initialization with retries
-    const initialized = await waitForOneSignal(10000, 3);
-    if (!initialized) {
-      throw new Error('OneSignal non initialisé');
-    }
+    // Check if already subscribed
+    const isSubscribed = await getSubscriptionStatus();
+    console.log('[OneSignal] Current subscription status:', isSubscribed);
 
-    if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal not available');
-      throw new Error('OneSignal non disponible');
-    }
-
-    // First check if already subscribed
-    const isAlreadySubscribed = await window.OneSignal.isPushNotificationsEnabled();
-    console.log('[OneSignal] Already subscribed:', isAlreadySubscribed);
-
-    if (isAlreadySubscribed) {
-      const playerId = await window.OneSignal.getUserId();
+    if (isSubscribed) {
+      const playerId = await getPlayerId();
       if (playerId) {
         return await registerDevice(playerId);
       }
@@ -51,52 +40,45 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       return false;
     }
 
-    // If not subscribed, show the prompt
-    console.log('[OneSignal] Showing subscription prompt');
+    // Show the OneSignal prompt
     await window.OneSignal.showSlidedownPrompt();
     
-    // Wait for subscription status change with increased timeout
-    let attempts = 0;
-    const maxAttempts = 15; // Increased from 10 to 15
-    while (attempts < maxAttempts) {
-      const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-      console.log('[OneSignal] Checking subscription status:', isSubscribed);
-      
-      if (isSubscribed) {
-        const playerId = await window.OneSignal.getUserId();
+    // Wait for subscription status change
+    const maxWaitTime = 30000; // 30 seconds
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      const currentStatus = await getSubscriptionStatus();
+      if (currentStatus) {
+        const playerId = await getPlayerId();
         if (playerId) {
           const registered = await registerDevice(playerId);
-          if (!registered) {
-            console.error('[OneSignal] Failed to register device');
-            return false;
+          if (registered) {
+            // Play notification sound
+            await playNotificationSound('scheduled');
+            
+            toast({
+              title: "Notifications activées",
+              description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+              duration: 3000,
+            });
+            
+            return true;
           }
-          // Test notification sound
-          await playNotificationSound('scheduled');
-          
-          // Show success message
-          toast({
-            title: "Notifications activées",
-            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-            duration: 3000,
-          });
-          
-          return true;
         }
       }
-      
-      // Increased wait time between checks
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    console.log('[OneSignal] Subscription attempt timed out');
-    throw new Error('Délai d\'attente dépassé pour l\'activation des notifications');
+    console.log('[OneSignal] Subscription timeout');
+    return false;
   } catch (error: any) {
     console.error('[OneSignal] Error:', error);
     toast({
-      variant: "destructive",
       title: "Erreur",
-      description: error.message || "Une erreur est survenue lors de l'activation des notifications"
+      description: error.message || "Une erreur est survenue lors de l'activation des notifications",
+      variant: "destructive",
+      duration: 5000,
     });
     return false;
   }
@@ -105,49 +87,71 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 // Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
-    // Wait for OneSignal initialization
-    const initialized = await waitForOneSignal();
-    if (!initialized) {
-      console.log('[OneSignal] Not initialized');
+    const isSubscribed = await getSubscriptionStatus();
+    if (!isSubscribed) {
       return false;
     }
 
-    if (!window.OneSignal) {
-      console.log('[OneSignal] OneSignal not initialized');
+    const playerId = await getPlayerId();
+    if (!playerId) {
       return false;
     }
 
-    const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
-    console.log('[OneSignal] Current subscription status:', isSubscribed);
-    
-    if (isSubscribed) {
-      const playerId = await window.OneSignal.getUserId();
-      if (!playerId) {
-        console.log('[OneSignal] No player ID found');
-        return false;
-      }
-
-      // Verify subscription in database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[OneSignal] No authenticated user');
-        return false;
-      }
-
-      const { data: subscription } = await supabase
-        .from('onesignal_subscriptions')
-        .select('status')
-        .eq('interpreter_id', user.id)
-        .eq('player_id', playerId)
-        .single();
-
-      console.log('[OneSignal] Database subscription status:', subscription?.status);
-      return subscription?.status === 'active';
+    // Verify subscription in database
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return false;
     }
 
-    return false;
+    const { data: subscription } = await supabase
+      .from('onesignal_subscriptions')
+      .select('status')
+      .eq('interpreter_id', user.id)
+      .eq('player_id', playerId)
+      .single();
+
+    return subscription?.status === 'active';
   } catch (error) {
     console.error('[OneSignal] Status check error:', error);
+    return false;
+  }
+};
+
+// Register device with our backend
+const registerDevice = async (playerId: string): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('[OneSignal] No authenticated user');
+      return false;
+    }
+
+    console.log('[OneSignal] Registering device for user:', user.id);
+
+    // Upsert subscription record
+    const { error } = await supabase
+      .from('onesignal_subscriptions')
+      .upsert({
+        interpreter_id: user.id,
+        player_id: playerId,
+        platform: 'web',
+        status: 'active',
+        user_agent: navigator.userAgent,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('[OneSignal] Error registering device:', error);
+      return false;
+    }
+
+    // Set interpreter ID tag in OneSignal
+    await window.OneSignal.sendTag('interpreter_id', user.id);
+    console.log('[OneSignal] Device registered successfully');
+    return true;
+  } catch (error) {
+    console.error('[OneSignal] Error in registerDevice:', error);
     return false;
   }
 };
@@ -155,27 +159,15 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
 // Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
-    // Wait for OneSignal initialization
-    const initialized = await waitForOneSignal();
-    if (!initialized) {
-      console.log('[OneSignal] Not initialized');
-      return false;
-    }
-
-    if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal not initialized');
+    const playerId = await getPlayerId();
+    if (!playerId) {
+      console.error('[OneSignal] No player ID found');
       return false;
     }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.error('[OneSignal] No authenticated user');
-      return false;
-    }
-
-    const playerId = await window.OneSignal.getUserId();
-    if (!playerId) {
-      console.error('[OneSignal] No player ID found');
       return false;
     }
 
@@ -205,8 +197,3 @@ export const unregisterDevice = async (): Promise<boolean> => {
     return false;
   }
 };
-
-// Helper function to check if notifications are supported
-function areNotificationsSupported() {
-  return 'Notification' in window && Notification.permission !== 'denied';
-}

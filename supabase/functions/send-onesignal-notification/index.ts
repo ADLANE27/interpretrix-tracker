@@ -15,7 +15,6 @@ interface NotificationPayload {
 }
 
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -32,50 +31,35 @@ serve(async (req) => {
       }
     );
 
-    // Get request payload
     const payload: NotificationPayload = await req.json();
     const { interpreterIds, title, body, data } = payload;
 
     console.log('[OneSignal] Sending notifications to interpreters:', interpreterIds);
 
-    // Get active OneSignal subscriptions for the specified interpreters
+    // Get active OneSignal subscriptions
     const { data: subscriptions, error: subError } = await supabaseAdmin
       .from('onesignal_subscriptions')
-      .select('*')
+      .select('player_id')
       .in('interpreter_id', interpreterIds)
       .eq('status', 'active');
 
     if (subError) {
-      console.error('[OneSignal] Error fetching subscriptions:', subError);
       throw subError;
     }
 
-    console.log('[OneSignal] Found subscriptions:', subscriptions);
-
-    if (subscriptions.length === 0) {
+    // If no subscriptions, return success with 0 sent
+    if (!subscriptions?.length) {
       console.log('[OneSignal] No active subscriptions found');
       return new Response(
-        JSON.stringify({
-          success: true,
-          sent: 0,
-          message: 'No active subscriptions found'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
+        JSON.stringify({ success: true, sent: 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get player IDs for all subscriptions
     const playerIds = subscriptions.map(sub => sub.player_id);
-    console.log('[OneSignal] Player IDs:', playerIds);
+    console.log('[OneSignal] Sending to player IDs:', playerIds);
 
-    if (!Deno.env.get('ONESIGNAL_APP_ID') || !Deno.env.get('ONESIGNAL_REST_API_KEY')) {
-      throw new Error('OneSignal credentials not configured');
-    }
-
-    // Prepare OneSignal notification payload
+    // Prepare OneSignal notification
     const oneSignalPayload = {
       app_id: Deno.env.get('ONESIGNAL_APP_ID'),
       include_player_ids: playerIds,
@@ -92,9 +76,7 @@ serve(async (req) => {
       large_icon: "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png"
     };
 
-    console.log('[OneSignal] Sending notification with payload:', oneSignalPayload);
-
-    // Send notification via OneSignal
+    // Send notification
     const response = await fetch('https://onesignal.com/api/v1/notifications', {
       method: 'POST',
       headers: {
@@ -105,37 +87,34 @@ serve(async (req) => {
     });
 
     const responseData = await response.json();
-    console.log('[OneSignal] OneSignal API response:', responseData);
+    console.log('[OneSignal] API response:', responseData);
 
     if (!response.ok) {
-      console.error('[OneSignal] Error sending notification:', responseData);
       throw new Error(responseData.errors?.[0] || 'Failed to send notification');
     }
 
-    // Record notifications in history
-    const notificationRecords = interpreterIds.map(interpreterId => ({
-      interpreter_id: interpreterId,
-      mission_id: data?.mission_id,
-      notification_type: data?.type || 'mission',
-      title,
-      message: body,
-      status: 'sent',
-      metadata: {
-        oneSignalResponse: responseData,
-        data
-      }
-    }));
-
+    // Record successful notifications
     const { error: historyError } = await supabaseAdmin
       .from('notification_history')
-      .insert(notificationRecords);
+      .insert(interpreterIds.map(interpreterId => ({
+        interpreter_id: interpreterId,
+        mission_id: data?.mission_id,
+        notification_type: data?.type || 'mission',
+        title,
+        message: body,
+        status: 'sent',
+        metadata: {
+          oneSignalResponse: responseData,
+          data
+        }
+      })));
 
     if (historyError) {
-      console.error('[OneSignal] Error recording notification history:', historyError);
+      console.error('[OneSignal] History recording error:', historyError);
     }
 
-    // Update last_notification_sent and increment notification_count
-    const { error: updateError } = await supabaseAdmin
+    // Update subscription stats
+    await supabaseAdmin
       .from('onesignal_subscriptions')
       .update({ 
         last_notification_sent: new Date().toISOString(),
@@ -143,29 +122,19 @@ serve(async (req) => {
       })
       .in('player_id', playerIds);
 
-    if (updateError) {
-      console.error('[OneSignal] Error updating subscription stats:', updateError);
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
         sent: playerIds.length,
         oneSignalResponse: responseData
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('[OneSignal] Fatal error:', error);
+    console.error('[OneSignal] Error:', error);
     return new Response(
-      JSON.stringify({
-        error: error.message,
-        details: 'Failed to send push notifications'
-      }),
+      JSON.stringify({ error: error.message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
