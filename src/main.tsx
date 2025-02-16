@@ -30,20 +30,29 @@ const initializeOneSignal = async () => {
     return;
   }
 
-  // If OneSignal object already exists but not marked as initialized
-  if (window.OneSignal?.initialized) {
-    console.log('[OneSignal] SDK already initialized by OneSignal, marking as initialized...');
-    window.oneSignalInitialized = true;
-    window.resolveOneSignal?.();
-    return;
-  }
-
   try {
     console.log('[OneSignal] Starting initialization...');
     
     if (!window.OneSignal) {
       console.error('[OneSignal] OneSignal SDK not loaded');
       throw new Error('OneSignal SDK not loaded');
+    }
+
+    // Check if already subscribed, which indicates initialization
+    try {
+      const isPushSupported = await window.OneSignal.isPushNotificationsSupported();
+      if (isPushSupported) {
+        const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
+        if (isSubscribed) {
+          console.log('[OneSignal] Already subscribed, marking as initialized...');
+          window.oneSignalInitialized = true;
+          window.resolveOneSignal?.();
+          return;
+        }
+      }
+    } catch (error) {
+      // If these methods fail, OneSignal is not initialized yet
+      console.log('[OneSignal] Not yet initialized, proceeding with initialization...');
     }
 
     await window.OneSignal.init({
