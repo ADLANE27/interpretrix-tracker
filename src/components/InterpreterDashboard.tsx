@@ -63,7 +63,7 @@ export const InterpreterDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [isCheckingNotifications, setIsCheckingNotifications] = useState(false);
+  const [isCheckingNotifications, setIsCheckingNotifications] = useState(true);
 
   useSupabaseConnection();
 
@@ -341,18 +341,29 @@ export const InterpreterDashboard = () => {
 
   useEffect(() => {
     const checkNotificationStatus = async () => {
-      const enabled = await isNotificationsEnabled();
-      setNotificationsEnabled(enabled);
+      try {
+        setIsCheckingNotifications(true);
+        const enabled = await isNotificationsEnabled();
+        console.log('[Dashboard] Initial notification status:', enabled);
+        setNotificationsEnabled(enabled);
+      } catch (error) {
+        console.error('[Dashboard] Error checking notification status:', error);
+      } finally {
+        setIsCheckingNotifications(false);
+      }
     };
     
-    checkNotificationStatus();
-  }, []);
+    if (profile?.id) {
+      checkNotificationStatus();
+    }
+  }, [profile?.id]);
 
   const toggleNotifications = async () => {
     if (isCheckingNotifications) return;
 
     try {
       setIsCheckingNotifications(true);
+      console.log('[Dashboard] Toggling notifications from:', notificationsEnabled);
 
       if (notificationsEnabled) {
         // Disable notifications
@@ -366,24 +377,28 @@ export const InterpreterDashboard = () => {
         }
       } else {
         // Enable notifications
-        try {
-          const granted = await requestNotificationPermission();
-          if (granted) {
-            setNotificationsEnabled(true);
-            playNotificationSound('scheduled');
-            toast({
-              title: "Notifications activées",
-              description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-            });
-          }
-        } catch (error: any) {
+        const granted = await requestNotificationPermission();
+        console.log('[Dashboard] Permission granted:', granted);
+        
+        if (granted) {
+          setNotificationsEnabled(true);
+          playNotificationSound('scheduled');
           toast({
-            title: "Notifications bloquées",
-            description: error.message || "Une erreur est survenue lors de l'activation des notifications",
-            variant: "destructive",
+            title: "Notifications activées",
+            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
           });
         }
       }
+    } catch (error: any) {
+      console.error('[Dashboard] Error toggling notifications:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue lors de la gestion des notifications",
+        variant: "destructive",
+      });
+      // Refresh actual status
+      const currentStatus = await isNotificationsEnabled();
+      setNotificationsEnabled(currentStatus);
     } finally {
       setIsCheckingNotifications(false);
     }
