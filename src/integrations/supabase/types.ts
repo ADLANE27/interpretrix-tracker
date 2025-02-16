@@ -1265,6 +1265,7 @@ export type Database = {
         | "financial"
         | "diplomatic"
       key_status: "active" | "expired" | "revoked"
+      notification_subscription_status: "active" | "unsubscribed" | "blocked"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }

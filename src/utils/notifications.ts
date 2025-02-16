@@ -1,126 +1,153 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
-// Enhanced browser support check with detailed logging
-const isBrowserSupported = async (): Promise<{ supported: boolean; reason?: string }> => {
-  // Check basic notification support
-  if (!('Notification' in window)) {
-    console.log('[OneSignal] Basic notifications not supported');
-    return { supported: false, reason: 'notifications_not_supported' };
-  }
-
-  // Check service worker support
-  if (!('serviceWorker' in navigator)) {
-    console.log('[OneSignal] Service Workers not supported');
-    return { supported: false, reason: 'service_worker_not_supported' };
-  }
-
-  // Check secure context (HTTPS)
-  if (!window.isSecureContext) {
-    console.log('[OneSignal] Not in a secure context');
-    return { supported: false, reason: 'not_secure_context' };
-  }
-
-  // Check OneSignal SDK
-  if (typeof window.OneSignal === 'undefined') {
-    console.log('[OneSignal] OneSignal SDK not loaded');
-    return { supported: false, reason: 'onesignal_not_loaded' };
-  }
-
-  // Check if OneSignal is ready by attempting to get its state
-  try {
-    await window.OneSignal.getNotificationPermission();
-    return { supported: true };
-  } catch (error) {
-    console.log('[OneSignal] OneSignal not ready');
-    return { supported: false, reason: 'onesignal_not_ready' };
-  }
-};
-
-// Wait for OneSignal to be ready with more robust checking
+// Helper to wait for OneSignal initialization
 const waitForOneSignal = async (timeout = 10000): Promise<boolean> => {
   console.log('[OneSignal] Waiting for initialization...');
   const start = Date.now();
   
-  // First, wait for the OneSignal object to be available
   while (Date.now() - start < timeout) {
     if (typeof window.OneSignal !== 'undefined') {
-      break;
+      try {
+        await window.OneSignal.init({
+          appId: ONESIGNAL_APP_ID,
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
+        });
+        console.log('[OneSignal] Successfully initialized');
+        return true;
+      } catch (error) {
+        console.log('[OneSignal] Waiting for initialization...', error);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
     await new Promise(resolve => setTimeout(resolve, 100));
-  }
-
-  if (typeof window.OneSignal === 'undefined') {
-    console.error('[OneSignal] OneSignal object not found after timeout');
-    return false;
-  }
-
-  // Then wait for successful API call
-  const apiCheckStart = Date.now();
-  while (Date.now() - apiCheckStart < timeout) {
-    try {
-      await window.OneSignal.getNotificationPermission();
-      console.log('[OneSignal] Successfully initialized');
-      return true;
-    } catch (error) {
-      console.log('[OneSignal] Waiting for initialization...', error);
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
   }
   
   console.error('[OneSignal] Initialization timed out');
   return false;
 };
 
-export const requestNotificationPermission = async (): Promise<boolean> => {
+// Check browser support for notifications
+const checkBrowserSupport = async (): Promise<{ supported: boolean; reason?: string }> => {
+  if (!('Notification' in window)) {
+    return { supported: false, reason: 'Votre navigateur ne supporte pas les notifications' };
+  }
+
+  if (!('serviceWorker' in navigator)) {
+    return { supported: false, reason: 'Votre navigateur ne supporte pas les Service Workers' };
+  }
+
+  if (!window.isSecureContext) {
+    return { supported: false, reason: 'Les notifications nécessitent une connexion sécurisée (HTTPS)' };
+  }
+
+  return { supported: true };
+};
+
+// Register device with OneSignal and Supabase
+const registerDevice = async (): Promise<boolean> => {
   try {
-    // Wait for OneSignal to be ready with increased timeout
-    const isReady = await waitForOneSignal(15000); // Increased timeout to 15 seconds
-    if (!isReady) {
-      console.error('[OneSignal] Timeout waiting for OneSignal initialization');
-      throw new Error("L'initialisation des notifications a échoué");
+    if (!window.OneSignal) {
+      throw new Error('OneSignal n\'est pas initialisé');
     }
 
-    // Check browser support
-    const { supported, reason } = await isBrowserSupported();
-    if (!supported) {
-      console.error('[OneSignal] Browser support check failed:', reason);
-      
-      // Map reason to user-friendly error message
-      const errorMessages: Record<string, string> = {
-        notifications_not_supported: "Votre navigateur ne supporte pas les notifications",
-        service_worker_not_supported: "Votre navigateur ne supporte pas les notifications",
-        not_secure_context: "Les notifications requièrent une connexion sécurisée (HTTPS)",
-        onesignal_not_loaded: "Le système de notifications n'est pas chargé",
-        onesignal_not_ready: "Le système de notifications n'est pas initialisé"
-      };
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Utilisateur non authentifié');
+    }
 
-      throw new Error(errorMessages[reason] || "Votre navigateur ne supporte pas les notifications");
+    // Get OneSignal Player ID
+    const playerId = await window.OneSignal.getUserId();
+    if (!playerId) {
+      throw new Error('Impossible d\'obtenir l\'identifiant OneSignal');
+    }
+
+    // Register subscription in database
+    const { error: subError } = await supabase
+      .from('onesignal_subscriptions')
+      .upsert({
+        interpreter_id: user.id,
+        player_id: playerId,
+        platform: 'web',
+        status: 'active',
+        user_agent: navigator.userAgent,
+      });
+
+    if (subError) throw subError;
+
+    // Add interpreter tags
+    await window.OneSignal.sendTag('role', 'interpreter');
+    await window.OneSignal.sendTag('interpreter_id', user.id);
+
+    console.log('[OneSignal] Device registered successfully');
+    return true;
+  } catch (error) {
+    console.error('[OneSignal] Registration error:', error);
+    return false;
+  }
+};
+
+// Update subscription status in database
+const updateSubscriptionStatus = async (status: 'active' | 'unsubscribed' | 'blocked'): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const playerId = await window.OneSignal.getUserId();
+    if (!playerId) return false;
+
+    const { error } = await supabase
+      .from('onesignal_subscriptions')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('interpreter_id', user.id)
+      .eq('player_id', playerId);
+
+    return !error;
+  } catch (error) {
+    console.error('[OneSignal] Status update error:', error);
+    return false;
+  }
+};
+
+// Request notification permissions and register device
+export const requestNotificationPermission = async (): Promise<boolean> => {
+  try {
+    // Check browser support
+    const { supported, reason } = await checkBrowserSupport();
+    if (!supported) {
+      throw new Error(reason || 'Les notifications ne sont pas supportées');
+    }
+
+    // Wait for OneSignal initialization
+    const isReady = await waitForOneSignal();
+    if (!isReady) {
+      throw new Error('L\'initialisation des notifications a échoué');
     }
 
     // Check current permission
     const currentPermission = await window.OneSignal.getNotificationPermission();
-    console.log('[OneSignal] Current permission:', currentPermission);
-
     if (currentPermission === 'denied') {
-      throw new Error("Veuillez autoriser les notifications dans les paramètres de votre navigateur");
+      throw new Error('Les notifications sont bloquées dans les paramètres du navigateur');
     }
 
     // Show the OneSignal prompt
     await window.OneSignal.showSlidedownPrompt();
-
+    
     // Wait for permission response
     const permission = await window.OneSignal.getNotificationPermission();
-    console.log('[OneSignal] Updated permission:', permission);
-
     if (permission === 'granted') {
       const registered = await registerDevice();
-      if (registered) {
-        console.log('[OneSignal] Device registered successfully');
-        return true;
+      if (!registered) {
+        throw new Error('Erreur lors de l\'enregistrement du dispositif');
       }
+      return true;
     }
 
     return false;
@@ -130,151 +157,40 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
 };
 
-export const registerDevice = async (): Promise<boolean> => {
-  try {
-    if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal is not loaded');
-      return false;
-    }
-
-    // Get OneSignal Player ID
-    console.log('[OneSignal] Getting player ID...');
-    const playerId = await window.OneSignal.getUserId();
-    if (!playerId) {
-      console.error('[OneSignal] No player ID available');
-      return false;
-    }
-    console.log('[OneSignal] Player ID:', playerId);
-
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('[OneSignal] User not authenticated:', userError);
-      return false;
-    }
-
-    // Register subscription in database
-    console.log('[OneSignal] Registering subscription...');
-    const { error: subError } = await supabase
-      .from('onesignal_subscriptions')
-      .upsert({
-        interpreter_id: user.id,
-        player_id: playerId,
-        platform: getPlatform(),
-        user_agent: navigator.userAgent,
-        status: 'active'
-      }, {
-        onConflict: 'interpreter_id,player_id'
-      });
-
-    if (subError) {
-      console.error('[OneSignal] Error registering subscription:', subError);
-      return false;
-    }
-
-    // Add interpreter tag
-    await window.OneSignal.sendTag('role', 'interpreter');
-    await window.OneSignal.sendTag('interpreter_id', user.id);
-
-    console.log('[OneSignal] Subscription registered successfully');
-    return true;
-  } catch (error) {
-    console.error('[OneSignal] Error registering device:', error);
-    return false;
-  }
-};
-
+// Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
-    if (!window.OneSignal) {
-      console.error('[OneSignal] OneSignal is not loaded');
-      return false;
-    }
+    if (!window.OneSignal) return false;
 
-    // Get OneSignal Player ID
-    const playerId = await window.OneSignal.getUserId();
-    if (!playerId) {
-      console.error('[OneSignal] No player ID available');
-      return false;
-    }
-
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('[OneSignal] User not authenticated:', userError);
-      return false;
-    }
-
-    // Update subscription status
-    console.log('[OneSignal] Unregistering device...');
-    const { error: updateError } = await supabase
-      .from('onesignal_subscriptions')
-      .update({
-        status: 'unsubscribed',
-        updated_at: new Date().toISOString()
-      })
-      .eq('interpreter_id', user.id)
-      .eq('player_id', playerId);
-
-    if (updateError) {
-      console.error('[OneSignal] Error updating subscription:', updateError);
-      return false;
-    }
+    // Update subscription status in database
+    await updateSubscriptionStatus('unsubscribed');
 
     // Remove tags
     await window.OneSignal.deleteTags(['role', 'interpreter_id']);
 
     // Unsubscribe from OneSignal
     await window.OneSignal.setSubscription(false);
+
     console.log('[OneSignal] Device unregistered successfully');
     return true;
   } catch (error) {
-    console.error('[OneSignal] Error unregistering device:', error);
+    console.error('[OneSignal] Unregister error:', error);
     return false;
   }
 };
 
-const getPlatform = (): string => {
-  const userAgent = navigator.userAgent.toLowerCase();
-  if (/android/i.test(userAgent)) return 'android';
-  if (/iphone|ipad|ipod/i.test(userAgent)) return 'ios';
-  return 'web';
-};
-
-export const getNotificationPermission = async (): Promise<NotificationPermission> => {
-  try {
-    const { supported } = await isBrowserSupported();
-    if (!supported) {
-      return 'denied';
-    }
-
-    const isReady = await waitForOneSignal(10000);
-    if (!isReady) {
-      return 'denied';
-    }
-
-    return await window.OneSignal.getNotificationPermission();
-  } catch (error) {
-    console.error('[OneSignal] Error checking permission:', error);
-    return 'denied';
-  }
-};
-
+// Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
-    const { supported } = await isBrowserSupported();
-    if (!supported) {
-      return false;
-    }
+    if (!window.OneSignal) return false;
 
-    const isReady = await waitForOneSignal(10000);
-    if (!isReady) {
-      return false;
-    }
+    const { supported } = await checkBrowserSupport();
+    if (!supported) return false;
 
     return await window.OneSignal.isPushNotificationsEnabled();
   } catch (error) {
-    console.error('[OneSignal] Error checking notification status:', error);
+    console.error('[OneSignal] Status check error:', error);
     return false;
   }
 };
+

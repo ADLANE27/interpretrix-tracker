@@ -365,7 +365,7 @@ export const InterpreterDashboard = () => {
           });
         }
       } else {
-        // Enable notifications with better error handling
+        // Enable notifications
         try {
           const granted = await requestNotificationPermission();
           if (granted) {
