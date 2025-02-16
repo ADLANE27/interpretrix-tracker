@@ -601,6 +601,113 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_messages: {
+        Row: {
+          badge_url: string | null
+          body: string
+          created_at: string
+          data: Json | null
+          icon_url: string | null
+          id: string
+          scheduled_for: string | null
+          sender_id: string
+          title: string
+          topics: string[] | null
+          ttl: number | null
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          badge_url?: string | null
+          body: string
+          created_at?: string
+          data?: Json | null
+          icon_url?: string | null
+          id?: string
+          scheduled_for?: string | null
+          sender_id: string
+          title: string
+          topics?: string[] | null
+          ttl?: number | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          badge_url?: string | null
+          body?: string
+          created_at?: string
+          data?: Json | null
+          icon_url?: string | null
+          id?: string
+          scheduled_for?: string | null
+          sender_id?: string
+          title?: string
+          topics?: string[] | null
+          ttl?: number | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_recipients: {
+        Row: {
+          clicked_at: string | null
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          notification_id: string | null
+          recipient_id: string
+          status: Database["public"]["Enums"]["notification_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          recipient_id: string
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          notification_id?: string | null
+          recipient_id?: string
+          status?: Database["public"]["Enums"]["notification_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_recipients_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_recipients_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_notification_history: {
         Row: {
           badge_url: string | null
@@ -848,6 +955,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      web_push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_used_at: string | null
+          p256dh_key: string
+          status: string | null
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_used_at?: string | null
+          p256dh_key: string
+          status?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_used_at?: string | null
+          p256dh_key?: string
+          status?: string | null
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "web_push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1267,6 +1421,12 @@ export type Database = {
         | "financial"
         | "diplomatic"
       key_status: "active" | "expired" | "revoked"
+      notification_status:
+        | "pending"
+        | "sent"
+        | "failed"
+        | "delivered"
+        | "clicked"
       notification_subscription_status: "active" | "unsubscribed" | "blocked"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
