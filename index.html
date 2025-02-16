@@ -29,52 +29,36 @@
             serviceWorkerPath: '/OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: '/' },
             notifyButton: {
-              enable: false // We use our own UI
+              enable: false
             },
             promptOptions: {
-              slidedown: {
-                prompts: [{
-                  type: "push",
-                  autoPrompt: true,
-                  text: {
-                    actionMessage: "Voulez-vous recevoir les notifications de nouvelles missions ?",
-                    acceptButton: "Autoriser",
-                    cancelButton: "Plus tard"
-                  }
-                }]
+              native: {
+                enabled: true,
+                actionMessage: "Voulez-vous recevoir les notifications de nouvelles missions ?",
+                acceptButtonText: "Autoriser",
+                cancelButtonText: "Plus tard"
               }
-            },
-            safari_web_id: "web.onesignal.auto.2f15c47a-f369-4206-b077-eaddd8075b04" // Add Safari support
+            }
           });
           
-          // Register service worker for mobile
+          // Ensure service worker is registered
           if ('serviceWorker' in navigator) {
             try {
-              const registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
-                scope: '/'
+              await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
+                scope: '/',
+                updateViaCache: 'none'
               });
-              console.log('[OneSignal] Service Worker registered:', registration);
+              console.log('[OneSignal] Service Worker registered successfully');
             } catch (error) {
               console.error('[OneSignal] Service Worker registration failed:', error);
+              throw error;
             }
+          } else {
+            console.log('[OneSignal] Service Worker not supported');
           }
           
           console.log('[OneSignal] Initialization successful');
           window.resolveOneSignal();
-
-          // Add debug listeners for better monitoring
-          OneSignal.on('notificationDisplay', function(event) {
-            console.log('[OneSignal] Notification displayed:', event);
-          });
-          
-          OneSignal.on('notificationDismiss', function(event) {
-            console.log('[OneSignal] Notification dismissed:', event);
-          });
-          
-          OneSignal.on('notificationPermissionChange', function(permissionChange) {
-            console.log('[OneSignal] Permission changed:', permissionChange);
-          });
-          
         } catch (error) {
           console.error('[OneSignal] Initialization error:', error);
           window.rejectOneSignal(error);
@@ -85,7 +69,6 @@
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     </noscript>
-    <!-- Add Lovable script -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <title>Interprète App</title>
   </head>

@@ -1,15 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { getOneSignal, getPlayerId, setExternalUserId, setInterpreterTags } from './oneSignalSetup';
 
-// Request notification permissions
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     console.log('[OneSignal] Starting permission request...');
     
-    // First check if notifications are supported
     if (!('Notification' in window)) {
       toast({
         title: "Non supporté",
@@ -21,7 +19,6 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     }
 
     try {
-      // Get initialized OneSignal instance
       const OneSignal = getOneSignal();
       
       // Get current user and profile
@@ -44,8 +41,12 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       // Set the external user ID for targeting
       await setExternalUserId(user.id);
       
-      // Show the OneSignal prompt
-      await OneSignal.showSlidedownPrompt();
+      // Show the OneSignal prompt and wait for response
+      const permission = await OneSignal.showNativePrompt();
+      
+      if (permission !== 'granted') {
+        throw new Error('Permission not granted');
+      }
       
       // Get OneSignal player ID
       const playerId = await getPlayerId();
@@ -61,7 +62,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
         email: profile.email,
         languages: profile.languages.map((lang: string) => {
           const [source, target] = lang.split('→');
-          return { source, target };
+          return { source: source.trim(), target: target.trim() };
         })
       });
 
@@ -90,9 +91,9 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[OneSignal] Error:', error);
-      return false;
+      throw new Error("Les notifications n'ont pas pu être activées: " + error.message);
     }
   } catch (error: any) {
     console.error('[OneSignal] Error:', error);
@@ -106,18 +107,18 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
 };
 
-// Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
     const OneSignal = getOneSignal();
-    return await OneSignal.isPushNotificationsEnabled();
+    const isEnabled = await OneSignal.isPushNotificationsEnabled();
+    console.log('[OneSignal] Notifications enabled:', isEnabled);
+    return isEnabled;
   } catch (error) {
     console.error('[OneSignal] Status check error:', error);
     return false;
   }
 };
 
-// Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
     const OneSignal = getOneSignal();
@@ -155,4 +156,3 @@ export const unregisterDevice = async (): Promise<boolean> => {
     return false;
   }
 };
-
