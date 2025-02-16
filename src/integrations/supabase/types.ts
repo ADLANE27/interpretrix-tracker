@@ -1203,6 +1203,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      register_all_interpreters_in_onesignal: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       rename_storage_object: {
         Args: {
           bucket_name: string
