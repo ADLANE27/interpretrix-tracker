@@ -2,9 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { getOneSignal, getPlayerId, setExternalUserId } from './oneSignalSetup';
+import { getOneSignal, registerDevice } from './oneSignalSetup';
 
-// Request notification permissions
+// Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     console.log('[OneSignal] Starting permission request...');
@@ -21,34 +21,53 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     }
 
     try {
-      // Get initialized OneSignal instance
-      const OneSignal = getOneSignal();
-      
-      // Get current user
+      // Get current user and profile
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
 
-      // Set the external user ID for targeting
-      await setExternalUserId(user.id);
+      const { data: profile, error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .select('first_name, last_name, email')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error('Could not fetch user profile');
+      }
+
+      // Get initialized OneSignal instance
+      const OneSignal = getOneSignal();
       
-      // Show the OneSignal prompt
-      await OneSignal.showSlidedownPrompt();
+      // Show native prompt first to get permission
+      console.log('[OneSignal] Requesting notification permission...');
+      const permission = await OneSignal.showNativePrompt();
       
-      // Play notification sound on success
-      await playNotificationSound('scheduled');
-      
-      toast({
-        title: "Notifications activées",
-        description: "Vous recevrez désormais les notifications pour les nouvelles missions",
-        duration: 3000,
-      });
-      
-      return true;
+      if (permission === 'granted') {
+        // Register device with OneSignal
+        await registerDevice(user.id, {
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          email: profile.email
+        });
+        
+        // Play notification sound on success
+        await playNotificationSound('scheduled');
+        
+        toast({
+          title: "Notifications activées",
+          description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+          duration: 3000,
+        });
+        
+        return true;
+      } else {
+        throw new Error('Permission not granted');
+      }
     } catch (error) {
       console.error('[OneSignal] Error:', error);
-      return false;
+      throw error;
     }
   } catch (error: any) {
     console.error('[OneSignal] Error:', error);
@@ -76,9 +95,26 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
 // Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
-    const OneSignal = getOneSignal();
-    await OneSignal.setSubscription(false);
-    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    // Get player ID
+    const playerId = await getOneSignal().getUserId();
+    if (!playerId) {
+      throw new Error('No OneSignal player ID found');
+    }
+
+    // Update subscription status in database
+    const { error } = await supabase
+      .from('onesignal_subscriptions')
+      .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
+      .eq('interpreter_id', user.id)
+      .eq('player_id', playerId);
+
+    if (error) throw error;
+
     toast({
       title: "Notifications désactivées",
       description: "Vous ne recevrez plus de notifications",
@@ -91,4 +127,3 @@ export const unregisterDevice = async (): Promise<boolean> => {
     return false;
   }
 };
-
