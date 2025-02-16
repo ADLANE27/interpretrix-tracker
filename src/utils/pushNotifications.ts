@@ -98,7 +98,7 @@ export async function registerPushNotifications() {
       return false;
     }
 
-    // Get VAPID public key
+    // Get VAPID public key first to fail early if not available
     const { data: vapidData, error: vapidError } = 
       await supabase.functions.invoke('get-vapid-public-key');
 
@@ -114,27 +114,58 @@ export async function registerPushNotifications() {
       throw new Error('Invalid VAPID key format');
     }
 
-    // Register service worker if not already registered
-    let registration;
-    try {
-      registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
-      });
-      await navigator.serviceWorker.ready;
-      console.log('[Push] Service Worker registered and ready');
-    } catch (error) {
-      console.error('[Push] Service Worker registration failed:', error);
-      throw new Error('Could not register service worker');
+    // Check for existing service worker registration
+    let registration = await navigator.serviceWorker.getRegistration('/');
+    
+    // If no registration exists or it's not active, register a new one
+    if (!registration || !registration.active) {
+      try {
+        console.log('[Push] Registering new service worker');
+        registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/'
+        });
+        
+        // Wait for the service worker to be ready
+        if (!registration.active) {
+          console.log('[Push] Waiting for service worker to activate');
+          await new Promise<void>((resolve) => {
+            if (registration.active) {
+              resolve();
+              return;
+            }
+
+            registration.addEventListener('activate', () => {
+              console.log('[Push] Service worker activated');
+              resolve();
+            });
+          });
+        }
+      } catch (error) {
+        console.error('[Push] Service Worker registration failed:', error);
+        throw new Error('Could not register service worker');
+      }
     }
+
+    // Make sure service worker is ready
+    await navigator.serviceWorker.ready;
+    console.log('[Push] Service Worker is ready');
 
     // Get push subscription
     try {
+      // Unsubscribe from any existing subscriptions
+      const existingSub = await registration.pushManager.getSubscription();
+      if (existingSub) {
+        console.log('[Push] Unsubscribing from existing subscription');
+        await existingSub.unsubscribe();
+      }
+
+      console.log('[Push] Creating new push subscription');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidData.vapidPublicKey)
       });
 
-      console.log('[Push] Push subscription obtained');
+      console.log('[Push] Push subscription obtained:', subscription);
 
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -143,56 +174,50 @@ export async function registerPushNotifications() {
       }
 
       // Safely encode the subscription keys
-      try {
-        const keys = getSubscriptionKeys(subscription);
-        console.log('[Push] Keys encoded successfully');
+      const keys = getSubscriptionKeys(subscription);
+      console.log('[Push] Keys encoded successfully');
 
-        // Save subscription to database
-        const { error: saveError } = await supabase
-          .from('push_subscriptions')
-          .upsert({
-            interpreter_id: user.id,
-            endpoint: subscription.endpoint,
-            p256dh: keys.p256dh,
-            auth: keys.auth,
-            user_agent: navigator.userAgent,
-            status: 'active'
-          }, {
-            onConflict: 'interpreter_id,endpoint',
-          });
-
-        if (saveError) {
-          console.error('[Push] Error saving subscription:', saveError);
-          throw saveError;
-        }
-
-        console.log('[Push] Subscription saved successfully');
-
-        // Send test notification
-        const { error: testError } = await supabase.functions.invoke('send-test-notification', {
-          body: { interpreterId: user.id }
+      // Save subscription to database
+      const { error: saveError } = await supabase
+        .from('push_subscriptions')
+        .upsert({
+          interpreter_id: user.id,
+          endpoint: subscription.endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+          user_agent: navigator.userAgent,
+          status: 'active'
+        }, {
+          onConflict: 'interpreter_id,endpoint',
         });
 
-        if (testError) {
-          console.error('[Push] Error sending test notification:', testError);
-          throw testError;
-        }
-
-        toast({
-          title: "Notifications activées",
-          description: "Vous allez recevoir une notification de test",
-        });
-
-        return true;
-
-      } catch (encodingError) {
-        console.error('[Push] Error encoding subscription keys:', encodingError);
-        throw new Error('Failed to encode subscription keys');
+      if (saveError) {
+        console.error('[Push] Error saving subscription:', saveError);
+        throw saveError;
       }
 
-    } catch (subscriptionError: any) {
-      console.error('[Push] Error subscribing to push:', subscriptionError);
-      throw new Error(subscriptionError.message || 'Could not subscribe to push notifications');
+      console.log('[Push] Subscription saved successfully');
+
+      // Send test notification
+      const { error: testError } = await supabase.functions.invoke('send-test-notification', {
+        body: { interpreterId: user.id }
+      });
+
+      if (testError) {
+        console.error('[Push] Error sending test notification:', testError);
+        throw testError;
+      }
+
+      toast({
+        title: "Notifications activées",
+        description: "Vous allez recevoir une notification de test",
+      });
+
+      return true;
+
+    } catch (error: any) {
+      console.error('[Push] Error in subscription process:', error);
+      throw new Error(error.message || 'Could not subscribe to push notifications');
     }
 
   } catch (error: any) {
