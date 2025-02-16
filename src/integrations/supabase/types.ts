@@ -235,8 +235,6 @@ export type Database = {
           is_online: boolean | null
           last_heartbeat: string | null
           last_seen_at: string | null
-          last_sync_at: string | null
-          sync_status: string | null
           updated_at: string
         }
         Insert: {
@@ -246,8 +244,6 @@ export type Database = {
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
-          last_sync_at?: string | null
-          sync_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -257,8 +253,6 @@ export type Database = {
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
-          last_sync_at?: string | null
-          sync_status?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -789,36 +783,6 @@ export type Database = {
         }
         Relationships: []
       }
-      sync_status: {
-        Row: {
-          created_at: string | null
-          data_type: string
-          id: string
-          last_sync_at: string | null
-          status: string | null
-          sync_version: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          data_type: string
-          id?: string
-          last_sync_at?: string | null
-          status?: string | null
-          sync_version?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          data_type?: string
-          id?: string
-          last_sync_at?: string | null
-          status?: string | null
-          sync_version?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           active: boolean | null
@@ -1101,14 +1065,6 @@ export type Database = {
           id: string
           name: string
           avatar_url: string
-        }[]
-      }
-      get_pending_sync_items: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          data_type: string
-          sync_version: number
-          last_sync_at: string
         }[]
       }
       handle_mission_acceptance: {
