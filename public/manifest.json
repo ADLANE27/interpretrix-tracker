@@ -1,7 +1,8 @@
 
 {
-  "name": "Interprète App",
-  "short_name": "Interprète",
+  "name": "Interpretrix",
+  "short_name": "Interpretrix",
+  "description": "Application de gestion des interprètes",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -10,6 +11,11 @@
     {
       "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
