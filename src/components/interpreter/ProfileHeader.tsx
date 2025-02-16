@@ -1,63 +1,114 @@
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+
+import { useState } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Camera, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface ProfileHeaderProps {
   firstName: string;
   lastName: string;
-  status: string;
-  profilePictureUrl: string | null;
-  onAvatarClick: () => void;
-  onDeletePicture: () => void;
+  status: "available" | "unavailable" | "pause" | "busy";
+  profilePictureUrl?: string | null;
+  onAvatarClick?: () => void;
+  onDeletePicture?: () => void;
 }
 
-const statusConfig = {
-  available: { color: "bg-interpreter-available text-white", label: "Disponible" },
-  unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
-  pause: { color: "bg-interpreter-pause text-white", label: "En pause" },
-  busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
-};
-
-export const ProfileHeader = ({ 
-  firstName, 
-  lastName, 
-  status, 
-  profilePictureUrl, 
+export const ProfileHeader = ({
+  firstName,
+  lastName,
+  status,
+  profilePictureUrl,
   onAvatarClick,
-  onDeletePicture
+  onDeletePicture,
 }: ProfileHeaderProps) => {
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const [isHovering, setIsHovering] = useState(false);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "available":
+        return "bg-interpreter-available";
+      case "unavailable":
+        return "bg-interpreter-unavailable";
+      case "pause":
+        return "bg-interpreter-pause";
+      case "busy":
+        return "bg-interpreter-busy";
+      default:
+        return "bg-gray-400";
+    }
   };
 
   return (
     <div className="flex items-center gap-4">
-      <div className="relative group">
-        <Avatar className="h-12 w-12 cursor-pointer" onClick={onAvatarClick}>
-          <AvatarImage src={profilePictureUrl || undefined} alt={`${firstName} ${lastName}`} />
-          <AvatarFallback>{getInitials(firstName, lastName)}</AvatarFallback>
+      <div className="relative">
+        <Avatar
+          className="h-16 w-16 cursor-pointer"
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          onClick={onAvatarClick}
+        >
+          <AvatarImage src={profilePictureUrl || undefined} />
+          <AvatarFallback>
+            {firstName?.[0]}
+            {lastName?.[0]}
+          </AvatarFallback>
+          {isHovering && (
+            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+              <Camera className="h-6 w-6 text-white" />
+            </div>
+          )}
         </Avatar>
         {profilePictureUrl && (
-          <Button
-            variant="destructive"
-            size="icon"
-            className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeletePicture();
-            }}
-          >
-            <X className="h-3 w-3" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute -bottom-2 -right-2 h-7 w-7 rounded-full bg-white dark:bg-gray-800 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={onAvatarClick}>
+                <Camera className="h-4 w-4 mr-2" />
+                Modifier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDeletePicture}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
-      <div>
-        <h2 className="text-2xl font-bold">Bonjour {firstName} {lastName}</h2>
-        <Badge className={statusConfig[status as keyof typeof statusConfig].color}>
-          {statusConfig[status as keyof typeof statusConfig].label}
-        </Badge>
+      <div className="flex flex-col items-start">
+        <div className="text-xl font-semibold">
+          {firstName} {lastName}
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className={`h-2 w-2 rounded-full ${getStatusColor(status)}`}
+          ></div>
+          <span className="text-sm text-gray-600 dark:text-gray-400">
+            {status === "available" && "Disponible"}
+            {status === "unavailable" && "Indisponible"}
+            {status === "pause" && "En pause"}
+            {status === "busy" && "En mission"}
+          </span>
+        </div>
+      </div>
+      <div className="ml-auto">
+        <ThemeToggle />
       </div>
     </div>
   );
 };
+
