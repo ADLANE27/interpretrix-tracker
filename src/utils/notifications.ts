@@ -130,15 +130,15 @@ export async function subscribeToNotifications() {
     const keys = getSubscriptionKeys(subscription);
 
     // Save subscription to database
-    const { error: saveError } = await supabase.from('push_subscriptions').upsert({
-      interpreter_id: user.id,
+    const { error: saveError } = await supabase.from('web_push_subscriptions').upsert({
+      user_id: user.id,
       endpoint: subscription.endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth,
+      p256dh_key: keys.p256dh,
+      auth_key: keys.auth,
       user_agent: navigator.userAgent,
       status: 'active'
     }, {
-      onConflict: 'interpreter_id,endpoint',
+      onConflict: 'user_id, endpoint',
     });
 
     if (saveError) {
@@ -171,12 +171,12 @@ export async function unsubscribeFromNotifications() {
     }
 
     // Update subscription status in database
-    const { error: updateError } = await supabase.from('push_subscriptions')
+    const { error: updateError } = await supabase.from('web_push_subscriptions')
       .update({
         status: 'expired',
         updated_at: new Date().toISOString()
       })
-      .eq('interpreter_id', user.id)
+      .eq('user_id', user.id)
       .eq('endpoint', sub.endpoint);
 
     if (updateError) {
@@ -193,3 +193,4 @@ export async function unsubscribeFromNotifications() {
     throw error;
   }
 }
+
