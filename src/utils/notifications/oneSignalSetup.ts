@@ -5,12 +5,13 @@ export const initializeOneSignal = async (): Promise<void> => {
   try {
     if (!window.OneSignal) {
       console.log('[OneSignal] Loading OneSignal SDK...');
-      // Initialize as empty array first
-      window.OneSignal = [] as any;
+      
+      // Initialize as empty array
+      window.OneSignal = [];
       
       // Initialize with recommended settings
-      window.OneSignal.push(function() {
-        window.OneSignal.init({
+      (window.OneSignal as any[]).push(() => {
+        (window.OneSignal as OneSignalFunctions).init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerPath: "/OneSignalSDKWorker.js",
@@ -47,13 +48,19 @@ export const initializeOneSignal = async (): Promise<void> => {
   }
 };
 
+// Utility function to get the initialized OneSignal instance
+const getOneSignal = (): OneSignalFunctions => {
+  if (!window.OneSignal || Array.isArray(window.OneSignal)) {
+    throw new Error('OneSignal not initialized');
+  }
+  return window.OneSignal as OneSignalFunctions;
+};
+
 // Utility function to check subscription status
 export const getSubscriptionStatus = async (): Promise<boolean> => {
   try {
-    if (!window.OneSignal) {
-      return false;
-    }
-    return await window.OneSignal.getSubscription();
+    const OneSignal = getOneSignal();
+    return await OneSignal.getSubscription();
   } catch (error) {
     console.error('[OneSignal] Error checking subscription:', error);
     return false;
@@ -63,10 +70,8 @@ export const getSubscriptionStatus = async (): Promise<boolean> => {
 // Get OneSignal Player ID safely
 export const getPlayerId = async (): Promise<string | null> => {
   try {
-    if (!window.OneSignal) {
-      return null;
-    }
-    return await window.OneSignal.getUserId() || null;
+    const OneSignal = getOneSignal();
+    return await OneSignal.getUserId() || null;
   } catch (error) {
     console.error('[OneSignal] Error getting player ID:', error);
     return null;

@@ -17,12 +17,13 @@ export const waitForOneSignal = async (timeout = 10000, maxRetries = 3) => {
         await Promise.race([window.oneSignalInitPromise, timeoutPromise]);
         
         // Verify OneSignal is actually available
-        if (!window.OneSignal) {
+        const OneSignal = window.OneSignal as OneSignalFunctions;
+        if (!OneSignal) {
           throw new Error('OneSignal not available after initialization');
         }
 
         // Verify initialization state
-        const isInitialized = await window.OneSignal.isPushNotificationsSupported();
+        const isInitialized = await OneSignal.isPushNotificationsSupported();
         if (!isInitialized) {
           throw new Error('OneSignal not properly initialized');
         }

@@ -34,7 +34,8 @@ export const registerDevice = async (playerId: string): Promise<boolean> => {
 
     // Set interpreter ID tag
     try {
-      await window.OneSignal.sendTag('interpreter_id', user.id);
+      const OneSignal = window.OneSignal as OneSignalFunctions;
+      await OneSignal.sendTag('interpreter_id', user.id);
       console.log('[OneSignal] Device registered successfully');
       return true;
     } catch (tagError) {
