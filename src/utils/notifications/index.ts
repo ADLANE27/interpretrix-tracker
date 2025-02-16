@@ -2,52 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { showCustomPermissionMessage } from "./permissionHandling";
 
-export async function sendNotification(userId: string, title: string, body: string) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    // Enregistrer dans l'historique des notifications
-    const { error: historyError } = await supabase.from('notification_history').insert({
-      recipient_id: userId,
-      notification_type: 'mission',
-      content: {
-        title,
-        body,
-        sender_id: user.id
-      }
-    });
-
-    if (historyError) {
-      console.error('Error saving to notification history:', historyError);
-      return false;
-    }
-
-    // Envoyer la notification push via l'edge function
-    const { error: pushError } = await supabase.functions.invoke('send-push-notification', {
-      body: {
-        interpreterIds: [userId],
-        title,
-        body,
-        data: {
-          timestamp: new Date().toISOString(),
-          sender_id: user.id
-        }
-      }
-    });
-
-    if (pushError) {
-      console.error('Error sending push notification:', pushError);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return false;
-  }
-}
-
 export async function subscribeToNotifications() {
   try {
     // Check if we're in a secure context
