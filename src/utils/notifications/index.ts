@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { getPlayerId, getSubscriptionStatus, getOneSignal } from './oneSignalSetup';
 import { showCustomPermissionMessage } from './permissionHandling';
+import { registerDevice } from './deviceRegistration';
 
 // Request notification permissions and register device
 export const requestNotificationPermission = async (): Promise<boolean> => {
@@ -120,52 +121,6 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
     return subscription?.status === 'active';
   } catch (error) {
     console.error('[OneSignal] Status check error:', error);
-    return false;
-  }
-};
-
-// Register device with our backend
-const registerDevice = async (playerId: string): Promise<boolean> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('[OneSignal] No authenticated user');
-      return false;
-    }
-
-    console.log('[OneSignal] Registering device for user:', user.id);
-
-    // Upsert subscription record
-    const { error } = await supabase
-      .from('onesignal_subscriptions')
-      .upsert({
-        interpreter_id: user.id,
-        player_id: playerId,
-        platform: 'web',
-        status: 'active',
-        user_agent: navigator.userAgent,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('[OneSignal] Error registering device:', error);
-      return false;
-    }
-
-    try {
-      // Get initialized OneSignal instance
-      const OneSignal = getOneSignal();
-      // Set interpreter ID tag
-      await OneSignal.sendTag('interpreter_id', user.id);
-      console.log('[OneSignal] Device registered successfully');
-      return true;
-    } catch (tagError) {
-      console.error('[OneSignal] Error setting tag:', tagError);
-      return false;
-    }
-  } catch (error) {
-    console.error('[OneSignal] Error in registerDevice:', error);
     return false;
   }
 };
