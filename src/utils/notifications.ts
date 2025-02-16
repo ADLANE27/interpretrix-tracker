@@ -5,11 +5,14 @@ import { playNotificationSound } from "@/utils/notificationSounds";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
-// Wait for OneSignal initialization
-const waitForOneSignal = async () => {
+// Wait for OneSignal initialization with timeout
+const waitForOneSignal = async (timeout = 10000) => {
   try {
     console.log('[OneSignal] Waiting for initialization...');
-    await window.oneSignalInitPromise;
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('OneSignal initialization timeout')), timeout);
+    });
+    await Promise.race([window.oneSignalInitPromise, timeoutPromise]);
     console.log('[OneSignal] Initialization confirmed');
     return true;
   } catch (error) {
@@ -38,6 +41,8 @@ const registerDevice = async (playerId: string): Promise<boolean> => {
         platform: 'web',
         status: 'active',
         user_agent: navigator.userAgent,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
 
     if (error) {
@@ -108,7 +113,7 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
             return false;
           }
           // Play a test notification sound
-          playNotificationSound('scheduled');
+          await playNotificationSound('scheduled');
           return true;
         }
       }
@@ -134,6 +139,13 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 // Check if notifications are currently enabled
 export const isNotificationsEnabled = async (): Promise<boolean> => {
   try {
+    // Wait for OneSignal initialization
+    const initialized = await waitForOneSignal();
+    if (!initialized) {
+      console.log('[OneSignal] Not initialized');
+      return false;
+    }
+
     if (!window.OneSignal) {
       console.log('[OneSignal] OneSignal not initialized');
       return false;
@@ -177,6 +189,13 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
 // Unregister device from notifications
 export const unregisterDevice = async (): Promise<boolean> => {
   try {
+    // Wait for OneSignal initialization
+    const initialized = await waitForOneSignal();
+    if (!initialized) {
+      console.log('[OneSignal] Not initialized');
+      return false;
+    }
+
     if (!window.OneSignal) {
       console.error('[OneSignal] OneSignal not initialized');
       return false;
