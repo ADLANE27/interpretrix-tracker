@@ -2,6 +2,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { createRoot } from "react-dom/client";
 
 export const showCustomPermissionMessage = () => {
   const PermissionDialog = () => {
