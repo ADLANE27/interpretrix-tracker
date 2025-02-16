@@ -28,12 +28,25 @@ export const InterpreterLoginForm = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      if (!data.session) {
+        throw new Error("No session created");
+      }
+
+      // Set session in localStorage
+      localStorage.setItem('supabase.auth.token', data.session.access_token);
+
+      // Set session in Supabase client
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
 
       toast({
         title: "Connexion réussie",
@@ -42,7 +55,7 @@ export const InterpreterLoginForm = () => {
       });
 
       // Pre-warm the dashboard route
-      const dashboardUrl = "/";
+      const dashboardUrl = "/interpreter";
       const link = document.createElement('link');
       link.rel = 'prefetch';
       link.href = dashboardUrl;
@@ -51,6 +64,7 @@ export const InterpreterLoginForm = () => {
       // Navigate to dashboard
       navigate(dashboardUrl);
     } catch (error: any) {
+      console.error('Login error:', error);
       toast({
         title: "Erreur de connexion",
         description: error.message || "Une erreur est survenue",
@@ -63,7 +77,7 @@ export const InterpreterLoginForm = () => {
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
       <h2 className="text-2xl font-bold mb-6 text-center">Connexion Interprète</h2>
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
