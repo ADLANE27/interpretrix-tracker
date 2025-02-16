@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
@@ -11,8 +10,19 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   try {
     console.log('[OneSignal] Starting permission request...');
     
-    // Wait for OneSignal initialization
-    const initialized = await waitForOneSignal();
+    // First check if notifications are supported
+    if (!areNotificationsSupported()) {
+      toast({
+        title: "Non supporté",
+        description: "Les notifications ne sont pas supportées sur votre navigateur",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return false;
+    }
+    
+    // Wait for OneSignal initialization with retries
+    const initialized = await waitForOneSignal(10000, 3);
     if (!initialized) {
       throw new Error('OneSignal non initialisé');
     }
@@ -45,9 +55,9 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     console.log('[OneSignal] Showing subscription prompt');
     await window.OneSignal.showSlidedownPrompt();
     
-    // Wait for subscription status change with timeout
+    // Wait for subscription status change with increased timeout
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 15; // Increased from 10 to 15
     while (attempts < maxAttempts) {
       const isSubscribed = await window.OneSignal.isPushNotificationsEnabled();
       console.log('[OneSignal] Checking subscription status:', isSubscribed);
@@ -60,19 +70,27 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
             console.error('[OneSignal] Failed to register device');
             return false;
           }
-          // Play a test notification sound
+          // Test notification sound
           await playNotificationSound('scheduled');
+          
+          // Show success message
+          toast({
+            title: "Notifications activées",
+            description: "Vous recevrez désormais les notifications pour les nouvelles missions",
+            duration: 3000,
+          });
+          
           return true;
         }
       }
       
-      // Wait 500ms before next check
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Increased wait time between checks
+      await new Promise(resolve => setTimeout(resolve, 1000));
       attempts++;
     }
 
     console.log('[OneSignal] Subscription attempt timed out');
-    return false;
+    throw new Error('Délai d\'attente dépassé pour l\'activation des notifications');
   } catch (error: any) {
     console.error('[OneSignal] Error:', error);
     toast({
@@ -187,3 +205,8 @@ export const unregisterDevice = async (): Promise<boolean> => {
     return false;
   }
 };
+
+// Helper function to check if notifications are supported
+function areNotificationsSupported() {
+  return 'Notification' in window && Notification.permission !== 'denied';
+}
