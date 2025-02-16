@@ -2,7 +2,6 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { initializeOneSignal } from './utils/notifications/oneSignalSetup';
 
 // Create root element once
 const root = createRoot(document.getElementById("root")!);
@@ -10,8 +9,11 @@ const root = createRoot(document.getElementById("root")!);
 // Initialize app with OneSignal
 const startApp = async () => {
   try {
-    // Initialize OneSignal early
-    await initializeOneSignal();
+    // Wait for OneSignal to initialize (promise defined in index.html)
+    if (window.oneSignalInitPromise) {
+      await window.oneSignalInitPromise;
+      console.log('[OneSignal] Initialization completed');
+    }
     
     // Render app regardless of OneSignal status
     root.render(<App />);
