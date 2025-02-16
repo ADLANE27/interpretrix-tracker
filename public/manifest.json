@@ -2,15 +2,41 @@
 {
   "name": "Interprète App",
   "short_name": "Interprète",
+  "description": "Application de gestion pour interprètes professionnels",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#1a2844",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Missions",
+      "url": "/interpreter",
+      "description": "Voir vos missions"
+    },
+    {
+      "name": "Profil",
+      "url": "/profile",
+      "description": "Gérer votre profil"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "dir": "ltr",
+  "lang": "fr",
+  "prefer_related_applications": false,
+  "scope": "/"
 }

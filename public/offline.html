@@ -1,0 +1,60 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hors ligne - Interprète App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            color: #1a2844;
+        }
+        .container {
+            max-width: 500px;
+            padding: 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+        p {
+            margin-bottom: 24px;
+            color: #666;
+            line-height: 1.6;
+        }
+        button {
+            background-color: #1a2844;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2a3854;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vous êtes hors ligne</h1>
+        <p>Il semble que vous n'ayez pas de connexion internet. Veuillez vérifier votre connexion et réessayer.</p>
+        <button onclick="window.location.reload()">Réessayer</button>
+    </div>
+</body>
+</html>

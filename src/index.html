@@ -3,21 +3,40 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/ico" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AFTraduction</title>
+    <link rel="icon" type="image/png" href="/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a2844" />
+    <meta name="description" content="Application de gestion pour interprètes professionnels" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Interprète" />
+    <link rel="apple-touch-icon" href="/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Interprète App</title>
+    
     <!-- Preload critical assets -->
     <link rel="preload" href="/src/index.css" as="style">
     <link rel="preload" href="/src/main.tsx" as="script" type="module">
+    
     <!-- Preconnect to important domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://bblpiatmtnlhnbavhkau.supabase.co">
+    
     <!-- Add DNS prefetch -->
     <link rel="dns-prefetch" href="https://cdn.gpteng.co">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://bblpiatmtnlhnbavhkau.supabase.co">
   </head>
   <body>
     <div id="root"></div>
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
+    <noscript>
+      <div style="padding: 20px; text-align: center;">
+        Vous devez activer JavaScript pour utiliser cette application.
+      </div>
+    </noscript>
   </body>
 </html>
