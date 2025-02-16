@@ -373,6 +373,7 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-4">
+                <NotificationManager />
                 <ThemeToggle />
                 <Button
                   variant="ghost"
