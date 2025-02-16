@@ -278,3 +278,4 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
     return false;
   }
 };
+
