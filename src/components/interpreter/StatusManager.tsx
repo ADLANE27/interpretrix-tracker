@@ -3,78 +3,96 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ThemeToggle } from "../ThemeToggle";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationManager } from '../notifications/NotificationManager';
 
-type Status = "available" | "unavailable" | "pause";
+type Status = "available" | "unavailable" | "pause" | "busy";
 
-export const StatusManager = () => {
-  const [status, setStatus] = useState<Status>("available");
+interface StatusManagerProps {
+  currentStatus?: Status;
+  onStatusChange?: (newStatus: Status) => Promise<void>;
+}
+
+export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerProps = {}) => {
+  const [status, setStatus] = useState<Status>(currentStatus || "available");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchStatus = async () => {
-      setIsLoading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+    if (!onStatusChange) {
+      const fetchStatus = async () => {
+        setIsLoading(true);
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error('Not authenticated');
 
-        const { data: profile, error } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', user.id)
-          .single();
+          const { data: profile, error } = await supabase
+            .from('interpreter_profiles')
+            .select('status')
+            .eq('id', user.id)
+            .single();
 
-        if (error) {
+          if (error) {
+            console.error('Error fetching status:', error);
+            toast({
+              title: "Erreur",
+              description: "Impossible de récupérer votre statut actuel",
+              variant: "destructive",
+            });
+          } else if (profile?.status) {
+            setStatus(profile.status as Status);
+          }
+        } catch (error) {
           console.error('Error fetching status:', error);
           toast({
             title: "Erreur",
             description: "Impossible de récupérer votre statut actuel",
             variant: "destructive",
           });
-        } else if (profile?.status) {
-          setStatus(profile.status as Status);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching status:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer votre statut actuel",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      };
 
-    fetchStatus();
-  }, [toast]);
+      fetchStatus();
+    }
+  }, [toast, onStatusChange]);
+
+  useEffect(() => {
+    if (currentStatus && currentStatus !== status) {
+      setStatus(currentStatus);
+    }
+  }, [currentStatus]);
 
   const handleStatusChange = async (newStatus: Status) => {
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({ status: newStatus })
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Error updating status:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de mettre à jour votre statut",
-          variant: "destructive",
-        });
-      } else {
+      if (onStatusChange) {
+        await onStatusChange(newStatus);
         setStatus(newStatus);
-        toast({
-          title: "Statut mis à jour",
-          description: `Votre statut est maintenant ${newStatus}`,
-        });
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { error } = await supabase
+          .from('interpreter_profiles')
+          .update({ status: newStatus })
+          .eq('id', user.id);
+
+        if (error) {
+          console.error('Error updating status:', error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de mettre à jour votre statut",
+            variant: "destructive",
+          });
+        } else {
+          setStatus(newStatus);
+          toast({
+            title: "Statut mis à jour",
+            description: `Votre statut est maintenant ${newStatus}`,
+          });
+        }
       }
     } catch (error) {
       console.error('Error updating status:', error);
