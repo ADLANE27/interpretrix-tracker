@@ -1,66 +1,124 @@
-
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { 
-  CheckCircle2, 
-  XCircle, 
-  PauseCircle,
-  PhoneCall
-} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationManager } from '../notifications/NotificationManager';
 
-interface StatusManagerProps {
-  currentStatus: string;
-  onStatusChange: (status: string) => void;
-}
+export const StatusManager = () => {
+  const [status, setStatus] = useState<"available" | "unavailable" | "pause">("available");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-const statusConfig = {
-  available: { 
-    color: "bg-interpreter-available hover:bg-green-600",
-    label: "Disponible",
-    icon: CheckCircle2
-  },
-  busy: { 
-    color: "bg-interpreter-busy hover:bg-blue-600",
-    label: "En appel",
-    icon: PhoneCall
-  },
-  unavailable: { 
-    color: "bg-interpreter-unavailable hover:bg-red-600",
-    label: "Indisponible",
-    icon: XCircle
-  },
-  pause: { 
-    color: "bg-interpreter-pause hover:bg-orange-600",
-    label: "En pause",
-    icon: PauseCircle
-  }
-};
+  useEffect(() => {
+    const fetchStatus = async () => {
+      setIsLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
 
-export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerProps) => {
+        const { data: profile, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching status:', error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de récupérer votre statut actuel",
+            variant: "destructive",
+          });
+        } else if (profile?.status) {
+          setStatus(profile.status);
+        }
+      } catch (error) {
+        console.error('Error fetching status:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer votre statut actuel",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStatus();
+  }, [toast]);
+
+  const handleStatusChange = async (newStatus: "available" | "unavailable" | "pause") => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: newStatus })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating status:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour votre statut",
+          variant: "destructive",
+        });
+      } else {
+        setStatus(newStatus);
+        toast({
+          title: "Statut mis à jour",
+          description: `Votre statut est maintenant ${newStatus}`,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">
-        Gérer ma disponibilité
-      </h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Object.entries(statusConfig).map(([key, value]) => {
-          const Icon = value.icon;
-          return (
-            <Button
-              key={key}
-              onClick={() => onStatusChange(key)}
-              variant={currentStatus === key ? "default" : "outline"}
-              className={`
-                h-auto py-3 px-4
-                ${currentStatus === key ? `${value.color} text-white` : 'hover:bg-gray-50'}
-                transition-all duration-200
-              `}
-            >
-              <Icon className={`h-5 w-5 ${currentStatus === key ? 'text-white' : 'text-gray-500'} mr-2`} />
-              <span className="font-medium">{value.label}</span>
-            </Button>
-          );
-        })}
+    <div className="w-full flex justify-between items-center gap-4 mb-4">
+      <div className="flex items-center gap-4">
+        <Button
+          variant={status === 'available' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleStatusChange('available')}
+          disabled={isLoading}
+          className={status === 'available' ? 'bg-interpreter-available hover:bg-interpreter-available/90' : ''}
+        >
+          Disponible
+        </Button>
+        <Button
+          variant={status === 'unavailable' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleStatusChange('unavailable')}
+          disabled={isLoading}
+          className={status === 'unavailable' ? 'bg-interpreter-unavailable hover:bg-interpreter-unavailable/90' : ''}
+        >
+          Indisponible
+        </Button>
+        <Button
+          variant={status === 'pause' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => handleStatusChange('pause')}
+          disabled={isLoading}
+          className={status === 'pause' ? 'bg-interpreter-pause hover:bg-interpreter-pause/90' : ''}
+        >
+          En pause
+        </Button>
+      </div>
+      <div className="flex items-center gap-4">
+        <NotificationManager />
+        <ThemeToggle />
       </div>
     </div>
   );

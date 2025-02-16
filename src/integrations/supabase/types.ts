@@ -601,6 +601,65 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_history: {
+        Row: {
+          badge_url: string | null
+          body: string
+          clicked_at: string | null
+          created_at: string | null
+          data: Json | null
+          delivered_at: string | null
+          error_message: string | null
+          icon_url: string | null
+          id: string
+          recipient_id: string
+          sent_at: string | null
+          status: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          badge_url?: string | null
+          body: string
+          clicked_at?: string | null
+          created_at?: string | null
+          data?: Json | null
+          delivered_at?: string | null
+          error_message?: string | null
+          icon_url?: string | null
+          id?: string
+          recipient_id: string
+          sent_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          badge_url?: string | null
+          body?: string
+          clicked_at?: string | null
+          created_at?: string | null
+          data?: Json | null
+          delivered_at?: string | null
+          error_message?: string | null
+          icon_url?: string | null
+          id?: string
+          recipient_id?: string
+          sent_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_recipient"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
