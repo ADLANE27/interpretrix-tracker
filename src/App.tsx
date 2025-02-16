@@ -15,14 +15,26 @@ const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 const App = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.OneSignal = window.OneSignal || [];
-      
-      if (window.OneSignal.init) {
-        console.log('[OneSignal] Already initialized');
-        return;
+      // Initialize OneSignal array if it doesn't exist
+      if (!window.OneSignal) {
+        const oneSignalDeferred: ((OneSignal: Window['OneSignal']) => void)[] = [];
+        Object.defineProperty(window, 'OneSignal', {
+          get: () => oneSignalDeferred,
+          set: (value) => {
+            if (!Array.isArray(value)) {
+              Object.defineProperty(window, 'OneSignal', { value });
+              oneSignalDeferred.forEach(fn => fn(value));
+            }
+          },
+        });
       }
       
       const initOneSignal = () => {
+        if (!window.OneSignal?.init) {
+          console.error('[OneSignal] OneSignal.init is not available');
+          return;
+        }
+
         window.OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
@@ -47,12 +59,28 @@ const App = () => {
               ]
             }
           }
+        }).catch(error => {
+          console.error('[OneSignal] Initialization error:', error);
         });
       };
 
+      // If OneSignal is already properly initialized, don't reinitialize
+      if (typeof window.OneSignal === 'object' && !Array.isArray(window.OneSignal) && window.OneSignal.init) {
+        console.log('[OneSignal] Already initialized');
+        return;
+      }
+
+      // If OneSignal is an array, push the initialization function
       if (Array.isArray(window.OneSignal)) {
-        window.OneSignal.push(initOneSignal);
+        window.OneSignal.push(function(oneSignal) {
+          if (!oneSignal.init) {
+            console.error('[OneSignal] OneSignal.init is not available after push');
+            return;
+          }
+          initOneSignal();
+        });
       } else {
+        // If OneSignal is already available but not initialized, initialize it
         initOneSignal();
       }
     }
