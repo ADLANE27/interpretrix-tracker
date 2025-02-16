@@ -28,6 +28,7 @@ const App = () => {
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/push/onesignal/' },
           serviceWorkerPath: '/push/onesignal/OneSignalSDKWorker.js',
+          subdomainName: "interpretix", // Add this line
           promptOptions: {
             slidedown: {
               prompts: [
