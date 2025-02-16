@@ -1,7 +1,8 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
+import { Button } from "@/components/ui/button";
+import React from "react";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
@@ -73,17 +74,17 @@ const showCustomPermissionMessage = () => {
     variant: "destructive",
     duration: 10000,
     action: (
-      <button
+      <Button
         onClick={() => {
-          // Open browser settings
           if (typeof Notification !== 'undefined' && Notification.requestPermission) {
             Notification.requestPermission();
           }
         }}
-        className="bg-white text-red-600 px-3 py-2 rounded-md text-sm font-medium hover:bg-red-50"
+        variant="outline"
+        className="bg-white text-red-600 hover:bg-red-50"
       >
         Autoriser
-      </button>
+      </Button>
     ),
   });
 };
