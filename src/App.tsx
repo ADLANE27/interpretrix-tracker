@@ -1,24 +1,28 @@
 
 import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Index } from "./pages/Index";
+import Index from "./pages/Index";
 import { InterpreterDashboard } from "./components/InterpreterDashboard";
-import { InterpreterLogin } from "./pages/InterpreterLogin";
+import InterpreterLogin from "./pages/InterpreterLogin";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
-import { AdminLogin } from "./pages/AdminLogin";
-import { NotFound } from "./pages/NotFound";
+import AdminLogin from "./pages/AdminLogin";
+import NotFound from "./pages/NotFound";
 import { Toaster } from "./components/ui/toaster";
 import "./App.css";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
-export const App = () => {
+const App = () => {
   useEffect(() => {
     // Initialize OneSignal
-    if (typeof window !== 'undefined' && !window.OneSignal) {
+    if (typeof window !== 'undefined') {
       window.OneSignal = window.OneSignal || [];
-      window.OneSignal.push(function() {
-        window.OneSignal.init({
+      const OneSignal = window.OneSignal;
+      
+      if (OneSignal.init) return; // Already initialized
+      
+      OneSignal.push(() => {
+        OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           allowLocalhostAsSecureOrigin: true,
           serviceWorkerParam: { scope: '/push/onesignal/' },
@@ -61,3 +65,5 @@ export const App = () => {
     </Router>
   );
 };
+
+export default App;
