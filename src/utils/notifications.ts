@@ -1,34 +1,43 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 const ONESIGNAL_APP_ID = "2f15c47a-f369-4206-b077-eaddd8075b04";
 
 // Helper to wait for OneSignal initialization
 const waitForOneSignal = async (timeout = 10000): Promise<boolean> => {
   console.log('[OneSignal] Waiting for initialization...');
-  const start = Date.now();
   
-  while (Date.now() - start < timeout) {
-    if (typeof window.OneSignal !== 'undefined') {
-      try {
-        await window.OneSignal.init({
-          appId: ONESIGNAL_APP_ID,
-          allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-        });
-        console.log('[OneSignal] Successfully initialized');
-        return true;
-      } catch (error) {
-        console.log('[OneSignal] Waiting for initialization...', error);
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
+  try {
+    // First, wait for the OneSignal script to load
+    while (!window.OneSignal && timeout > 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      timeout -= 100;
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!window.OneSignal) {
+      throw new Error('OneSignal failed to load');
+    }
+
+    // Initialize OneSignal
+    await window.OneSignal.init({
+      appId: ONESIGNAL_APP_ID,
+      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+    });
+
+    // Resolve the global initialization promise
+    if (window.resolveOneSignal) {
+      window.resolveOneSignal();
+    }
+
+    console.log('[OneSignal] Successfully initialized');
+    return true;
+  } catch (error) {
+    console.error('[OneSignal] Initialization error:', error);
+    if (window.rejectOneSignal) {
+      window.rejectOneSignal(error);
+    }
+    return false;
   }
-  
-  console.error('[OneSignal] Initialization timed out');
-  return false;
 };
 
 // Check browser support for notifications
@@ -193,4 +202,3 @@ export const isNotificationsEnabled = async (): Promise<boolean> => {
     return false;
   }
 };
-

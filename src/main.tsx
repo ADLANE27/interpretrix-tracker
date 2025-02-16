@@ -3,6 +3,20 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
+// Create a promise to track OneSignal initialization
+declare global {
+  interface Window {
+    oneSignalInitPromise?: Promise<void>;
+    resolveOneSignal?: () => void;
+    rejectOneSignal?: (error: any) => void;
+  }
+}
+
+window.oneSignalInitPromise = new Promise((resolve, reject) => {
+  window.resolveOneSignal = resolve;
+  window.rejectOneSignal = reject;
+});
+
 // Only clean up old service workers on load if Service Worker API is available
 window.addEventListener('load', async () => {
   if (!('serviceWorker' in navigator)) {
