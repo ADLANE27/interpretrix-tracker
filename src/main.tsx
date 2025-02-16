@@ -13,16 +13,27 @@ declare global {
   }
 }
 
-window.oneSignalInitPromise = new Promise((resolve, reject) => {
-  window.resolveOneSignal = resolve;
-  window.rejectOneSignal = reject;
-});
+// Only create the promise if it doesn't exist
+if (!window.oneSignalInitPromise) {
+  window.oneSignalInitPromise = new Promise((resolve, reject) => {
+    window.resolveOneSignal = resolve;
+    window.rejectOneSignal = reject;
+  });
+}
 
 // Initialize OneSignal
 const initializeOneSignal = async () => {
-  // Check if already initialized
+  // If already initialized, resolve the promise and return
   if (window.oneSignalInitialized) {
-    console.log('[OneSignal] Already initialized, skipping...');
+    console.log('[OneSignal] Already initialized, resolving promise...');
+    window.resolveOneSignal?.();
+    return;
+  }
+
+  // If OneSignal object already exists but not marked as initialized
+  if (window.OneSignal?.initialized) {
+    console.log('[OneSignal] SDK already initialized by OneSignal, marking as initialized...');
+    window.oneSignalInitialized = true;
     window.resolveOneSignal?.();
     return;
   }
@@ -66,6 +77,7 @@ const initializeOneSignal = async () => {
   } catch (error) {
     console.error('[OneSignal] Initialization failed:', error);
     window.rejectOneSignal?.(error);
+    throw error; // Re-throw to be caught by the load event listener
   }
 };
 
