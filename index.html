@@ -7,72 +7,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
     <!-- Load OneSignal SDK first -->
-    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" defer></script>
     <script>
-      window.OneSignal = window.OneSignal || [];
-      
-      // Create a promise to track OneSignal initialization
-      window.oneSignalInitPromise = new Promise((resolve, reject) => {
-        window.resolveOneSignal = resolve;
-        window.rejectOneSignal = reject;
-      });
+      // Initialize OneSignal only after the DOM is fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        window.OneSignal = window.OneSignal || [];
+        
+        // Create a promise to track OneSignal initialization
+        window.oneSignalInitPromise = new Promise((resolve, reject) => {
+          window.resolveOneSignal = resolve;
+          window.rejectOneSignal = reject;
+        });
 
-      OneSignal.push(async function() {
-        try {
-          console.log('[OneSignal] Initializing...');
-          await OneSignal.init({
-            appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
-            allowLocalhostAsSecureOrigin: true,
-            serviceWorkerParam: { scope: '/' },
-            serviceWorkerPath: '/OneSignalSDKWorker.js',
-            promptOptions: {
-              slidedown: {
-                prompts: [{
-                  type: "push",
-                  autoPrompt: true,
-                  text: {
-                    actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
-                    acceptButton: "Autoriser",
-                    cancelButton: "Plus tard"
-                  }
-                }]
+        // Function to initialize OneSignal
+        const initializeOneSignal = async () => {
+          try {
+            console.log('[OneSignal] Starting initialization...');
+            await OneSignal.init({
+              appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
+              allowLocalhostAsSecureOrigin: true,
+              serviceWorkerParam: { scope: '/' },
+              serviceWorkerPath: '/OneSignalSDKWorker.js',
+              notifyButton: {
+                enable: false,
+              },
+              promptOptions: {
+                slidedown: {
+                  prompts: [{
+                    type: "push",
+                    autoPrompt: true,
+                    text: {
+                      actionMessage: "Voulez-vous recevoir des notifications pour les nouvelles missions ?",
+                      acceptButton: "Autoriser",
+                      cancelButton: "Plus tard"
+                    }
+                  }]
+                }
+              },
+              welcomeNotification: {
+                disable: false,
+                title: "Interpretix",
+                message: "Merci d'avoir activé les notifications !"
               }
-            },
-            welcomeNotification: {
-              disable: false,
-              title: "Interpretix",
-              message: "Merci d'avoir activé les notifications !"
-            }
-          });
-          
-          console.log('[OneSignal] Initialization successful');
-          window.resolveOneSignal();
+            });
+            
+            console.log('[OneSignal] Initialization successful');
+            window.resolveOneSignal();
 
-          // Add debug listeners
-          OneSignal.on('notificationDisplay', function(event) {
-            console.log('[OneSignal] Notification displayed:', event);
-          });
-          
-          OneSignal.on('notificationDismiss', function(event) {
-            console.log('[OneSignal] Notification dismissed:', event);
-          });
-          
-          OneSignal.on('notificationPermissionChange', function(permissionChange) {
-            console.log('[OneSignal] Permission changed:', permissionChange);
-          });
-          
-        } catch (error) {
-          console.error('[OneSignal] Initialization error:', error);
-          window.rejectOneSignal(error);
-        }
+            // Add debug listeners
+            OneSignal.on('notificationDisplay', function(event) {
+              console.log('[OneSignal] Notification displayed:', event);
+            });
+            
+            OneSignal.on('notificationDismiss', function(event) {
+              console.log('[OneSignal] Notification dismissed:', event);
+            });
+            
+            OneSignal.on('notificationPermissionChange', function(permissionChange) {
+              console.log('[OneSignal] Permission changed:', permissionChange);
+            });
+
+            // Register Service Worker after successful initialization
+            if ('serviceWorker' in navigator) {
+              try {
+                const registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
+                  scope: '/'
+                });
+                console.log('[OneSignal] Service Worker registered successfully:', registration);
+              } catch (error) {
+                console.error('[OneSignal] Service Worker registration failed:', error);
+              }
+            }
+            
+          } catch (error) {
+            console.error('[OneSignal] Initialization error:', error);
+            window.rejectOneSignal(error);
+          }
+        };
+
+        // Start initialization after a short delay to ensure SDK is loaded
+        setTimeout(initializeOneSignal, 100);
       });
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     </noscript>
-    <!-- Add Lovable script -->
-    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <title>Interprète App</title>
   </head>
   <body>
