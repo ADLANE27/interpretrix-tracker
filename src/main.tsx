@@ -127,3 +127,4 @@ if (document.readyState === 'loading') {
 
 // Always render the app, regardless of OneSignal status
 createRoot(document.getElementById("root")!).render(<App />);
+
