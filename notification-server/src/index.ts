@@ -4,8 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from './config';
-import { logger } from './utils/logger';
 import { notificationRoutes } from './routes/notification.routes';
+import { vapidRoutes } from './routes/vapid.routes';
+import { notificationService } from './services/notification.service';
+import { logger } from './utils/logger';
 
 const app = express();
 
@@ -13,29 +15,35 @@ const app = express();
 app.use(helmet());
 app.use(cors({
   origin: config.cors.origin,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-
 app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
 });
 app.use(limiter);
 
 // Routes
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/vapid', vapidRoutes);
 
-// Error handling
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  logger.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
-// Start server
-app.listen(config.port, () => {
-  logger.info(`Server is running on port ${config.port}`);
-});
+// Initialize notification service
+notificationService.initialize()
+  .then(() => {
+    app.listen(config.port, () => {
+      logger.info(`Notification server running on port ${config.port}`);
+    });
+  })
+  .catch(error => {
+    logger.error('Failed to initialize notification service:', error);
+    process.exit(1);
+  });

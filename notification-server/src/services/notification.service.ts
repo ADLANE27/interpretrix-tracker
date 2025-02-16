@@ -6,16 +6,46 @@ import { logger } from '../utils/logger';
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
 
-webpush.setVapidDetails(
-  'mailto:contact@your-domain.com',
-  config.vapid.publicKey,
-  config.vapid.privateKey
-);
+interface NotificationPayload {
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  icon?: string;
+  badge?: string;
+}
 
-export class NotificationService {
-  async sendNotification(userId: string, notification: { title: string; body: string; data?: any }) {
+class NotificationService {
+  async initialize() {
     try {
-      // Get user's subscription
+      // Get active VAPID keys from database
+      const { data: vapidKeys, error } = await supabase
+        .from('vapid_keys')
+        .select('public_key, private_key')
+        .eq('is_active', true)
+        .eq('status', 'active')
+        .single();
+
+      if (error || !vapidKeys) {
+        throw new Error('No active VAPID keys found');
+      }
+
+      // Configure web-push with VAPID keys
+      webpush.setVapidDetails(
+        'mailto:contact@your-domain.com', // Replace with your contact email
+        vapidKeys.public_key,
+        vapidKeys.private_key
+      );
+
+      logger.info('Notification service initialized with VAPID keys');
+    } catch (error) {
+      logger.error('Failed to initialize notification service:', error);
+      throw error;
+    }
+  }
+
+  async sendNotification(userId: string, payload: NotificationPayload) {
+    try {
+      // Get user's active subscriptions
       const { data: subscriptions, error: subError } = await supabase
         .from('web_push_subscriptions')
         .select('*')
@@ -27,16 +57,19 @@ export class NotificationService {
       }
 
       if (!subscriptions?.length) {
-        throw new Error('No active subscriptions found for user');
+        logger.warn(`No active subscriptions found for user ${userId}`);
+        return false;
       }
 
       // Create notification record
-      const { data: notificationRecord, error: notifError } = await supabase
+      const { data: notification, error: notifError } = await supabase
         .from('notification_messages')
         .insert({
-          title: notification.title,
-          body: notification.body,
-          data: notification.data || {},
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || {},
+          icon_url: payload.icon,
+          badge_url: payload.badge,
           sender_id: userId,
         })
         .select()
@@ -58,37 +91,44 @@ export class NotificationService {
               },
             },
             JSON.stringify({
-              title: notification.title,
-              body: notification.body,
-              data: {
-                ...notification.data,
-                notificationId: notificationRecord.id,
-              },
+              title: payload.title,
+              body: payload.body,
+              ...payload.data,
+              icon: payload.icon,
+              badge: payload.badge,
+              notificationId: notification.id,
             })
           );
 
           // Record successful delivery
           await supabase.from('notification_recipients').insert({
-            notification_id: notificationRecord.id,
+            notification_id: notification.id,
             recipient_id: userId,
-            status: 'sent',
+            status: 'delivered',
+            delivered_at: new Date().toISOString(),
           });
+
+          // Update subscription last used timestamp
+          await supabase
+            .from('web_push_subscriptions')
+            .update({ last_used_at: new Date().toISOString() })
+            .eq('endpoint', subscription.endpoint);
 
           return true;
         } catch (error: any) {
-          logger.error(`Push notification failed: ${error.message}`);
+          logger.error(`Failed to send push notification: ${error.message}`);
           
-          if (error.statusCode === 410) {
-            // Subscription has expired
+          if (error.statusCode === 410 || error.code === 'ECONNRESET') {
+            // Subscription is expired or invalid
             await supabase
               .from('web_push_subscriptions')
               .update({ status: 'expired' })
-              .eq('id', subscription.id);
+              .eq('endpoint', subscription.endpoint);
           }
 
           // Record failed delivery
           await supabase.from('notification_recipients').insert({
-            notification_id: notificationRecord.id,
+            notification_id: notification.id,
             recipient_id: userId,
             status: 'failed',
             error_message: error.message,
@@ -99,9 +139,9 @@ export class NotificationService {
       });
 
       const results = await Promise.all(sendPromises);
-      return results.some(result => result); // Return true if at least one notification was sent
-    } catch (error: any) {
-      logger.error(`Notification service error: ${error.message}`);
+      return results.some(result => result);
+    } catch (error) {
+      logger.error('Error in sendNotification:', error);
       throw error;
     }
   }
@@ -111,21 +151,22 @@ export class NotificationService {
       const { error } = await supabase.from('web_push_subscriptions').upsert({
         user_id: userId,
         endpoint: subscription.endpoint,
-        auth_key: subscription.keys.auth,
         p256dh_key: subscription.keys.p256dh,
+        auth_key: subscription.keys.auth,
         status: 'active',
         user_agent: 'web',
       }, {
-        onConflict: 'user_id,endpoint',
+        onConflict: 'user_id, endpoint',
       });
 
       if (error) {
         throw new Error(`Error saving subscription: ${error.message}`);
       }
 
+      logger.info(`Subscription saved for user ${userId}`);
       return true;
-    } catch (error: any) {
-      logger.error(`Save subscription error: ${error.message}`);
+    } catch (error) {
+      logger.error('Error in saveSubscription:', error);
       throw error;
     }
   }
@@ -141,9 +182,10 @@ export class NotificationService {
         throw new Error(`Error removing subscription: ${error.message}`);
       }
 
+      logger.info(`Subscription removed for user ${userId}`);
       return true;
-    } catch (error: any) {
-      logger.error(`Remove subscription error: ${error.message}`);
+    } catch (error) {
+      logger.error('Error in removeSubscription:', error);
       throw error;
     }
   }
