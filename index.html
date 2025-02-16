@@ -6,26 +6,36 @@
     <link rel="icon" type="image/png" href="/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Initialize OneSignal promise -->
+    <script>
+      window.OneSignal = window.OneSignal || [];
+      
+      // Create a promise to track OneSignal initialization
+      window.oneSignalInitPromise = new Promise((resolve, reject) => {
+        window.resolveOneSignal = resolve;
+        window.rejectOneSignal = reject;
+      });
+    </script>
     <!-- Load OneSignal SDK -->
     <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
     <!-- Initialize OneSignal -->
     <script>
-      window.OneSignal = window.OneSignal || [];
       OneSignal.push(async function() {
         try {
+          console.log('[OneSignal] Initializing...');
           await OneSignal.init({
             appId: "2f15c47a-f369-4206-b077-eaddd8075b04",
             allowLocalhostAsSecureOrigin: true,
             serviceWorkerPath: '/OneSignalSDKWorker.js',
             serviceWorkerParam: { scope: '/' },
             notifyButton: {
-              enable: false
+              enable: false // We use our own UI
             },
             promptOptions: {
               slidedown: {
                 prompts: [{
                   type: "push",
-                  autoPrompt: true,
+                  autoPrompt: true, // Changed to true for immediate prompt
                   text: {
                     actionMessage: "Voulez-vous recevoir les notifications de nouvelles missions ?",
                     acceptButton: "Autoriser",
@@ -35,14 +45,35 @@
               }
             }
           });
+          
+          console.log('[OneSignal] Initialization successful');
+          window.resolveOneSignal();
+
+          // Add debug listeners for better monitoring
+          OneSignal.on('notificationDisplay', function(event) {
+            console.log('[OneSignal] Notification displayed:', event);
+          });
+          
+          OneSignal.on('notificationDismiss', function(event) {
+            console.log('[OneSignal] Notification dismissed:', event);
+          });
+          
+          OneSignal.on('notificationPermissionChange', function(permissionChange) {
+            console.log('[OneSignal] Permission changed:', permissionChange);
+          });
+          
         } catch (error) {
-          console.error('[OneSignal] Error:', error);
+          console.error('[OneSignal] Initialization error:', error);
+          window.rejectOneSignal(error);
         }
       });
     </script>
-    <!-- Core dependencies -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    </noscript>
+    <!-- Add Lovable script -->
     <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>Interprète App</title>
   </head>
   <body>
@@ -50,3 +81,4 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

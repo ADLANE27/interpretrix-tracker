@@ -1,6 +1,4 @@
 
-import { supabase } from "@/integrations/supabase/client";
-
 // Types
 type OneSignalFunctions = {
   init: (config: any) => Promise<void>;
@@ -10,8 +8,13 @@ type OneSignalFunctions = {
   setExternalUserId: (id: string) => Promise<void>;
   sendTag: (key: string, value: string) => Promise<void>;
   sendTags: (tags: Record<string, string>) => Promise<void>;
-  push: (f: () => void) => void; // Added this line to match the type in onesignal.d.ts
 };
+
+declare global {
+  interface Window {
+    OneSignal: OneSignalFunctions | any[];
+  }
+}
 
 // Utility function to get the initialized OneSignal instance
 export const getOneSignal = (): OneSignalFunctions => {
@@ -88,3 +91,4 @@ export const registerDevice = async (interpreterId: string, interpreterData: {
     throw error;
   }
 };
+
