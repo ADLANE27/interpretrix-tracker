@@ -341,32 +341,37 @@ export const InterpreterDashboard = () => {
 
   useEffect(() => {
     const checkNotificationStatus = async () => {
+      if (!profile?.id) return;
+
       try {
         setIsCheckingNotifications(true);
+        console.log('[Dashboard] Checking notification status for user:', profile.id);
         const enabled = await isNotificationsEnabled();
-        console.log('[Dashboard] Initial notification status:', enabled);
+        console.log('[Dashboard] Current notification status:', enabled);
         setNotificationsEnabled(enabled);
       } catch (error) {
         console.error('[Dashboard] Error checking notification status:', error);
+        setNotificationsEnabled(false);
       } finally {
         setIsCheckingNotifications(false);
       }
     };
-    
-    if (profile?.id) {
-      checkNotificationStatus();
-    }
+
+    checkNotificationStatus();
   }, [profile?.id]);
 
   const toggleNotifications = async () => {
-    if (isCheckingNotifications) return;
+    if (isCheckingNotifications) {
+      console.log('[Dashboard] Still checking notifications, ignoring toggle');
+      return;
+    }
 
     try {
       setIsCheckingNotifications(true);
-      console.log('[Dashboard] Toggling notifications from:', notificationsEnabled);
+      console.log('[Dashboard] Current notification state:', notificationsEnabled);
 
       if (notificationsEnabled) {
-        // Disable notifications
+        console.log('[Dashboard] Attempting to disable notifications');
         const success = await unregisterDevice();
         if (success) {
           setNotificationsEnabled(false);
@@ -374,31 +379,33 @@ export const InterpreterDashboard = () => {
             title: "Notifications désactivées",
             description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
           });
+        } else {
+          throw new Error("Échec de la désactivation des notifications");
         }
       } else {
-        // Enable notifications
+        console.log('[Dashboard] Attempting to enable notifications');
         const granted = await requestNotificationPermission();
-        console.log('[Dashboard] Permission granted:', granted);
-        
         if (granted) {
           setNotificationsEnabled(true);
-          playNotificationSound('scheduled');
           toast({
             title: "Notifications activées",
             description: "Vous recevrez désormais les notifications pour les nouvelles missions",
           });
+        } else {
+          throw new Error("Les notifications n'ont pas pu être activées");
         }
       }
     } catch (error: any) {
       console.error('[Dashboard] Error toggling notifications:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de la gestion des notifications",
-        variant: "destructive",
-      });
-      // Refresh actual status
+      // Refresh the actual status to ensure UI is in sync
       const currentStatus = await isNotificationsEnabled();
       setNotificationsEnabled(currentStatus);
+      
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue lors de la gestion des notifications"
+      });
     } finally {
       setIsCheckingNotifications(false);
     }
@@ -447,47 +454,31 @@ export const InterpreterDashboard = () => {
                 onDeletePicture={handleProfilePictureDelete}
               />
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={notificationsEnabled}
-                      onCheckedChange={toggleNotifications}
-                      disabled={isCheckingNotifications}
-                      className={`${
-                        notificationsEnabled 
-                          ? 'bg-green-500 hover:bg-green-600' 
-                          : 'bg-red-500 hover:bg-red-600'
-                      } transition-colors duration-200`}
-                    />
-                    <span className="text-sm font-medium">
-                      {isCheckingNotifications 
-                        ? "Vérification..." 
-                        : notificationsEnabled 
-                          ? "Notifications activées" 
-                          : "Notifications désactivées"
-                      }
-                    </span>
-                    <Bell className={`h-4 w-4 ${
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={notificationsEnabled}
+                    onCheckedChange={toggleNotifications}
+                    disabled={isCheckingNotifications}
+                    className={`${
                       notificationsEnabled 
-                        ? 'text-green-500' 
-                        : 'text-red-500'
-                    }`} />
-                  </div>
+                        ? 'bg-green-500 hover:bg-green-600' 
+                        : 'bg-red-500 hover:bg-red-600'
+                    } transition-colors duration-200`}
+                  />
+                  <span className="text-sm font-medium">
+                    {isCheckingNotifications 
+                      ? "Vérification..." 
+                      : notificationsEnabled 
+                        ? "Notifications activées" 
+                        : "Notifications désactivées"
+                    }
+                  </span>
+                  <Bell className={`h-4 w-4 ${
+                    notificationsEnabled 
+                      ? 'text-green-500' 
+                      : 'text-red-500'
+                  }`} />
                 </div>
-                <ThemeToggle />
-                <HowToUseGuide 
-                  isOpen={isGuideOpen}
-                  onOpenChange={setIsGuideOpen}
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleLogout}
-                  className="flex-1 sm:flex-none hover:bg-red-50 hover:text-red-600 transition-colors"
-                  title="Se déconnecter"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </motion.div>
