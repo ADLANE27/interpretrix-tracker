@@ -243,6 +243,35 @@ export interface Database {
           tarif_15min?: number
         }
       }
+      interpreter_connection_status: {
+        Row: {
+          connection_status: string | null
+          created_at: string
+          interpreter_id: string
+          is_online: boolean | null
+          last_heartbeat: string | null
+          last_seen_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          connection_status?: string | null
+          created_at?: string
+          interpreter_id: string
+          is_online?: boolean | null
+          last_heartbeat?: string | null
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          connection_status?: string | null
+          created_at?: string
+          interpreter_id?: string
+          is_online?: boolean | null
+          last_heartbeat?: string | null
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+      }
       mission_notifications: {
         Row: {
           id: string
@@ -356,26 +385,27 @@ export interface Database {
       }
       secrets: {
         Row: {
+          created_at: string
           id: string
           name: string
-          value: string
-          created_at: string
           updated_at: string
+          value: string
         }
         Insert: {
+          created_at?: string
           id?: string
           name: string
-          value: string
-          created_at?: string
           updated_at?: string
+          value: string
         }
         Update: {
+          created_at?: string
           id?: string
           name?: string
-          value?: string
-          created_at?: string
           updated_at?: string
+          value?: string
         }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -448,6 +478,16 @@ export interface Database {
       migrate_interpreter_languages: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_message_sender_details: {
+        Args: {
+          sender_id: string
+        }
+        Returns: {
+          id: string
+          name: string
+          avatar_url: string
+        }[]
       }
     }
     Enums: {
