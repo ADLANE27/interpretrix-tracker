@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimeChannelSendResponse } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -120,7 +119,7 @@ export const RealtimeProvider: React.FC<RealtimeProviderProps> = ({ children }) 
           lastHeartbeatRef.current = new Date();
         });
 
-      const { error } = await channelRef.current.subscribe(async (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+      await channelRef.current.subscribe(async (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log('[RealtimeContext] Channel status:', status);
 
         if (status === 'SUBSCRIBED') {
@@ -150,10 +149,6 @@ export const RealtimeProvider: React.FC<RealtimeProviderProps> = ({ children }) 
           }
         }
       });
-
-      if (error) {
-        throw new Error('Failed to subscribe to channel');
-      }
     } catch (error) {
       console.error('[RealtimeContext] Error initializing channel:', error);
       setConnectionStatus('disconnected');
