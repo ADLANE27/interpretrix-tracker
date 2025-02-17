@@ -87,14 +87,6 @@ const Index = () => {
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center justify-center space-y-4 px-4"
           >
-            <motion.img 
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-              src="/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png"
-              alt="Logo"
-              className="w-48 h-48 object-contain mb-6"
-            />
             <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
             <div className="flex flex-col sm:flex-row gap-4">
               <a 
