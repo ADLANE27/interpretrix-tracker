@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { subscribeToNotifications, unsubscribeFromNotifications } from '@/utils/notifications';
@@ -13,30 +13,11 @@ export const NotificationManager = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    checkSubscriptionStatus();
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        setIsSubscribed(false);
-        setIsLoading(false);
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        checkSubscriptionStatus();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const checkSubscriptionStatus = async () => {
+  const checkSubscriptionStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setIsLoading(false);
-        navigate('/interpreter/login');
         return;
       }
 
@@ -50,8 +31,7 @@ export const NotificationManager = () => {
       if (subscriptionError) {
         console.error('Error checking subscription status:', subscriptionError);
         if (subscriptionError.code === 'PGRST116') {
-          // Session expired error
-          navigate('/interpreter/login');
+          setIsLoading(false);
           return;
         }
       }
@@ -62,7 +42,40 @@ export const NotificationManager = () => {
       console.error('Error checking subscription status:', error);
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const setupAuth = async () => {
+      if (!mounted) return;
+
+      await checkSubscriptionStatus();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
+
+        if (event === 'SIGNED_OUT' || !session) {
+          setIsSubscribed(false);
+          setIsLoading(false);
+        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await checkSubscriptionStatus();
+        }
+      });
+
+      return subscription;
+    };
+
+    const subscription = setupAuth();
+
+    return () => {
+      mounted = false;
+      // Clean up subscription
+      if (subscription) {
+        subscription.then(sub => sub.unsubscribe());
+      }
+    };
+  }, [checkSubscriptionStatus]);
 
   const handleSubscribe = async () => {
     try {
@@ -73,7 +86,7 @@ export const NotificationManager = () => {
       }
 
       await subscribeToNotifications();
-      setIsSubscribed(true);
+      await checkSubscriptionStatus();
       toast({
         title: "Notifications activées",
         description: "Vous recevrez désormais des notifications pour les nouvelles missions",
@@ -101,7 +114,7 @@ export const NotificationManager = () => {
       }
 
       await unsubscribeFromNotifications();
-      setIsSubscribed(false);
+      await checkSubscriptionStatus();
       toast({
         title: "Notifications désactivées",
         description: "Vous ne recevrez plus de notifications",
