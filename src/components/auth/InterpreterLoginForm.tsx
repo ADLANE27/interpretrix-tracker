@@ -28,6 +28,7 @@ export const InterpreterLoginForm = () => {
     setLoading(true);
 
     try {
+      console.log('Attempting login...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -39,33 +40,35 @@ export const InterpreterLoginForm = () => {
         throw new Error("No session created");
       }
 
-      // Let Supabase handle the session
-      await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      });
+      console.log('Login successful, attempting to set session...');
 
-      // Wait a bit to ensure session is properly initialized
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Let's first verify we have a valid session
+      const currentSession = await supabase.auth.getSession();
+      console.log('Current session:', currentSession);
 
-      toast({
-        title: "Connexion réussie",
-        description: "Bienvenue !",
-        duration: 3000,
-      });
+      // Navigate only after confirming we have a valid session
+      if (currentSession.data.session) {
+        console.log('Session confirmed, navigating...');
+        toast({
+          title: "Connexion réussie",
+          description: "Bienvenue !",
+          duration: 3000,
+        });
 
-      // Navigate to dashboard
-      navigate("/interpreter");
+        // Navigate to dashboard
+        navigate("/interpreter");
+      } else {
+        throw new Error("Failed to initialize session");
+      }
     } catch (error: any) {
       console.error('Login error:', error);
+      setLoading(false); // Make sure to reset loading state on error
       toast({
         title: "Erreur de connexion",
         description: error.message || "Une erreur est survenue",
         variant: "destructive",
         duration: 5000,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
