@@ -30,4 +30,3 @@ export const config = configSchema.parse({
     origin: process.env.CORS_ORIGIN,
   },
 });
-
