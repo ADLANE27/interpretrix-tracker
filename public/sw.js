@@ -129,7 +129,7 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-// Keep the service worker alive
+// Keep alive heartbeat
 setInterval(() => {
   console.log('[Service Worker] Heartbeat');
 }, 25000);

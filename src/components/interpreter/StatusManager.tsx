@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { NotificationManager } from '../notifications/NotificationManager';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -144,9 +143,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
         >
           En appel
         </Button>
-      </div>
-      <div className="flex items-center gap-4">
-        <NotificationManager />
       </div>
     </div>
   );
