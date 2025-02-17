@@ -1,5 +1,6 @@
 
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 
@@ -30,7 +31,11 @@ const root = createRoot(document.getElementById("root")!);
 const startApp = async () => {
   // Register service worker before rendering the app
   await registerServiceWorker();
-  root.render(<App />);
+  root.render(
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
 };
 
 // Start the app when DOM is ready
