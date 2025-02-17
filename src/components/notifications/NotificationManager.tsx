@@ -6,14 +6,12 @@ import { subscribeToNotifications, unsubscribeFromNotifications } from '@/utils/
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
-import { useSupabaseConnection } from '@/hooks/useSupabaseConnection';
 
 export const NotificationManager = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const connection = useSupabaseConnection();
 
   const checkSubscriptionStatus = useCallback(async () => {
     try {
@@ -42,6 +40,16 @@ export const NotificationManager = () => {
 
   useEffect(() => {
     checkSubscriptionStatus();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_IN') {
+        await checkSubscriptionStatus();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [checkSubscriptionStatus]);
 
   const handleSubscribe = async () => {
@@ -49,15 +57,6 @@ export const NotificationManager = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/interpreter/login');
-        return;
-      }
-
-      if (!connection || connection.state !== 'joined') {
-        toast({
-          title: "Erreur de connexion",
-          description: "La connexion n'est pas établie. Veuillez rafraîchir la page.",
-          variant: "destructive",
-        });
         return;
       }
 
@@ -113,7 +112,6 @@ export const NotificationManager = () => {
       size="sm"
       onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
       className="flex items-center gap-2"
-      disabled={!connection || connection.state !== 'joined'}
     >
       {isSubscribed ? (
         <>
