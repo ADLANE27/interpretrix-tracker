@@ -44,10 +44,29 @@ export function ProfileTab() {
           return { source, target };
         });
 
-        setProfile({
-          ...data,
-          languages: languagePairs
-        });
+        // Cast l'adresse JSON en type ExtendedProfile.address
+        const formattedAddress = data.address ? {
+          street: (data.address as any).street || '',
+          postal_code: (data.address as any).postal_code || '',
+          city: (data.address as any).city || ''
+        } : null;
+
+        // Créer un objet ExtendedProfile valide
+        const formattedProfile: ExtendedProfile = {
+          id: data.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          phone_number: data.phone_number,
+          landline_phone: data.landline_phone,
+          nationality: data.nationality,
+          employment_status: data.employment_status,
+          languages: languagePairs,
+          address: formattedAddress,
+          tarif_15min: data.tarif_15min
+        };
+
+        setProfile(formattedProfile);
       }
     };
 
