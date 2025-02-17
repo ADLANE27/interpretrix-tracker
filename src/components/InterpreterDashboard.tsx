@@ -20,6 +20,7 @@ import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { AnimatePresence, motion } from "framer-motion";
 import { NotificationManager } from "./notifications/NotificationManager";
+
 interface Profile {
   id: string;
   first_name: string;
@@ -45,6 +46,7 @@ interface Profile {
   profile_picture_url: string | null;
   password_changed: boolean;
 }
+
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
@@ -54,12 +56,11 @@ export const InterpreterDashboard = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   useSupabaseConnection();
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
@@ -96,6 +97,7 @@ export const InterpreterDashboard = () => {
     });
     return () => subscription.unsubscribe();
   }, [navigate]);
+
   const fetchScheduledMissions = async () => {
     try {
       const {
@@ -129,6 +131,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const fetchProfile = async () => {
     try {
       const {
@@ -198,6 +201,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
@@ -239,6 +243,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const handleProfilePictureDelete = async () => {
     try {
       const {
@@ -267,6 +272,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const handleStatusChange = async (newStatus: Profile['status']) => {
     try {
       const {
@@ -295,6 +301,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -312,6 +319,7 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
   const canAccessCalendar = profile?.employment_status === 'self_employed' || profile?.employment_status === 'salaried_aft';
   const tabItems = [{
     value: "missions",
@@ -326,6 +334,7 @@ export const InterpreterDashboard = () => {
     value: "profile",
     label: "Mon Profil"
   }];
+
   const handleTabChange = (value: string) => {
     if (value === "calendar" && !canAccessCalendar) {
       value = "missions";
@@ -333,6 +342,7 @@ export const InterpreterDashboard = () => {
     setActiveTab(value);
     setIsSheetOpen(false);
   };
+
   if (!authChecked || !profile) {
     return <div className="min-h-screen flex items-center justify-center p-4">
         <motion.div initial={{
@@ -344,9 +354,11 @@ export const InterpreterDashboard = () => {
         </motion.div>
       </div>;
   }
+
   if (!profile.password_changed) {
     return <PasswordChangeDialog isOpen={true} onClose={() => {}} onSuccess={fetchProfile} />;
   }
+
   return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto sm:py-6 sm:px-6 lg:px-8 px-0 py-0">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
@@ -360,7 +372,6 @@ export const InterpreterDashboard = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <ProfileHeader firstName={profile.first_name} lastName={profile.last_name} status={profile.status} profilePictureUrl={profile.profile_picture_url} onAvatarClick={() => fileInputRef.current?.click()} onDeletePicture={handleProfilePictureDelete} />
               <div className="flex items-center gap-4">
-                <NotificationManager />
                 <ThemeToggle />
                 <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full w-9 h-9">
                   <LogOut className="h-4 w-4" />

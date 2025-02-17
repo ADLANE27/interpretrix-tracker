@@ -2,7 +2,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import { NotificationProvider } from '@/contexts/NotificationContext';
 import InterpreterLogin from './pages/InterpreterLogin';
 import AdminLogin from './pages/AdminLogin';
 import Admin from './pages/Admin';
@@ -11,7 +10,7 @@ import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
 
 function App() {
   return (
-    <NotificationProvider>
+    <>
       <Routes>
         {/* Landing Page */}
         <Route path="/" element={<Index />} />
@@ -28,7 +27,7 @@ function App() {
         <Route path="*" element={<Index />} />
       </Routes>
       <Toaster />
-    </NotificationProvider>
+    </>
   );
 }
 
