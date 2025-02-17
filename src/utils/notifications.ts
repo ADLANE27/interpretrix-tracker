@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 // Global state for subscription
 let subscription: PushSubscription | null = null;
 
+const SERVER_URL = 'http://localhost:3000'; // TODO: Use environment variable
+
 // Validate base64url string format
 const isValidBase64Url = (str: string): boolean => {
   return /^[-A-Za-z0-9_]*$/.test(str);
@@ -93,16 +95,14 @@ export async function subscribeToNotifications() {
       return false;
     }
 
-    // Get VAPID public key first to fail early if not available
-    const { data: vapidData, error: vapidError } = 
-      await supabase.functions.invoke('get-vapid-public-key');
-
-    if (vapidError || !vapidData?.vapidPublicKey) {
-      console.error('[Push] Error getting VAPID key:', vapidError);
+    // Get VAPID public key from Node.js server
+    const response = await fetch(`${SERVER_URL}/api/vapid/public-key`);
+    if (!response.ok) {
       throw new Error('Could not get VAPID key');
     }
+    const { publicKey } = await response.json();
 
-    // Check if we already have a subscription
+    // Register service worker
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
       throw new Error('Service worker not registered');
@@ -117,7 +117,7 @@ export async function subscribeToNotifications() {
     // Create new subscription
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidData.vapidPublicKey)
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
 
     // Get current user
@@ -129,20 +129,22 @@ export async function subscribeToNotifications() {
     // Get subscription keys
     const keys = getSubscriptionKeys(subscription);
 
-    // Save subscription to database
-    const { error: saveError } = await supabase.from('web_push_subscriptions').upsert({
-      user_id: user.id,
-      endpoint: subscription.endpoint,
-      p256dh_key: keys.p256dh,
-      auth_key: keys.auth,
-      user_agent: navigator.userAgent,
-      status: 'active'
-    }, {
-      onConflict: 'user_id, endpoint',
+    // Save subscription to Node.js server
+    const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+      },
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        keys,
+        userAgent: navigator.userAgent
+      })
     });
 
-    if (saveError) {
-      throw saveError;
+    if (!saveResponse.ok) {
+      throw new Error('Failed to save subscription to server');
     }
 
     return true;
@@ -170,17 +172,20 @@ export async function unsubscribeFromNotifications() {
       throw new Error('User not authenticated');
     }
 
-    // Update subscription status in database
-    const { error: updateError } = await supabase.from('web_push_subscriptions')
-      .update({
-        status: 'expired',
-        updated_at: new Date().toISOString()
+    // Notify Node.js server about unsubscription
+    const response = await fetch(`${SERVER_URL}/api/notifications/unsubscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+      },
+      body: JSON.stringify({
+        endpoint: sub.endpoint
       })
-      .eq('user_id', user.id)
-      .eq('endpoint', sub.endpoint);
+    });
 
-    if (updateError) {
-      throw updateError;
+    if (!response.ok) {
+      throw new Error('Failed to unsubscribe on server');
     }
 
     // Unsubscribe from push manager
@@ -193,4 +198,3 @@ export async function unsubscribeFromNotifications() {
     throw error;
   }
 }
-
