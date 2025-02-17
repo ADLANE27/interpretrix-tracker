@@ -40,7 +40,6 @@ export function useRealtimeSubscription(
       if (!enabled) return;
 
       try {
-        // Clean up existing channel if any
         if (channelRef.current) {
           console.log('[Realtime] Removing existing channel');
           supabase.removeChannel(channelRef.current);
@@ -49,42 +48,43 @@ export function useRealtimeSubscription(
 
         console.log('[Realtime] Setting up new channel for:', config.table);
         
-        channelRef.current = supabase
-          .channel(`realtime_${config.table}`)
-          .on(
-            'postgres_changes',
-            {
-              event: config.event,
-              schema: config.schema || 'public',
-              table: config.table,
-              filter: config.filter,
-            },
-            (payload) => {
-              console.log(`[Realtime] Received ${config.event} event for ${config.table}:`, payload);
-              callback(payload);
-            }
-          )
-          .subscribe(async (status) => {
-            console.log(`[Realtime] Subscription status for ${config.table}:`, status);
+        const channel = supabase.channel(`realtime_${config.table}`);
+        
+        channelRef.current = channel.on(
+          'postgres_changes' as any,
+          {
+            event: config.event,
+            schema: config.schema || 'public',
+            table: config.table,
+            filter: config.filter,
+          },
+          (payload) => {
+            console.log(`[Realtime] Received ${config.event} event for ${config.table}:`, payload);
+            callback(payload);
+          }
+        );
+
+        channelRef.current.subscribe(async (status) => {
+          console.log(`[Realtime] Subscription status for ${config.table}:`, status);
+          
+          if (status === 'SUBSCRIBED') {
+            setIsConnected(true);
+            retryCountRef.current = 0;
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setIsConnected(false);
             
-            if (status === 'SUBSCRIBED') {
-              setIsConnected(true);
-              retryCountRef.current = 0;
-            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              setIsConnected(false);
-              
-              if (retryCountRef.current < maxRetries) {
-                console.log(`[Realtime] Attempting reconnection for ${config.table}`);
-                retryCountRef.current++;
-                timeoutId = setTimeout(setupChannel, retryInterval);
-              } else {
-                console.error(`[Realtime] Max retries reached for ${config.table}`);
-                onError?.({
-                  message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
-                });
-              }
+            if (retryCountRef.current < maxRetries) {
+              console.log(`[Realtime] Attempting reconnection for ${config.table}`);
+              retryCountRef.current++;
+              timeoutId = setTimeout(setupChannel, retryInterval);
+            } else {
+              console.error(`[Realtime] Max retries reached for ${config.table}`);
+              onError?.({
+                message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
+              });
             }
-          });
+          }
+        });
 
       } catch (error) {
         console.error(`[Realtime] Error setting up channel for ${config.table}:`, error);
@@ -94,7 +94,6 @@ export function useRealtimeSubscription(
 
     setupChannel();
 
-    // Cleanup function
     return () => {
       console.log(`[Realtime] Cleaning up subscription for ${config.table}`);
       clearTimeout(timeoutId);
