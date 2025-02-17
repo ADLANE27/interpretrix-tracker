@@ -657,6 +657,33 @@ export type Database = {
           },
         ]
       }
+      vapid_keys: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          private_key: string
+          public_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          private_key: string
+          public_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          private_key?: string
+          public_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       calendar_missions: {

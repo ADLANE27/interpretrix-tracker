@@ -1,5 +1,5 @@
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from "https://deno.fresh.dev/std@v1/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 import webPush from 'https://esm.sh/web-push@3.6.6';
 
@@ -8,103 +8,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface Database {
-  public: {
-    Tables: {
-      vapid_keys: {
-        Row: {
-          id: string;
-          public_key: string;
-          private_key: string;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
-          created_by: string | null;
-          expires_at: string | null;
-          status: 'active' | 'expired' | 'revoked';
-        };
-        Insert: {
-          id?: string;
-          public_key: string;
-          private_key: string;
-          is_active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-          created_by?: string | null;
-          expires_at?: string | null;
-          status?: 'active' | 'expired' | 'revoked';
-        };
-      };
-    };
-  };
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Get authorization header
+    // Verify admin role
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Create Supabase client
-    const supabaseClient = createClient<Database>(
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+        global: { headers: { Authorization: authHeader } },
       }
     );
+
+    // Check if user is admin
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (rolesError || roles?.role !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Admin only' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Generate VAPID keys
     const vapidKeys = webPush.generateVAPIDKeys();
 
-    // Store VAPID keys in database
-    const { data, error } = await supabaseClient
+    // Store keys in database
+    const { error: insertError } = await supabase
       .from('vapid_keys')
       .insert({
         public_key: vapidKeys.publicKey,
         private_key: vapidKeys.privateKey,
-        is_active: true, // This will automatically deactivate other keys due to our trigger
-        status: 'active',
-      })
-      .select()
-      .single();
+        is_active: true
+      });
 
-    if (error) {
-      throw error;
+    if (insertError) {
+      console.error('Error storing VAPID keys:', insertError);
+      throw new Error('Failed to store VAPID keys');
     }
 
-    // Return only the public key
     return new Response(
       JSON.stringify({
-        public_key: data.public_key,
+        message: 'VAPID keys generated and stored successfully',
+        public_key: vapidKeys.publicKey
       }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
       }
     );
   } catch (error) {
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({
-        error: error.message,
-      }),
-      {
-        status: 400,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
       }
     );
   }
