@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { InterpreterDashboard } from '@/components/InterpreterDashboard';
 
 export const AuthenticatedLayout = () => {
   const navigate = useNavigate();
@@ -37,11 +38,5 @@ export const AuthenticatedLayout = () => {
     </div>;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <main className="flex-1">
-        <h1 className="text-2xl font-bold p-4">Tableau de bord Interprète</h1>
-      </main>
-    </div>
-  );
+  return <InterpreterDashboard />;
 };
