@@ -120,7 +120,7 @@ export const RealtimeProvider: React.FC<RealtimeProviderProps> = ({ children }) 
           lastHeartbeatRef.current = new Date();
         });
 
-      const response = await channelRef.current.subscribe(async (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+      const { error } = await channelRef.current.subscribe(async (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
         console.log('[RealtimeContext] Channel status:', status);
 
         if (status === 'SUBSCRIBED') {
@@ -151,7 +151,7 @@ export const RealtimeProvider: React.FC<RealtimeProviderProps> = ({ children }) 
         }
       });
 
-      if (response === 'error') {
+      if (error) {
         throw new Error('Failed to subscribe to channel');
       }
     } catch (error) {

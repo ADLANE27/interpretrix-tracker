@@ -1,6 +1,6 @@
 
 import { Routes, Route } from 'react-router-dom';
-import { InterpreterLogin } from '@/pages/InterpreterLogin';
+import InterpreterLogin from '@/pages/InterpreterLogin';
 
 export const SiteRoutes = () => {
   return (
