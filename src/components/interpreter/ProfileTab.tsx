@@ -6,8 +6,26 @@ import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 
+interface ExtendedProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string | null;
+  landline_phone: string | null;
+  nationality: string | null;
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  languages: { source: string; target: string; }[];
+  address: {
+    street: string;
+    postal_code: string;
+    city: string;
+  } | null;
+  tarif_15min: number;
+}
+
 export function ProfileTab() {
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<ExtendedProfile | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -20,7 +38,17 @@ export function ProfileTab() {
         .eq('id', user.id)
         .single();
 
-      setProfile(data);
+      if (data) {
+        const languagePairs = data.languages.map((lang: string) => {
+          const [source, target] = lang.split('→').map(part => part.trim());
+          return { source, target };
+        });
+
+        setProfile({
+          ...data,
+          languages: languagePairs
+        });
+      }
     };
 
     fetchProfile();
@@ -34,9 +62,29 @@ export function ProfileTab() {
 
   return (
     <div className="space-y-8">
-      <PersonalInfoSection profile={profile} />
-      <AddressSection profile={profile} />
-      <ProfessionalInfoSection profile={profile} />
+      <PersonalInfoSection 
+        firstName={profile.first_name}
+        lastName={profile.last_name}
+        email={profile.email}
+        mobilePhone={profile.phone_number}
+        landlinePhone={profile.landline_phone}
+        nationality={profile.nationality}
+        rate15min={profile.tarif_15min}
+        isEditing={false}
+        onChange={() => {}}
+      />
+      <AddressSection 
+        address={profile.address}
+        isEditing={false}
+        onChange={() => {}}
+      />
+      <ProfessionalInfoSection 
+        employmentStatus={profile.employment_status}
+        languages={profile.languages}
+        isEditing={false}
+        onEmploymentStatusChange={() => {}}
+        onLanguagesChange={() => {}}
+      />
       <div className="flex justify-end">
         <ThemeToggle />
       </div>
