@@ -42,22 +42,23 @@ export const InterpreterList: React.FC<InterpreterListProps> = ({
   const { toast } = useToast();
 
   const formatInterpreterForDisplay = (interpreter: UserData) => {
-    const validLanguages = Array.isArray(interpreter.languages) 
-      ? interpreter.languages.filter((lang: string) => {
-          if (!lang || typeof lang !== 'string') return false;
-          const [source, target] = lang.split('→').map(part => part.trim());
-          return source && target && !source.includes('undefined') && !target.includes('undefined');
-        })
-      : [];
-
     return {
       id: interpreter.id,
-      name: `${interpreter.first_name} ${interpreter.last_name}`,
+      first_name: interpreter.first_name,
+      last_name: interpreter.last_name,
       email: interpreter.email,
+      role: interpreter.role,
       status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
       employment_status: interpreter.employment_status,
-      languages: validLanguages,
-      hourlyRate: (interpreter.tarif_15min || 0) * 4,
+      languages: Array.isArray(interpreter.languages) 
+        ? interpreter.languages.filter((lang: string) => {
+            if (!lang || typeof lang !== 'string') return false;
+            const [source, target] = lang.split('→').map(part => part.trim());
+            return source && target && !source.includes('undefined') && !target.includes('undefined');
+          })
+        : [],
+      tarif_15min: interpreter.tarif_15min,
+      tarif_5min: interpreter.tarif_5min,
       active: interpreter.active
     };
   };
@@ -79,11 +80,16 @@ export const InterpreterList: React.FC<InterpreterListProps> = ({
         pageSizeOptions={[5, 10, 20, 50]}
         renderItem={(interpreter) => (
           <InterpreterCard
-            interpreter={interpreter}
-            onToggleStatus={() => onToggleStatus(interpreter.id, interpreter.active)}
-            onDelete={() => onDeleteUser(interpreter.id)}
-            onEdit={() => onEditUser(interpreter)}
-            onResetPassword={() => onResetPassword(interpreter.id)}
+            key={interpreter.id}
+            interpreter={{
+              id: interpreter.id,
+              name: `${interpreter.first_name} ${interpreter.last_name}`,
+              status: interpreter.status as "available" | "unavailable" | "pause" | "busy",
+              employment_status: interpreter.employment_status,
+              languages: interpreter.languages,
+              tarif_15min: interpreter.tarif_15min,
+              tarif_5min: interpreter.tarif_5min
+            }}
           />
         )}
         keyExtractor={(interpreter) => interpreter.id}
