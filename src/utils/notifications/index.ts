@@ -1,89 +1,64 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { showCustomPermissionMessage } from "./permissionHandling";
+import { playNotificationSound } from "../notificationSounds";
 
 export async function subscribeToNotifications() {
   try {
-    // Vérifier la session d'abord
+    // Check authentication
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('User not authenticated');
     }
 
-    // Check if we're in a secure context
+    // Check browser support
     if (!window.isSecureContext) {
       console.error('[Notifications] Not in a secure context');
       throw new Error('Notifications require a secure context (HTTPS)');
     }
 
-    // Check service worker support
-    if (!('serviceWorker' in navigator)) {
-      console.error('[Notifications] Service Workers not supported');
-      throw new Error('Your browser does not support service workers');
-    }
-
-    // Check notification support
-    if (!('Notification' in window)) {
-      console.error('[Notifications] Notifications not supported');
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+      console.error('[Notifications] Required features not supported');
       throw new Error('Your browser does not support notifications');
     }
 
-    // Check notification permission
+    // Handle permissions
     let permission = Notification.permission;
     
     if (permission === 'denied') {
-      console.log('[Notifications] Permission previously denied, showing custom message');
+      console.log('[Notifications] Permission denied');
       showCustomPermissionMessage();
       return false;
     }
 
     if (permission === 'default') {
-      console.log('[Notifications] Requesting permission');
       permission = await Notification.requestPermission();
-      
       if (permission !== 'granted') {
-        console.log('[Notifications] Permission not granted');
         showCustomPermissionMessage();
         return false;
       }
     }
 
-    // Register service worker
-    console.log('[Notifications] Registering service worker');
-    let registration;
-    try {
-      registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/'
-      });
-      console.log('[Notifications] Service Worker registered:', registration);
-    } catch (error) {
-      console.error('[Notifications] Service Worker registration failed:', error);
-      throw new Error('Failed to register service worker');
-    }
-
-    // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready;
-    console.log('[Notifications] Service Worker ready');
-
-    // Get VAPID key with session token
-    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key', {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`
-      }
+    // Set up service worker
+    const registration = await navigator.serviceWorker.register('/sw.js', {
+      scope: '/'
     });
+    await navigator.serviceWorker.ready;
+
+    // Get VAPID key
+    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key');
     
     if (vapidError || !vapidData?.vapidPublicKey) {
-      console.error('[Notifications] VAPID key error:', vapidError);
       throw new Error('Could not get VAPID key');
     }
 
-    // Subscribe to push
-    console.log('[Notifications] Subscribing to push notifications');
+    // Subscribe to push notifications
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: vapidData.vapidPublicKey
     });
 
+    // Save subscription
     const { error: subError } = await supabase.from('web_push_subscriptions').upsert({
       user_id: session.user.id,
       endpoint: subscription.endpoint,
@@ -96,15 +71,18 @@ export async function subscribeToNotifications() {
     });
 
     if (subError) {
-      console.error('[Notifications] Subscription save error:', subError);
       throw subError;
     }
 
-    console.log('[Notifications] Successfully subscribed to notifications');
-    return true;
+    // Preload notification sounds
+    await Promise.all([
+      playNotificationSound('immediate', true),
+      playNotificationSound('scheduled', true)
+    ]);
 
+    return true;
   } catch (error: any) {
-    console.error('[Notifications] Error subscribing to notifications:', error);
+    console.error('[Notifications] Subscription error:', error);
     if (error.name === 'NotAllowedError') {
       showCustomPermissionMessage();
     }
@@ -114,22 +92,18 @@ export async function subscribeToNotifications() {
 
 export async function unsubscribeFromNotifications() {
   try {
-    // Vérifier la session d'abord
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('User not authenticated');
     }
 
-    console.log('[Notifications] Unsubscribing from notifications');
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
-      console.error('[Notifications] No service worker registration found');
       throw new Error('No service worker registration found');
     }
 
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) {
-      console.error('[Notifications] No push subscription found');
       throw new Error('No push subscription found');
     }
 
@@ -143,17 +117,14 @@ export async function unsubscribeFromNotifications() {
       .eq('endpoint', subscription.endpoint);
 
     if (updateError) {
-      console.error('[Notifications] Error updating subscription:', updateError);
       throw updateError;
     }
 
     // Unsubscribe from push manager
     await subscription.unsubscribe();
-    console.log('[Notifications] Successfully unsubscribed from notifications');
-
     return true;
   } catch (error) {
-    console.error('[Notifications] Error unsubscribing from notifications:', error);
+    console.error('[Notifications] Unsubscribe error:', error);
     throw error;
   }
 }

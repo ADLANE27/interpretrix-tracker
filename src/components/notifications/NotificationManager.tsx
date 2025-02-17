@@ -1,65 +1,19 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { subscribeToNotifications, unsubscribeFromNotifications } from '@/utils/notifications';
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from 'lucide-react';
-import { supabase } from "@/integrations/supabase/client";
+import { useNotification } from '@/contexts/NotificationContext';
 
 export const NotificationManager = () => {
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isSubscribed, isLoading, checkSubscriptionStatus } = useNotification();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const checkSubscriptionStatus = useCallback(async () => {
+  const handleSubscribe = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsLoading(false);
-        return false;
-      }
-
-      const { data: subscriptions } = await supabase
-        .from('web_push_subscriptions')
-        .select('status')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      setIsSubscribed(!!subscriptions);
-      return !!subscriptions;
-    } catch (error) {
-      console.error('Error checking subscription status:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkSubscriptionStatus();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
-        await checkSubscriptionStatus();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [checkSubscriptionStatus]);
-
-  const handleSubscribe = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/interpreter/login');
-        return;
-      }
-
       const success = await subscribeToNotifications();
       if (success) {
         await checkSubscriptionStatus();
@@ -69,23 +23,22 @@ export const NotificationManager = () => {
         });
       }
     } catch (error: any) {
-      console.error('Error subscribing to notifications:', error);
+      console.error('[NotificationManager] Error subscribing:', error);
+      if (error.message === 'User not authenticated') {
+        navigate('/interpreter/login');
+        return;
+      }
+      
       toast({
         title: "Erreur",
         description: "Impossible d'activer les notifications. Veuillez réessayer.",
         variant: "destructive",
       });
     }
-  };
+  }, [checkSubscriptionStatus, navigate, toast]);
 
-  const handleUnsubscribe = async () => {
+  const handleUnsubscribe = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/interpreter/login');
-        return;
-      }
-
       await unsubscribeFromNotifications();
       await checkSubscriptionStatus();
       toast({
@@ -93,14 +46,19 @@ export const NotificationManager = () => {
         description: "Vous ne recevrez plus de notifications",
       });
     } catch (error: any) {
-      console.error('Error unsubscribing from notifications:', error);
+      console.error('[NotificationManager] Error unsubscribing:', error);
+      if (error.message === 'User not authenticated') {
+        navigate('/interpreter/login');
+        return;
+      }
+      
       toast({
         title: "Erreur",
         description: "Impossible de désactiver les notifications",
         variant: "destructive",
       });
     }
-  };
+  }, [checkSubscriptionStatus, navigate, toast]);
 
   if (isLoading) {
     return null;
