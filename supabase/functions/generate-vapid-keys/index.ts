@@ -1,5 +1,5 @@
 
-import { serve } from 'https://deno.fresh.dev/std@v1/http/server.ts';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 import webPush from 'https://esm.sh/web-push@3.6.6';
 
