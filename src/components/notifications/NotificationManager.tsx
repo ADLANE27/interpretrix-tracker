@@ -24,18 +24,14 @@ export const NotificationManager = () => {
       }
     } catch (error: any) {
       console.error('[NotificationManager] Error subscribing:', error);
-      if (error.message === 'User not authenticated') {
-        navigate('/interpreter/login');
-        return;
-      }
       
       toast({
         title: "Erreur",
-        description: "Impossible d'activer les notifications. Veuillez réessayer.",
+        description: "Impossible d'activer les notifications. Veuillez réessayer plus tard.",
         variant: "destructive",
       });
     }
-  }, [checkSubscriptionStatus, navigate, toast]);
+  }, [checkSubscriptionStatus, toast]);
 
   const handleUnsubscribe = useCallback(async () => {
     try {
@@ -47,18 +43,14 @@ export const NotificationManager = () => {
       });
     } catch (error: any) {
       console.error('[NotificationManager] Error unsubscribing:', error);
-      if (error.message === 'User not authenticated') {
-        navigate('/interpreter/login');
-        return;
-      }
       
       toast({
         title: "Erreur",
-        description: "Impossible de désactiver les notifications",
+        description: "Impossible de désactiver les notifications. Veuillez réessayer plus tard.",
         variant: "destructive",
       });
     }
-  }, [checkSubscriptionStatus, navigate, toast]);
+  }, [checkSubscriptionStatus, toast]);
 
   if (isLoading) {
     return null;

@@ -1,7 +1,8 @@
 
-import { supabase } from "@/integrations/supabase/client";
 import { showCustomPermissionMessage } from "./permissionHandling";
 import { playNotificationSound } from "../notificationSounds";
+
+const SERVER_URL = 'http://localhost:3000';
 
 // Utility to convert base64 to Uint8Array for VAPID key
 function urlBase64ToUint8Array(base64String: string) {
@@ -21,12 +22,6 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export async function subscribeToNotifications() {
   try {
-    // Check authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated');
-    }
-
     // Check browser support
     if (!window.isSecureContext) {
       console.error('[Notifications] Not in a secure context');
@@ -68,44 +63,45 @@ export async function subscribeToNotifications() {
         await subscription.unsubscribe();
       }
 
-      // Get VAPID key from Supabase
-      const { data: vapidData, error: vapidError } = 
-        await supabase.functions.invoke('get-vapid-public-key');
-
-      if (vapidError || !vapidData?.publicKey) {
+      // Get VAPID key from Node.js server
+      const vapidResponse = await fetch(`${SERVER_URL}/api/vapid/public-key`);
+      if (!vapidResponse.ok) {
         throw new Error('Could not get VAPID key');
+      }
+      
+      const { publicKey } = await vapidResponse.json();
+      if (!publicKey) {
+        throw new Error('Invalid VAPID key format');
       }
 
       // Subscribe to push notifications
       const newSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
 
-      // Get device info
-      const deviceInfo = {
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        language: navigator.language,
-        screenSize: `${window.screen.width}x${window.screen.height}`
+      // Format subscription data for server
+      const subscriptionData = {
+        endpoint: newSubscription.endpoint,
+        keys: {
+          p256dh: btoa(String.fromCharCode.apply(null, 
+            new Uint8Array(newSubscription.getKey('p256dh') as ArrayBuffer))),
+          auth: btoa(String.fromCharCode.apply(null, 
+            new Uint8Array(newSubscription.getKey('auth') as ArrayBuffer)))
+        },
+        userAgent: navigator.userAgent
       };
 
-      // Save subscription to Supabase
-      const { error: saveError } = await supabase
-        .from('web_push_subscriptions')
-        .upsert({
-          user_id: session.user.id,
-          endpoint: newSubscription.endpoint,
-          p256dh_key: btoa(String.fromCharCode.apply(null, 
-            new Uint8Array(newSubscription.getKey('p256dh') as ArrayBuffer))),
-          auth_key: btoa(String.fromCharCode.apply(null, 
-            new Uint8Array(newSubscription.getKey('auth') as ArrayBuffer))),
-          user_agent: navigator.userAgent,
-          status: 'active'
-        });
+      // Save subscription to Node.js server
+      const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscriptionData)
+      });
 
-      if (saveError) {
-        console.error('[Notifications] Error saving subscription:', saveError);
+      if (!saveResponse.ok) {
         throw new Error('Failed to save subscription');
       }
 
@@ -131,11 +127,6 @@ export async function subscribeToNotifications() {
 
 export async function unsubscribeFromNotifications() {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('User not authenticated');
-    }
-
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
       throw new Error('No service worker registration found');
@@ -146,15 +137,19 @@ export async function unsubscribeFromNotifications() {
       throw new Error('No push subscription found');
     }
 
-    // Update subscription status in Supabase
-    const { error: updateError } = await supabase
-      .from('web_push_subscriptions')
-      .update({ status: 'revoked' })
-      .eq('user_id', session.user.id)
-      .eq('endpoint', subscription.endpoint);
+    // Unsubscribe from Node.js server
+    const response = await fetch(`${SERVER_URL}/api/notifications/unsubscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        endpoint: subscription.endpoint
+      })
+    });
 
-    if (updateError) {
-      throw new Error('Failed to update subscription status');
+    if (!response.ok) {
+      throw new Error('Failed to unsubscribe from server');
     }
 
     // Unsubscribe from push manager
