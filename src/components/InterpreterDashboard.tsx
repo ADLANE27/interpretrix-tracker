@@ -19,6 +19,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { AnimatePresence, motion } from "framer-motion";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 interface Profile {
   id: string;
@@ -59,41 +61,63 @@ export const InterpreterDashboard = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   useSupabaseConnection();
+  const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     document.documentElement.classList.toggle("dark", savedTheme === "dark");
     const initializeAuth = async () => {
-      const {
-        data: {
-          session
-        },
-        error: sessionError
-      } = await supabase.auth.getSession();
-      if (sessionError) {
-        console.error('[InterpreterDashboard] Session error:', sessionError);
-        navigate("/interpreter/login");
-        return;
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const {
+          data: { session },
+          error: sessionError
+        } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('[InterpreterDashboard] Session error:', sessionError);
+          setError("Erreur d'authentification. Veuillez vous reconnecter.");
+          navigate("/interpreter/login");
+          return;
+        }
+        
+        if (!session) {
+          console.log('[InterpreterDashboard] No active session');
+          setError("Session expirée. Veuillez vous reconnecter.");
+          navigate("/interpreter/login");
+          return;
+        }
+        
+        setAuthChecked(true);
+        await Promise.all([fetchProfile(), fetchScheduledMissions()]);
+      } catch (error) {
+        console.error('[InterpreterDashboard] Initialization error:', error);
+        setError("Une erreur est survenue lors de l'initialisation. Veuillez réessayer.");
+        toast({
+          title: "Erreur",
+          description: "Impossible d'initialiser le tableau de bord",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
       }
-      if (!session) {
-        console.log('[InterpreterDashboard] No active session');
-        navigate("/interpreter/login");
-        return;
-      }
-      setAuthChecked(true);
-      await Promise.all([fetchProfile(), fetchScheduledMissions()]);
     };
+
     initializeAuth();
+    
     const {
-      data: {
-        subscription
-      }
+      data: { subscription }
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[InterpreterDashboard] Auth state changed:', event);
       if (event === 'SIGNED_OUT' || !session) {
         navigate("/interpreter/login");
       }
     });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 
@@ -205,40 +229,66 @@ export const InterpreterDashboard = () => {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
-      const {
-        data: {
-          user
-        }
-      } = await supabase.auth.getUser();
+      
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast({
+          title: "Erreur",
+          description: "La taille du fichier ne doit pas dépasser 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Erreur",
+          description: "Format de fichier non supporté. Utilisez JPG, PNG ou GIF",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
+
+      toast({
+        title: "Upload en cours",
+        description: "Veuillez patienter pendant le téléchargement de votre photo",
+      });
+
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}-${Math.random()}.${fileExt}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from('profile_pictures').upload(filePath, file);
+      
+      const { error: uploadError } = await supabase.storage
+        .from('profile_pictures')
+        .upload(filePath, file);
+        
       if (uploadError) throw uploadError;
-      const {
-        data: {
-          publicUrl
-        }
-      } = supabase.storage.from('profile_pictures').getPublicUrl(filePath);
-      const {
-        error: updateError
-      } = await supabase.from('interpreter_profiles').update({
-        profile_picture_url: publicUrl
-      }).eq('id', user.id);
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile_pictures')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: publicUrl })
+        .eq('id', user.id);
+
       if (updateError) throw updateError;
+
       await fetchProfile();
       toast({
-        title: "Photo de profil mise à jour",
-        description: "Votre photo de profil a été mise à jour avec succès"
+        title: "Succès",
+        description: "Votre photo de profil a été mise à jour",
       });
     } catch (error) {
       console.error("Error uploading profile picture:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre photo de profil",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour votre photo de profil",
+        variant: "destructive",
       });
     }
   };
@@ -302,11 +352,12 @@ export const InterpreterDashboard = () => {
   };
 
   const handleLogout = async () => {
+    setIsConfirmLogoutOpen(false);
     try {
       await supabase.auth.signOut();
       toast({
         title: "Déconnexion réussie",
-        description: "Vous avez été déconnecté avec succès"
+        description: "Vous avez été déconnecté avec succès",
       });
       navigate("/interpreter/login");
     } catch (error) {
@@ -314,7 +365,7 @@ export const InterpreterDashboard = () => {
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la déconnexion",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -342,115 +393,139 @@ export const InterpreterDashboard = () => {
     setIsSheetOpen(false);
   };
 
-  if (!authChecked || !profile) {
-    return <div className="min-h-screen flex items-center justify-center p-4">
-        <motion.div initial={{
-        opacity: 0
-      }} animate={{
-        opacity: 1
-      }} className="animate-pulse text-lg text-center">
-          Chargement de votre profil...
-        </motion.div>
-      </div>;
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <p className="text-destructive text-lg font-medium">{error}</p>
+          <Button onClick={() => navigate("/interpreter/login")}>
+            Retourner à la page de connexion
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authChecked || !profile || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <LoadingSpinner size="lg" text="Chargement de votre profil..." />
+      </div>
+    );
   }
 
   if (!profile.password_changed) {
     return <PasswordChangeDialog isOpen={true} onClose={() => {}} onSuccess={fetchProfile} />;
   }
 
-  return <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      <div className="container mx-auto sm:py-6 sm:px-6 lg:px-8 px-0 py-0">
-        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
-          <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} animate={{
-          opacity: 1,
-          y: 0
-        }} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <ProfileHeader firstName={profile.first_name} lastName={profile.last_name} status={profile.status} profilePictureUrl={profile.profile_picture_url} onAvatarClick={() => fileInputRef.current?.click()} onDeletePicture={handleProfilePictureDelete} />
-              <div className="flex items-center gap-4">
-                <ThemeToggle />
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full w-9 h-9">
-                  <LogOut className="h-4 w-4" />
-                  <span className="sr-only">Se déconnecter</span>
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} animate={{
-          opacity: 1,
-          y: 0
-        }} transition={{
-          delay: 0.1
-        }} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
-            <StatusManager currentStatus={profile.status} onStatusChange={handleStatusChange} />
-          </motion.div>
-
-          <Card className="shadow-sm dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
-            {isMobile ? <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-                <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
-                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[80%] sm:w-[385px] dark:bg-gray-800">
-                    <SheetHeader>
-                      <SheetTitle>Navigation</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6 flex flex-col gap-2">
-                      {tabItems.map(tab => <Button key={tab.value} variant={activeTab === tab.value ? "default" : "ghost"} className="w-full justify-start" onClick={() => handleTabChange(tab.value)}>
-                          {tab.label}
-                        </Button>)}
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div> : <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <div className="border-b dark:border-gray-700 overflow-x-auto">
-                  <TabsList className="w-full justify-start h-12 bg-transparent p-0">
-                    {tabItems.map(tab => <TabsTrigger key={tab.value} value={tab.value} className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap">
-                        {tab.label}
-                      </TabsTrigger>)}
-                  </TabsList>
+  return (
+    <>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div className="container mx-auto sm:py-6 sm:px-6 lg:px-8 px-0 py-0">
+          <div className="max-w-7xl mx-auto space-y-4 sm:space-y-8">
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <ProfileHeader firstName={profile.first_name} lastName={profile.last_name} status={profile.status} profilePictureUrl={profile.profile_picture_url} onAvatarClick={() => fileInputRef.current?.click()} onDeletePicture={handleProfilePictureDelete} />
+                <div className="flex items-center gap-4">
+                  <ThemeToggle />
+                  <Button variant="ghost" size="icon" onClick={() => setIsConfirmLogoutOpen(true)} className="rounded-full w-9 h-9">
+                    <LogOut className="h-4 w-4" />
+                    <span className="sr-only">Se déconnecter</span>
+                  </Button>
                 </div>
-              </Tabs>}
+              </div>
+            </motion.div>
 
-            <div className="relative h-[calc(100vh-300px)] min-h-[600px] max-h-[800px] overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div key={activeTab} initial={{
-                opacity: 0,
-                x: 20
-              }} animate={{
-                opacity: 1,
-                x: 0
-              }} exit={{
-                opacity: 0,
-                x: -20
-              }} transition={{
-                duration: 0.2
-              }} className="absolute inset-0 p-2 sm:p-6 overflow-auto">
-                  {activeTab === "missions" && <MissionsTab />}
-                  {activeTab === "calendar" && canAccessCalendar && <MissionsCalendar missions={scheduledMissions} />}
-                  {activeTab === "messaging" && <MessagingTab />}
-                  {activeTab === "profile" && <InterpreterProfile />}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </Card>
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            delay: 0.1
+          }} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-6 transition-colors duration-300">
+              <StatusManager currentStatus={profile.status} onStatusChange={handleStatusChange} />
+            </motion.div>
 
-          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleProfilePictureUpload} />
+            <Card className="shadow-sm dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
+              {isMobile ? <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+                  <h2 className="text-lg font-semibold">{tabItems.find(tab => tab.value === activeTab)?.label}</h2>
+                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[80%] sm:w-[385px] dark:bg-gray-800">
+                      <SheetHeader>
+                        <SheetTitle>Navigation</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-6 flex flex-col gap-2">
+                        {tabItems.map(tab => <Button key={tab.value} variant={activeTab === tab.value ? "default" : "ghost"} className="w-full justify-start" onClick={() => handleTabChange(tab.value)}>
+                            {tab.label}
+                          </Button>)}
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div> : <Tabs value={activeTab} onValueChange={handleTabChange}>
+                  <div className="border-b dark:border-gray-700 overflow-x-auto">
+                    <TabsList className="w-full justify-start h-12 bg-transparent p-0">
+                      {tabItems.map(tab => <TabsTrigger key={tab.value} value={tab.value} className="data-[state=active]:bg-background rounded-none border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none px-3 sm:px-6 whitespace-nowrap">
+                          {tab.label}
+                        </TabsTrigger>)}
+                    </TabsList>
+                  </div>
+                </Tabs>}
 
-          <footer className="text-center text-sm text-gray-500 dark:text-gray-400 pt-4">
-            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-          </footer>
+              <div className="relative h-[calc(100vh-300px)] min-h-[600px] max-h-[800px] overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.div key={activeTab} initial={{
+                  opacity: 0,
+                  x: 20
+                }} animate={{
+                  opacity: 1,
+                  x: 0
+                }} exit={{
+                  opacity: 0,
+                  x: -20
+                }} transition={{
+                  duration: 0.2
+                }} className="absolute inset-0 p-2 sm:p-6 overflow-auto">
+                    {activeTab === "missions" && <MissionsTab />}
+                    {activeTab === "calendar" && canAccessCalendar && <MissionsCalendar missions={scheduledMissions} />}
+                    {activeTab === "messaging" && <MessagingTab />}
+                    {activeTab === "profile" && <InterpreterProfile />}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </Card>
+
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleProfilePictureUpload} />
+
+            <footer className="text-center text-sm text-gray-500 dark:text-gray-400 pt-4">
+              © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+            </footer>
+          </div>
         </div>
       </div>
-    </div>;
+      
+      <ConfirmationDialog
+        isOpen={isConfirmLogoutOpen}
+        onConfirm={handleLogout}
+        onCancel={() => setIsConfirmLogoutOpen(false)}
+        title="Confirmer la déconnexion"
+        description="Êtes-vous sûr de vouloir vous déconnecter ?"
+        confirmText="Se déconnecter"
+        cancelText="Annuler"
+        variant="destructive"
+      />
+    </>
+  );
 };
