@@ -98,12 +98,13 @@ export async function subscribeToNotifications() {
 
     console.log('[Notifications] Successfully subscribed to notifications');
     return true;
+
   } catch (error: any) {
-    console.error('[Notifications] Subscription error:', error);
+    console.error('[Notifications] Error subscribing to notifications:', error);
     if (error.name === 'NotAllowedError') {
       showCustomPermissionMessage();
     }
-    return false;
+    throw error;
   }
 }
 
@@ -149,7 +150,7 @@ export async function unsubscribeFromNotifications() {
 
     return true;
   } catch (error) {
-    console.error('[Notifications] Unsubscribe error:', error);
-    return false;
+    console.error('[Notifications] Error unsubscribing from notifications:', error);
+    throw error;
   }
 }

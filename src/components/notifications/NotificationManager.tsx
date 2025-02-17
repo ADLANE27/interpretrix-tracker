@@ -40,16 +40,12 @@ export const NotificationManager = () => {
 
   const handleSubscribe = async () => {
     try {
-      const success = await subscribeToNotifications();
-      if (success) {
-        setIsSubscribed(true);
-        toast({
-          title: "Notifications activées",
-          description: "Vous recevrez désormais des notifications pour les nouvelles missions",
-        });
-      } else {
-        throw new Error('Failed to subscribe to notifications');
-      }
+      await subscribeToNotifications();
+      setIsSubscribed(true);
+      toast({
+        title: "Notifications activées",
+        description: "Vous recevrez désormais des notifications pour les nouvelles missions",
+      });
     } catch (error) {
       console.error('Error subscribing to notifications:', error);
       toast({
@@ -62,16 +58,12 @@ export const NotificationManager = () => {
 
   const handleUnsubscribe = async () => {
     try {
-      const success = await unsubscribeFromNotifications();
-      if (success) {
-        setIsSubscribed(false);
-        toast({
-          title: "Notifications désactivées",
-          description: "Vous ne recevrez plus de notifications",
-        });
-      } else {
-        throw new Error('Failed to unsubscribe from notifications');
-      }
+      await unsubscribeFromNotifications();
+      setIsSubscribed(false);
+      toast({
+        title: "Notifications désactivées",
+        description: "Vous ne recevrez plus de notifications",
+      });
     } catch (error) {
       console.error('Error unsubscribing from notifications:', error);
       toast({
