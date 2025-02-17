@@ -657,6 +657,57 @@ export type Database = {
           },
         ]
       }
+      notification_queue: {
+        Row: {
+          attempts: number | null
+          body: string
+          created_at: string | null
+          data: Json | null
+          error_message: string | null
+          id: string
+          max_attempts: number | null
+          priority: number | null
+          processed_at: string | null
+          recipient_id: string
+          scheduled_for: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          body: string
+          created_at?: string | null
+          data?: Json | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          processed_at?: string | null
+          recipient_id: string
+          scheduled_for?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          body?: string
+          created_at?: string | null
+          data?: Json | null
+          error_message?: string | null
+          id?: string
+          max_attempts?: number | null
+          priority?: number | null
+          processed_at?: string | null
+          recipient_id?: string
+          scheduled_for?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       notification_recipients: {
         Row: {
           clicked_at: string | null
@@ -828,42 +879,6 @@ export type Database = {
           },
         ]
       }
-      push_subscriptions_backup: {
-        Row: {
-          created_at: string | null
-          fcm_token: string | null
-          id: string | null
-          interpreter_id: string | null
-          last_successful_push: string | null
-          platform: string | null
-          status: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          fcm_token?: string | null
-          id?: string | null
-          interpreter_id?: string | null
-          last_successful_push?: string | null
-          platform?: string | null
-          status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          fcm_token?: string | null
-          id?: string | null
-          interpreter_id?: string | null
-          last_successful_push?: string | null
-          platform?: string | null
-          status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string | null
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
       secrets: {
         Row: {
           created_at: string
@@ -961,10 +976,14 @@ export type Database = {
           auth_key: string
           created_at: string
           endpoint: string
+          failed_count: number | null
           id: string
+          last_notification_at: string | null
           last_used_at: string | null
+          notification_count: number | null
           p256dh_key: string
           status: string | null
+          subscription_data: Json | null
           updated_at: string
           user_agent: string | null
           user_id: string
@@ -973,10 +992,14 @@ export type Database = {
           auth_key: string
           created_at?: string
           endpoint: string
+          failed_count?: number | null
           id?: string
+          last_notification_at?: string | null
           last_used_at?: string | null
+          notification_count?: number | null
           p256dh_key: string
           status?: string | null
+          subscription_data?: Json | null
           updated_at?: string
           user_agent?: string | null
           user_id: string
@@ -985,10 +1008,14 @@ export type Database = {
           auth_key?: string
           created_at?: string
           endpoint?: string
+          failed_count?: number | null
           id?: string
+          last_notification_at?: string | null
           last_used_at?: string | null
+          notification_count?: number | null
           p256dh_key?: string
           status?: string | null
+          subscription_data?: Json | null
           updated_at?: string
           user_agent?: string | null
           user_id?: string
