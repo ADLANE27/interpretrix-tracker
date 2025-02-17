@@ -818,67 +818,6 @@ export type Database = {
           },
         ]
       }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string | null
-          endpoint: string
-          id: string
-          interpreter_id: string
-          last_successful_push: string | null
-          p256dh: string
-          status: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at: string | null
-          user_agent: string | null
-        }
-        Insert: {
-          auth: string
-          created_at?: string | null
-          endpoint: string
-          id?: string
-          interpreter_id: string
-          last_successful_push?: string | null
-          p256dh: string
-          status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string | null
-          user_agent?: string | null
-        }
-        Update: {
-          auth?: string
-          created_at?: string | null
-          endpoint?: string
-          id?: string
-          interpreter_id?: string
-          last_successful_push?: string | null
-          p256dh?: string
-          status?: Database["public"]["Enums"]["subscription_status"] | null
-          updated_at?: string | null
-          user_agent?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "push_subscriptions_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreters_with_next_mission"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       secrets: {
         Row: {
           created_at: string
@@ -975,9 +914,12 @@ export type Database = {
         Row: {
           auth_key: string
           created_at: string
+          device_info: Json | null
           endpoint: string
           failed_count: number | null
           id: string
+          last_error: string | null
+          last_error_at: string | null
           last_notification_at: string | null
           last_used_at: string | null
           notification_count: number | null
@@ -991,9 +933,12 @@ export type Database = {
         Insert: {
           auth_key: string
           created_at?: string
+          device_info?: Json | null
           endpoint: string
           failed_count?: number | null
           id?: string
+          last_error?: string | null
+          last_error_at?: string | null
           last_notification_at?: string | null
           last_used_at?: string | null
           notification_count?: number | null
@@ -1007,9 +952,12 @@ export type Database = {
         Update: {
           auth_key?: string
           created_at?: string
+          device_info?: Json | null
           endpoint?: string
           failed_count?: number | null
           id?: string
+          last_error?: string | null
+          last_error_at?: string | null
           last_notification_at?: string | null
           last_used_at?: string | null
           notification_count?: number | null

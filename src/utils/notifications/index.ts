@@ -73,6 +73,14 @@ export async function subscribeToNotifications() {
         applicationServerKey: publicKey
       });
 
+      // Get device info
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenSize: `${window.screen.width}x${window.screen.height}`
+      };
+
       // Save subscription to notification server
       const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
         method: 'POST',
@@ -80,7 +88,10 @@ export async function subscribeToNotifications() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify(newSubscription)
+        body: JSON.stringify({
+          subscription: newSubscription,
+          deviceInfo
+        })
       });
 
       if (!saveResponse.ok) {
@@ -131,7 +142,9 @@ export async function unsubscribeFromNotifications() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify(subscription)
+      body: JSON.stringify({
+        endpoint: subscription.endpoint
+      })
     });
 
     if (!response.ok) {

@@ -39,8 +39,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       // Verify subscription with server
       const response = await fetch(`${SERVER_URL}/api/notifications/status`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
-        }
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint
+        })
       });
 
       if (!response.ok) {
