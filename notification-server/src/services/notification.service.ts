@@ -15,6 +15,9 @@ interface NotificationPayload {
 }
 
 class NotificationService {
+  private isProcessingQueue = false;
+  private processInterval: NodeJS.Timeout | null = null;
+
   async initialize() {
     try {
       // Get active VAPID keys from database
@@ -31,10 +34,13 @@ class NotificationService {
 
       // Configure web-push with VAPID keys
       webpush.setVapidDetails(
-        'mailto:contact@your-domain.com', // Replace with your contact email
+        'mailto:contact@your-domain.com',
         vapidKeys.public_key,
         vapidKeys.private_key
       );
+
+      // Start queue processing
+      this.startQueueProcessing();
 
       logger.info('Notification service initialized with VAPID keys');
     } catch (error) {
@@ -43,121 +49,178 @@ class NotificationService {
     }
   }
 
-  async sendNotification(userId: string, payload: NotificationPayload) {
+  private startQueueProcessing() {
+    if (this.processInterval) {
+      clearInterval(this.processInterval);
+    }
+
+    this.processInterval = setInterval(() => {
+      if (!this.isProcessingQueue) {
+        this.processQueue();
+      }
+    }, 5000); // Process queue every 5 seconds
+  }
+
+  private async processQueue() {
+    this.isProcessingQueue = true;
     try {
-      // Get user's active subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('web_push_subscriptions')
+      // Get pending notifications from queue
+      const { data: notifications, error } = await supabase
+        .from('notification_queue')
         .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active');
+        .eq('status', 'pending')
+        .lte('attempts', 3)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: true })
+        .limit(10);
 
-      if (subError) {
-        throw new Error(`Error fetching subscriptions: ${subError.message}`);
+      if (error) {
+        throw new Error(`Error fetching notifications: ${error.message}`);
       }
 
-      if (!subscriptions?.length) {
-        logger.warn(`No active subscriptions found for user ${userId}`);
-        return false;
+      if (!notifications?.length) {
+        return;
       }
 
-      // Create notification record
-      const { data: notification, error: notifError } = await supabase
-        .from('notification_messages')
-        .insert({
-          title: payload.title,
-          body: payload.body,
-          data: payload.data || {},
-          icon_url: payload.icon,
-          badge_url: payload.badge,
-          sender_id: userId,
-        })
-        .select()
-        .single();
+      logger.info(`Processing ${notifications.length} notifications from queue`);
 
-      if (notifError) {
-        throw new Error(`Error creating notification record: ${notifError.message}`);
-      }
-
-      // Send to all active subscriptions
-      const sendPromises = subscriptions.map(async (subscription) => {
+      // Process each notification
+      for (const notification of notifications) {
         try {
-          await webpush.sendNotification(
-            {
-              endpoint: subscription.endpoint,
-              keys: {
-                p256dh: subscription.p256dh_key,
-                auth: subscription.auth_key,
-              },
-            },
-            JSON.stringify({
-              title: payload.title,
-              body: payload.body,
-              ...payload.data,
-              icon: payload.icon,
-              badge: payload.badge,
-              notificationId: notification.id,
-            })
-          );
-
-          // Record successful delivery
-          await supabase.from('notification_recipients').insert({
-            notification_id: notification.id,
-            recipient_id: userId,
-            status: 'delivered',
-            delivered_at: new Date().toISOString(),
-          });
-
-          // Update subscription last used timestamp
-          await supabase
+          // Get user's subscriptions
+          const { data: subscriptions } = await supabase
             .from('web_push_subscriptions')
-            .update({ last_used_at: new Date().toISOString() })
-            .eq('endpoint', subscription.endpoint);
+            .select('*')
+            .eq('user_id', notification.recipient_id)
+            .eq('status', 'active');
 
-          return true;
-        } catch (error: any) {
-          logger.error(`Failed to send push notification: ${error.message}`);
-          
-          if (error.statusCode === 410 || error.code === 'ECONNRESET') {
-            // Subscription is expired or invalid
-            await supabase
-              .from('web_push_subscriptions')
-              .update({ status: 'expired' })
-              .eq('endpoint', subscription.endpoint);
+          if (!subscriptions?.length) {
+            logger.warn(`No active subscriptions for user ${notification.recipient_id}`);
+            await this.markNotificationFailed(notification.id, 'No active subscriptions');
+            continue;
           }
 
-          // Record failed delivery
-          await supabase.from('notification_recipients').insert({
-            notification_id: notification.id,
-            recipient_id: userId,
-            status: 'failed',
-            error_message: error.message,
-          });
+          // Try to send to all subscriptions
+          const results = await Promise.all(
+            subscriptions.map(sub => this.sendToSubscription(sub, notification))
+          );
 
-          return false;
+          // If at least one subscription succeeded, mark as sent
+          if (results.some(r => r)) {
+            await this.markNotificationSent(notification.id);
+          } else {
+            await this.markNotificationFailed(notification.id, 'Failed to deliver to any subscription');
+          }
+        } catch (error: any) {
+          logger.error(`Error processing notification ${notification.id}:`, error);
+          await this.markNotificationFailed(notification.id, error.message);
         }
-      });
-
-      const results = await Promise.all(sendPromises);
-      return results.some(result => result);
+      }
     } catch (error) {
-      logger.error('Error in sendNotification:', error);
-      throw error;
+      logger.error('Error in queue processing:', error);
+    } finally {
+      this.isProcessingQueue = false;
     }
+  }
+
+  private async sendToSubscription(subscription: any, notification: any) {
+    try {
+      const pushSubscription = {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh_key,
+          auth: subscription.auth_key,
+        },
+      };
+
+      await webpush.sendNotification(
+        pushSubscription,
+        JSON.stringify({
+          title: notification.title,
+          body: notification.body,
+          data: notification.data,
+          icon: notification.icon,
+          badge: notification.badge,
+        })
+      );
+
+      // Update subscription stats
+      await supabase
+        .from('web_push_subscriptions')
+        .update({
+          last_notification_at: new Date().toISOString(),
+          notification_count: (subscription.notification_count || 0) + 1,
+          last_used_at: new Date().toISOString(),
+        })
+        .eq('id', subscription.id);
+
+      return true;
+    } catch (error: any) {
+      logger.error(`Failed to send notification to subscription ${subscription.id}:`, error);
+
+      if (error.statusCode === 410 || error.code === 'ECONNRESET') {
+        // Subscription is expired or invalid
+        await supabase
+          .from('web_push_subscriptions')
+          .update({
+            status: 'expired',
+            failed_count: (subscription.failed_count || 0) + 1,
+          })
+          .eq('id', subscription.id);
+      }
+
+      return false;
+    }
+  }
+
+  private async markNotificationSent(notificationId: string) {
+    await supabase
+      .from('notification_queue')
+      .update({
+        status: 'sent',
+        processed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', notificationId);
+  }
+
+  private async markNotificationFailed(notificationId: string, errorMessage: string) {
+    const { data: notification } = await supabase
+      .from('notification_queue')
+      .select('attempts')
+      .eq('id', notificationId)
+      .single();
+
+    const attempts = (notification?.attempts || 0) + 1;
+    const status = attempts >= 3 ? 'failed' : 'pending';
+
+    await supabase
+      .from('notification_queue')
+      .update({
+        status,
+        attempts,
+        error_message: errorMessage,
+        processed_at: status === 'failed' ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', notificationId);
   }
 
   async saveSubscription(userId: string, subscription: webpush.PushSubscription) {
     try {
-      const { error } = await supabase.from('web_push_subscriptions').upsert({
-        user_id: userId,
-        endpoint: subscription.endpoint,
-        p256dh_key: subscription.keys.p256dh,
-        auth_key: subscription.keys.auth,
-        status: 'active',
-        user_agent: 'web',
-      }, {
-        onConflict: 'user_id, endpoint',
-      });
+      const { error } = await supabase
+        .from('web_push_subscriptions')
+        .upsert({
+          user_id: userId,
+          endpoint: subscription.endpoint,
+          p256dh_key: subscription.keys.p256dh,
+          auth_key: subscription.keys.auth,
+          status: 'active',
+          user_agent: 'web',
+          subscription_data: subscription,
+        }, {
+          onConflict: 'endpoint',
+        });
 
       if (error) {
         throw new Error(`Error saving subscription: ${error.message}`);
@@ -186,6 +249,31 @@ class NotificationService {
       return true;
     } catch (error) {
       logger.error('Error in removeSubscription:', error);
+      throw error;
+    }
+  }
+
+  async queueNotification(recipientId: string, payload: NotificationPayload, priority: number = 0) {
+    try {
+      const { error } = await supabase
+        .from('notification_queue')
+        .insert({
+          recipient_id: recipientId,
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || {},
+          priority,
+          status: 'pending',
+        });
+
+      if (error) {
+        throw new Error(`Error queueing notification: ${error.message}`);
+      }
+
+      logger.info(`Notification queued for user ${recipientId}`);
+      return true;
+    } catch (error) {
+      logger.error('Error in queueNotification:', error);
       throw error;
     }
   }
