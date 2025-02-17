@@ -22,9 +22,9 @@ export const NotificationManager = () => {
       }
 
       const { data: subscriptions } = await supabase
-        .from('push_subscriptions')
+        .from('web_push_subscriptions')
         .select('status')
-        .eq('interpreter_id', session.user.id)
+        .eq('user_id', session.user.id)
         .eq('status', 'active')
         .maybeSingle();
 

@@ -84,15 +84,15 @@ export async function subscribeToNotifications() {
       applicationServerKey: vapidData.vapidPublicKey
     });
 
-    const { error: subError } = await supabase.from('push_subscriptions').upsert({
-      interpreter_id: session.user.id,
+    const { error: subError } = await supabase.from('web_push_subscriptions').upsert({
+      user_id: session.user.id,
       endpoint: subscription.endpoint,
-      p256dh: Buffer.from(subscription.getKey('p256dh') as ArrayBuffer).toString('base64'),
-      auth: Buffer.from(subscription.getKey('auth') as ArrayBuffer).toString('base64'),
+      p256dh_key: Buffer.from(subscription.getKey('p256dh') as ArrayBuffer).toString('base64'),
+      auth_key: Buffer.from(subscription.getKey('auth') as ArrayBuffer).toString('base64'),
       user_agent: navigator.userAgent,
       status: 'active'
     }, {
-      onConflict: 'interpreter_id,endpoint'
+      onConflict: 'endpoint'
     });
 
     if (subError) {
@@ -134,12 +134,12 @@ export async function unsubscribeFromNotifications() {
     }
 
     // Update subscription status
-    const { error: updateError } = await supabase.from('push_subscriptions')
+    const { error: updateError } = await supabase.from('web_push_subscriptions')
       .update({
         status: 'expired',
         updated_at: new Date().toISOString()
       })
-      .eq('interpreter_id', session.user.id)
+      .eq('user_id', session.user.id)
       .eq('endpoint', subscription.endpoint);
 
     if (updateError) {
