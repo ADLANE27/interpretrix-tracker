@@ -3,20 +3,20 @@ import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { config } from '../config';
 import { logger } from '../utils/logger';
+import { NotificationPayload, PushSubscription, QueuedNotification, NotificationMetrics } from '../types/notification.types';
 
 const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
-
-interface NotificationPayload {
-  title: string;
-  body: string;
-  data?: Record<string, any>;
-  icon?: string;
-  badge?: string;
-}
 
 class NotificationService {
   private isProcessingQueue = false;
   private processInterval: NodeJS.Timeout | null = null;
+  private metrics: NotificationMetrics = {
+    total_processed: 0,
+    successful: 0,
+    failed: 0,
+    retry_count: 0,
+    average_processing_time: 0,
+  };
 
   async initialize() {
     try {
@@ -39,8 +39,9 @@ class NotificationService {
         vapidKeys.private_key
       );
 
-      // Start queue processing
+      // Start queue processing and cleanup tasks
       this.startQueueProcessing();
+      this.startPeriodicCleanup();
 
       logger.info('Notification service initialized with VAPID keys');
     } catch (error) {
@@ -61,8 +62,34 @@ class NotificationService {
     }, 5000); // Process queue every 5 seconds
   }
 
+  private startPeriodicCleanup() {
+    setInterval(() => {
+      this.cleanupOldNotifications();
+    }, 24 * 60 * 60 * 1000); // Run cleanup daily
+  }
+
+  private async cleanupOldNotifications() {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      await supabase
+        .from('notification_queue')
+        .delete()
+        .lt('created_at', thirtyDaysAgo.toISOString())
+        .in('status', ['sent', 'failed']);
+
+      logger.info('Cleaned up old notifications');
+    } catch (error) {
+      logger.error('Error cleaning up old notifications:', error);
+    }
+  }
+
   private async processQueue() {
     this.isProcessingQueue = true;
+    const startTime = Date.now();
+    let processedCount = 0;
+
     try {
       // Get pending notifications from queue
       const { data: notifications, error } = await supabase
@@ -85,7 +112,8 @@ class NotificationService {
       logger.info(`Processing ${notifications.length} notifications from queue`);
 
       // Process each notification
-      for (const notification of notifications) {
+      for (const notification of notifications as QueuedNotification[]) {
+        processedCount++;
         try {
           // Get user's subscriptions
           const { data: subscriptions } = await supabase
@@ -102,28 +130,40 @@ class NotificationService {
 
           // Try to send to all subscriptions
           const results = await Promise.all(
-            subscriptions.map(sub => this.sendToSubscription(sub, notification))
+            subscriptions.map(sub => this.sendToSubscription(sub as PushSubscription, notification))
           );
 
           // If at least one subscription succeeded, mark as sent
           if (results.some(r => r)) {
             await this.markNotificationSent(notification.id);
+            this.metrics.successful++;
           } else {
             await this.markNotificationFailed(notification.id, 'Failed to deliver to any subscription');
+            this.metrics.failed++;
           }
         } catch (error: any) {
           logger.error(`Error processing notification ${notification.id}:`, error);
           await this.markNotificationFailed(notification.id, error.message);
+          this.metrics.failed++;
         }
       }
     } catch (error) {
       logger.error('Error in queue processing:', error);
     } finally {
       this.isProcessingQueue = false;
+      
+      // Update metrics
+      const processingTime = Date.now() - startTime;
+      this.metrics.total_processed += processedCount;
+      this.metrics.average_processing_time = 
+        (this.metrics.average_processing_time * (this.metrics.total_processed - processedCount) + processingTime) / 
+        this.metrics.total_processed;
+      
+      logger.info('Queue processing metrics:', this.metrics);
     }
   }
 
-  private async sendToSubscription(subscription: any, notification: any) {
+  private async sendToSubscription(subscription: PushSubscription, notification: QueuedNotification) {
     try {
       const pushSubscription = {
         endpoint: subscription.endpoint,
@@ -139,8 +179,8 @@ class NotificationService {
           title: notification.title,
           body: notification.body,
           data: notification.data,
-          icon: notification.icon,
-          badge: notification.badge,
+          icon: notification.data?.icon,
+          badge: notification.data?.badge,
         })
       );
 
@@ -189,10 +229,14 @@ class NotificationService {
       .from('notification_queue')
       .select('attempts')
       .eq('id', notificationId)
-      .single();
+      .maybeSingle();
 
     const attempts = (notification?.attempts || 0) + 1;
     const status = attempts >= 3 ? 'failed' : 'pending';
+
+    if (attempts > 1) {
+      this.metrics.retry_count++;
+    }
 
     await supabase
       .from('notification_queue')
@@ -261,7 +305,11 @@ class NotificationService {
           recipient_id: recipientId,
           title: payload.title,
           body: payload.body,
-          data: payload.data || {},
+          data: {
+            ...payload.data,
+            icon: payload.icon,
+            badge: payload.badge,
+          },
           priority,
           status: 'pending',
         });
@@ -276,6 +324,10 @@ class NotificationService {
       logger.error('Error in queueNotification:', error);
       throw error;
     }
+  }
+
+  getMetrics(): NotificationMetrics {
+    return { ...this.metrics };
   }
 }
 
