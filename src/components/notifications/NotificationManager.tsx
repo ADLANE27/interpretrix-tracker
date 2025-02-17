@@ -1,80 +1,47 @@
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { subscribeToNotifications, unsubscribeFromNotifications } from '@/utils/notifications';
 import { Button } from "@/components/ui/button";
 import { Bell, BellOff } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
+import { useSupabaseConnection } from '@/hooks/useSupabaseConnection';
 
 export const NotificationManager = () => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const connection = useSupabaseConnection();
 
   const checkSubscriptionStatus = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setIsLoading(false);
-        return;
+        return false;
       }
 
-      const { data: subscriptions, error: subscriptionError } = await supabase
+      const { data: subscriptions } = await supabase
         .from('push_subscriptions')
         .select('status')
         .eq('interpreter_id', session.user.id)
         .eq('status', 'active')
         .maybeSingle();
 
-      if (subscriptionError) {
-        console.error('Error checking subscription status:', subscriptionError);
-        if (subscriptionError.code === 'PGRST116') {
-          setIsLoading(false);
-          return;
-        }
-      }
-
       setIsSubscribed(!!subscriptions);
-      setIsLoading(false);
+      return !!subscriptions;
     } catch (error) {
       console.error('Error checking subscription status:', error);
+      return false;
+    } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    const setupAuth = async () => {
-      if (!mounted) return;
-
-      await checkSubscriptionStatus();
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!mounted) return;
-
-        if (event === 'SIGNED_OUT' || !session) {
-          setIsSubscribed(false);
-          setIsLoading(false);
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          await checkSubscriptionStatus();
-        }
-      });
-
-      return subscription;
-    };
-
-    const subscription = setupAuth();
-
-    return () => {
-      mounted = false;
-      // Clean up subscription
-      if (subscription) {
-        subscription.then(sub => sub.unsubscribe());
-      }
-    };
+    checkSubscriptionStatus();
   }, [checkSubscriptionStatus]);
 
   const handleSubscribe = async () => {
@@ -85,21 +52,28 @@ export const NotificationManager = () => {
         return;
       }
 
-      await subscribeToNotifications();
-      await checkSubscriptionStatus();
-      toast({
-        title: "Notifications activées",
-        description: "Vous recevrez désormais des notifications pour les nouvelles missions",
-      });
-    } catch (error: any) {
-      console.error('Error subscribing to notifications:', error);
-      if (error.message?.includes('refresh_token_not_found')) {
-        navigate('/interpreter/login');
+      if (!connection || connection.state !== 'joined') {
+        toast({
+          title: "Erreur de connexion",
+          description: "La connexion n'est pas établie. Veuillez rafraîchir la page.",
+          variant: "destructive",
+        });
         return;
       }
+
+      const success = await subscribeToNotifications();
+      if (success) {
+        await checkSubscriptionStatus();
+        toast({
+          title: "Notifications activées",
+          description: "Vous recevrez désormais des notifications pour les nouvelles missions",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error subscribing to notifications:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'activer les notifications",
+        description: "Impossible d'activer les notifications. Veuillez réessayer.",
         variant: "destructive",
       });
     }
@@ -121,10 +95,6 @@ export const NotificationManager = () => {
       });
     } catch (error: any) {
       console.error('Error unsubscribing from notifications:', error);
-      if (error.message?.includes('refresh_token_not_found')) {
-        navigate('/interpreter/login');
-        return;
-      }
       toast({
         title: "Erreur",
         description: "Impossible de désactiver les notifications",
@@ -143,6 +113,7 @@ export const NotificationManager = () => {
       size="sm"
       onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
       className="flex items-center gap-2"
+      disabled={!connection || connection.state !== 'joined'}
     >
       {isSubscribed ? (
         <>
