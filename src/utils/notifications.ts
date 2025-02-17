@@ -1,9 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Global state for subscription
 let subscription: PushSubscription | null = null;
 
-const SERVER_URL = import.meta.env.VITE_NOTIFICATION_SERVER_URL || 'http://localhost:3000';
+const SERVER_URL = import.meta.env.VITE_NOTIFICATION_SERVER_URL || '/.netlify/functions/notification-server';
 
 // Validate base64url string format
 const isValidBase64Url = (str: string): boolean => {
@@ -94,10 +95,10 @@ export async function subscribeToNotifications() {
       return false;
     }
 
-    console.log('[Push] Fetching VAPID key from:', `${SERVER_URL}/api/vapid/public-key`);
+    console.log('[Push] Fetching VAPID key from:', `${SERVER_URL}/vapid/public-key`);
 
-    // Get VAPID public key from Node.js server
-    const response = await fetch(`${SERVER_URL}/api/vapid/public-key`);
+    // Get VAPID public key from server
+    const response = await fetch(`${SERVER_URL}/vapid/public-key`);
     if (!response.ok) {
       console.error('[Push] Failed to get VAPID key, status:', response.status);
       throw new Error('Could not get VAPID key');
@@ -125,18 +126,12 @@ export async function subscribeToNotifications() {
     });
     console.log('[Push] Push subscription created');
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
-
     // Get subscription keys
     const keys = getSubscriptionKeys(subscription);
 
     console.log('[Push] Saving subscription to server...');
-    // Save subscription to Node.js server
-    const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
+    // Save subscription to server
+    const saveResponse = await fetch(`${SERVER_URL}/notifications/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -174,14 +169,8 @@ export async function unsubscribeFromNotifications() {
       throw new Error('No push subscription found');
     }
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Notify Node.js server about unsubscription
-    const response = await fetch(`${SERVER_URL}/api/notifications/unsubscribe`, {
+    // Notify server about unsubscription
+    const response = await fetch(`${SERVER_URL}/notifications/unsubscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
