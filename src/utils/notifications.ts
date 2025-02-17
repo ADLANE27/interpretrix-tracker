@@ -1,10 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Global state for subscription
 let subscription: PushSubscription | null = null;
 
-const SERVER_URL = 'http://localhost:3000'; // TODO: Use environment variable
+const SERVER_URL = import.meta.env.VITE_NOTIFICATION_SERVER_URL || 'http://localhost:3000';
 
 // Validate base64url string format
 const isValidBase64Url = (str: string): boolean => {
@@ -95,12 +94,16 @@ export async function subscribeToNotifications() {
       return false;
     }
 
+    console.log('[Push] Fetching VAPID key from:', `${SERVER_URL}/api/vapid/public-key`);
+
     // Get VAPID public key from Node.js server
     const response = await fetch(`${SERVER_URL}/api/vapid/public-key`);
     if (!response.ok) {
+      console.error('[Push] Failed to get VAPID key, status:', response.status);
       throw new Error('Could not get VAPID key');
     }
     const { publicKey } = await response.json();
+    console.log('[Push] Got VAPID public key');
 
     // Register service worker
     const registration = await navigator.serviceWorker.getRegistration();
@@ -115,10 +118,12 @@ export async function subscribeToNotifications() {
     }
 
     // Create new subscription
+    console.log('[Push] Subscribing to push notifications...');
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
+    console.log('[Push] Push subscription created');
 
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -129,6 +134,7 @@ export async function subscribeToNotifications() {
     // Get subscription keys
     const keys = getSubscriptionKeys(subscription);
 
+    console.log('[Push] Saving subscription to server...');
     // Save subscription to Node.js server
     const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
       method: 'POST',
@@ -144,9 +150,11 @@ export async function subscribeToNotifications() {
     });
 
     if (!saveResponse.ok) {
+      console.error('[Push] Failed to save subscription, status:', saveResponse.status);
       throw new Error('Failed to save subscription to server');
     }
 
+    console.log('[Push] Subscription saved successfully');
     return true;
   } catch (error) {
     console.error('[Push] Error subscribing to notifications:', error);

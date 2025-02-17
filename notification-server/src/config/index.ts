@@ -14,8 +14,9 @@ const configSchema = z.object({
   supabaseUrl: z.string().url(),
   supabaseServiceKey: z.string().min(1),
   cors: z.object({
-    origin: z.union([z.string(), z.array(z.string())]).default('http://localhost:5173'),
+    origin: z.union([z.string(), z.array(z.string())]).default(['http://localhost:5173', 'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com']),
   }),
+  publicUrl: z.string().url().default('https://your-notification-server-url.com'),
 });
 
 // Parse and validate configuration
@@ -27,6 +28,7 @@ export const config = configSchema.parse({
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
   cors: {
-    origin: process.env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173', 'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com'],
   },
+  publicUrl: process.env.PUBLIC_URL,
 });
