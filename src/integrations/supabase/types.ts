@@ -560,47 +560,6 @@ export type Database = {
         }
         Relationships: []
       }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          id: string
-          p256dh: string
-          updated_at: string
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          p256dh: string
-          updated_at?: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          p256dh?: string
-          updated_at?: string
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       secrets: {
         Row: {
           created_at: string
@@ -656,33 +615,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      vapid_keys: {
-        Row: {
-          created_at: string
-          id: string
-          is_active: boolean | null
-          private_key: string
-          public_key: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          private_key: string
-          public_key: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_active?: boolean | null
-          private_key?: string
-          public_key?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {
@@ -1073,14 +1005,6 @@ export type Database = {
             }
             Returns: string
           }
-      validate_vapid_keys: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          public_key: string
-          is_valid: boolean
-          error_message: string
-        }[]
-      }
     }
     Enums: {
       employment_status:
