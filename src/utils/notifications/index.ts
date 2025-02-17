@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { showCustomPermissionMessage } from "./permissionHandling";
 import { playNotificationSound } from "../notificationSounds";
 
+const SERVER_URL = 'http://localhost:3000'; // Node.js notification server URL
+
 export async function subscribeToNotifications() {
   try {
     // Check authentication
@@ -45,43 +47,58 @@ export async function subscribeToNotifications() {
     });
     await navigator.serviceWorker.ready;
 
-    // Get VAPID key
-    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key');
-    
-    if (vapidError || !vapidData?.vapidPublicKey) {
-      throw new Error('Could not get VAPID key');
+    try {
+      // Get subscription from service worker
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+
+      // Get VAPID key from notification server
+      const response = await fetch(`${SERVER_URL}/api/vapid/public-key`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not get VAPID key from server');
+      }
+
+      const { publicKey } = await response.json();
+
+      // Subscribe to push notifications
+      const newSubscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey
+      });
+
+      // Save subscription to notification server
+      const saveResponse = await fetch(`${SERVER_URL}/api/notifications/subscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(newSubscription)
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save subscription to server');
+      }
+
+      // Preload notification sounds
+      await Promise.all([
+        playNotificationSound('immediate', true),
+        playNotificationSound('scheduled', true)
+      ]);
+
+      return true;
+    } catch (error) {
+      console.error('[Notifications] Error in subscription process:', error);
+      throw error;
     }
-
-    // Subscribe to push notifications
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: vapidData.vapidPublicKey
-    });
-
-    // Save subscription
-    const { error: subError } = await supabase.from('web_push_subscriptions').upsert({
-      user_id: session.user.id,
-      endpoint: subscription.endpoint,
-      p256dh_key: Buffer.from(subscription.getKey('p256dh') as ArrayBuffer).toString('base64'),
-      auth_key: Buffer.from(subscription.getKey('auth') as ArrayBuffer).toString('base64'),
-      user_agent: navigator.userAgent,
-      status: 'active'
-    }, {
-      onConflict: 'endpoint'
-    });
-
-    if (subError) {
-      throw subError;
-    }
-
-    // Preload notification sounds
-    await Promise.all([
-      playNotificationSound('immediate', true),
-      playNotificationSound('scheduled', true)
-    ]);
-
-    return true;
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Notifications] Subscription error:', error);
     if (error.name === 'NotAllowedError') {
       showCustomPermissionMessage();
@@ -107,17 +124,18 @@ export async function unsubscribeFromNotifications() {
       throw new Error('No push subscription found');
     }
 
-    // Update subscription status
-    const { error: updateError } = await supabase.from('web_push_subscriptions')
-      .update({
-        status: 'expired',
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', session.user.id)
-      .eq('endpoint', subscription.endpoint);
+    // Notify server about unsubscription
+    const response = await fetch(`${SERVER_URL}/api/notifications/unsubscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(subscription)
+    });
 
-    if (updateError) {
-      throw updateError;
+    if (!response.ok) {
+      throw new Error('Failed to unsubscribe on server');
     }
 
     // Unsubscribe from push manager

@@ -10,6 +10,8 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+const SERVER_URL = 'http://localhost:3000';
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,15 +24,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const { data: subscriptions } = await supabase
-        .from('web_push_subscriptions')
-        .select('status')
-        .eq('user_id', session.user.id)
-        .eq('status', 'active')
-        .maybeSingle();
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        setIsLoading(false);
+        return false;
+      }
 
-      setIsSubscribed(!!subscriptions);
-      return !!subscriptions;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        setIsLoading(false);
+        return false;
+      }
+
+      // Verify subscription with server
+      const response = await fetch(`${SERVER_URL}/api/notifications/status`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('[NotificationContext] Server status check failed');
+        setIsSubscribed(false);
+        return false;
+      }
+
+      const { isActive } = await response.json();
+      setIsSubscribed(isActive);
+      return isActive;
     } catch (error) {
       console.error('[NotificationContext] Error checking subscription status:', error);
       return false;
