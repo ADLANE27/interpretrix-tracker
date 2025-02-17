@@ -4,6 +4,12 @@ import { showCustomPermissionMessage } from "./permissionHandling";
 
 export async function subscribeToNotifications() {
   try {
+    // Vérifier la session d'abord
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('User not authenticated');
+    }
+
     // Check if we're in a secure context
     if (!window.isSecureContext) {
       console.error('[Notifications] Not in a secure context');
@@ -59,8 +65,13 @@ export async function subscribeToNotifications() {
     await navigator.serviceWorker.ready;
     console.log('[Notifications] Service Worker ready');
 
-    // Get VAPID key
-    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key');
+    // Get VAPID key with session token
+    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-public-key', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+    
     if (vapidError || !vapidData?.vapidPublicKey) {
       console.error('[Notifications] VAPID key error:', vapidError);
       throw new Error('Could not get VAPID key');
@@ -73,15 +84,8 @@ export async function subscribeToNotifications() {
       applicationServerKey: vapidData.vapidPublicKey
     });
 
-    // Save subscription
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('[Notifications] No authenticated user');
-      throw new Error('User not authenticated');
-    }
-
     const { error: subError } = await supabase.from('push_subscriptions').upsert({
-      interpreter_id: user.id,
+      interpreter_id: session.user.id,
       endpoint: subscription.endpoint,
       p256dh: Buffer.from(subscription.getKey('p256dh') as ArrayBuffer).toString('base64'),
       auth: Buffer.from(subscription.getKey('auth') as ArrayBuffer).toString('base64'),
@@ -110,6 +114,12 @@ export async function subscribeToNotifications() {
 
 export async function unsubscribeFromNotifications() {
   try {
+    // Vérifier la session d'abord
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('User not authenticated');
+    }
+
     console.log('[Notifications] Unsubscribing from notifications');
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
@@ -123,20 +133,13 @@ export async function unsubscribeFromNotifications() {
       throw new Error('No push subscription found');
     }
 
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('[Notifications] No authenticated user');
-      throw new Error('User not authenticated');
-    }
-
     // Update subscription status
     const { error: updateError } = await supabase.from('push_subscriptions')
       .update({
         status: 'expired',
         updated_at: new Date().toISOString()
       })
-      .eq('interpreter_id', user.id)
+      .eq('interpreter_id', session.user.id)
       .eq('endpoint', subscription.endpoint);
 
     if (updateError) {
