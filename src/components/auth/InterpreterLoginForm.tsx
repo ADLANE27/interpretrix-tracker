@@ -39,14 +39,14 @@ export const InterpreterLoginForm = () => {
         throw new Error("No session created");
       }
 
-      // Set session in localStorage
-      localStorage.setItem('supabase.auth.token', data.session.access_token);
-
-      // Set session in Supabase client
+      // Let Supabase handle the session
       await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       });
+
+      // Wait a bit to ensure session is properly initialized
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       toast({
         title: "Connexion réussie",
@@ -54,15 +54,8 @@ export const InterpreterLoginForm = () => {
         duration: 3000,
       });
 
-      // Pre-warm the dashboard route
-      const dashboardUrl = "/interpreter";
-      const link = document.createElement('link');
-      link.rel = 'prefetch';
-      link.href = dashboardUrl;
-      document.head.appendChild(link);
-
       // Navigate to dashboard
-      navigate(dashboardUrl);
+      navigate("/interpreter");
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
