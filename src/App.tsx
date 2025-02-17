@@ -1,3 +1,4 @@
+
 import { BrowserRouter } from 'react-router-dom';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import { Toaster } from "@/components/ui/toaster";
