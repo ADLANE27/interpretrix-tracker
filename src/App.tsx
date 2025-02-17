@@ -8,8 +8,6 @@ import AdminLogin from './pages/AdminLogin';
 import Admin from './pages/Admin';
 import Index from './pages/Index';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
-import { MissionsTab } from '@/components/interpreter/MissionsTab';
-import { ProfileTab } from '@/components/interpreter/ProfileTab';
 
 function App() {
   return (
@@ -20,11 +18,7 @@ function App() {
 
         {/* Interpreter Routes */}
         <Route path="/interpreter/login" element={<InterpreterLogin />} />
-        <Route path="/interpreter" element={<AuthenticatedLayout />}>
-          <Route index element={<MissionsTab />} />
-          <Route path="missions" element={<MissionsTab />} />
-          <Route path="profile" element={<ProfileTab />} />
-        </Route>
+        <Route path="/interpreter" element={<AuthenticatedLayout />} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />

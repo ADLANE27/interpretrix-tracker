@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,62 +13,30 @@ export const InterpreterLoginForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  }, []);
-
-  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (loading) return;
+    
     setLoading(true);
-
     try {
-      console.log('Attempting login...');
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
 
       if (error) throw error;
 
-      if (!data.session) {
-        throw new Error("No session created");
-      }
-
-      console.log('Login successful, attempting to set session...');
-
-      // Let's first verify we have a valid session
-      const currentSession = await supabase.auth.getSession();
-      console.log('Current session:', currentSession);
-
-      // Navigate only after confirming we have a valid session
-      if (currentSession.data.session) {
-        console.log('Session confirmed, navigating...');
-        toast({
-          title: "Connexion réussie",
-          description: "Bienvenue !",
-          duration: 3000,
-        });
-
-        // Navigate to dashboard
-        navigate("/interpreter");
-      } else {
-        throw new Error("Failed to initialize session");
-      }
+      navigate("/interpreter");
     } catch (error: any) {
       console.error('Login error:', error);
-      setLoading(false); // Make sure to reset loading state on error
       toast({
         title: "Erreur de connexion",
         description: error.message || "Une erreur est survenue",
         variant: "destructive",
         duration: 5000,
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,7 +49,7 @@ export const InterpreterLoginForm = () => {
             type="email"
             placeholder="Email"
             value={email}
-            onChange={handleEmailChange}
+            onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full"
             autoComplete="email"
@@ -93,7 +61,7 @@ export const InterpreterLoginForm = () => {
             type="password"
             placeholder="Mot de passe"
             value={password}
-            onChange={handlePasswordChange}
+            onChange={(e) => setPassword(e.target.value)}
             required
             className="w-full"
             autoComplete="current-password"
