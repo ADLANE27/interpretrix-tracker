@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { ChannelList } from "./ChannelList";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSounds";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { RealtimeChannel } from "@supabase/supabase-js";
 
 export const MessagesTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -25,6 +24,7 @@ export const MessagesTab = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const channelRef = useRef<any>(null);
 
   const { data: userRole } = useQuery({
     queryKey: ['userRole'],
@@ -44,68 +44,76 @@ export const MessagesTab = () => {
 
   const isAdmin = userRole === 'admin';
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const setupRealtimeSubscription = () => {
-    console.log('[MessagesTab] Setting up realtime subscription');
-    
-    if (channelRef.current) {
-      console.log('[MessagesTab] Removing existing channel');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    // Create a new channel with proper configuration
-    const channel = supabase.channel('mission-updates', {
-      config: {
-        broadcast: { self: true },
-        presence: { key: 'mission-updates' },
+  useEffect(() => {
+    const setupRealtimeSubscription = () => {
+      // Clean up existing subscription if any
+      if (channelRef.current) {
+        console.log('[MessagesTab] Removing existing channel');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
-    });
 
-    // Add subscription handlers
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'interpretation_missions'
-        },
-        async (payload: any) => {
-          console.log('[MessagesTab] New mission created:', payload);
-          
-          if (payload.new) {
-            const mission = payload.new;
-            const isImmediate = mission.mission_type === 'immediate';
+      // Create a new channel
+      console.log('[MessagesTab] Setting up new channel');
+      channelRef.current = supabase.channel('mission-updates', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: 'mission-updates' },
+        }
+      });
 
-            if (!isMobile) {
-              toast({
-                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                variant: isImmediate ? "destructive" : "default",
-                duration: 10000,
-              });
-            }
+      // Add subscription handlers
+      channelRef.current
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'interpretation_missions'
+          },
+          async (payload: any) => {
+            console.log('[MessagesTab] New mission created:', payload);
+            
+            if (payload.new) {
+              const mission = payload.new;
+              const isImmediate = mission.mission_type === 'immediate';
 
-            if (soundEnabled) {
-              try {
-                console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
-                await playNotificationSound(mission.mission_type);
-              } catch (error) {
-                console.error('[MessagesTab] Error playing sound:', error);
+              if (!isMobile) {
+                toast({
+                  title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                  description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                  variant: isImmediate ? "destructive" : "default",
+                  duration: 10000,
+                });
+              }
+
+              if (soundEnabled) {
+                try {
+                  console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
+                  await playNotificationSound(mission.mission_type);
+                } catch (error) {
+                  console.error('[MessagesTab] Error playing sound:', error);
+                }
               }
             }
           }
-        }
-      )
-      .subscribe((status) => {
-        console.log('[MessagesTab] Subscription status:', status);
-      });
+        )
+        .subscribe((status) => {
+          console.log('[MessagesTab] Subscription status:', status);
+        });
+    };
 
-    channelRef.current = channel;
-  };
+    setupRealtimeSubscription();
+
+    // Cleanup function
+    return () => {
+      console.log('[MessagesTab] Cleaning up subscription');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [soundEnabled, toast, isMobile]); // Only re-run when these dependencies change
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
