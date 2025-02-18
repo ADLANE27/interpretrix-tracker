@@ -49,40 +49,101 @@ export const InterpreterProfile = () => {
   const checkAdminStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log("[InterpreterProfile] No authenticated user found");
+        return;
+      }
 
-      const { data: userRole } = await supabase
+      console.log("[InterpreterProfile] Checking admin status for user:", user.id);
+      const { data: userRole, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .maybeSingle();
 
+      if (roleError) {
+        console.error("[InterpreterProfile] Error fetching user role:", roleError);
+        return;
+      }
+
+      console.log("[InterpreterProfile] User role data:", userRole);
       setIsAdmin(userRole?.role === 'admin');
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      console.error('[InterpreterProfile] Error checking admin status:', error);
     }
   };
 
   const fetchProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) {
+        console.log("[InterpreterProfile] No authenticated user found");
+        toast({
+          title: "Non authentifié",
+          description: "Veuillez vous connecter pour accéder à votre profil",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      console.log("[InterpreterProfile] Fetching profile for user:", user.id);
+      
+      // Vérifier d'abord si le profil existe
+      const { count, error: countError } = await supabase
+        .from("interpreter_profiles")
+        .select('*', { count: 'exact', head: true })
+        .eq("id", user.id);
+        
+      if (countError) {
+        console.error("[InterpreterProfile] Error checking profile existence:", countError);
+        throw countError;
+      }
+
+      console.log("[InterpreterProfile] Profile count:", count);
+      
+      if (count === 0) {
+        console.log("[InterpreterProfile] No profile found, attempting to create one");
+        // Si le profil n'existe pas, on en crée un nouveau
+        const { error: insertError } = await supabase
+          .from("interpreter_profiles")
+          .insert({
+            id: user.id,
+            first_name: '',
+            last_name: '',
+            email: user.email || '',
+            employment_status: 'salaried_aft',
+            languages: [],
+          });
+
+        if (insertError) {
+          console.error("[InterpreterProfile] Error creating profile:", insertError);
+          throw insertError;
+        }
+      }
+
+      // Maintenant on peut récupérer le profil
       const { data, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[InterpreterProfile] Error fetching profile:", error);
+        throw error;
+      }
+
       if (!data) {
+        console.log("[InterpreterProfile] Still no profile found after creation attempt");
         toast({
           title: "Profil non trouvé",
-          description: "Impossible de trouver votre profil",
+          description: "Impossible de trouver ou créer votre profil",
           variant: "destructive",
         });
         return;
       }
+
+      console.log("[InterpreterProfile] Profile data retrieved:", data);
 
       // Transform language strings to LanguagePair objects
       const languagePairs: LanguagePair[] = data.languages.map((lang: string) => {
@@ -114,7 +175,7 @@ export const InterpreterProfile = () => {
 
       setProfile(transformedProfile);
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      console.error("[InterpreterProfile] Error in profile flow:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger votre profil",
