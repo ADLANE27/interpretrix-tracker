@@ -3,18 +3,53 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 import webpush from 'https://esm.sh/web-push@3.6.6'
 
+// Configuration CORS sécurisée avec validation de l'origine
+const ALLOWED_ORIGIN = 'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com'
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400', // Cache les résultats du preflight pendant 24h
 }
 
 serve(async (req) => {
-  // 1. Gestion améliorée du CORS preflight
+  // Validation de l'origine
+  const origin = req.headers.get('origin')
+  console.log('[send-test-notification] Request origin:', origin)
+
+  if (origin !== ALLOWED_ORIGIN) {
+    console.error('[send-test-notification] Invalid origin:', origin)
+    return new Response('Invalid origin', { 
+      status: 403,
+      headers: {
+        'Content-Type': 'text/plain'
+      }
+    })
+  }
+
+  // Gestion explicite des requêtes OPTIONS (CORS preflight)
   if (req.method === 'OPTIONS') {
     console.log('[send-test-notification] Handling CORS preflight request')
-    return new Response(null, { 
-      headers: corsHeaders,
-      status: 204
+    return new Response(null, {
+      status: 204, // No content
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      }
+    })
+  }
+
+  // Validation de la méthode HTTP
+  if (req.method !== 'POST') {
+    console.error('[send-test-notification] Invalid method:', req.method)
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: {
+        ...corsHeaders,
+        'Allow': 'POST, OPTIONS',
+        'Content-Type': 'text/plain'
+      }
     })
   }
 
@@ -46,7 +81,7 @@ serve(async (req) => {
       vapidPrivateKey
     )
 
-    // 3. Validation et parsing du body de la requête
+    // Validation et parsing du body de la requête
     const { userId, title, body, data } = await req.json()
     
     if (!userId || !title || !body) {
