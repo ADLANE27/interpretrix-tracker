@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +18,6 @@ import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
-import { InterpreterList } from "./InterpreterList";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
@@ -35,37 +35,9 @@ interface UserData {
   status?: string;
 }
 
-interface InterpreterData extends Omit<UserData, 'role'> {
-  employment_status: EmploymentStatus;
-}
-
-const formatInterpreterForDisplay = (interpreter: any) => {
-  // Ensure we have valid languages array and filter out any corrupted entries
-  const validLanguages = Array.isArray(interpreter.languages) 
-    ? interpreter.languages.filter((lang: string) => {
-        if (!lang || typeof lang !== 'string') return false;
-        const [source, target] = lang.split('→').map(part => part.trim());
-        return source && target && !source.includes('undefined') && !target.includes('undefined');
-      })
-    : [];
-
-  return {
-    id: interpreter.id,
-    name: `${interpreter.first_name} ${interpreter.last_name}`,
-    email: interpreter.email,
-    status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "available",
-    employment_status: interpreter.employment_status,
-    languages: validLanguages,
-    hourlyRate: (interpreter.tarif_15min || 0) * 4,
-    active: interpreter.active
-  };
-};
-
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
-  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -82,40 +54,6 @@ export const UserManagement = () => {
         .select("*");
 
       if (rolesError) throw rolesError;
-
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from("interpreter_profiles")
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          employment_status,
-          languages,
-          status,
-          tarif_15min,
-          tarif_5min,
-          password_changed
-        `);
-
-      if (interpreterError) throw interpreterError;
-
-      const userRolesMap = new Map(
-        userRoles.map(role => [role.user_id, role])
-      );
-
-      const interpretersWithStatus = interpreterProfiles.map(profile => {
-        const userRole = userRolesMap.get(profile.id);
-        return {
-          ...profile,
-          active: userRole?.active ?? false,
-          role: 'interpreter' as const,
-          employment_status: profile.employment_status || 'salaried_aft',
-          tarif_5min: profile.tarif_5min || 0,
-          tarif_15min: profile.tarif_15min || 0,
-          languages: Array.isArray(profile.languages) ? profile.languages : []
-        };
-      });
 
       const adminUsers: UserData[] = await Promise.all(
         userRoles
@@ -156,12 +94,11 @@ export const UserManagement = () => {
           })
       );
 
-      return [...adminUsers, ...interpretersWithStatus] as UserData[];
+      return adminUsers as UserData[];
     },
   });
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];
-  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
@@ -236,77 +173,6 @@ export const UserManagement = () => {
     }
   };
 
-  const handleEditUser = async (formData: InterpreterFormData) => {
-    if (!selectedUser) return;
-
-    try {
-      setIsSubmitting(true);
-
-      const { data: profile, error: profileCheckError } = await supabase
-        .from("interpreter_profiles")
-        .select("password_changed, languages")
-        .eq("id", selectedUser.id)
-        .single();
-
-      if (profileCheckError) throw profileCheckError;
-
-      if (!profile.password_changed) {
-        toast({
-          title: "Action impossible",
-          description: "L'interprète doit d'abord se connecter et changer son mot de passe avant de pouvoir modifier son profil.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const languageStrings = formData.languages.map(
-        (pair) => `${pair.source}→${pair.target}`
-      );
-
-      const existingLanguages = Array.isArray(profile.languages) ? profile.languages : [];
-      const updatedLanguages = languageStrings.length > 0 ? languageStrings : existingLanguages;
-
-      const addressJson = formData.address ? {
-        street: formData.address.street,
-        postal_code: formData.address.postal_code,
-        city: formData.address.city,
-      } : null;
-
-      const { error: profileError } = await supabase
-        .from("interpreter_profiles")
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          email: formData.email,
-          employment_status: formData.employment_status,
-          languages: updatedLanguages,
-          address: addressJson,
-          tarif_15min: formData.tarif_15min,
-          tarif_5min: formData.tarif_5min
-        })
-        .eq("id", selectedUser.id);
-
-      if (profileError) throw profileError;
-
-      toast({
-        title: "Profil mis à jour",
-        description: "Le profil de l'interprète a été mis à jour avec succès",
-      });
-
-      setIsEditUserOpen(false);
-      refetch();
-    } catch (error: any) {
-      console.error("Error updating user:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleDeleteUser = async (userId: string) => {
     try {
       const { error: roleError } = await supabase
@@ -367,7 +233,7 @@ export const UserManagement = () => {
       const { error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
-          password: password,  // Fixed: changed from newPassword to password
+          password: password,
         },
       });
 
@@ -474,41 +340,6 @@ export const UserManagement = () => {
           setIsResetPasswordOpen(true);
         }}
       />
-
-      <InterpreterList
-        interpreters={interpreterUsers}
-        onToggleStatus={toggleUserStatus}
-        onDeleteUser={handleDeleteUser}
-        onEditUser={(user) => {
-          setSelectedUser(user);
-          setIsEditUserOpen(true);
-        }}
-        onResetPassword={(userId) => {
-          setSelectedUserId(userId);
-          setIsResetPasswordOpen(true);
-        }}
-      />
-
-      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <ScrollArea className="max-h-[85vh]">
-            <DialogHeader>
-              <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
-              <DialogDescription>
-                Modifiez les informations de l'interprète.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedUser && (
-              <InterpreterProfileForm
-                isEditing={true}
-                onSubmit={handleEditUser}
-                initialData={selectedUser}
-                isSubmitting={isSubmitting}
-              />
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
