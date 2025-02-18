@@ -1,127 +1,87 @@
 
-// Cache name
-const CACHE_NAME = 'aftraduction-cache-v1';
+// Cache name for static assets
+const CACHE_NAME = 'interpreter-cache-v1';
 
-// Assets to cache
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/favicon.ico',
-  '/manifest.json'
-];
-
-// Installation du Service Worker
+// Handle installation
 self.addEventListener('install', (event) => {
+  console.log('[ServiceWorker] Installing Service Worker...', event);
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Service Worker] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .catch((error) => {
-        console.error('[Service Worker] Cache failed:', error);
+      .then(cache => {
+        console.log('[ServiceWorker] Caching app shell');
+        return cache.addAll([
+          '/',
+          '/index.html',
+          '/manifest.json'
+        ]);
       })
   );
 });
 
-// Activation et nettoyage des anciens caches
+// Handle activation
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+  console.log('[ServiceWorker] Activating Service Worker...', event);
+  return self.clients.claim();
 });
 
-// Gestion des notifications push
+// Handle push notifications
 self.addEventListener('push', (event) => {
-  if (!event.data) {
-    console.log('[Service Worker] Push reçu mais pas de données');
-    return;
-  }
+  console.log('[ServiceWorker] Push Received:', event);
 
-  try {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'Nouvelle notification',
-      icon: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png',
-      badge: '/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png',
-      data: {
-        url: data.url || '/',
-        ...data.data
-      },
-      actions: data.actions || [],
-      vibrate: [200, 100, 200],
-      tag: data.tag || 'default',
-      renotify: true,
-      requireInteraction: true
-    };
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      console.log('[ServiceWorker] Push data:', data);
 
-    event.waitUntil(
-      self.registration.showNotification(
-        data.title || 'AFTraduction',
-        options
-      )
-    );
-  } catch (error) {
-    console.error('[Service Worker] Erreur lors du traitement de la notification:', error);
+      const options = {
+        body: data.body,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        data: data.data || {},
+        actions: [
+          {
+            action: 'open',
+            title: 'Ouvrir'
+          }
+        ]
+      };
+
+      event.waitUntil(
+        self.registration.showNotification(data.title, options)
+      );
+    } catch (error) {
+      console.error('[ServiceWorker] Error processing push event:', error);
+    }
   }
 });
 
-// Gestion du clic sur la notification
+// Handle notification click
 self.addEventListener('notificationclick', (event) => {
+  console.log('[ServiceWorker] Notification click Received:', event);
+
   event.notification.close();
 
-  // URL par défaut ou URL spécifiée dans la notification
-  const urlToOpen = event.notification.data?.url || '/';
+  // Get the target URL from the notification data
+  const targetUrl = event.notification.data.url || '/';
 
   event.waitUntil(
-    clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true
-    })
-    .then((windowClients) => {
-      // Chercher si une fenêtre est déjà ouverte
-      const matchingClient = windowClients.find((client) => {
-        const url = new URL(client.url);
-        return url.pathname === urlToOpen;
-      });
-
-      if (matchingClient) {
-        // Si une fenêtre existe, la focus
-        return matchingClient.focus();
-      }
-
-      // Sinon, ouvrir une nouvelle fenêtre
-      return clients.openWindow(urlToOpen);
-    })
-    .catch((error) => {
-      console.error('[Service Worker] Erreur lors de la redirection:', error);
-    })
+    clients.matchAll({ type: 'window' })
+      .then(windowClients => {
+        // Check if there is already a window/tab open with the target URL
+        for (let client of windowClients) {
+          if (client.url === targetUrl && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window/tab is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
   );
 });
 
-// Stratégie de cache pour les requêtes
+// Handle fetch events (important for CORS)
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Retourner la réponse du cache si elle existe
-        if (response) {
-          return response;
-        }
-        // Sinon faire la requête réseau
-        return fetch(event.request);
-      })
-      .catch((error) => {
-        console.error('[Service Worker] Fetch failed:', error);
-      })
-  );
+  console.log('[ServiceWorker] Fetch event:', event.request.url);
 });

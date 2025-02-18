@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Bell } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { registerPushNotifications, checkPushNotificationStatus } from "@/utils/pushNotifications";
 
 export function NotificationTestButton() {
   const { toast } = useToast();
@@ -14,17 +15,25 @@ export function NotificationTestButton() {
   const sendTestNotification = async () => {
     try {
       setIsLoading(true);
+      console.log('[NotificationTestButton] Starting test notification process');
 
-      // 1. Vérification de la session et récupération du token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("[NotificationTestButton] Session error:", sessionError);
-        throw new Error("Erreur lors de la vérification de la session");
+      // 1. Check current notification status
+      const status = await checkPushNotificationStatus();
+      console.log('[NotificationTestButton] Current notification status:', status);
+
+      // If notifications aren't enabled, try to register them
+      if (!status.enabled) {
+        console.log('[NotificationTestButton] Notifications not enabled, attempting registration');
+        const registration = await registerPushNotifications();
+        if (!registration.success) {
+          throw new Error(registration.message);
+        }
       }
-      
-      if (!session?.access_token || !session?.user) {
-        console.log("[NotificationTestButton] No active session or access token");
+
+      // 2. Get session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) {
+        console.log('[NotificationTestButton] No active session');
         toast({
           title: "Non authentifié",
           description: "Vous devez être connecté pour utiliser cette fonctionnalité",
@@ -34,13 +43,12 @@ export function NotificationTestButton() {
         return;
       }
 
-      console.log("[NotificationTestButton] Calling edge function with auth token");
+      console.log('[NotificationTestButton] Calling edge function');
       
-      // 2. Appel de la fonction avec les headers appropriés
+      // 3. Send test notification
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
         },
         body: {
           userId: session.user.id,
@@ -53,11 +61,11 @@ export function NotificationTestButton() {
       });
 
       if (error) {
-        console.error("[NotificationTestButton] Function error:", error);
+        console.error('[NotificationTestButton] Edge function error:', error);
         throw error;
       }
 
-      console.log("[NotificationTestButton] Notification sent successfully:", data);
+      console.log('[NotificationTestButton] Notification sent:', data);
 
       toast({
         title: "Notification envoyée",
@@ -65,7 +73,7 @@ export function NotificationTestButton() {
       });
 
     } catch (error) {
-      console.error("[NotificationTestButton] Error:", error);
+      console.error('[NotificationTestButton] Error:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification",

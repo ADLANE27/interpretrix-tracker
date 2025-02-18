@@ -1,66 +1,72 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Json } from "@/integrations/supabase/types";
 
-interface PushSubscriptionKeys {
-  p256dh: string;
-  auth: string;
-}
+// Convert base64 string to Uint8Array for applicationServerKey
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
 
-interface PushSubscriptionData {
-  endpoint: string;
-  expirationTime: number | null;
-  keys: PushSubscriptionKeys;
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 export const registerPushNotifications = async () => {
   try {
-    // 1. Vérifier si le Service Worker et Push sont supportés
+    console.log('[pushNotifications] Starting registration process');
+
+    // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      throw new Error('Les notifications push ne sont pas supportées par ce navigateur');
+      throw new Error('Push notifications are not supported');
     }
 
-    // 2. Demander la permission
+    // 2. Request permission
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      throw new Error('Permission refusée pour les notifications');
+      throw new Error('Permission denied for notifications');
     }
 
-    // 3. Récupérer la session utilisateur
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      throw new Error('Utilisateur non authentifié');
+    // 3. Get user session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.user) {
+      throw new Error('User not authenticated');
     }
 
-    // 4. Récupérer l'enregistrement du Service Worker
-    const registration = await navigator.serviceWorker.ready;
-    console.log('Service Worker prêt pour les notifications push');
+    // 4. Register service worker
+    console.log('[pushNotifications] Registering service worker');
+    const registration = await navigator.serviceWorker.register('/service-worker.js', {
+      scope: '/'
+    });
+    console.log('[pushNotifications] Service Worker registered');
 
-    // 5. S'abonner aux notifications push
+    // 5. Get VAPID public key
+    const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-keys');
+    if (vapidError || !vapidData?.publicKey) {
+      throw new Error('Failed to get VAPID public key');
+    }
+
+    // 6. Subscribe to push notifications
+    console.log('[pushNotifications] Subscribing to push notifications');
     const subscribeOptions = {
       userVisibleOnly: true,
-      applicationServerKey: process.env.VAPID_PUBLIC_KEY
+      applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
     };
 
     const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
-    console.log('Souscription push créée:', pushSubscription);
+    console.log('[pushNotifications] Push subscription created:', pushSubscription);
 
-    // 6. Convertir la souscription en objet compatible JSON
-    const subscriptionData: PushSubscriptionData = {
-      endpoint: pushSubscription.endpoint,
-      expirationTime: pushSubscription.expirationTime,
-      keys: {
-        p256dh: pushSubscription.toJSON().keys.p256dh,
-        auth: pushSubscription.toJSON().keys.auth
-      }
-    };
-
-    // 7. Enregistrer dans Supabase - Convertir explicitement en JSON
+    // 7. Save subscription to Supabase
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: JSON.parse(JSON.stringify(subscriptionData)) as Json
+        subscription: pushSubscription.toJSON()
       });
 
     if (upsertError) {
@@ -69,100 +75,43 @@ export const registerPushNotifications = async () => {
 
     return {
       success: true,
-      message: 'Notifications push activées avec succès'
+      message: 'Push notifications enabled successfully'
     };
 
   } catch (error) {
-    console.error('Erreur lors de l\'enregistrement des notifications push:', error);
+    console.error('[pushNotifications] Registration error:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Erreur lors de l\'activation des notifications push'
-    };
-  }
-};
-
-export const unregisterPushNotifications = async () => {
-  try {
-    // 1. Récupérer la session utilisateur
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      throw new Error('Utilisateur non authentifié');
-    }
-
-    // 2. Récupérer l'enregistrement du Service Worker
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-
-    // 3. Désabonner si une souscription existe
-    if (subscription) {
-      await subscription.unsubscribe();
-    }
-
-    // 4. Supprimer de Supabase
-    const { error: deleteError } = await supabase
-      .from('user_push_subscriptions')
-      .delete()
-      .eq('user_id', session.user.id);
-
-    if (deleteError) {
-      throw deleteError;
-    }
-
-    return {
-      success: true,
-      message: 'Notifications push désactivées avec succès'
-    };
-
-  } catch (error) {
-    console.error('Erreur lors de la désactivation des notifications push:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Erreur lors de la désactivation des notifications push'
+      message: error instanceof Error ? error.message : 'Failed to enable push notifications'
     };
   }
 };
 
 export const checkPushNotificationStatus = async () => {
   try {
-    // Vérifier si les notifications sont supportées
+    // Check if notifications are supported
     if (!('Notification' in window)) {
       return { enabled: false, permission: 'unsupported' };
     }
 
-    // Vérifier la permission actuelle
+    // Get current permission status
     const permission = Notification.permission;
 
-    // Vérifier si l'utilisateur est connecté
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      return { enabled: false, permission };
-    }
-
-    // Vérifier si une souscription existe dans Supabase
-    const { data: subscriptionData } = await supabase
-      .from('user_push_subscriptions')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .single();
-
-    // Vérifier si la souscription est active dans le navigateur
+    // Check if service worker is registered
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
 
-    const enabled = !!(subscription && subscriptionData);
-
     return {
-      enabled,
+      enabled: permission === 'granted' && !!subscription,
       permission,
-      subscription: enabled ? subscription : null
+      subscription
     };
-
   } catch (error) {
-    console.error('Erreur lors de la vérification du statut des notifications:', error);
+    console.error('[pushNotifications] Status check error:', error);
     return {
       enabled: false,
       permission: Notification.permission,
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };
