@@ -1,5 +1,5 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,53 +7,32 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-
-    const { data: publicKey, error: publicKeyError } = await supabaseAdmin
-      .from('secrets')
-      .select('value')
-      .eq('name', 'VAPID_PUBLIC_KEY')
-      .single()
-
-    if (publicKeyError) throw publicKeyError
-
-    const { data: privateKey, error: privateKeyError } = await supabaseAdmin
-      .from('secrets')
-      .select('value')
-      .eq('name', 'VAPID_PRIVATE_KEY')
-      .single()
-
-    if (privateKeyError) throw privateKeyError
+    // Get public key from environment variable
+    const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    
+    if (!publicKey) {
+      console.error('VAPID_PUBLIC_KEY not found in environment variables')
+      throw new Error('VAPID public key not configured')
+    }
 
     return new Response(
-      JSON.stringify({
-        publicKey: publicKey.value,
-        privateKey: privateKey.value
-      }),
+      JSON.stringify({ publicKey }),
       { 
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json' 
         },
         status: 200 
-      },
+      }
     )
   } catch (error) {
-    console.error('Error retrieving VAPID keys:', error)
+    console.error('Error retrieving VAPID key:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
@@ -62,7 +41,7 @@ serve(async (req) => {
           'Content-Type': 'application/json' 
         },
         status: 500
-      },
+      }
     )
   }
 })
