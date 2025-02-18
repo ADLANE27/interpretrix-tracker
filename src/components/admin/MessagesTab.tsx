@@ -86,7 +86,6 @@ export const MessagesTab = () => {
 
               if (soundEnabled) {
                 try {
-                  console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
                   await playNotificationSound(mission.mission_type);
                 } catch (error) {
                   console.error('[MessagesTab] Error playing sound:', error);

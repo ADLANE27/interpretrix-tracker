@@ -276,13 +276,6 @@ export const MissionManagement = () => {
 
   const handleDeleteMission = async (missionId: string) => {
     try {
-      const { error: notificationError } = await supabase
-        .from("mission_notifications")
-        .delete()
-        .eq("mission_id", missionId);
-
-      if (notificationError) throw notificationError;
-
       const { error } = await supabase
         .from("interpretation_missions")
         .delete()
