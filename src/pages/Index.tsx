@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { InterpreterDashboard } from "@/components/InterpreterDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
@@ -19,7 +19,7 @@ const Index = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          console.log("No active user found, redirecting to login");
+          console.log("No active user found, showing role selection");
           setLoading(false);
           return;
         }
@@ -37,6 +37,7 @@ const Index = () => {
             description: "Impossible de vérifier vos permissions",
             variant: "destructive",
           });
+          setLoading(false);
           return;
         }
 
@@ -48,7 +49,7 @@ const Index = () => {
           description: "Veuillez vous reconnecter",
           variant: "destructive",
         });
-        navigate("/login");
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -89,18 +90,18 @@ const Index = () => {
           >
             <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
             <div className="flex flex-col sm:flex-row gap-4">
-              <a 
-                href="/admin/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg"
+              <Link 
+                to="/admin/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
               >
                 Espace Administrateur
-              </a>
-              <a 
-                href="/interpreter/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg"
+              </Link>
+              <Link 
+                to="/interpreter/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
               >
                 Espace Interprète
-              </a>
+              </Link>
             </div>
           </motion.div>
         </div>
