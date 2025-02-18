@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import webpush from 'https://esm.sh/web-push@3.6.6'
+import webPush from "web-push"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,7 +29,7 @@ serve(async (req) => {
     }
 
     // Set up web-push with VAPID keys
-    webpush.setVapidDetails(
+    webPush.setVapidDetails(
       'mailto:support@aftrad.com',
       vapidPublicKey,
       vapidPrivateKey
@@ -60,7 +60,7 @@ serve(async (req) => {
 
     // Send push notification
     console.log('Sending push notification...')
-    await webpush.sendNotification(
+    const result = await webPush.sendNotification(
       subscription,
       JSON.stringify({
         title,
@@ -69,9 +69,12 @@ serve(async (req) => {
       })
     )
 
-    console.log('Push notification sent successfully')
+    console.log('Push notification sent successfully', result)
     return new Response(
-      JSON.stringify({ message: 'Notification sent successfully' }),
+      JSON.stringify({ 
+        message: 'Notification sent successfully',
+        result 
+      }),
       { 
         headers: { 
           ...corsHeaders,
@@ -84,7 +87,7 @@ serve(async (req) => {
     console.error('Error sending notification:', error)
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Failed to send notification'
+        error: error instanceof Error ? error.message : 'Failed to send notification'
       }),
       { 
         headers: { 
