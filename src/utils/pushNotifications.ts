@@ -2,7 +2,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Json } from "@/integrations/supabase/types";
 
-// Convert base64 string to Uint8Array for applicationServerKey
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
@@ -41,21 +40,31 @@ export const registerPushNotifications = async () => {
       throw new Error('Utilisateur non authentifié');
     }
 
-    // 4. Register service worker
-    console.log('[pushNotifications] Registering service worker');
-    const registration = await navigator.serviceWorker.register('/service-worker.js', {
-      scope: '/'
-    });
-    console.log('[pushNotifications] Service Worker registered');
+    // 4. Check for existing subscription and remove it
+    console.log('[pushNotifications] Checking for existing subscription');
+    const registration = await navigator.serviceWorker.ready;
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
+    if (existingSubscription) {
+      console.log('[pushNotifications] Found existing subscription, removing it');
+      await existingSubscription.unsubscribe();
+      
+      // Remove from database
+      await supabase
+        .from('user_push_subscriptions')
+        .delete()
+        .eq('user_id', session.user.id);
+    }
 
     // 5. Get VAPID public key
+    console.log('[pushNotifications] Getting VAPID public key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-keys');
     if (vapidError || !vapidData?.publicKey) {
       throw new Error('Impossible de récupérer la clé publique VAPID');
     }
 
-    // 6. Subscribe to push notifications
-    console.log('[pushNotifications] Subscribing to push notifications');
+    // 6. Create new subscription
+    console.log('[pushNotifications] Creating new push subscription');
     const subscribeOptions = {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
@@ -64,7 +73,7 @@ export const registerPushNotifications = async () => {
     const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
     console.log('[pushNotifications] Push subscription created:', pushSubscription);
 
-    // 7. Convert PushSubscription to a plain object that matches our Json type
+    // 7. Save to database
     const subscriptionJson = pushSubscription.toJSON();
     const subscriptionData = {
       endpoint: subscriptionJson.endpoint,
@@ -72,7 +81,6 @@ export const registerPushNotifications = async () => {
       expirationTime: subscriptionJson.expirationTime
     } as Json;
 
-    // 8. Save subscription to Supabase
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
@@ -100,17 +108,35 @@ export const registerPushNotifications = async () => {
 
 export const checkPushNotificationStatus = async () => {
   try {
+    console.log('[pushNotifications] Checking status...');
+    
     // Check if notifications are supported
     if (!('Notification' in window)) {
+      console.log('[pushNotifications] Notifications not supported');
       return { enabled: false, permission: 'unsupported' };
     }
 
     // Get current permission status
     const permission = Notification.permission;
+    console.log('[pushNotifications] Current permission:', permission);
 
-    // Check if service worker is registered
+    // Check if service worker is registered and get subscription
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
+    
+    console.log('[pushNotifications] Current subscription:', subscription);
+
+    // Check if subscription is still valid
+    if (subscription) {
+      try {
+        // Test if the subscription is still valid
+        await subscription.getKey('p256dh');
+      } catch (error) {
+        console.log('[pushNotifications] Invalid subscription, removing it');
+        await subscription.unsubscribe();
+        return { enabled: false, permission, subscription: null };
+      }
+    }
 
     return {
       enabled: permission === 'granted' && !!subscription,
@@ -129,12 +155,15 @@ export const checkPushNotificationStatus = async () => {
 
 export const unregisterPushNotifications = async () => {
   try {
+    console.log('[pushNotifications] Starting unregistration process');
+    
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       throw new Error('Utilisateur non authentifié');
     }
 
-    // Remove subscription from database
+    // Remove subscription from database first
+    console.log('[pushNotifications] Removing subscription from database');
     const { error: deleteError } = await supabase
       .from('user_push_subscriptions')
       .delete()
@@ -144,12 +173,16 @@ export const unregisterPushNotifications = async () => {
       throw deleteError;
     }
 
-    // Unsubscribe from push manager
+    // Then unsubscribe from push manager
+    console.log('[pushNotifications] Unsubscribing from push manager');
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     
     if (subscription) {
       await subscription.unsubscribe();
+      console.log('[pushNotifications] Successfully unsubscribed');
+    } else {
+      console.log('[pushNotifications] No subscription found to unsubscribe');
     }
 
     return {

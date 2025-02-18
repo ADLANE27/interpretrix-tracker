@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, BellOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { checkPushNotificationStatus, registerPushNotifications } from "@/utils/pushNotifications";
+import { checkPushNotificationStatus, registerPushNotifications, unregisterPushNotifications } from "@/utils/pushNotifications";
 
 export function NotificationActivationButton() {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -16,7 +16,9 @@ export function NotificationActivationButton() {
 
   const checkNotificationStatus = async () => {
     try {
+      console.log('[NotificationActivationButton] Checking notification status...');
       const status = await checkPushNotificationStatus();
+      console.log('[NotificationActivationButton] Current status:', status);
       setIsEnabled(status.enabled);
       setIsLoading(false);
     } catch (error) {
@@ -30,14 +32,28 @@ export function NotificationActivationButton() {
       setIsLoading(true);
 
       if (isEnabled) {
-        // Si déjà activé, désactiver les notifications
-        setIsEnabled(false);
-        toast({
-          title: "Notifications désactivées",
-          description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
-        });
+        console.log('[NotificationActivationButton] Désactivation des notifications...');
+        const result = await unregisterPushNotifications();
+        
+        if (result.success) {
+          setIsEnabled(false);
+          toast({
+            title: "Notifications désactivées",
+            description: "Vous ne recevrez plus de notifications pour les nouvelles missions",
+          });
+        } else {
+          throw new Error(result.message);
+        }
       } else {
-        // Activer les notifications
+        console.log('[NotificationActivationButton] Activation des notifications...');
+        // Vérifier d'abord l'état actuel pour s'assurer qu'il n'y a pas d'abonnement existant
+        const currentStatus = await checkPushNotificationStatus();
+        
+        if (currentStatus.enabled) {
+          console.log('[NotificationActivationButton] Désactivation de l\'ancien abonnement...');
+          await unregisterPushNotifications();
+        }
+
         const result = await registerPushNotifications();
         
         if (result.success) {
@@ -59,6 +75,8 @@ export function NotificationActivationButton() {
       });
     } finally {
       setIsLoading(false);
+      // Revérifier le statut après l'opération pour s'assurer que l'état local est synchronisé
+      await checkNotificationStatus();
     }
   };
 
