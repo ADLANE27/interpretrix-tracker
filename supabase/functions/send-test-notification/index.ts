@@ -41,8 +41,8 @@ serve(async (req) => {
     )
 
     // Parse request body
-    const { userId, title, body, data } = await req.json()
-    console.log('Processing notification request for user:', userId)
+    const { userId, title, body, data, missionType = 'test' } = await req.json()
+    console.log('Processing notification request for user:', userId, 'type:', missionType);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -77,14 +77,35 @@ serve(async (req) => {
       throw new Error('Invalid subscription format')
     }
 
+    // Customize notification based on mission type
+    let notificationTitle = title;
+    let notificationBody = body;
+    let notificationData = data;
+
+    if (missionType === 'immediate') {
+      notificationTitle = "🚨 Nouvelle mission immédiate";
+      notificationBody = `${data.sourceLanguage} → ${data.targetLanguage} - ${data.duration} minutes`;
+      notificationData = {
+        ...data,
+        url: "/interpreter/missions"
+      };
+    } else if (missionType === 'scheduled') {
+      notificationTitle = "📅 Nouvelle mission programmée";
+      notificationBody = `${data.sourceLanguage} → ${data.targetLanguage}\nDate: ${data.startTime}`;
+      notificationData = {
+        ...data,
+        url: "/interpreter/calendar"
+      };
+    }
+
     // Send push notification
-    console.log('Sending push notification...')
+    console.log('Sending push notification...', { notificationTitle, notificationBody });
     const result = await webPush.sendNotification(
       subscription,
       JSON.stringify({
-        title,
-        body,
-        data
+        title: notificationTitle,
+        body: notificationBody,
+        data: notificationData
       })
     )
 
