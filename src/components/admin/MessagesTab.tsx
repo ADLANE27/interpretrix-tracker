@@ -26,7 +26,6 @@ export const MessagesTab = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Check admin status
   const { data: userRole } = useQuery({
     queryKey: ['userRole'],
     queryFn: async () => {
@@ -51,7 +50,6 @@ export const MessagesTab = () => {
   const setupRealtimeSubscription = () => {
     console.log('[MessagesTab] Setting up realtime subscription');
     
-    // Cleanup any existing subscription
     if (channelRef.current) {
       console.log('[MessagesTab] Removing existing channel');
       supabase.removeChannel(channelRef.current);
@@ -59,7 +57,7 @@ export const MessagesTab = () => {
     }
 
     // Create a new channel with proper configuration
-    channelRef.current = supabase.channel('mission-updates', {
+    const channel = supabase.channel('mission-updates', {
       config: {
         broadcast: { self: true },
         presence: { key: 'mission-updates' },
@@ -67,7 +65,7 @@ export const MessagesTab = () => {
     });
 
     // Add subscription handlers
-    channelRef.current
+    channel
       .on(
         'postgres_changes',
         {
@@ -82,15 +80,15 @@ export const MessagesTab = () => {
             const mission = payload.new;
             const isImmediate = mission.mission_type === 'immediate';
 
-            // Show toast notification (in-app)
-            toast({
-              title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-              description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-              variant: isImmediate ? "destructive" : "default",
-              duration: 10000,
-            });
+            if (!isMobile) {
+              toast({
+                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                variant: isImmediate ? "destructive" : "default",
+                duration: 10000,
+              });
+            }
 
-            // Play sound if enabled (in-app)
             if (soundEnabled) {
               try {
                 console.log('[MessagesTab] Playing notification sound for:', mission.mission_type);
@@ -102,7 +100,11 @@ export const MessagesTab = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[MessagesTab] Subscription status:', status);
+      });
+
+    channelRef.current = channel;
   };
 
   const handleChannelSelect = (channelId: string) => {
