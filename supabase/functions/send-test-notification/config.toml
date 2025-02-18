@@ -2,6 +2,3 @@
 # Follow project organization
 project_id = "bblpiatmtnlhnbavhkau"
 
-[imports]
-web-push = "https://esm.sh/web-push@3.4.5"
-
