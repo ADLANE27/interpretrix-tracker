@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,7 +76,6 @@ export const MissionsTab = () => {
 
       setCurrentUserId(user.id);
 
-      // Fetch missions where the user is either assigned or notified
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
@@ -278,7 +276,7 @@ export const MissionsTab = () => {
           .from('interpretation_missions')
           .update({ 
             status: 'declined',
-            notified_interpreters: supabase.sql`array_remove(notified_interpreters, ${user.id})`
+            notified_interpreters: `{${user.id}}`
           })
           .eq('id', missionId);
 

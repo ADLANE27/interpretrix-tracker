@@ -521,7 +521,7 @@ export const MissionManagement = () => {
           .from('interpretation_missions')
           .update({ 
             status: 'declined',
-            notified_interpreters: supabase.sql`array_remove(notified_interpreters, ${user.id})`
+            notified_interpreters: `{${user.id}}`
           })
           .eq('id', missionId);
 
@@ -530,7 +530,6 @@ export const MissionManagement = () => {
           throw declineError;
         }
 
-        // Remove the declined mission from local state
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
         console.log('[MissionManagement] Mission declined successfully');
       }

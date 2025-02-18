@@ -2,6 +2,10 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Clock, Calendar, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,182 +15,132 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Trash2, UserCircle } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 interface Mission {
   id: string;
+  client_name: string | null;
   source_language: string;
   target_language: string;
   estimated_duration: number;
   status: string;
   created_at: string;
-  assigned_interpreter_id?: string;
-  scheduled_start_time?: string;
-  scheduled_end_time?: string;
-  mission_type: "immediate" | "scheduled";
-  interpreter_profiles?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-    status: string;
-  };
+  assigned_interpreter_id: string | null;
+  assignment_time: string | null;
+  mission_type: 'immediate' | 'scheduled';
+  scheduled_start_time: string | null;
+  scheduled_end_time: string | null;
   creator_email?: string;
   creator_first_name?: string;
   creator_last_name?: string;
 }
 
-interface MissionListProps {
+export interface MissionListProps {
   missions: Mission[];
-  onDelete: (missionId: string) => void;
+  onDelete: (missionId: string) => Promise<void>;
+  onMissionResponse?: (missionId: string, accept: boolean) => Promise<void>;
 }
 
-export const MissionList = ({ missions, onDelete }: MissionListProps) => {
-  const [selectedMission, setSelectedMission] = useState<string | null>(null);
+export const MissionList = ({ missions, onDelete, onMissionResponse }: MissionListProps) => {
+  const [missionToDelete, setMissionToDelete] = useState<string | null>(null);
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "bg-green-500 text-white";
-      case "declined":
-        return "bg-red-500 text-white";
-      case "cancelled":
-        return "bg-gray-500 text-white";
-      case "awaiting_acceptance":
-        return "bg-yellow-500 text-white";
-      default:
-        return "bg-blue-500 text-white";
-    }
+  const handleDeleteClick = (missionId: string) => {
+    setMissionToDelete(missionId);
   };
 
-  const formatStatus = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return "Acceptée";
-      case "declined":
-        return "Refusée";
-      case "cancelled":
-        return "Annulée";
-      case "awaiting_acceptance":
-        return "En attente";
-      default:
-        return status;
+  const handleDeleteConfirm = async () => {
+    if (missionToDelete) {
+      await onDelete(missionToDelete);
+      setMissionToDelete(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      {missions.length === 0 ? (
-        <Card className="p-4">
-          <p className="text-center text-muted-foreground">
-            Aucune mission trouvée
-          </p>
-        </Card>
-      ) : (
-        missions.map((mission) => (
-          <Card key={mission.id} className="p-4">
-            <div className="flex flex-col space-y-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {mission.source_language} → {mission.target_language}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Créée le{" "}
-                    {format(new Date(mission.created_at), "d MMMM yyyy 'à' HH:mm", {
-                      locale: fr,
-                    })}
-                  </p>
-                  {mission.creator_first_name && (
-                    <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                      <UserCircle className="h-4 w-4" />
-                      <span>
-                        Créée par {mission.creator_first_name} {mission.creator_last_name}
-                      </span>
+      {missions.map((mission) => (
+        <Card key={mission.id} className="p-4">
+          <div className="flex flex-col space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  {mission.mission_type === 'scheduled' ? (
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-green-500" />
+                  )}
+                  <Badge variant={mission.mission_type === 'scheduled' ? 'secondary' : 'default'}>
+                    {mission.mission_type === 'scheduled' ? 'Programmée' : 'Immédiate'}
+                  </Badge>
+                  {mission.creator_email && (
+                    <Badge variant="outline">
+                      Créée par : {mission.creator_first_name} {mission.creator_last_name}
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="text-sm text-gray-600">
+                  {mission.mission_type === 'immediate' ? (
+                    <>
+                      <p>Date : {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
+                      <p>Langues : {mission.source_language} → {mission.target_language}</p>
+                      <p>Durée : {mission.estimated_duration} minutes</p>
+                    </>
+                  ) : mission.scheduled_start_time && (
+                    <div className="space-y-1">
+                      <p className="text-blue-600">
+                        Début : {format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                      </p>
+                      {mission.scheduled_end_time && (
+                        <p className="text-blue-600">
+                          Fin : {format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                        </p>
+                      )}
+                      <p>Langues : {mission.source_language} → {mission.target_language}</p>
+                      <p>Durée : {mission.estimated_duration} minutes</p>
                     </div>
                   )}
                 </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => setSelectedMission(mission.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        Êtes-vous sûr de vouloir supprimer cette mission ?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Cette action est irréversible. La mission sera supprimée
-                        définitivement.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          if (selectedMission) {
-                            onDelete(selectedMission);
-                            setSelectedMission(null);
-                          }
-                        }}
-                      >
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary" className="bg-purple-100 text-purple-800">
-                  {mission.mission_type === "immediate"
-                    ? `Mission immédiate - ${mission.estimated_duration} minutes`
-                    : "Mission programmée"}
-                </Badge>
-                {mission.mission_type === "scheduled" && (
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                    {format(
-                      new Date(mission.scheduled_start_time!),
-                      "d MMMM yyyy HH:mm",
-                      { locale: fr }
-                    )}{" "}
-                    →{" "}
-                    {format(
-                      new Date(mission.scheduled_end_time!),
-                      "d MMMM yyyy HH:mm",
-                      { locale: fr }
-                    )}
+                <div className="flex gap-2 mt-2">
+                  <Badge variant="default">
+                    {mission.status === 'awaiting_acceptance' ? 'En attente' :
+                     mission.status === 'accepted' ? 'Acceptée' :
+                     mission.status === 'declined' ? 'Refusée' :
+                     mission.status === 'cancelled' ? 'Annulée' :
+                     mission.status}
                   </Badge>
-                )}
-                <Badge variant="secondary" className={getStatusBadgeColor(mission.status)}>
-                  {formatStatus(mission.status)}
-                </Badge>
+                </div>
               </div>
 
-              {mission.interpreter_profiles && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Interprète assigné :</span>
-                  <span>
-                    {mission.interpreter_profiles.first_name}{" "}
-                    {mission.interpreter_profiles.last_name}
-                  </span>
-                </div>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDeleteClick(mission.id)}
+                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-          </Card>
-        ))
-      )}
+          </div>
+        </Card>
+      ))}
+
+      <AlertDialog open={!!missionToDelete} onOpenChange={() => setMissionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette mission ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. La mission sera définitivement supprimée.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
