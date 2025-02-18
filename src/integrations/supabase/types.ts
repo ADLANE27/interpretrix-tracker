@@ -460,6 +460,79 @@ export type Database = {
           },
         ]
       }
+      mission_notifications: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          interpreter_id: string
+          mission_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          interpreter_id: string
+          mission_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          interpreter_id?: string
+          mission_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["interpreter_id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_missions"
+            referencedColumns: ["mission_id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "interpretation_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mission_notifications_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "mission_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       secrets: {
         Row: {
           created_at: string
