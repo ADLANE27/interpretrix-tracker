@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import webpush from 'web-push'
+import webpush from 'https://esm.sh/web-push@3.6.6'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
