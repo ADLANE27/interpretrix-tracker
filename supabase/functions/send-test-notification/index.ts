@@ -10,50 +10,71 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // 1. Gestion améliorée du CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    console.log('[send-test-notification] Handling CORS preflight request')
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204
+    })
   }
 
   try {
-    // Initialisation de Supabase
+    console.log('[send-test-notification] Starting function execution')
+
+    // 2. Validation des variables d'environnement VAPID
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('[send-test-notification] Missing VAPID keys')
+      throw new Error('Configuration error: Missing VAPID keys')
+    }
+
+    // Initialisation de Supabase avec validation
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing environment variables')
+      console.error('[send-test-notification] Missing Supabase configuration')
+      throw new Error('Configuration error: Missing Supabase environment variables')
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // Configuration des clés VAPID
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('Missing VAPID keys')
-    }
-
+    // Configuration webpush avec les clés VAPID
     webpush.setVapidDetails(
       'mailto:contact@aftraduction.fr',
       vapidPublicKey,
       vapidPrivateKey
     )
 
-    // Récupération des données de la requête
+    // 3. Validation et parsing du body de la requête
     const { userId, title, body, data } = await req.json()
-    console.log('Sending test notification to user:', userId)
+    
+    if (!userId || !title || !body) {
+      console.error('[send-test-notification] Missing required fields in request body')
+      throw new Error('Missing required fields: userId, title, and body are required')
+    }
 
-    // Récupération de la souscription de l'utilisateur
+    console.log('[send-test-notification] Sending notification to user:', userId)
+
+    // Récupération de la souscription
     const { data: subscriptionData, error: fetchError } = await supabase
       .from('user_push_subscriptions')
       .select('subscription')
       .eq('user_id', userId)
       .single()
 
-    if (fetchError || !subscriptionData) {
+    if (fetchError) {
+      console.error('[send-test-notification] Error fetching subscription:', fetchError)
+      throw new Error(`Failed to fetch subscription: ${fetchError.message}`)
+    }
+
+    if (!subscriptionData) {
+      console.error('[send-test-notification] No subscription found for user:', userId)
       throw new Error('No push subscription found for this user')
     }
 
-    // Envoi de la notification
+    // Préparation et envoi de la notification
     const pushPayload = {
       title,
       body,
@@ -63,15 +84,20 @@ serve(async (req) => {
       }
     }
 
+    console.log('[send-test-notification] Sending push notification with payload:', pushPayload)
+
     const result = await webpush.sendNotification(
       subscriptionData.subscription,
       JSON.stringify(pushPayload)
     )
 
-    console.log('Notification sent successfully:', result)
+    console.log('[send-test-notification] Notification sent successfully:', result)
 
     return new Response(
-      JSON.stringify({ message: 'Notification sent successfully' }),
+      JSON.stringify({ 
+        message: 'Notification sent successfully',
+        status: 'success'
+      }),
       {
         headers: {
           ...corsHeaders,
@@ -82,11 +108,12 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error sending notification:', error)
+    console.error('[send-test-notification] Error:', error)
 
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'An error occurred'
+        error: error instanceof Error ? error.message : 'An error occurred',
+        status: 'error'
       }),
       {
         headers: {
@@ -98,4 +125,3 @@ serve(async (req) => {
     )
   }
 })
-
