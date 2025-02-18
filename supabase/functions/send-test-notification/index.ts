@@ -4,9 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 import webpush from 'https://esm.sh/web-push@3.6.6'
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 serve(async (req) => {
