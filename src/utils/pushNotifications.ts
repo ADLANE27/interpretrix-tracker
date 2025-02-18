@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { Json } from "@/integrations/supabase/types";
 
 // Convert base64 string to Uint8Array for applicationServerKey
 function urlBase64ToUint8Array(base64String: string) {
@@ -61,12 +62,20 @@ export const registerPushNotifications = async () => {
     const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
     console.log('[pushNotifications] Push subscription created:', pushSubscription);
 
-    // 7. Save subscription to Supabase
+    // 7. Convert PushSubscription to a plain object that matches our Json type
+    const subscriptionJson = pushSubscription.toJSON();
+    const subscriptionData = {
+      endpoint: subscriptionJson.endpoint,
+      keys: subscriptionJson.keys,
+      expirationTime: subscriptionJson.expirationTime
+    } as Json;
+
+    // 8. Save subscription to Supabase
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: pushSubscription.toJSON()
+        subscription: subscriptionData
       });
 
     if (upsertError) {
