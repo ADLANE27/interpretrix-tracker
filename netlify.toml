@@ -4,7 +4,7 @@
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "default-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onesignal.com https://onesignal.com https://cdn.gpteng.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co https://*.onesignal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.onesignal.com https://onesignal.com https://*.onesignal.com https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; frame-src 'self' https://onesignal.com https://*.onesignal.com; child-src 'self' https://onesignal.com https://*.onesignal.com; manifest-src 'self' https://onesignal.com https://*.onesignal.com;"
+    Content-Security-Policy = "default-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onesignal.com https://onesignal.com https://cdn.gpteng.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.functions.supabase.co https://bblpiatmtnlhnbavhkau.supabase.co https://*.onesignal.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.onesignal.com https://onesignal.com https://*.onesignal.com https://cdn.gpteng.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' https:; font-src 'self' data:; frame-src 'self' https://onesignal.com https://*.onesignal.com; child-src 'self' https://onesignal.com https://*.onesignal.com; manifest-src 'self' https://onesignal.com https://*.onesignal.com;"
 
 [build]
   command = "npm run build"
