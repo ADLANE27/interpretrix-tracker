@@ -1,13 +1,16 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
-interface PushSubscription {
+interface PushSubscriptionKeys {
+  p256dh: string;
+  auth: string;
+}
+
+interface PushSubscriptionData {
   endpoint: string;
   expirationTime: number | null;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
+  keys: PushSubscriptionKeys;
 }
 
 export const registerPushNotifications = async () => {
@@ -42,15 +45,22 @@ export const registerPushNotifications = async () => {
     const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
     console.log('Souscription push créée:', pushSubscription);
 
-    // 6. Convertir la souscription en objet JSON
-    const subscriptionObject = pushSubscription.toJSON() as PushSubscription;
+    // 6. Convertir la souscription en objet compatible JSON
+    const subscriptionData: PushSubscriptionData = {
+      endpoint: pushSubscription.endpoint,
+      expirationTime: pushSubscription.expirationTime,
+      keys: {
+        p256dh: pushSubscription.toJSON().keys.p256dh,
+        auth: pushSubscription.toJSON().keys.auth
+      }
+    };
 
     // 7. Enregistrer dans Supabase
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: subscriptionObject
+        subscription: subscriptionData as Json
       });
 
     if (upsertError) {
