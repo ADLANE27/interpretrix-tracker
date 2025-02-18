@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -260,65 +261,65 @@ export const AdminDashboard = () => {
 
   return (
     <>
-      <div className="container mx-auto py-6">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <div className="flex justify-between items-center mb-4">
+      <div className="container mx-auto py-2 md:py-6 px-2 md:px-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4 md:space-y-6">
+          <div className="flex justify-between items-center mb-2 md:mb-4">
             {isMobile ? (
-              <div className="flex items-center gap-4 w-full">
+              <div className="flex items-center gap-2 w-full">
                 <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" className="shrink-0">
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-[240px]">
-                    <div className="flex flex-col gap-2 mt-6">
+                  <SheetContent side="left" className="w-[240px] p-4">
+                    <nav className="flex flex-col gap-2 mt-6">
                       <Button
                         variant={activeTab === "interpreters" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("interpreters")}
                       >
                         Interprètes
                       </Button>
                       <Button
                         variant={activeTab === "missions" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("missions")}
                       >
                         Missions
                       </Button>
                       <Button
                         variant={activeTab === "calendar" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("calendar")}
                       >
                         Calendrier
                       </Button>
                       <Button
                         variant={activeTab === "messages" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("messages")}
                       >
                         Messages
                       </Button>
                       <Button
                         variant={activeTab === "users" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("users")}
                       >
                         Utilisateurs
                       </Button>
                       <Button
                         variant={activeTab === "guide" ? "default" : "ghost"}
-                        className="justify-start"
+                        className="justify-start w-full"
                         onClick={() => handleTabChange("guide")}
                       >
                         Guide d'utilisation
                       </Button>
-                    </div>
+                    </nav>
                   </SheetContent>
                 </Sheet>
-                <div className="flex-1 text-lg font-semibold">
+                <div className="flex-1 text-lg font-semibold truncate">
                   {activeTab === "interpreters" && "Interprètes"}
                   {activeTab === "missions" && "Missions"}
                   {activeTab === "calendar" && "Calendrier"}
@@ -342,7 +343,7 @@ export const AdminDashboard = () => {
             <Button 
               variant="outline" 
               onClick={handleLogout}
-              className="gap-2"
+              className="gap-2 shrink-0"
             >
               <LogOut className="h-4 w-4" />
               {!isMobile && "Se déconnecter"}
@@ -350,12 +351,12 @@ export const AdminDashboard = () => {
           </div>
 
           <TabsContent value="interpreters">
-            <div className="space-y-6">
-              <div className="mb-4">
-                <h2 className="text-2xl font-bold">Liste des interprètes</h2>
+            <div className="space-y-4 md:space-y-6">
+              <div className="mb-2 md:mb-4">
+                <h2 className="text-xl md:text-2xl font-bold">Liste des interprètes</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name-search">Nom</Label>
                   <div className="relative">
@@ -443,7 +444,7 @@ export const AdminDashboard = () => {
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="rate-sort">Trier par tarif</Label>
-                  <div className="flex gap-2 items-start">
+                  <div className="flex gap-2 items-start flex-wrap">
                     <Select value={rateSort} onValueChange={setRateSort}>
                       <SelectTrigger id="rate-sort">
                         <SelectValue placeholder="Trier par tarif" />
@@ -459,7 +460,8 @@ export const AdminDashboard = () => {
                       className="gap-2 whitespace-nowrap"
                     >
                       <X className="h-4 w-4" />
-                      Supprimer tous les filtres
+                      <span className="hidden md:inline">Supprimer tous les filtres</span>
+                      <span className="md:hidden">Réinitialiser</span>
                     </Button>
                   </div>
                 </div>
@@ -470,7 +472,7 @@ export const AdminDashboard = () => {
                 onStatusChange={setSelectedStatus}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
                 {filteredInterpreters.map((interpreter) => (
                   <InterpreterCard
                     key={interpreter.id}
@@ -514,7 +516,7 @@ export const AdminDashboard = () => {
         </Tabs>
       </div>
       
-      <footer className="w-full py-4 mt-8 text-center text-sm text-gray-500 border-t">
+      <footer className="w-full py-2 md:py-4 mt-4 md:mt-8 text-center text-sm text-gray-500 border-t">
         © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
       </footer>
     </>
