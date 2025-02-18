@@ -20,7 +20,6 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { AdminMissionsCalendar } from "./AdminMissionsCalendar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 interface Interpreter {
   id: string;
   first_name: string;
@@ -36,7 +35,6 @@ interface Interpreter {
   tarif_15min: number | null;
   tarif_5min: number | null;
 }
-
 export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -47,23 +45,22 @@ export const AdminDashboard = () => {
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const [rateSort, setRateSort] = useState<string>("none");
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("interpreters");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
-
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
-      const { data, error } = await supabase
-        .from("interpreters_with_next_mission")
-        .select("*");
-
+      const {
+        data,
+        error
+      } = await supabase.from("interpreters_with_next_mission").select("*");
       if (error) throw error;
-
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
@@ -79,7 +76,6 @@ export const AdminDashboard = () => {
         tarif_15min: interpreter.tarif_15min,
         tarif_5min: null
       }));
-
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
     } catch (error) {
@@ -87,46 +83,36 @@ export const AdminDashboard = () => {
       toast({
         title: "Erreur",
         description: "Impossible de charger la liste des interprètes",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
-
     const setupChannel = (channelName: string, table: string) => {
-      const channel = supabase.channel(`admin-${channelName}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: table
-          },
-          async (payload) => {
-            console.log(`[AdminDashboard] ${table} changed:`, payload);
-            await fetchInterpreters();
-          }
-        )
-        .subscribe((status) => {
-          console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
-          if (status === 'SUBSCRIBED') {
-            console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
-          }
-          if (status === 'CHANNEL_ERROR') {
-            console.error(`[AdminDashboard] Error in ${channelName} channel`);
-            setTimeout(() => {
-              channel.subscribe();
-            }, 5000);
-          }
-        });
-
+      const channel = supabase.channel(`admin-${channelName}`).on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: table
+      }, async payload => {
+        console.log(`[AdminDashboard] ${table} changed:`, payload);
+        await fetchInterpreters();
+      }).subscribe(status => {
+        console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
+        if (status === 'SUBSCRIBED') {
+          console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`[AdminDashboard] Error in ${channelName} channel`);
+          setTimeout(() => {
+            channel.subscribe();
+          }, 5000);
+        }
+      });
       channels.push(channel);
       return channel;
     };
-
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -134,30 +120,23 @@ export const AdminDashboard = () => {
     setupChannel('chat-messages', 'chat_messages');
     setupChannel('message-mentions', 'message_mentions');
     setupChannel('channel-members', 'channel_members');
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("[AdminDashboard] Tab became visible, refreshing data");
         fetchInterpreters();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     const handleConnectionState = () => {
       const connectionState = supabase.getChannels().length > 0;
       console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
-      
       if (!connectionState) {
         console.log("[AdminDashboard] Attempting to reconnect...");
         channels.forEach(channel => channel.subscribe());
       }
     };
-
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
-
     fetchInterpreters();
-
     return () => {
       console.log("[AdminDashboard] Cleaning up subscriptions");
       channels.forEach(channel => {
@@ -167,7 +146,6 @@ export const AdminDashboard = () => {
       clearInterval(connectionCheckInterval);
     };
   }, []);
-
   const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
@@ -177,94 +155,63 @@ export const AdminDashboard = () => {
     setBirthCountryFilter("all");
     setEmploymentStatusFilter("all");
     setRateSort("none");
-
     toast({
       title: "Filtres réinitialisés",
-      description: "Tous les filtres ont été réinitialisés",
+      description: "Tous les filtres ont été réinitialisés"
     });
   };
-
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const {
+        error
+      } = await supabase.auth.signOut();
       if (error) throw error;
-      
       toast({
         title: "Déconnexion réussie",
-        description: "Vous avez été déconnecté avec succès",
+        description: "Vous avez été déconnecté avec succès"
       });
-      
       navigate("/admin/login");
     } catch (error: any) {
       toast({
         title: "Erreur de déconnexion",
         description: error.message,
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
-  const filteredInterpreters = interpreters
-    .filter(interpreter => {
-      const isNotAdmin = !(`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin"));
-      const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-      const matchesName = nameFilter === "" || 
-        `${interpreter.first_name} ${interpreter.last_name}`
-          .toLowerCase()
-          .includes(nameFilter.toLowerCase());
-      
-      const matchesSourceLanguage = sourceLanguageFilter === "all" || 
-        interpreter.languages.some(lang => {
-          const [source] = lang.split(" → ");
-          return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
-        });
-
-      const matchesTargetLanguage = targetLanguageFilter === "all" || 
-        interpreter.languages.some(lang => {
-          const [, target] = lang.split(" → ");
-          return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
-        });
-
-      const matchesPhone = phoneFilter === "" || 
-        (interpreter.phone_number && 
-         interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
-
-      const matchesBirthCountry = birthCountryFilter === "all" ||
-        (interpreter.birth_country === birthCountryFilter);
-
-      const matchesEmploymentStatus = employmentStatusFilter === "all" || 
-        interpreter.employment_status === employmentStatusFilter;
-
-      return isNotAdmin &&
-             matchesStatus && 
-             matchesName && 
-             matchesSourceLanguage && 
-             matchesTargetLanguage && 
-             matchesPhone && 
-             matchesBirthCountry &&
-             matchesEmploymentStatus;
-    })
-    .sort((a, b) => {
-      if (rateSort === "rate-asc") {
-        const rateA = (a.tarif_15min ?? 0);
-        const rateB = (b.tarif_15min ?? 0);
-        return rateA - rateB;
-      }
-      return 0;
+  const filteredInterpreters = interpreters.filter(interpreter => {
+    const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
+    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+    const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
+    const matchesSourceLanguage = sourceLanguageFilter === "all" || interpreter.languages.some(lang => {
+      const [source] = lang.split(" → ");
+      return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
     });
-
+    const matchesTargetLanguage = targetLanguageFilter === "all" || interpreter.languages.some(lang => {
+      const [, target] = lang.split(" → ");
+      return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
+    });
+    const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
+    const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
+    const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
+    return isNotAdmin && matchesStatus && matchesName && matchesSourceLanguage && matchesTargetLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
+  }).sort((a, b) => {
+    if (rateSort === "rate-asc") {
+      const rateA = a.tarif_15min ?? 0;
+      const rateB = b.tarif_15min ?? 0;
+      return rateA - rateB;
+    }
+    return 0;
+  });
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setIsMenuOpen(false);
   };
-
-  return (
-    <>
-      <div className="container mx-auto py-6">
+  return <>
+      <div className="container mx-auto py-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <div className="flex justify-between items-center mb-4">
-            {isMobile ? (
-              <div className="flex items-center gap-4 w-full">
+            {isMobile ? <div className="flex items-center gap-4 w-full">
                 <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                   <SheetTrigger asChild>
                     <Button variant="outline" size="icon">
@@ -273,46 +220,22 @@ export const AdminDashboard = () => {
                   </SheetTrigger>
                   <SheetContent side="left" className="w-[240px]">
                     <div className="flex flex-col gap-2 mt-6">
-                      <Button
-                        variant={activeTab === "interpreters" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("interpreters")}
-                      >
+                      <Button variant={activeTab === "interpreters" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("interpreters")}>
                         Interprètes
                       </Button>
-                      <Button
-                        variant={activeTab === "missions" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("missions")}
-                      >
+                      <Button variant={activeTab === "missions" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("missions")}>
                         Missions
                       </Button>
-                      <Button
-                        variant={activeTab === "calendar" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("calendar")}
-                      >
+                      <Button variant={activeTab === "calendar" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("calendar")}>
                         Calendrier
                       </Button>
-                      <Button
-                        variant={activeTab === "messages" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("messages")}
-                      >
+                      <Button variant={activeTab === "messages" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("messages")}>
                         Messages
                       </Button>
-                      <Button
-                        variant={activeTab === "users" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("users")}
-                      >
+                      <Button variant={activeTab === "users" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("users")}>
                         Utilisateurs
                       </Button>
-                      <Button
-                        variant={activeTab === "guide" ? "default" : "ghost"}
-                        className="justify-start"
-                        onClick={() => handleTabChange("guide")}
-                      >
+                      <Button variant={activeTab === "guide" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("guide")}>
                         Guide d'utilisation
                       </Button>
                     </div>
@@ -326,9 +249,7 @@ export const AdminDashboard = () => {
                   {activeTab === "users" && "Utilisateurs"}
                   {activeTab === "guide" && "Guide d'utilisation"}
                 </div>
-              </div>
-            ) : (
-              <div className="flex gap-4 items-center">
+              </div> : <div className="flex gap-4 items-center">
                 <TabsList>
                   <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
                   <TabsTrigger value="missions">Missions</TabsTrigger>
@@ -337,13 +258,8 @@ export const AdminDashboard = () => {
                   <TabsTrigger value="users">Utilisateurs</TabsTrigger>
                   <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
                 </TabsList>
-              </div>
-            )}
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="gap-2"
-            >
+              </div>}
+            <Button variant="outline" onClick={handleLogout} className="gap-2">
               <LogOut className="h-4 w-4" />
               {!isMobile && "Se déconnecter"}
             </Button>
@@ -360,13 +276,7 @@ export const AdminDashboard = () => {
                   <Label htmlFor="name-search">Nom</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="name-search"
-                      placeholder="Rechercher par nom..."
-                      className="pl-10"
-                      value={nameFilter}
-                      onChange={(e) => setNameFilter(e.target.value)}
-                    />
+                    <Input id="name-search" placeholder="Rechercher par nom..." className="pl-10" value={nameFilter} onChange={e => setNameFilter(e.target.value)} />
                   </div>
                 </div>
 
@@ -378,11 +288,9 @@ export const AdminDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Toutes les langues</SelectItem>
-                      {sortedLanguages.map((lang) => (
-                        <SelectItem key={lang} value={lang}>
+                      {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
                           {lang}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -395,38 +303,23 @@ export const AdminDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Toutes les langues</SelectItem>
-                      {sortedLanguages.map((lang) => (
-                        <SelectItem key={lang} value={lang}>
+                      {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
                           {lang}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="phone-search">Numéro de téléphone</Label>
-                  <Input
-                    id="phone-search"
-                    placeholder="Rechercher par téléphone..."
-                    value={phoneFilter}
-                    onChange={(e) => setPhoneFilter(e.target.value)}
-                  />
+                  <Input id="phone-search" placeholder="Rechercher par téléphone..." value={phoneFilter} onChange={e => setPhoneFilter(e.target.value)} />
                 </div>
 
-                <CountrySelect
-                  value={birthCountryFilter}
-                  onValueChange={setBirthCountryFilter}
-                  label="Pays de naissance"
-                  placeholder="Sélectionner un pays"
-                />
+                <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
 
                 <div className="space-y-2">
                   <Label htmlFor="employment-status">Statut professionnel</Label>
-                  <Select
-                    value={employmentStatusFilter}
-                    onValueChange={setEmploymentStatusFilter}
-                  >
+                  <Select value={employmentStatusFilter} onValueChange={setEmploymentStatusFilter}>
                     <SelectTrigger id="employment-status">
                       <SelectValue placeholder="Tous les statuts" />
                     </SelectTrigger>
@@ -453,11 +346,7 @@ export const AdminDashboard = () => {
                         <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button
-                      variant="outline"
-                      onClick={resetAllFilters}
-                      className="gap-2 whitespace-nowrap"
-                    >
+                    <Button variant="outline" onClick={resetAllFilters} className="gap-2 whitespace-nowrap">
                       <X className="h-4 w-4" />
                       Supprimer tous les filtres
                     </Button>
@@ -465,29 +354,21 @@ export const AdminDashboard = () => {
                 </div>
               </div>
 
-              <StatusFilter
-                selectedStatus={selectedStatus}
-                onStatusChange={setSelectedStatus}
-              />
+              <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredInterpreters.map((interpreter) => (
-                  <InterpreterCard
-                    key={interpreter.id}
-                    interpreter={{
-                      id: interpreter.id,
-                      name: `${interpreter.first_name} ${interpreter.last_name}`,
-                      status: interpreter.status || "unavailable",
-                      employment_status: interpreter.employment_status,
-                      languages: interpreter.languages,
-                      tarif_15min: interpreter.tarif_15min,
-                      tarif_5min: interpreter.tarif_5min,
-                      phone_number: interpreter.phone_number,
-                      next_mission_start: interpreter.next_mission_start,
-                      next_mission_duration: interpreter.next_mission_duration,
-                    }}
-                  />
-                ))}
+                {filteredInterpreters.map(interpreter => <InterpreterCard key={interpreter.id} interpreter={{
+                id: interpreter.id,
+                name: `${interpreter.first_name} ${interpreter.last_name}`,
+                status: interpreter.status || "unavailable",
+                employment_status: interpreter.employment_status,
+                languages: interpreter.languages,
+                tarif_15min: interpreter.tarif_15min,
+                tarif_5min: interpreter.tarif_5min,
+                phone_number: interpreter.phone_number,
+                next_mission_start: interpreter.next_mission_start,
+                next_mission_duration: interpreter.next_mission_duration
+              }} />)}
               </div>
             </div>
           </TabsContent>
@@ -517,6 +398,5 @@ export const AdminDashboard = () => {
       <footer className="w-full py-4 mt-8 text-center text-sm text-gray-500 border-t">
         © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
       </footer>
-    </>
-  );
+    </>;
 };
