@@ -1,7 +1,7 @@
 
 {
-  "name": "Interpretrix",
-  "short_name": "Interpretrix",
+  "name": "AFTraduction",
+  "short_name": "AFTraduction",
   "description": "Application de gestion des interprètes",
   "start_url": "/",
   "display": "standalone",
@@ -18,5 +18,6 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "gcm_sender_id": "103953800507"
 }
