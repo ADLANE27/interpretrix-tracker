@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
@@ -10,7 +10,6 @@ import { useNavigate } from 'react-router-dom';
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,27 +42,18 @@ const Admin = () => {
     };
 
     // Set up auth state change listener
-    if (!subscriptionRef.current) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log('Auth state changed:', event);
-        if (!session?.user || event === 'SIGNED_OUT') {
-          navigate('/admin/login');
-        }
-      });
-
-      subscriptionRef.current = subscription;
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session?.user || event === 'SIGNED_OUT') {
+        navigate('/admin/login');
+      }
+    });
 
     // Initial auth check
     checkAuth();
 
     // Cleanup subscription on unmount
     return () => {
-      if (subscriptionRef.current) {
-        console.log('Cleaning up auth subscription');
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-      }
+      subscription.unsubscribe();
     };
   }, [navigate]);
 
