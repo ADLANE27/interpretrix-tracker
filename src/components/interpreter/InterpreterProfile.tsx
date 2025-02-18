@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,6 +72,31 @@ export const InterpreterProfile = () => {
     }
   };
 
+  const createProfile = async (userId: string, userEmail: string) => {
+    console.log("[InterpreterProfile] Creating new profile for user:", userId);
+    
+    const { data, error } = await supabase
+      .from("interpreter_profiles")
+      .insert({
+        id: userId,
+        first_name: '',
+        last_name: '',
+        email: userEmail,
+        employment_status: 'salaried_aft',
+        languages: [],
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("[InterpreterProfile] Error creating profile:", error);
+      throw error;
+    }
+
+    console.log("[InterpreterProfile] Profile created successfully:", data);
+    return data;
+  };
+
   const fetchProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -88,41 +112,7 @@ export const InterpreterProfile = () => {
 
       console.log("[InterpreterProfile] Fetching profile for user:", user.id);
       
-      // Vérifier d'abord si le profil existe
-      const { count, error: countError } = await supabase
-        .from("interpreter_profiles")
-        .select('*', { count: 'exact', head: true })
-        .eq("id", user.id);
-        
-      if (countError) {
-        console.error("[InterpreterProfile] Error checking profile existence:", countError);
-        throw countError;
-      }
-
-      console.log("[InterpreterProfile] Profile count:", count);
-      
-      if (count === 0) {
-        console.log("[InterpreterProfile] No profile found, attempting to create one");
-        // Si le profil n'existe pas, on en crée un nouveau
-        const { error: insertError } = await supabase
-          .from("interpreter_profiles")
-          .insert({
-            id: user.id,
-            first_name: '',
-            last_name: '',
-            email: user.email || '',
-            employment_status: 'salaried_aft',
-            languages: [],
-          });
-
-        if (insertError) {
-          console.error("[InterpreterProfile] Error creating profile:", insertError);
-          throw insertError;
-        }
-      }
-
-      // Maintenant on peut récupérer le profil
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("interpreter_profiles")
         .select("*")
         .eq("id", user.id)
@@ -134,19 +124,24 @@ export const InterpreterProfile = () => {
       }
 
       if (!data) {
-        console.log("[InterpreterProfile] Still no profile found after creation attempt");
-        toast({
-          title: "Profil non trouvé",
-          description: "Impossible de trouver ou créer votre profil",
-          variant: "destructive",
-        });
-        return;
+        console.log("[InterpreterProfile] No profile found, creating one");
+        try {
+          data = await createProfile(user.id, user.email || '');
+        } catch (createError) {
+          console.error("[InterpreterProfile] Error creating profile:", createError);
+          toast({
+            title: "Erreur",
+            description: "Impossible de créer votre profil",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      console.log("[InterpreterProfile] Profile data retrieved:", data);
+      console.log("[InterpreterProfile] Profile data:", data);
 
       // Transform language strings to LanguagePair objects
-      const languagePairs: LanguagePair[] = data.languages.map((lang: string) => {
+      const languagePairs: LanguagePair[] = (data.languages || []).map((lang: string) => {
         const [source, target] = lang.split(" → ");
         return { source, target };
       });
@@ -161,9 +156,9 @@ export const InterpreterProfile = () => {
 
       const transformedProfile: Profile = {
         id: data.id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
+        first_name: data.first_name || '',
+        last_name: data.last_name || '',
+        email: data.email || '',
         phone_number: data.phone_number,
         landline_phone: data.landline_phone,
         address: transformedAddress,
