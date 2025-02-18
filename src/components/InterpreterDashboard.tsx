@@ -21,6 +21,7 @@ import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { AnimatePresence, motion } from "framer-motion";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { NotificationTestButton } from './interpreter/NotificationTestButton';
 
 interface Profile {
   id: string;
@@ -433,6 +434,7 @@ export const InterpreterDashboard = () => {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <ProfileHeader firstName={profile.first_name} lastName={profile.last_name} status={profile.status} profilePictureUrl={profile.profile_picture_url} onAvatarClick={() => fileInputRef.current?.click()} onDeletePicture={handleProfilePictureDelete} />
                 <div className="flex items-center gap-4">
+                  <NotificationTestButton />
                   <ThemeToggle />
                   <Button variant="ghost" size="icon" onClick={() => setIsConfirmLogoutOpen(true)} className="rounded-full w-9 h-9">
                     <LogOut className="h-4 w-4" />
