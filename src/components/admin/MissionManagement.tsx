@@ -481,6 +481,73 @@ export const MissionManagement = () => {
     }
   };
 
+  const handleMissionResponse = async (missionId: string, accept: boolean) => {
+    if (isProcessing) {
+      console.log('[MissionManagement] Already processing a request');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      console.log(`[MissionManagement] Processing mission response: ${accept ? 'accept' : 'decline'} for mission ${missionId}`);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('[MissionManagement] No user found');
+        throw new Error("Non authentifié");
+      }
+
+      if (accept) {
+        console.log('[MissionManagement] Calling handle_mission_acceptance RPC');
+        const { error: updateError } = await supabase.rpc('handle_mission_acceptance', {
+          p_mission_id: missionId,
+          p_interpreter_id: user.id
+        });
+
+        if (updateError) {
+          console.error('[MissionManagement] Error in handle_mission_acceptance:', updateError);
+          if (updateError.message.includes('Interpreter is not available')) {
+            throw new Error("Vous n'êtes plus disponible pour accepter des missions");
+          } else if (updateError.message.includes('Mission is no longer available')) {
+            throw new Error("Cette mission n'est plus disponible");
+          }
+          throw updateError;
+        }
+
+        console.log('[MissionManagement] Mission accepted successfully');
+      } else {
+        console.log('[MissionManagement] Declining mission');
+        const { error: declineError } = await supabase
+          .from('interpretation_missions')
+          .update({ 
+            status: 'declined',
+            notified_interpreters: supabase.sql`array_remove(notified_interpreters, ${user.id})`
+          })
+          .eq('id', missionId);
+
+        if (declineError) {
+          console.error('[MissionManagement] Error declining mission:', declineError);
+          throw declineError;
+        }
+
+        // Remove the declined mission from local state
+        setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
+        console.log('[MissionManagement] Mission declined successfully');
+      }
+
+      fetchMissions();
+    } catch (error: any) {
+      console.error('[MissionManagement] Error updating mission:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const filteredMissions = missions.filter(mission => {
     // Filter by status
     if (statusFilter !== 'all' && mission.status !== statusFilter) {
@@ -843,6 +910,7 @@ export const MissionManagement = () => {
           <MissionList
             missions={filteredMissions}
             onDelete={handleDeleteMission}
+            onMissionResponse={handleMissionResponse}
           />
         </div>
       </Card>

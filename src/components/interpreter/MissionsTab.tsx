@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,15 +46,12 @@ export const MissionsTab = () => {
       console.log('[MissionsTab] Initializing sounds...');
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        
         const buffer = audioContext.createBuffer(1, 1, 22050);
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         source.connect(audioContext.destination);
-        
         source.start(0);
         source.stop(0.001);
-        
         setSoundInitialized(true);
         
         Promise.all([
@@ -79,10 +77,12 @@ export const MissionsTab = () => {
 
       setCurrentUserId(user.id);
 
+      // Fetch missions where the user is either assigned or notified
       const { data: missionsData, error: missionsError } = await supabase
         .from('interpretation_missions')
         .select('*')
         .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`)
+        .not('status', 'eq', 'declined')
         .order('created_at', { ascending: false });
 
       if (missionsError) {
@@ -90,30 +90,15 @@ export const MissionsTab = () => {
         throw missionsError;
       }
 
-      const { data: notifications, error: notificationsError } = await supabase
-        .from('mission_notifications')
-        .select('mission_id, status')
-        .eq('interpreter_id', user.id);
-
-      if (notificationsError) {
-        console.error('[MissionsTab] Error fetching notifications:', notificationsError);
-        throw notificationsError;
-      }
-
-      const declinedMissions = new Set(
-        notifications
-          ?.filter(n => n.status === 'declined')
-          .map(n => n.mission_id)
-      );
-
-      const filteredMissions = missionsData?.filter(
-        mission => !declinedMissions.has(mission.id)
-      ) || [];
+      setMissions(missionsData as Mission[]);
       
-      console.log('[MissionsTab] Fetched and filtered missions:', filteredMissions);
-      setMissions(filteredMissions as Mission[]);
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les missions",
+        variant: "destructive",
+      });
     }
   };
 
@@ -128,10 +113,8 @@ export const MissionsTab = () => {
           channelRef.current = null;
         }
 
-        // Forcer la déconnexion des WebSockets existants
         supabase.realtime.disconnect();
         
-        // Attendre un peu avant de reconnecter
         setTimeout(() => {
           channelRef.current = supabase
             .channel('interpreter-missions', {
@@ -143,69 +126,6 @@ export const MissionsTab = () => {
             .on(
               'postgres_changes',
               {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'mission_notifications'
-              },
-              async (payload) => {
-                console.log('[MissionsTab] New notification received:', payload);
-                
-                const notification = payload.new as any;
-                if (!currentUserId || notification.interpreter_id !== currentUserId) {
-                  console.log('[MissionsTab] Notification not for current user');
-                  return;
-                }
-
-                const { data: mission, error: missionError } = await supabase
-                  .from('interpretation_missions')
-                  .select('*')
-                  .eq('id', notification.mission_id)
-                  .single();
-
-                if (missionError) {
-                  console.error('[MissionsTab] Error fetching mission:', missionError);
-                  return;
-                }
-
-                console.log('[MissionsTab] Mission details:', mission);
-
-                const missionType = (mission.mission_type === 'immediate' || mission.mission_type === 'scheduled') 
-                  ? mission.mission_type 
-                  : 'scheduled';
-
-                const isImmediate = missionType === 'immediate';
-                  
-                if (!isMobile) {
-                  console.log('[MissionsTab] Showing toast notification (desktop only)');
-                  toast({
-                    title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                    description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                    variant: isImmediate ? "destructive" : "default",
-                    duration: 10000,
-                  });
-                }
-
-                if (soundEnabled) {
-                  try {
-                    console.log('[MissionsTab] Playing notification sound for:', missionType);
-                    await playNotificationSound(missionType);
-                  } catch (error) {
-                    console.error('[MissionsTab] Error playing sound:', error);
-                    initializeSound();
-                    try {
-                      await playNotificationSound(missionType);
-                    } catch (retryError) {
-                      console.error('[MissionsTab] Retry failed:', retryError);
-                    }
-                  }
-                }
-
-                fetchMissions();
-              }
-            )
-            .on(
-              'postgres_changes',
-              {
                 event: '*',
                 schema: 'public',
                 table: 'interpretation_missions'
@@ -213,33 +133,33 @@ export const MissionsTab = () => {
               async (payload) => {
                 console.log('[MissionsTab] Mission update received:', payload);
                 
-                if (payload.eventType === 'INSERT') {
-                  const mission = payload.new as Mission;
-                  if (mission.notified_interpreters?.includes(currentUserId || '')) {
-                    const isImmediate = mission.mission_type === 'immediate';
-                    
-                    if (!isMobile) {
-                      console.log('[MissionsTab] Showing toast for new mission (desktop only)');
-                      toast({
-                        title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                        description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                        variant: isImmediate ? "destructive" : "default",
-                        duration: 10000,
-                      });
-                    }
+                const mission = payload.new as Mission;
+                
+                if (payload.eventType === 'INSERT' && 
+                    mission.notified_interpreters?.includes(currentUserId || '')) {
+                  const isImmediate = mission.mission_type === 'immediate';
+                  
+                  if (!isMobile) {
+                    console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                    toast({
+                      title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                      description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                      variant: isImmediate ? "destructive" : "default",
+                      duration: 10000,
+                    });
+                  }
 
-                    if (soundEnabled) {
+                  if (soundEnabled) {
+                    try {
+                      console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                      await playNotificationSound(mission.mission_type);
+                    } catch (error) {
+                      console.error('[MissionsTab] Error playing sound:', error);
+                      initializeSound();
                       try {
-                        console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
                         await playNotificationSound(mission.mission_type);
-                      } catch (error) {
-                        console.error('[MissionsTab] Error playing sound:', error);
-                        initializeSound();
-                        try {
-                          await playNotificationSound(mission.mission_type);
-                        } catch (retryError) {
-                          console.error('[MissionsTab] Retry failed:', retryError);
-                        }
+                      } catch (retryError) {
+                        console.error('[MissionsTab] Retry failed:', retryError);
                       }
                     }
                   }
@@ -277,7 +197,6 @@ export const MissionsTab = () => {
         
         visibilityTimeoutRef.current = setTimeout(() => {
           console.log('[MissionsTab] Reinitializing after visibility change');
-          // Forcer une déconnexion complète avant de réinitialiser
           try {
             if (channelRef.current) {
               supabase.removeChannel(channelRef.current);
@@ -354,18 +273,20 @@ export const MissionsTab = () => {
 
         console.log('[MissionsTab] Mission accepted successfully');
       } else {
-        console.log('[MissionsTab] Calling handle_mission_decline RPC');
-        const { error: declineError } = await supabase.rpc('handle_mission_decline', {
-          p_mission_id: missionId,
-          p_interpreter_id: user.id
-        });
+        console.log('[MissionsTab] Declining mission');
+        const { error: declineError } = await supabase
+          .from('interpretation_missions')
+          .update({ 
+            status: 'declined',
+            notified_interpreters: supabase.sql`array_remove(notified_interpreters, ${user.id})`
+          })
+          .eq('id', missionId);
 
         if (declineError) {
           console.error('[MissionsTab] Error declining mission:', declineError);
           throw declineError;
         }
 
-        // Remove the declined mission from local state
         setMissions(prevMissions => prevMissions.filter(m => m.id !== missionId));
         console.log('[MissionsTab] Mission declined successfully');
       }
@@ -405,7 +326,7 @@ export const MissionsTab = () => {
     };
   }, [soundEnabled, toast, currentUserId]);
 
-  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, notifiedInterpreters: string[] | null) => {
+  const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null) => {
     if (status === 'accepted') {
       if (assignedInterpreterId === currentUserId) {
         return { label: 'Acceptée par vous', variant: 'default' as const };
@@ -428,8 +349,7 @@ export const MissionsTab = () => {
       {missions.map((mission) => {
         const statusDisplay = getMissionStatusDisplay(
           mission.status, 
-          mission.assigned_interpreter_id,
-          mission.notified_interpreters
+          mission.assigned_interpreter_id
         );
         
         return (
