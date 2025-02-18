@@ -17,11 +17,21 @@ export function NotificationTestButton() {
       setIsLoading(true);
       console.log('[NotificationTestButton] Starting test notification process');
 
-      // 1. Check current notification status
+      // 1. Check if the browser supports notifications
+      if (!('Notification' in window)) {
+        throw new Error('Ce navigateur ne prend pas en charge les notifications');
+      }
+
+      // 2. Check current notification permission status
       const status = await checkPushNotificationStatus();
       console.log('[NotificationTestButton] Current notification status:', status);
 
-      // If notifications aren't enabled, try to register them
+      // 3. If permission is denied, show error
+      if (status.permission === 'denied') {
+        throw new Error('Les notifications sont bloquées par votre navigateur. Veuillez les activer dans les paramètres de votre navigateur.');
+      }
+
+      // 4. If notifications aren't enabled, try to register them
       if (!status.enabled) {
         console.log('[NotificationTestButton] Notifications not enabled, attempting registration');
         const registration = await registerPushNotifications();
@@ -30,7 +40,7 @@ export function NotificationTestButton() {
         }
       }
 
-      // 2. Get session
+      // 5. Get session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session?.user) {
         console.log('[NotificationTestButton] No active session');
@@ -45,7 +55,7 @@ export function NotificationTestButton() {
 
       console.log('[NotificationTestButton] Calling edge function');
       
-      // 3. Send test notification
+      // 6. Send test notification
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,

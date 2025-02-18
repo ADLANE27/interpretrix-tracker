@@ -24,19 +24,21 @@ export const registerPushNotifications = async () => {
 
     // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      throw new Error('Push notifications are not supported');
+      throw new Error('Les notifications push ne sont pas prises en charge par votre navigateur');
     }
 
-    // 2. Request permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      throw new Error('Permission denied for notifications');
+    // 2. Request permission if not already granted
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        throw new Error('Permission refusée pour les notifications');
+      }
     }
 
     // 3. Get user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {
-      throw new Error('User not authenticated');
+      throw new Error('Utilisateur non authentifié');
     }
 
     // 4. Register service worker
@@ -49,7 +51,7 @@ export const registerPushNotifications = async () => {
     // 5. Get VAPID public key
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-keys');
     if (vapidError || !vapidData?.publicKey) {
-      throw new Error('Failed to get VAPID public key');
+      throw new Error('Impossible de récupérer la clé publique VAPID');
     }
 
     // 6. Subscribe to push notifications
@@ -84,14 +86,14 @@ export const registerPushNotifications = async () => {
 
     return {
       success: true,
-      message: 'Push notifications enabled successfully'
+      message: 'Notifications push activées avec succès'
     };
 
   } catch (error) {
     console.error('[pushNotifications] Registration error:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to enable push notifications'
+      message: error instanceof Error ? error.message : 'Impossible d\'activer les notifications push'
     };
   }
 };
@@ -120,7 +122,7 @@ export const checkPushNotificationStatus = async () => {
     return {
       enabled: false,
       permission: Notification.permission,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     };
   }
 };
