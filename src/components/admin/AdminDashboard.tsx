@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut, X } from "lucide-react";
+import { Search, LogOut, X, Menu } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,8 @@ import { MessagesTab } from "./MessagesTab";
 import { LANGUAGES } from "@/lib/constants";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { AdminMissionsCalendar } from "./AdminMissionsCalendar";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Interpreter {
   id: string;
@@ -47,6 +49,9 @@ export const AdminDashboard = () => {
   const [rateSort, setRateSort] = useState<string>("none");
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState("interpreters");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
@@ -248,28 +253,99 @@ export const AdminDashboard = () => {
       return 0;
     });
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setIsMenuOpen(false);
+  };
+
   return (
     <>
       <div className="container mx-auto py-6">
-        <Tabs defaultValue="interpreters" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-4 items-center">
-              <TabsList>
-                <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-                <TabsTrigger value="missions">Missions</TabsTrigger>
-                <TabsTrigger value="calendar">Calendrier</TabsTrigger>
-                <TabsTrigger value="messages">Messages</TabsTrigger>
-                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-                <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
-              </TabsList>
-            </div>
+            {isMobile ? (
+              <div className="flex items-center gap-4 w-full">
+                <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[240px]">
+                    <div className="flex flex-col gap-2 mt-6">
+                      <Button
+                        variant={activeTab === "interpreters" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("interpreters")}
+                      >
+                        Interprètes
+                      </Button>
+                      <Button
+                        variant={activeTab === "missions" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("missions")}
+                      >
+                        Missions
+                      </Button>
+                      <Button
+                        variant={activeTab === "calendar" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("calendar")}
+                      >
+                        Calendrier
+                      </Button>
+                      <Button
+                        variant={activeTab === "messages" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("messages")}
+                      >
+                        Messages
+                      </Button>
+                      <Button
+                        variant={activeTab === "users" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("users")}
+                      >
+                        Utilisateurs
+                      </Button>
+                      <Button
+                        variant={activeTab === "guide" ? "default" : "ghost"}
+                        className="justify-start"
+                        onClick={() => handleTabChange("guide")}
+                      >
+                        Guide d'utilisation
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                <div className="flex-1 text-lg font-semibold">
+                  {activeTab === "interpreters" && "Interprètes"}
+                  {activeTab === "missions" && "Missions"}
+                  {activeTab === "calendar" && "Calendrier"}
+                  {activeTab === "messages" && "Messages"}
+                  {activeTab === "users" && "Utilisateurs"}
+                  {activeTab === "guide" && "Guide d'utilisation"}
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-4 items-center">
+                <TabsList>
+                  <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+                  <TabsTrigger value="missions">Missions</TabsTrigger>
+                  <TabsTrigger value="calendar">Calendrier</TabsTrigger>
+                  <TabsTrigger value="messages">Messages</TabsTrigger>
+                  <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+                  <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
+                </TabsList>
+              </div>
+            )}
             <Button 
               variant="outline" 
               onClick={handleLogout}
               className="gap-2"
             >
               <LogOut className="h-4 w-4" />
-              Se déconnecter
+              {!isMobile && "Se déconnecter"}
             </Button>
           </div>
 
