@@ -4,34 +4,43 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function NotificationTestButton() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const sendTestNotification = async () => {
     try {
       setIsLoading(true);
 
+      // 1. Vérification de la session et récupération du token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
         console.error("[NotificationTestButton] Session error:", sessionError);
-        throw new Error("Erreur de session");
+        throw new Error("Erreur lors de la vérification de la session");
       }
       
-      if (!session?.user) {
-        console.log("[NotificationTestButton] No active session");
-        // Rediriger vers la page de connexion
-        window.location.href = "/interpreter/login";
+      if (!session?.access_token || !session?.user) {
+        console.log("[NotificationTestButton] No active session or access token");
+        toast({
+          title: "Non authentifié",
+          description: "Vous devez être connecté pour utiliser cette fonctionnalité",
+          variant: "destructive"
+        });
+        navigate("/interpreter/login");
         return;
       }
 
       console.log("[NotificationTestButton] Calling edge function with auth token");
       
+      // 2. Appel de la fonction avec les headers appropriés
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
         headers: {
-          Authorization: `Bearer ${session.access_token}`
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
         },
         body: {
           userId: session.user.id,
