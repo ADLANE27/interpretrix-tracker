@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
+import { InterpreterList } from "./InterpreterList";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
@@ -55,16 +55,21 @@ export const UserManagement = () => {
 
       if (rolesError) throw rolesError;
 
-      const adminUsers: UserData[] = await Promise.all(
-        userRoles
-          .filter(role => role.role === 'admin')
-          .map(async (userRole) => {
-            try {
-              const { data, error } = await supabase.functions.invoke('get-user-info', {
-                body: { userId: userRole.user_id }
-              });
-              
-              if (error) throw error;
+      const allUsers = await Promise.all(
+        userRoles.map(async (userRole) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('get-user-info', {
+              body: { userId: userRole.user_id }
+            });
+            
+            if (error) throw error;
+
+            if (userRole.role === 'interpreter') {
+              const { data: profile } = await supabase
+                .from('interpreter_profiles')
+                .select('languages')
+                .eq('id', userRole.user_id)
+                .single();
 
               return {
                 id: userRole.user_id,
@@ -73,32 +78,47 @@ export const UserManagement = () => {
                 first_name: data.first_name || "",
                 last_name: data.last_name || "",
                 active: userRole.active || false,
-                tarif_15min: 0,
-                tarif_5min: 0,
-                employment_status: 'salaried_aft' as EmploymentStatus
-              };
-            } catch (error) {
-              console.error('Error fetching admin info:', error);
-              return {
-                id: userRole.user_id,
-                email: "",
-                role: userRole.role,
-                first_name: "",
-                last_name: "",
-                active: userRole.active || false,
+                languages: profile?.languages || [],
                 tarif_15min: 0,
                 tarif_5min: 0,
                 employment_status: 'salaried_aft' as EmploymentStatus
               };
             }
-          })
+
+            return {
+              id: userRole.user_id,
+              email: data.email || "",
+              role: userRole.role,
+              first_name: data.first_name || "",
+              last_name: data.last_name || "",
+              active: userRole.active || false,
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft' as EmploymentStatus
+            };
+          } catch (error) {
+            console.error('Error fetching user info:', error);
+            return {
+              id: userRole.user_id,
+              email: "",
+              role: userRole.role,
+              first_name: "",
+              last_name: "",
+              active: userRole.active || false,
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft' as EmploymentStatus
+            };
+          }
+        })
       );
 
-      return adminUsers as UserData[];
+      return allUsers as UserData[];
     },
   });
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];
+  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
@@ -333,6 +353,16 @@ export const UserManagement = () => {
 
       <AdminList
         admins={adminUsers}
+        onToggleStatus={toggleUserStatus}
+        onDeleteUser={handleDeleteUser}
+        onResetPassword={(userId) => {
+          setSelectedUserId(userId);
+          setIsResetPasswordOpen(true);
+        }}
+      />
+
+      <InterpreterList
+        interpreters={interpreterUsers}
         onToggleStatus={toggleUserStatus}
         onDeleteUser={handleDeleteUser}
         onResetPassword={(userId) => {
