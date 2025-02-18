@@ -55,38 +55,72 @@ export function NotificationTestButton() {
 
       console.log('[NotificationTestButton] Calling edge function');
       
-      // 6. Send test notification
-      const { data, error } = await supabase.functions.invoke('send-test-notification', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          userId: session.user.id,
-          title: "Test de Notification",
-          body: "Si vous voyez cette notification, tout fonctionne correctement !",
-          data: {
-            url: "/interpreter"
+      // 6. Send test notification with retry logic
+      const maxRetries = 3;
+      let lastError;
+
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const { data, error } = await supabase.functions.invoke('send-test-notification', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: {
+              userId: session.user.id,
+              title: "Test de Notification",
+              body: "Si vous voyez cette notification, tout fonctionne correctement !",
+              data: {
+                url: "/interpreter"
+              }
+            }
+          });
+
+          if (error) {
+            console.error(`[NotificationTestButton] Edge function error (attempt ${i + 1}):`, error);
+            lastError = error;
+            if (i < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+              continue;
+            }
+            throw error;
+          }
+
+          console.log('[NotificationTestButton] Notification sent:', data);
+
+          toast({
+            title: "Notification envoyée",
+            description: "Vous devriez recevoir une notification de test dans quelques instants.",
+          });
+          
+          return; // Success, exit the retry loop
+        } catch (err) {
+          lastError = err;
+          if (i < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+            continue;
           }
         }
-      });
-
-      if (error) {
-        console.error('[NotificationTestButton] Edge function error:', error);
-        throw error;
       }
 
-      console.log('[NotificationTestButton] Notification sent:', data);
-
-      toast({
-        title: "Notification envoyée",
-        description: "Vous devriez recevoir une notification de test dans quelques instants.",
-      });
+      // If we get here, all retries failed
+      throw lastError;
 
     } catch (error) {
       console.error('[NotificationTestButton] Error:', error);
+      
+      // Handle specific error types
+      let errorMessage = error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification";
+      
+      // Check for specific error codes from the edge function
+      if (error.message?.includes('SUBSCRIPTION_EXPIRED')) {
+        errorMessage = "Votre abonnement aux notifications a expiré. Veuillez réessayer.";
+        // Force re-registration on next attempt
+        await registerPushNotifications();
+      }
+      
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -106,3 +140,4 @@ export function NotificationTestButton() {
     </Button>
   );
 }
+

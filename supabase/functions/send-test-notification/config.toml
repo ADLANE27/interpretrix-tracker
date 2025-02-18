@@ -2,6 +2,6 @@
 # Follow project organization
 project_id = "bblpiatmtnlhnbavhkau"
 
-# Add web-push as a dependency with specific version
 [imports]
 web-push = "https://esm.sh/web-push@3.4.5"
+

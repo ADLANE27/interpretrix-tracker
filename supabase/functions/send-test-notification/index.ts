@@ -1,10 +1,12 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import webPush from "https://esm.sh/web-push@3.4.5"
+import webPush from 'web-push'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, content-length, host, user-agent, accept',
+  'Access-Control-Max-Age': '86400'
 }
 
 serve(async (req) => {
@@ -14,6 +16,9 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Received notification request');
+
+    // Verify authorization
     const { authorization } = req.headers
     if (!authorization) {
       throw new Error('Missing authorization header')
@@ -39,24 +44,38 @@ serve(async (req) => {
     const { userId, title, body, data } = await req.json()
     console.log('Processing notification request for user:', userId)
 
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration')
+    }
+
     // Get user's push subscription from database
-    const { data: supabaseClient } = await (await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/rest/v1/user_push_subscriptions?user_id=eq.${userId}`,
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/user_push_subscriptions?user_id=eq.${userId}`,
       {
         headers: {
           'Content-Type': 'application/json',
-          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
         }
       }
-    )).json()
+    )
 
-    if (!supabaseClient || supabaseClient.length === 0) {
+    const subscriptions = await response.json()
+
+    if (!subscriptions || subscriptions.length === 0) {
       console.error('No push subscription found for user:', userId)
       throw new Error('User has no push subscription')
     }
 
-    const subscription = supabaseClient[0].subscription
+    const subscription = subscriptions[0].subscription
+
+    // Validate subscription format
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      throw new Error('Invalid subscription format')
+    }
 
     // Send push notification
     console.log('Sending push notification...')
@@ -69,7 +88,8 @@ serve(async (req) => {
       })
     )
 
-    console.log('Push notification sent successfully', result)
+    console.log('Push notification sent successfully:', result)
+
     return new Response(
       JSON.stringify({ 
         message: 'Notification sent successfully',
@@ -84,10 +104,30 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error sending notification:', error)
+    console.error('Error in send-test-notification:', error)
+    
+    // Check if it's a subscription expiration error
+    if (error.statusCode === 410) {
+      // Subscription has expired or is invalid
+      return new Response(
+        JSON.stringify({ 
+          error: 'Subscription has expired. Please re-subscribe to notifications.',
+          code: 'SUBSCRIPTION_EXPIRED'
+        }),
+        { 
+          headers: { 
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          },
+          status: 410
+        }
+      )
+    }
+
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to send notification'
+        error: error instanceof Error ? error.message : 'Failed to send notification',
+        code: 'NOTIFICATION_ERROR'
       }),
       { 
         headers: { 
@@ -99,3 +139,4 @@ serve(async (req) => {
     )
   }
 })
+
