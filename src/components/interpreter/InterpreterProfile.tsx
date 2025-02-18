@@ -55,7 +55,7 @@ export const InterpreterProfile = () => {
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       setIsAdmin(userRole?.role === 'admin');
     } catch (error) {
@@ -72,9 +72,17 @@ export const InterpreterProfile = () => {
         .from("interpreter_profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        toast({
+          title: "Profil non trouvé",
+          description: "Impossible de trouver votre profil",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Transform language strings to LanguagePair objects
       const languagePairs: LanguagePair[] = data.languages.map((lang: string) => {
