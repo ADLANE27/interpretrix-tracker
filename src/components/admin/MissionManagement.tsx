@@ -15,31 +15,9 @@ import { hasTimeOverlap, isInterpreterAvailableForScheduledMission } from "@/uti
 import { parseISO, formatISO } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { Filter } from "lucide-react";
+import { Mission } from "@/types/mission";
 
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
-
-interface Mission {
-  id: string;
-  source_language: string;
-  target_language: string;
-  estimated_duration: number;
-  status: string;
-  created_at: string;
-  assigned_interpreter_id?: string;
-  scheduled_start_time?: string;
-  scheduled_end_time?: string;
-  mission_type: 'immediate' | 'scheduled';
-  interpreter_profiles?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture_url: string | null;
-    status: string;
-  };
-  creator_email?: string;
-  creator_first_name?: string;
-  creator_last_name?: string;
-}
 
 interface Interpreter {
   id: string;
@@ -521,7 +499,7 @@ export const MissionManagement = () => {
           .from('interpretation_missions')
           .update({ 
             status: 'declined',
-            notified_interpreters: `{${user.id}}`
+            notified_interpreters: [user.id]
           })
           .eq('id', missionId);
 
