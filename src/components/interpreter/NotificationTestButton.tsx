@@ -27,7 +27,12 @@ export function NotificationTestButton() {
         return;
       }
 
+      console.log("[NotificationTestButton] Calling edge function with auth token");
+      
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        },
         body: {
           userId: session.user.id,
           title: "Test de Notification",
