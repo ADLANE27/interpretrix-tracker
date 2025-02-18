@@ -30,7 +30,7 @@ serve(async (req) => {
 
     // Set up web-push with VAPID keys
     webpush.setVapidDetails(
-      'mailto:support@example.com', // Replace with your actual email
+      'mailto:support@aftrad.com',
       vapidPublicKey,
       vapidPrivateKey
     )
