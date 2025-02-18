@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,7 +70,7 @@ export const UserManagement = () => {
                 .from('interpreter_profiles')
                 .select('languages')
                 .eq('id', userRole.user_id)
-                .single();
+                .maybeSingle();
 
               return {
                 id: userRole.user_id,
