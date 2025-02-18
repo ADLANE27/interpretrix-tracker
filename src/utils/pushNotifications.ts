@@ -55,12 +55,12 @@ export const registerPushNotifications = async () => {
       }
     };
 
-    // 7. Enregistrer dans Supabase
+    // 7. Enregistrer dans Supabase - Convertir explicitement en JSON
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: subscriptionData as Json
+        subscription: JSON.parse(JSON.stringify(subscriptionData)) as Json
       });
 
     if (upsertError) {
