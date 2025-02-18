@@ -1,194 +1,97 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import * as webPush from "https://esm.sh/web-push@3.4.5"
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import webPush from 'npm:web-push@3.6.7'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, content-length, host, user-agent, accept',
   'Access-Control-Max-Age': '86400',
-  'Content-Type': 'application/json'
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('[send-test-notification] Handling CORS preflight request');
-    return new Response(null, { 
-      headers: corsHeaders,
-      status: 204
-    });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    })
   }
 
   try {
-    console.log('[send-test-notification] Starting notification process');
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    // Verify authorization
-    const { authorization } = req.headers;
-    if (!authorization) {
-      console.error('[send-test-notification] Missing authorization header');
-      throw new Error('Missing authorization header');
-    }
-
-    // Get VAPID keys from environment variables
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('[send-test-notification] Missing VAPID keys');
-      throw new Error('Push notification configuration missing');
-    }
-
-    // Set up web-push with VAPID keys
+    // Set VAPID details
     webPush.setVapidDetails(
-      'mailto:support@aftrad.com',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
+      'mailto:test@test.com',
+      Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
+      Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
+    )
 
-    // Parse request body
-    const { userId, title, body, data, missionType = 'test' } = await req.json();
-    console.log('[send-test-notification] Processing notification:', { userId, missionType });
+    const { userId, title, body, data } = await req.json()
+    console.log('Received notification request:', { userId, title, body, data })
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    // Get user's push subscription
+    const { data: subscriptionData, error: subscriptionError } = await supabaseClient
+      .from('user_push_subscriptions')
+      .select('subscription')
+      .eq('user_id', userId)
+      .single()
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('[send-test-notification] Missing Supabase configuration');
-      throw new Error('Missing Supabase configuration');
+    if (subscriptionError || !subscriptionData?.subscription) {
+      console.error('Error getting subscription:', subscriptionError)
+      throw new Error('No subscription found for user')
     }
 
-    // Get user's push subscription from database
-    console.log('[send-test-notification] Fetching push subscription for user:', userId);
-    const response = await fetch(
-      `${supabaseUrl}/rest/v1/user_push_subscriptions?user_id=eq.${userId}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`
-        }
+    console.log('Found subscription:', subscriptionData.subscription)
+
+    const pushPayload = {
+      title,
+      body,
+      data: {
+        url: data?.url || '/',
+        ...data
       }
-    );
-
-    const subscriptions = await response.json();
-    console.log('[send-test-notification] Found subscriptions:', subscriptions.length);
-
-    if (!subscriptions || subscriptions.length === 0) {
-      console.error('[send-test-notification] No push subscription found for user:', userId);
-      throw new Error('User has no push subscription');
     }
 
-    const subscription = subscriptions[0].subscription;
-
-    // Validate subscription format
-    if (!subscription || !subscription.endpoint || !subscription.keys) {
-      console.error('[send-test-notification] Invalid subscription format:', subscription);
-      throw new Error('Invalid subscription format');
-    }
-
-    // Customize notification based on mission type
-    let notificationTitle = title;
-    let notificationBody = body;
-    let notificationData = data;
-
-    if (missionType === 'immediate') {
-      notificationTitle = "🚨 Nouvelle mission immédiate";
-      notificationBody = `${data.sourceLanguage} → ${data.targetLanguage} - ${data.duration} minutes`;
-      notificationData = {
-        ...data,
-        url: "/interpreter/missions"
-      };
-    } else if (missionType === 'scheduled') {
-      notificationTitle = "📅 Nouvelle mission programmée";
-      notificationBody = `${data.sourceLanguage} → ${data.targetLanguage}\nDate: ${data.startTime}`;
-      notificationData = {
-        ...data,
-        url: "/interpreter/calendar"
-      };
-    }
+    console.log('Sending push notification with payload:', pushPayload)
 
     // Send push notification
-    console.log('[send-test-notification] Sending push notification:', { 
-      title: notificationTitle, 
-      body: notificationBody 
-    });
+    await webPush.sendNotification(
+      subscriptionData.subscription,
+      JSON.stringify(pushPayload)
+    )
 
-    const result = await webPush.sendNotification(
-      subscription,
-      JSON.stringify({
-        title: notificationTitle,
-        body: notificationBody,
-        data: notificationData
-      })
-    );
+    console.log('Push notification sent successfully')
 
-    console.log('[send-test-notification] Push notification sent successfully:', result);
-
-    // Update notification status in database
-    const updateResponse = await fetch(
-      `${supabaseUrl}/rest/v1/mission_notifications?mission_id=eq.${data.missionId}&interpreter_id=eq.${userId}`,
+    return new Response(
+      JSON.stringify({ success: true }),
       {
-        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          status: 'sent',
-          updated_at: new Date().toISOString()
-        })
+          ...corsHeaders
+        }
       }
-    );
-
-    if (!updateResponse.ok) {
-      console.error('[send-test-notification] Failed to update notification status:', updateResponse.status);
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        message: 'Notification sent successfully',
-        result 
-      }),
-      { 
-        headers: corsHeaders,
-        status: 200
-      }
-    );
-
+    )
   } catch (error) {
-    console.error('[send-test-notification] Error:', error);
-    
-    let statusCode = 500;
-    let errorMessage = error instanceof Error ? error.message : 'Failed to send notification';
-    let errorCode = 'NOTIFICATION_ERROR';
-
-    // Check for specific error types
-    if (error instanceof webPush.WebPushError) {
-      console.error('[send-test-notification] WebPush Error:', {
-        statusCode: error.statusCode,
-        body: error.body,
-        headers: error.headers
-      });
-
-      if (error.statusCode === 410) {
-        statusCode = 410;
-        errorMessage = 'Subscription has expired. Please re-subscribe to notifications.';
-        errorCode = 'SUBSCRIPTION_EXPIRED';
-      }
-    }
+    console.error('Error sending push notification:', error)
 
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage,
-        code: errorCode
+      JSON.stringify({
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       }),
-      { 
-        headers: corsHeaders,
-        status: statusCode
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
       }
-    );
+    )
   }
-});
+})
+
