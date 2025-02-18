@@ -2,30 +2,34 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 import webpush from 'https://esm.sh/web-push@3.6.6'
 
-const ALLOWED_ORIGIN = 'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com'
+const ALLOWED_ORIGINS = [
+  'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com',
+  'https://interpretix.netlify.app'
+]
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Origin': '',  // Will be set dynamically
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey',
   'Access-Control-Max-Age': '86400',
 }
 
 Deno.serve(async (req) => {
+  // Get the request origin
+  const origin = req.headers.get('origin') || ''
+  
+  // Check if origin is allowed and set CORS headers accordingly
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    corsHeaders['Access-Control-Allow-Origin'] = origin
+  } else {
+    console.error('[send-test-notification] Invalid origin:', origin)
+    return new Response('Invalid origin', { status: 403 })
+  }
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     console.log('[send-test-notification] Handling CORS preflight request')
     return new Response(null, {
-      headers: corsHeaders
-    });
-  }
-
-  // Validate origin
-  const origin = req.headers.get('origin')
-  if (origin !== ALLOWED_ORIGIN) {
-    console.error('[send-test-notification] Invalid origin:', origin)
-    return new Response('Invalid origin', { 
-      status: 403,
       headers: corsHeaders
     })
   }
