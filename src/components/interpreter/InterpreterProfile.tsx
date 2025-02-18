@@ -41,8 +41,40 @@ export const InterpreterProfile = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProfile();
-    checkAdminStatus();
+    const initializeProfile = async () => {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("[InterpreterProfile] Session error:", sessionError);
+        window.location.href = "/interpreter/login";
+        return;
+      }
+      
+      if (!session) {
+        console.log("[InterpreterProfile] No active session");
+        window.location.href = "/interpreter/login";
+        return;
+      }
+
+      await Promise.all([fetchProfile(), checkAdminStatus()]);
+    };
+
+    initializeProfile();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[InterpreterProfile] Auth state changed:", event);
+      if (event === 'SIGNED_OUT' || !session) {
+        window.location.href = "/interpreter/login";
+      } else {
+        await Promise.all([fetchProfile(), checkAdminStatus()]);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkAdminStatus = async () => {

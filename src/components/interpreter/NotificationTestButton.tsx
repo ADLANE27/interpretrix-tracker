@@ -13,9 +13,18 @@ export function NotificationTestButton() {
     try {
       setIsLoading(true);
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("[NotificationTestButton] Session error:", sessionError);
+        throw new Error("Erreur de session");
+      }
+      
       if (!session?.user) {
-        throw new Error("Utilisateur non authentifié");
+        console.log("[NotificationTestButton] No active session");
+        // Rediriger vers la page de connexion
+        window.location.href = "/interpreter/login";
+        return;
       }
 
       const { data, error } = await supabase.functions.invoke('send-test-notification', {
@@ -29,7 +38,12 @@ export function NotificationTestButton() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[NotificationTestButton] Function error:", error);
+        throw error;
+      }
+
+      console.log("[NotificationTestButton] Notification sent successfully:", data);
 
       toast({
         title: "Notification envoyée",
@@ -37,7 +51,7 @@ export function NotificationTestButton() {
       });
 
     } catch (error) {
-      console.error("Erreur lors de l'envoi de la notification test:", error);
+      console.error("[NotificationTestButton] Error:", error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification",
