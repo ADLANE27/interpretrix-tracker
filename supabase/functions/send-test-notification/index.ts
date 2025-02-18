@@ -5,38 +5,38 @@ import webpush from 'https://esm.sh/web-push@3.6.6'
 const ALLOWED_ORIGINS = [
   'https://89bd4db4-56a9-42cc-a890-6f3507bfb0c7.lovableproject.com',
   'https://interpretix.netlify.app'
-]
+] as const;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '',  // Will be set dynamically
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey',
-  'Access-Control-Max-Age': '86400',
+function createCorsHeaders(origin: string): HeadersInit {
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : '',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, x-client-info, apikey',
+    'Access-Control-Max-Age': '86400',
+  }
 }
 
 Deno.serve(async (req) => {
-  // Get the request origin
-  const origin = req.headers.get('origin') || ''
-  
-  // Check if origin is allowed and set CORS headers accordingly
-  if (ALLOWED_ORIGINS.includes(origin)) {
-    corsHeaders['Access-Control-Allow-Origin'] = origin
-  } else {
-    console.error('[send-test-notification] Invalid origin:', origin)
-    return new Response('Invalid origin', { status: 403 })
-  }
-
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    console.log('[send-test-notification] Handling CORS preflight request')
-    return new Response(null, {
-      headers: corsHeaders
-    })
-  }
-
-  // Main handler
   try {
     console.log('[send-test-notification] Starting function execution')
+    
+    // Get and validate origin
+    const origin = req.headers.get('origin') || ''
+    if (!ALLOWED_ORIGINS.includes(origin)) {
+      console.error('[send-test-notification] Invalid origin:', origin)
+      return new Response('Invalid origin', { 
+        status: 403,
+        headers: createCorsHeaders(origin)
+      })
+    }
+
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      console.log('[send-test-notification] Handling CORS preflight request')
+      return new Response(null, {
+        headers: createCorsHeaders(origin)
+      })
+    }
 
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       }),
       {
         headers: {
-          ...corsHeaders,
+          ...createCorsHeaders(origin),
           'Content-Type': 'application/json',
         }
       }
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       {
         status: 500,
         headers: {
-          ...corsHeaders,
+          ...createCorsHeaders(req.headers.get('origin') || ''),
           'Content-Type': 'application/json',
         }
       }
