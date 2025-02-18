@@ -460,106 +460,6 @@ export type Database = {
           },
         ]
       }
-      mission_notifications: {
-        Row: {
-          created_at: string
-          id: string
-          interpreter_id: string
-          mission_id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          interpreter_id: string
-          mission_id: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          interpreter_id?: string
-          mission_id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreters_with_next_mission"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["mission_id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "interpretation_missions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "mission_details"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_history: {
-        Row: {
-          content: Json
-          created_at: string | null
-          id: string
-          notification_type: string
-          recipient_id: string
-          sent_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          content: Json
-          created_at?: string | null
-          id?: string
-          notification_type: string
-          recipient_id: string
-          sent_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          content?: Json
-          created_at?: string | null
-          id?: string
-          notification_type?: string
-          recipient_id?: string
-          sent_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       secrets: {
         Row: {
           created_at: string
@@ -965,10 +865,6 @@ export type Database = {
         Returns: boolean
       }
       migrate_interpreter_languages: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      register_all_interpreters_in_onesignal: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

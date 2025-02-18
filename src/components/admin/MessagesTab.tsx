@@ -46,14 +46,12 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     const setupRealtimeSubscription = () => {
-      // Clean up existing subscription if any
       if (channelRef.current) {
         console.log('[MessagesTab] Removing existing channel');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
 
-      // Create a new channel
       console.log('[MessagesTab] Setting up new channel');
       channelRef.current = supabase.channel('mission-updates', {
         config: {
@@ -62,7 +60,6 @@ export const MessagesTab = () => {
         }
       });
 
-      // Add subscription handlers
       channelRef.current
         .on(
           'postgres_changes',
@@ -105,7 +102,6 @@ export const MessagesTab = () => {
 
     setupRealtimeSubscription();
 
-    // Cleanup function
     return () => {
       console.log('[MessagesTab] Cleaning up subscription');
       if (channelRef.current) {
@@ -113,7 +109,7 @@ export const MessagesTab = () => {
         channelRef.current = null;
       }
     };
-  }, [soundEnabled, toast, isMobile]); // Only re-run when these dependencies change
+  }, [soundEnabled, toast, isMobile]);
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
