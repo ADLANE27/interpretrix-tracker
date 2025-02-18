@@ -25,15 +25,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Set VAPID details
+    // Set VAPID details with a proper contact email
     webPush.setVapidDetails(
-      'mailto:test@test.com',
+      'mailto:contact@aftrad.com',
       Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
       Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
     )
 
-    const { userId, title, body, data } = await req.json()
-    console.log('Received notification request:', { userId, title, body, data })
+    const { userId, data } = await req.json()
+    console.log('Received notification request:', { userId, data })
 
     // Get user's push subscription
     const { data: subscriptionData, error: subscriptionError } = await supabaseClient
@@ -49,13 +49,15 @@ serve(async (req) => {
 
     console.log('Found subscription:', subscriptionData.subscription)
 
+    // Format the push payload to match service worker expectations
     const pushPayload = {
-      title,
-      body,
-      data: {
-        url: data?.url || '/',
-        ...data
-      }
+      type: 'mission',
+      missionType: data.missionType || 'immediate', // Default to immediate if not specified
+      sourceLanguage: data.sourceLanguage,
+      targetLanguage: data.targetLanguage,
+      duration: data.duration,
+      url: '/interpreter',
+      ...data // Include any additional mission data
     }
 
     console.log('Sending push notification with payload:', pushPayload)
@@ -94,4 +96,3 @@ serve(async (req) => {
     )
   }
 })
-
