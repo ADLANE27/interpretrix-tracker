@@ -11,6 +11,7 @@ import { playNotificationSound } from "@/utils/notificationSounds";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Mission } from "@/types/mission";
+import { NotificationActivationButton } from './NotificationActivationButton';
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -329,6 +330,12 @@ export const MissionsTab = () => {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-4">
+          <NotificationActivationButton />
+        </div>
+      </div>
+      
       {missions.map((mission) => {
         const statusDisplay = getMissionStatusDisplay(
           mission.status, 
