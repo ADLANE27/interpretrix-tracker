@@ -152,6 +152,21 @@ export const MissionsTab = () => {
                 fetchMissions();
               }
             )
+            .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'mission_notifications'
+              },
+              async (payload) => {
+                console.log('[MissionsTab] Mission notification update received:', payload);
+                if (payload.new && payload.new.interpreter_id === currentUserId) {
+                  // Refresh missions when notification status changes
+                  fetchMissions();
+                }
+              }
+            )
             .subscribe(async (status) => {
               console.log('[MissionsTab] Subscription status:', status);
               
