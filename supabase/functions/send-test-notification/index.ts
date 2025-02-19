@@ -6,18 +6,29 @@ import * as webpush from 'npm:web-push@3.6.1'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
+  // Gestion appropriée des requêtes OPTIONS pour CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, {
+      headers: corsHeaders,
+      status: 204
+    })
   }
 
   try {
-    const { userId, title, body, data } = await req.json()
-    console.log('[Push] Received request for user:', userId);
+    // Récupération et validation du corps de la requête
+    if (!req.body) {
+      throw new Error('Request body is required');
+    }
 
-    // Get environment variables
+    const { userId, title, body, data } = await req.json()
+    console.log('[Push] Received request:', { userId, title, body, data });
+
+    // Validation des variables d'environnement VAPID
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -25,53 +36,48 @@ serve(async (req) => {
 
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.error('[Push] Missing VAPID configuration');
-      throw new Error('Missing VAPID configuration');
+      throw new Error('Server configuration error: Missing VAPID keys');
     }
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('[Push] Missing Supabase configuration');
-      throw new Error('Missing Supabase configuration');
+      throw new Error('Server configuration error: Missing Supabase configuration');
     }
 
-    // Configure web push with proper VAPID details
+    // Configuration de web-push avec les clés VAPID
     webpush.setVapidDetails(
       'mailto:contact@aftrad.com',
       vapidPublicKey,
       vapidPrivateKey
     );
 
-    // Initialize Supabase client
+    // Initialisation du client Supabase
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    console.log('[Push] Fetching subscriptions for user:', userId);
+    console.log('[Push] Fetching subscription for user:', userId);
 
-    // Get user's push subscription
+    // Récupération de la souscription de l'utilisateur
     const { data: subscriptionData, error: subError } = await supabase
       .from('user_push_subscriptions')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .single();
 
-    console.log('[Push] Found subscriptions:', subscriptionData?.length || 0);
-    
-    if (subError) {
+    if (subError || !subscriptionData) {
       console.error('[Push] Subscription fetch error:', subError);
-      throw new Error('Error fetching subscription');
+      throw new Error('No subscription found for this user');
     }
 
-    if (!subscriptionData || subscriptionData.length === 0) {
-      console.error('[Push] No subscriptions found for user:', userId);
-      throw new Error('No subscription found');
-    }
+    const subscription = subscriptionData.subscription;
+    console.log('[Push] Using subscription:', subscription);
 
-    const subscription = subscriptionData[0].subscription;
-    console.log('[Push] Using subscription:', JSON.stringify(subscription, null, 2));
-
-    if (!subscription || !subscription.endpoint || !subscription.keys?.auth || !subscription.keys?.p256dh) {
+    // Validation de la souscription
+    if (!subscription?.endpoint || !subscription?.keys?.auth || !subscription?.keys?.p256dh) {
       console.error('[Push] Invalid subscription format:', subscription);
       throw new Error('Invalid subscription format');
     }
 
-    // Prepare notification payload
+    // Préparation du payload de la notification
     const pushPayload = JSON.stringify({
       title,
       body,
@@ -82,60 +88,64 @@ serve(async (req) => {
 
     console.log('[Push] Sending notification with payload:', pushPayload);
 
-    const results = {
-      successful: 0,
-      failed: 0,
-      errors: [] as string[]
-    };
+    // Envoi de la notification
+    const pushResult = await webpush.sendNotification(
+      subscription,
+      pushPayload
+    );
 
-    try {
-      const result = await webpush.sendNotification(
-        subscription,
-        pushPayload
-      );
+    console.log('[Push] Notification sent successfully:', pushResult.statusCode);
 
-      console.log('[Push] Notification sent successfully:', result);
-      results.successful++;
-
-      return new Response(
-        JSON.stringify({
-          message: 'Push notification sent successfully',
-          status: result.statusCode
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-
-    } catch (pushError: any) {
-      console.error('[Push] Error sending notification:', pushError);
-      results.failed++;
-      results.errors.push(pushError.message);
-
-      // Check if subscription is expired or invalid
-      if (pushError.statusCode === 404 || pushError.statusCode === 410) {
-        console.log('[Push] Subscription is expired or invalid, removing from database');
-        
-        // Remove invalid subscription
-        const { error: deleteError } = await supabase
-          .from('user_push_subscriptions')
-          .delete()
-          .eq('user_id', userId);
-
-        if (deleteError) {
-          console.error('[Push] Error deleting invalid subscription:', deleteError);
-        }
+    return new Response(
+      JSON.stringify({
+        message: 'Push notification sent successfully',
+        status: pushResult.statusCode
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
       }
-
-      throw pushError;
-    }
+    );
 
   } catch (error) {
     console.error('[Push] Function error:', error);
+
+    // Si l'erreur est liée à une souscription expirée (404) ou invalide (410)
+    if (error instanceof webpush.WebPushError && (error.statusCode === 404 || error.statusCode === 410)) {
+      console.log('[Push] Subscription is expired or invalid');
+      
+      try {
+        // Récupérer l'userId depuis le corps de la requête initiale
+        const { userId } = await req.json();
+        
+        if (userId) {
+          const supabaseUrl = Deno.env.get('SUPABASE_URL');
+          const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+          
+          if (supabaseUrl && supabaseAnonKey) {
+            const supabase = createClient(supabaseUrl, supabaseAnonKey);
+            
+            // Supprimer la souscription invalide
+            const { error: deleteError } = await supabase
+              .from('user_push_subscriptions')
+              .delete()
+              .eq('user_id', userId);
+
+            if (deleteError) {
+              console.error('[Push] Error deleting invalid subscription:', deleteError);
+            } else {
+              console.log('[Push] Invalid subscription deleted successfully');
+            }
+          }
+        }
+      } catch (cleanupError) {
+        console.error('[Push] Error during cleanup:', cleanupError);
+      }
+    }
+
     return new Response(
       JSON.stringify({
-        error: error.message
+        error: error instanceof Error ? error.message : 'An unexpected error occurred'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
