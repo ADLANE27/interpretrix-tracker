@@ -261,7 +261,7 @@ export const useSupabaseConnection = () => {
       }
       return () => {};
     }
-  }, [clearAllIntervals, handleReconnect, releaseWakeLock, setupHeartbeat]);
+  }, [clearAllIntervals, releaseWakeLock, setupHeartbeat]);
 
   useEffect(() => {
     let mounted = true;
