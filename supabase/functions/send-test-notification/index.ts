@@ -1,10 +1,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as webPush from "https://esm.sh/web-push@3.6.6"
+import webPush from 'https://esm.sh/web-push@3.6.6'
 
 // Define TypeScript interfaces for type safety
-interface MissionNotificationData {
+interface NotificationPayload {
   type: 'mission';
   missionType: 'immediate' | 'scheduled';
   sourceLanguage: string;
@@ -13,11 +13,30 @@ interface MissionNotificationData {
   startTime?: string;
   endTime?: string;
   missionId: string;
+  url: string;
+}
+
+interface PushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  expirationTime?: number | null;
 }
 
 interface NotificationRequest {
   userId: string;
-  data: MissionNotificationData;
+  data: {
+    type: 'mission';
+    missionId: string;
+    missionType: 'immediate' | 'scheduled';
+    sourceLanguage: string;
+    targetLanguage: string;
+    duration: number;
+    startTime?: string;
+    endTime?: string;
+  };
 }
 
 const corsHeaders = {
@@ -32,83 +51,98 @@ serve(async (req) => {
       return new Response(null, { headers: corsHeaders });
     }
 
-    console.log('[send-test-notification] Initializing Supabase client');
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Set VAPID details with proper contact email
-    console.log('[send-test-notification] Setting up VAPID details');
-    webPush.setVapidDetails(
-      'mailto:contact@aftrad.com',
-      Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-      Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
-    )
-
-    const requestData: NotificationRequest = await req.json();
-    console.log('[send-test-notification] Received notification request:', requestData);
-
-    if (!requestData.userId || !requestData.data) {
-      throw new Error('Missing required fields: userId and data are required');
+    console.log('[send-test-notification] Starting notification process');
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
     }
 
-    // Get user's push subscription
-    console.log('[send-test-notification] Fetching user subscription');
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    // Set up VAPID details
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('Missing VAPID configuration');
+    }
+
+    webPush.setVapidDetails(
+      'mailto:contact@aftrad.com',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
+    // Parse and validate request data
+    const requestData = await req.json() as NotificationRequest;
+    console.log('[send-test-notification] Request data:', requestData);
+
+    if (!requestData.userId || !requestData.data) {
+      throw new Error('Missing required fields: userId and data');
+    }
+
+    // Fetch user's subscription
     const { data: subscriptionData, error: subscriptionError } = await supabaseClient
       .from('user_push_subscriptions')
       .select('subscription')
       .eq('user_id', requestData.userId)
-      .single()
+      .single();
 
-    if (subscriptionError || !subscriptionData) {
-      throw new Error(`No push subscription found for user ${requestData.userId}`);
+    if (subscriptionError || !subscriptionData?.subscription) {
+      throw new Error(`No valid subscription found for user ${requestData.userId}`);
     }
 
-    console.log('[send-test-notification] Found subscription:', subscriptionData.subscription);
+    // Validate subscription data
+    const subscription = subscriptionData.subscription as PushSubscription;
+    if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+      throw new Error('Invalid subscription format');
+    }
 
-    // Ensure the notification payload matches service worker expectations
-    const pushPayload = {
+    // Prepare notification payload
+    const pushPayload: NotificationPayload = {
       type: 'mission',
+      missionId: requestData.data.missionId,
       missionType: requestData.data.missionType,
       sourceLanguage: requestData.data.sourceLanguage,
       targetLanguage: requestData.data.targetLanguage,
       duration: requestData.data.duration,
       url: '/interpreter',
-      missionId: requestData.data.missionId,
       startTime: requestData.data.startTime,
-      endTime: requestData.data.endTime
+      endTime: requestData.data.endTime,
     };
 
     console.log('[send-test-notification] Sending push notification with payload:', pushPayload);
 
     try {
       await webPush.sendNotification(
-        subscriptionData.subscription,
+        subscription,
         JSON.stringify(pushPayload)
       );
       console.log('[send-test-notification] Push notification sent successfully');
 
       return new Response(
-        JSON.stringify({ message: 'Push notification sent successfully' }),
+        JSON.stringify({ success: true, message: 'Push notification sent successfully' }),
         {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
-        },
-      )
+        }
+      );
     } catch (pushError) {
-      console.error('[send-test-notification] Push notification failed:', pushError);
+      console.error('[send-test-notification] Push error:', pushError);
       
-      // If the subscription is invalid, remove it from the database
+      // Handle expired subscriptions
       if (pushError.statusCode === 410) {
         console.log('[send-test-notification] Subscription expired, removing from database');
         await supabaseClient
           .from('user_push_subscriptions')
           .delete()
           .eq('user_id', requestData.userId);
+          
+        throw new Error('Subscription expired');
       }
       
       throw pushError;
@@ -117,16 +151,14 @@ serve(async (req) => {
     console.error('[send-test-notification] Error:', error);
     return new Response(
       JSON.stringify({
+        success: false,
         error: error.message || 'Internal server error',
         details: error.toString()
       }),
       {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: error.statusCode || 500,
-      },
-    )
+      }
+    );
   }
-})
+});
