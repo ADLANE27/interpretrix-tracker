@@ -1,4 +1,3 @@
 
 project_id = "bblpiatmtnlhnbavhkau"
-memory_size = 256
-verify_jwt = false
+name = "send-test-notification"
