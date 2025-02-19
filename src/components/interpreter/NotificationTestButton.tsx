@@ -38,13 +38,7 @@ export function NotificationTestButton() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session?.user) {
         console.log('[NotificationTestButton] No active session');
-        toast({
-          title: "Non authentifié",
-          description: "Vous devez être connecté pour utiliser cette fonctionnalité",
-          variant: "destructive"
-        });
-        navigate("/interpreter/login");
-        return;
+        throw new Error('Vous devez être connecté pour utiliser cette fonctionnalité');
       }
 
       // 3. Check current notification permission status
@@ -65,74 +59,35 @@ export function NotificationTestButton() {
         }
       }
 
-      console.log('[NotificationTestButton] Calling edge function with session token:', session.access_token);
-      
-      // 6. Send test notification with retry logic
-      const maxRetries = 3;
-      let lastError;
-
-      for (let i = 0; i < maxRetries; i++) {
-        try {
-          const { data, error } = await supabase.functions.invoke('send-test-notification', {
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: {
-              userId: session.user.id,
-              title: "Test de Notification",
-              body: "Si vous voyez cette notification, tout fonctionne correctement !",
-              data: {
-                url: "/interpreter"
-              }
-            }
-          });
-
-          if (error) {
-            console.error(`[NotificationTestButton] Edge function error (attempt ${i + 1}):`, error);
-            lastError = error;
-            if (i < maxRetries - 1) {
-              await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
-              continue;
-            }
-            throw error;
-          }
-
-          console.log('[NotificationTestButton] Notification sent:', data);
-
-          toast({
-            title: "Notification envoyée",
-            description: "Vous devriez recevoir une notification de test dans quelques instants.",
-          });
-          
-          return;
-        } catch (err) {
-          lastError = err;
-          if (i < maxRetries - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
-            continue;
+      // 6. Send test notification
+      const { data, error } = await supabase.functions.invoke('send-test-notification', {
+        body: {
+          userId: session.user.id,
+          title: "Test de Notification",
+          body: "Si vous voyez cette notification, tout fonctionne correctement !",
+          data: {
+            url: "/interpreter"
           }
         }
+      });
+
+      if (error) {
+        console.error('[NotificationTestButton] Edge function error:', error);
+        throw error;
       }
 
-      throw lastError;
+      console.log('[NotificationTestButton] Notification sent:', data);
+
+      toast({
+        title: "Notification envoyée",
+        description: "Vous devriez recevoir une notification de test dans quelques instants."
+      });
 
     } catch (error) {
       console.error('[NotificationTestButton] Error:', error);
-      
-      // Handle specific error types
-      let errorMessage = error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification";
-      
-      // Check for specific error codes from the edge function
-      if (error.message?.includes('SUBSCRIPTION_EXPIRED')) {
-        errorMessage = "Votre abonnement aux notifications a expiré. Veuillez réessayer.";
-        // Force re-registration on next attempt
-        await registerPushNotifications();
-      }
-      
       toast({
         title: "Erreur",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Erreur lors de l'envoi de la notification",
         variant: "destructive"
       });
     } finally {
