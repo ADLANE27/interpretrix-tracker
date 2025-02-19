@@ -1,4 +1,4 @@
 
 project_id = "bblpiatmtnlhnbavhkau"
 memory_size = 256
-verify_jwt = true
+verify_jwt = false

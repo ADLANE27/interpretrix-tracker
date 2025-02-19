@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webPush from 'https://esm.sh/web-push@3.6.6'
+import { decode as decodeJWT } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 // Define TypeScript interfaces for type safety
 interface NotificationPayload {
@@ -53,6 +54,26 @@ serve(async (req) => {
     }
 
     console.log('[send-test-notification] Starting notification process');
+
+    // Verify JWT token manually
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing Authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    try {
+      // Decode the JWT to verify it's valid and get the user ID
+      const [header, payload] = await decodeJWT(token);
+      console.log('[send-test-notification] JWT decoded successfully:', { header, payload });
+      
+      if (!payload.sub) {
+        throw new Error('Invalid JWT token: missing sub claim');
+      }
+    } catch (jwtError) {
+      console.error('[send-test-notification] JWT verification failed:', jwtError);
+      throw new Error('Invalid JWT token');
+    }
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
