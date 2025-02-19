@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -106,7 +105,7 @@ export const useSupabaseConnection = () => {
       const success = await sendHeartbeat();
       if (!success && !isExplicitDisconnectRef.current) {
         console.log('[useSupabaseConnection] Heartbeat failed, initiating reconnect');
-        handleReconnect();
+        handleReconnectRef.current?.();
       }
     }, heartbeatInterval);
 
@@ -119,7 +118,7 @@ export const useSupabaseConnection = () => {
             heartbeatTimeout,
             lastHeartbeat: lastHeartbeatRef.current
           });
-          handleReconnect();
+          handleReconnectRef.current?.();
         }
       }
     }, 5000);
@@ -303,7 +302,7 @@ export const useSupabaseConnection = () => {
       } catch (error) {
         console.error('[useSupabaseConnection] Session check error:', error);
         if (!isExplicitDisconnectRef.current) {
-          handleReconnect();
+          handleReconnectRef.current?.();
         }
       }
     }, 60000);
