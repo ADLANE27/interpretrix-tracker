@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,16 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Mission } from "@/types/mission";
 import { NotificationActivationButton } from './NotificationActivationButton';
+
+interface MissionNotification {
+  id: string;
+  mission_id: string;
+  interpreter_id: string;
+  status: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -159,7 +170,7 @@ export const MissionsTab = () => {
                 schema: 'public',
                 table: 'mission_notifications'
               },
-              async (payload) => {
+              async (payload: { new: MissionNotification }) => {
                 console.log('[MissionsTab] Mission notification update received:', payload);
                 if (payload.new && payload.new.interpreter_id === currentUserId) {
                   // Refresh missions when notification status changes
