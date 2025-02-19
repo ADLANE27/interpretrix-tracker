@@ -1,3 +1,4 @@
 
 project_id = "bblpiatmtnlhnbavhkau"
 name = "send-test-notification"
+allow_browser = true

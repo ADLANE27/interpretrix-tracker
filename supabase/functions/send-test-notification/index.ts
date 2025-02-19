@@ -1,7 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
-import webPush from 'https://esm.sh/web-push@3.6.1'
+import * as webpush from 'npm:web-push@3.6.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,8 +31,8 @@ serve(async (req) => {
       throw new Error('Missing VAPID configuration');
     }
 
-    // Configure web push
-    webPush.setVapidDetails(
+    // Configure web push with proper VAPID details
+    webpush.setVapidDetails(
       'mailto:contact@aftrad.com',
       vapidPublicKey,
       vapidPrivateKey
@@ -53,12 +53,18 @@ serve(async (req) => {
       .eq('user_id', userId)
       .single();
 
-    if (subError || !subscriptionData) {
+    if (subError || !subscriptionData?.subscription) {
       console.error('Subscription fetch error:', subError);
       throw new Error('No valid subscription found');
     }
 
-    // Send push notification
+    // Validate subscription format
+    const subscription = subscriptionData.subscription;
+    if (!subscription.endpoint || !subscription.keys?.auth || !subscription.keys?.p256dh) {
+      throw new Error('Invalid subscription format');
+    }
+
+    // Prepare notification payload
     const pushPayload = JSON.stringify({
       title,
       body,
@@ -68,19 +74,12 @@ serve(async (req) => {
     });
 
     console.log('Sending push notification with payload:', pushPayload);
-    console.log('Using subscription:', subscriptionData.subscription);
+    console.log('Using subscription:', subscription);
 
     try {
-      const result = await webPush.sendNotification(
-        subscriptionData.subscription,
-        pushPayload,
-        {
-          vapidDetails: {
-            subject: 'mailto:contact@aftrad.com',
-            publicKey: vapidPublicKey,
-            privateKey: vapidPrivateKey
-          }
-        }
+      const result = await webpush.sendNotification(
+        subscription,
+        pushPayload
       );
 
       console.log('Push notification sent successfully:', result);
@@ -93,7 +92,7 @@ serve(async (req) => {
         }
       );
 
-    } catch (pushError) {
+    } catch (pushError: any) {
       console.error('Push notification error:', pushError);
 
       // Check if subscription is expired
