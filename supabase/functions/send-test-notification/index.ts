@@ -27,28 +27,29 @@ interface PushSubscription {
 
 interface NotificationRequest {
   userId: string;
+  title: string;
+  body: string;
   data: {
-    type: 'mission';
-    missionId: string;
-    missionType: 'immediate' | 'scheduled';
-    sourceLanguage: string;
-    targetLanguage: string;
-    duration: number;
-    startTime?: string;
-    endTime?: string;
+    url: string;
   };
 }
 
+// Updated CORS headers with proper configuration
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://interpretix.netlify.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
   try {
-    // Handle CORS preflight requests
+    // Handle CORS preflight requests with proper status code
     if (req.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
     }
 
     console.log('[send-test-notification] Starting notification process');
@@ -81,8 +82,8 @@ serve(async (req) => {
     const requestData = await req.json() as NotificationRequest;
     console.log('[send-test-notification] Request data:', requestData);
 
-    if (!requestData.userId || !requestData.data) {
-      throw new Error('Missing required fields: userId and data');
+    if (!requestData.userId || !requestData.title || !requestData.body) {
+      throw new Error('Missing required fields: userId, title, and body');
     }
 
     // Fetch user's subscription
@@ -102,25 +103,20 @@ serve(async (req) => {
       throw new Error('Invalid subscription format');
     }
 
-    // Prepare notification payload
-    const pushPayload: NotificationPayload = {
-      type: 'mission',
-      missionId: requestData.data.missionId,
-      missionType: requestData.data.missionType,
-      sourceLanguage: requestData.data.sourceLanguage,
-      targetLanguage: requestData.data.targetLanguage,
-      duration: requestData.data.duration,
-      url: '/interpreter',
-      startTime: requestData.data.startTime,
-      endTime: requestData.data.endTime,
-    };
-
-    console.log('[send-test-notification] Sending push notification with payload:', pushPayload);
+    console.log('[send-test-notification] Sending push notification with payload:', {
+      title: requestData.title,
+      body: requestData.body,
+      data: requestData.data
+    });
 
     try {
       await webPush.sendNotification(
         subscription,
-        JSON.stringify(pushPayload)
+        JSON.stringify({
+          title: requestData.title,
+          body: requestData.body,
+          ...requestData.data
+        })
       );
       console.log('[send-test-notification] Push notification sent successfully');
 
@@ -142,7 +138,7 @@ serve(async (req) => {
           .delete()
           .eq('user_id', requestData.userId);
           
-        throw new Error('Subscription expired');
+        throw new Error('SUBSCRIPTION_EXPIRED');
       }
       
       throw pushError;
