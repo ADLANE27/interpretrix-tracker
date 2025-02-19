@@ -31,16 +31,19 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  try {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-      console.log('[send-test-notification] Handling OPTIONS request');
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
-    }
+  // Handle CORS preflight requests first
+  if (req.method === 'OPTIONS') {
+    console.log('[send-test-notification] Handling OPTIONS request');
+    return new Response(null, {
+      status: 204,
+      headers: {
+        ...corsHeaders,
+        'Content-Length': '0',
+      }
+    });
+  }
 
+  try {
     console.log('[send-test-notification] Starting notification process');
     
     // Initialize Supabase client
@@ -48,16 +51,27 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !supabaseKey) {
+      console.error('[send-test-notification] Missing Supabase configuration');
       throw new Error('Missing Supabase configuration');
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+    // Parse and validate request data
+    const requestData = await req.json() as NotificationRequest;
+    console.log('[send-test-notification] Request data:', requestData);
+
+    if (!requestData.userId || !requestData.title || !requestData.body) {
+      console.error('[send-test-notification] Missing required fields');
+      throw new Error('Missing required fields: userId, title, and body');
+    }
 
     // Set up VAPID details
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
     if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('[send-test-notification] Missing VAPID configuration');
       throw new Error('Missing VAPID configuration');
     }
 
@@ -67,28 +81,22 @@ serve(async (req) => {
       vapidPrivateKey
     );
 
-    // Parse and validate request data
-    const requestData = await req.json() as NotificationRequest;
-    console.log('[send-test-notification] Request data:', requestData);
-
-    if (!requestData.userId || !requestData.title || !requestData.body) {
-      throw new Error('Missing required fields: userId, title, and body');
-    }
-
     // Get user's subscription
-    const { data: subscriptionData, error: subscriptionError } = await supabaseClient
+    const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
       .from('user_push_subscriptions')
       .select('subscription')
       .eq('user_id', requestData.userId)
       .single();
 
     if (subscriptionError || !subscriptionData?.subscription) {
+      console.error('[send-test-notification] No valid subscription found:', subscriptionError);
       throw new Error(`No valid subscription found for user ${requestData.userId}`);
     }
 
     // Validate subscription data
     const subscription = subscriptionData.subscription as PushSubscription;
     if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+      console.error('[send-test-notification] Invalid subscription format');
       throw new Error('Invalid subscription format');
     }
 
@@ -128,7 +136,7 @@ serve(async (req) => {
       // Handle expired subscriptions
       if (pushError.statusCode === 410) {
         console.log('[send-test-notification] Subscription expired, removing from database');
-        await supabaseClient
+        await supabaseAdmin
           .from('user_push_subscriptions')
           .delete()
           .eq('user_id', requestData.userId);
