@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -124,42 +125,9 @@ export const useSupabaseConnection = () => {
     }, 5000);
   }, [clearAllIntervals]);
 
-  const handleReconnect = useCallback(async () => {
-    if (isExplicitDisconnectRef.current) {
-      console.log('[useSupabaseConnection] Skipping reconnect - explicit disconnect');
-      return;
-    }
-
-    clearAllIntervals();
-
-    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error('[useSupabaseConnection] Max reconnection attempts reached');
-      isExplicitDisconnectRef.current = true;
-      toast({
-        title: "Erreur de connexion",
-        description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
-        variant: "destructive",
-        duration: 0,
-      });
-      return;
-    }
-
-    console.log('[useSupabaseConnection] Attempting reconnection:', {
-      attempt: reconnectAttemptsRef.current + 1,
-      maxAttempts: maxReconnectAttempts
-    });
-
-    if (channelRef.current) {
-      await supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectAttemptsRef.current++;
-      initializeChannel();
-    }, reconnectDelay);
-  }, [clearAllIntervals, toast, initializeChannel]);
-
+  // Pre-declare the function type to handle circular dependency
+  const handleReconnectRef = useRef<() => Promise<void>>();
+  
   const initializeChannel = useCallback(async () => {
     try {
       console.log('[useSupabaseConnection] Initializing channel');
@@ -199,7 +167,7 @@ export const useSupabaseConnection = () => {
           
           if (!state || Object.keys(state).length === 0) {
             console.warn('[useSupabaseConnection] Empty presence state');
-            handleReconnect();
+            handleReconnectRef.current?.();
           }
         })
         .on('presence', { event: 'join' }, ({ key, newPresences }) => {
@@ -234,7 +202,7 @@ export const useSupabaseConnection = () => {
           } catch (error) {
             console.error('[useSupabaseConnection] Track error:', error);
             if (!isExplicitDisconnectRef.current) {
-              handleReconnect();
+              handleReconnectRef.current?.();
             }
           }
         }
@@ -242,7 +210,7 @@ export const useSupabaseConnection = () => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.error(`[useSupabaseConnection] Channel ${status}`);
           if (!isExplicitDisconnectRef.current) {
-            handleReconnect();
+            handleReconnectRef.current?.();
           }
         }
       });
@@ -257,11 +225,48 @@ export const useSupabaseConnection = () => {
     } catch (error) {
       console.error('[useSupabaseConnection] Channel initialization error:', error);
       if (!isExplicitDisconnectRef.current) {
-        handleReconnect();
+        handleReconnectRef.current?.();
       }
       return () => {};
     }
   }, [clearAllIntervals, releaseWakeLock, setupHeartbeat]);
+
+  // Implement handleReconnect and store it in the ref
+  handleReconnectRef.current = async () => {
+    if (isExplicitDisconnectRef.current) {
+      console.log('[useSupabaseConnection] Skipping reconnect - explicit disconnect');
+      return;
+    }
+
+    clearAllIntervals();
+
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('[useSupabaseConnection] Max reconnection attempts reached');
+      isExplicitDisconnectRef.current = true;
+      toast({
+        title: "Erreur de connexion",
+        description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
+        variant: "destructive",
+        duration: 0,
+      });
+      return;
+    }
+
+    console.log('[useSupabaseConnection] Attempting reconnection:', {
+      attempt: reconnectAttemptsRef.current + 1,
+      maxAttempts: maxReconnectAttempts
+    });
+
+    if (channelRef.current) {
+      await supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current++;
+      initializeChannel();
+    }, reconnectDelay);
+  };
 
   useEffect(() => {
     let mounted = true;
