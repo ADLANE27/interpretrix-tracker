@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -16,8 +15,8 @@ export const useSupabaseConnection = () => {
   const heartbeatCheckIntervalRef = useRef<NodeJS.Timeout>();
   const maxReconnectAttempts = 10;
   const reconnectDelay = 5000;
-  const heartbeatTimeout = 35000; // Increased from original to allow for network latency
-  const heartbeatInterval = 30000; // Added constant for clarity
+  const heartbeatTimeout = 35000;
+  const heartbeatInterval = 30000;
 
   const requestWakeLock = async () => {
     try {
@@ -76,7 +75,6 @@ export const useSupabaseConnection = () => {
 
     clearAllIntervals();
 
-    // Initialize lastHeartbeat with current time
     lastHeartbeatRef.current = new Date();
 
     const sendHeartbeat = async () => {
@@ -101,10 +99,8 @@ export const useSupabaseConnection = () => {
       }
     };
 
-    // Immediate first heartbeat
     sendHeartbeat();
 
-    // Setup regular heartbeat interval
     heartbeatIntervalRef.current = setInterval(async () => {
       const success = await sendHeartbeat();
       if (!success && !isExplicitDisconnectRef.current) {
@@ -113,7 +109,6 @@ export const useSupabaseConnection = () => {
       }
     }, heartbeatInterval);
 
-    // Setup heartbeat check interval
     heartbeatCheckIntervalRef.current = setInterval(() => {
       if (lastHeartbeatRef.current && !isExplicitDisconnectRef.current) {
         const timeSinceLastHeartbeat = new Date().getTime() - lastHeartbeatRef.current.getTime();
@@ -127,7 +122,6 @@ export const useSupabaseConnection = () => {
         }
       }
     }, 5000);
-
   }, [clearAllIntervals]);
 
   const handleReconnect = useCallback(async () => {
@@ -155,7 +149,6 @@ export const useSupabaseConnection = () => {
       maxAttempts: maxReconnectAttempts
     });
 
-    // Clean up existing channel
     if (channelRef.current) {
       await supabase.removeChannel(channelRef.current);
       channelRef.current = null;
@@ -165,8 +158,7 @@ export const useSupabaseConnection = () => {
       reconnectAttemptsRef.current++;
       initializeChannel();
     }, reconnectDelay);
-
-  }, [clearAllIntervals, toast]);
+  }, [clearAllIntervals, toast, initializeChannel]);
 
   const initializeChannel = useCallback(async () => {
     try {
@@ -176,7 +168,7 @@ export const useSupabaseConnection = () => {
       if (!session) {
         console.log('[useSupabaseConnection] No active session, skipping connection');
         releaseWakeLock();
-        return;
+        return () => {};
       }
 
       isExplicitDisconnectRef.current = false;
@@ -255,21 +247,32 @@ export const useSupabaseConnection = () => {
         }
       });
 
+      return () => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+      };
+
     } catch (error) {
       console.error('[useSupabaseConnection] Channel initialization error:', error);
       if (!isExplicitDisconnectRef.current) {
         handleReconnect();
       }
+      return () => {};
     }
   }, [clearAllIntervals, handleReconnect, releaseWakeLock, setupHeartbeat]);
 
   useEffect(() => {
     let mounted = true;
-    let cleanup = () => {};
+    let cleanup: (() => void) = () => {};
 
     const setup = async () => {
       if (!mounted) return;
-      cleanup = await initializeChannel();
+      const cleanupFn = await initializeChannel();
+      if (mounted) {
+        cleanup = cleanupFn || (() => {});
+      }
     };
 
     setup();
