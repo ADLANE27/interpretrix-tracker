@@ -9,48 +9,110 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+function handleError(error: Error) {
+  console.error('Detailed error:', {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  });
+  
+  return new Response(
+    JSON.stringify({
+      error: error.message,
+      name: error.name,
+    }),
+    {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+}
+
 serve(async (req) => {
+  console.log('Received request:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries()),
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      }
+    });
   }
 
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
+
+    // Verify required environment variables
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('Missing VAPID keys configuration');
+    }
 
     // Set VAPID details
     webPush.setVapidDetails(
       'mailto:contact@aftrad.com',
-      Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-      Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
-    )
+      vapidPublicKey,
+      vapidPrivateKey
+    );
 
-    // Get request body
-    const { userId, title, body, data } = await req.json()
-    console.log('Received notification request:', { userId, title, body, data })
+    // Parse and validate request body
+    const { userId, title, body, data } = await req.json();
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'userId is required' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    console.log('Processing notification request for user:', userId);
 
     // Get user's push subscription
     const { data: subscriptions, error: subError } = await supabaseClient
       .from('user_push_subscriptions')
       .select('subscription')
       .eq('user_id', userId)
-      .single()
+      .single();
 
-    if (subError || !subscriptions?.subscription) {
-      console.error('Error fetching subscription:', subError)
+    if (subError) {
+      console.error('Database error:', subError);
+      return new Response(
+        JSON.stringify({ error: 'Database error: ' + subError.message }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (!subscriptions?.subscription) {
       return new Response(
         JSON.stringify({ error: 'No push subscription found for user' }),
-        { 
+        {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
-      )
+      );
     }
 
-    console.log('Found subscription:', subscriptions.subscription)
+    console.log('Found subscription for user');
 
     // Send push notification
     try {
@@ -61,46 +123,44 @@ serve(async (req) => {
           body,
           data
         })
-      )
-      console.log('Push notification sent successfully:', result)
+      );
+
+      console.log('Push notification sent successfully');
       
       return new Response(
-        JSON.stringify({ message: 'Notification sent successfully' }),
-        { 
+        JSON.stringify({ 
+          message: 'Notification sent successfully',
+          result
+        }),
+        {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
-      )
+      );
     } catch (error) {
-      console.error('Error sending push notification:', error)
+      console.error('Push notification error:', error);
       
-      // Check if subscription has expired
+      // Handle expired subscriptions
       if (error.statusCode === 410) {
-        console.log('Subscription has expired, removing from database')
+        console.log('Subscription has expired, removing from database');
+        
         await supabaseClient
           .from('user_push_subscriptions')
           .delete()
-          .eq('user_id', userId)
+          .eq('user_id', userId);
           
         return new Response(
           JSON.stringify({ error: 'SUBSCRIPTION_EXPIRED' }),
-          { 
+          {
             status: 410,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
-        )
+        );
       }
       
-      throw error
+      return handleError(error);
     }
   } catch (error) {
-    console.error('Server error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    )
+    return handleError(error);
   }
-})
+});
