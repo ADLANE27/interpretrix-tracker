@@ -1,13 +1,12 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
-import * as webPush from 'https://esm.sh/web-push@3.6.1'
+import webPush from 'https://esm.sh/web-push@3.6.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
 serve(async (req) => {
@@ -17,22 +16,10 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authorization
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
     // Initialize Supabase client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     // Get VAPID keys
@@ -40,6 +27,7 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     
     if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('Missing VAPID configuration');
       throw new Error('Missing VAPID configuration');
     }
 
@@ -59,13 +47,13 @@ serve(async (req) => {
     }
 
     // Get user's subscription
-    const { data: subscription, error: subError } = await supabaseAdmin
+    const { data: subscriptionData, error: subError } = await supabaseAdmin
       .from('user_push_subscriptions')
       .select('subscription')
       .eq('user_id', userId)
       .single();
 
-    if (subError || !subscription) {
+    if (subError || !subscriptionData) {
       console.error('Subscription fetch error:', subError);
       throw new Error('No valid subscription found');
     }
@@ -74,28 +62,41 @@ serve(async (req) => {
     const pushPayload = JSON.stringify({
       title,
       body,
-      data
+      data,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico'
     });
 
     console.log('Sending push notification with payload:', pushPayload);
+    console.log('Using subscription:', subscriptionData.subscription);
 
     try {
       const result = await webPush.sendNotification(
-        subscription.subscription,
-        pushPayload
+        subscriptionData.subscription,
+        pushPayload,
+        {
+          vapidDetails: {
+            subject: 'mailto:contact@aftrad.com',
+            publicKey: vapidPublicKey,
+            privateKey: vapidPrivateKey
+          }
+        }
       );
 
       console.log('Push notification sent successfully:', result);
 
       return new Response(
         JSON.stringify({ success: true, message: 'Notification sent' }),
-        { headers: corsHeaders }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
       );
 
-    } catch (pushError: any) {
+    } catch (pushError) {
       console.error('Push notification error:', pushError);
 
-      // Handle expired subscriptions
+      // Check if subscription is expired
       if (pushError.statusCode === 410) {
         await supabaseAdmin
           .from('user_push_subscriptions')
@@ -109,7 +110,7 @@ serve(async (req) => {
           }),
           { 
             status: 410,
-            headers: corsHeaders
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
       }
@@ -126,7 +127,7 @@ serve(async (req) => {
       }),
       { 
         status: 500,
-        headers: corsHeaders
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
