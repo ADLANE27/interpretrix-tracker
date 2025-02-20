@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -49,7 +50,6 @@ export const MessagingTab = () => {
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
-    setShowChannels(false);
   };
 
   const handleMentionClick = async (mention: any) => {
@@ -68,12 +68,12 @@ export const MessagingTab = () => {
       className={cn(
         "transition-all duration-500 ease-in-out",
         isFullScreen 
-          ? "fixed inset-0 z-50 bg-gradient-to-br from-white to-[#F8F9FA]" 
+          ? "fixed inset-0 z-50 bg-gradient-to-br from-white to-[#F8F9FA] dark:from-gray-900 dark:to-gray-800" 
           : "grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative"
       )}
     >
       {(!selectedChannelId || showChannels || !isMobile) && !isFullScreen && (
-        <Card className="p-3 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl">
+        <Card className="p-3 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
           />
@@ -83,7 +83,7 @@ export const MessagingTab = () => {
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
           "p-3 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA]",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-xl",
           isFullScreen ? "w-full h-full" : "lg:col-span-2"
         )}>
@@ -97,8 +97,8 @@ export const MessagingTab = () => {
             >
               <div className={cn(
                 "transition-all duration-200 p-2",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer",
-                "border border-gray-100",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
                 "rounded-lg flex items-center justify-center",
                 totalUnreadCount > 0 && "text-purple-500"
               )}>
@@ -120,10 +120,10 @@ export const MessagingTab = () => {
               onClick={toggleFullScreen}
               className={cn(
                 "transition-all duration-200",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow",
-                "border border-gray-100",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
                 "rounded-lg",
-                isFullScreen ? "hover:bg-red-50 hover:text-red-500" : "hover:bg-purple-50 hover:text-purple-500"
+                isFullScreen ? "hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20" : "hover:bg-purple-50 hover:text-purple-500 dark:hover:bg-purple-900/20"
               )}
             >
               {isFullScreen ? (
@@ -142,7 +142,7 @@ export const MessagingTab = () => {
           />
         </Card>
       ) : !selectedChannelId && !isMobile && !isFullScreen ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
           <div className="text-center text-muted-foreground">
             <p className="text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
           </div>
