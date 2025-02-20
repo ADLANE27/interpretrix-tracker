@@ -12,7 +12,6 @@ export interface Mission {
   mission_type: 'immediate' | 'scheduled';
   scheduled_start_time: string | null;
   scheduled_end_time: string | null;
-  notified_interpreters: string[] | null;
   creator_email?: string;
   creator_first_name?: string;
   creator_last_name?: string;
