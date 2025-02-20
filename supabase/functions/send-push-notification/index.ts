@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import webPush from 'npm:web-push'
+import { createClient } from '@supabase/supabase-js'
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface PushData {
@@ -41,8 +42,8 @@ serve(async (req) => {
     // Configure web-push
     webPush.setVapidDetails(
       'mailto:support@interpreter-platform.com',
-      publicValue,
-      privateValue
+      publicKey,
+      privateKey
     )
 
     // Get request body
