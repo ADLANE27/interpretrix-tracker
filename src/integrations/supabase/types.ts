@@ -679,35 +679,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_push_subscriptions: {
-        Row: {
-          created_at: string
-          id: string
-          subscription: Json
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          subscription: Json
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          subscription?: Json
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_push_subscriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_roles: {
         Row: {
           active: boolean | null
@@ -1116,15 +1087,6 @@ export type Database = {
           new_path: string
         }
         Returns: undefined
-      }
-      send_web_push_notification: {
-        Args: {
-          subscription: Json
-          payload: Json
-          vapid_public_key: string
-          vapid_private_key: string
-        }
-        Returns: Json
       }
       text_to_bytea: {
         Args: {
