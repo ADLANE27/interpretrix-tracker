@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
@@ -9,13 +9,16 @@ import { useMessageActions } from './chat/useMessageActions';
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    messages: boolean;
+    mentions: boolean;
+  }>({ messages: false, mentions: false });
 
   const { formatMessage } = useMessageFormatter();
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     if (!channelId) return;
     
     setIsLoading(true);
@@ -117,9 +120,9 @@ export const useChat = (channelId: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [channelId]);
 
-  const { subscribeToMessages, subscribeToMentions } = useSubscriptions(
+  const { subscriptionStates, handleSubscriptionError, subscribeToMessages, subscribeToMentions } = useSubscriptions(
     channelId,
     currentUserId,
     retryCount,
@@ -161,40 +164,22 @@ export const useChat = (channelId: string) => {
   }, []);
 
   useEffect(() => {
-    if (!channelId) return;
-    
-    let mentionsChannel;
-
-    const setupSubscriptions = async () => {
-      try {
-        await fetchMessages();
-        subscribeToMessages();
-        mentionsChannel = subscribeToMentions();
-        setIsSubscribed(true);
-        setRetryCount(0);
-      } catch (error) {
-        console.error('[Chat] Error setting up subscriptions:', error);
-      }
-    };
-
-    setupSubscriptions();
-
-    return () => {
-      if (mentionsChannel) {
-        console.log('[Chat] Cleaning up mentions subscription');
-        supabase.removeChannel(mentionsChannel);
-      }
-    };
-  }, [channelId]);
+    // Update subscription status whenever the subscription states change
+    setSubscriptionStatus({
+      messages: subscriptionStates.messages?.status === 'connected',
+      mentions: subscriptionStates.mentions?.status === 'connected'
+    });
+  }, [subscriptionStates]);
 
   return {
     messages,
     isLoading,
-    isSubscribed,
+    isSubscribed: subscriptionStatus.messages && subscriptionStatus.mentions,
+    subscriptionStatus,
     sendMessage,
     deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
-    markMentionsAsRead, // Added this export
+    markMentionsAsRead,
   };
 };

@@ -2,17 +2,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
-const handleVisibilityChange = (channel: RealtimeChannel | null) => {
-  if (!channel) return;
-  
-  if (document.visibilityState === 'visible') {
-    channel.subscribe();
-  } else {
-    channel.unsubscribe();
-  }
-};
+interface SubscriptionState {
+  channel: RealtimeChannel | null;
+  status: 'connecting' | 'connected' | 'disconnected' | 'error';
+  lastError?: Error;
+}
 
 export const useSubscriptions = (
   channelId: string,
@@ -23,13 +19,11 @@ export const useSubscriptions = (
 ) => {
   const { toast } = useToast();
   const errorCountRef = useRef(0);
-  const initialDelayRef = useRef<NodeJS.Timeout>();
   const isSubscribingRef = useRef(false);
-  const messageChannelRef = useRef<RealtimeChannel | null>(null);
-  const mentionChannelRef = useRef<RealtimeChannel | null>(null);
+  const subscriptionStatesRef = useRef<Map<string, SubscriptionState>>(new Map());
   const visibilityHandlersRef = useRef<(() => void)[]>([]);
 
-  const handleSubscriptionError = () => {
+  const handleSubscriptionError = useCallback(() => {
     errorCountRef.current += 1;
     
     if (errorCountRef.current >= 3) {
@@ -41,141 +35,170 @@ export const useSubscriptions = (
       });
     }
     setRetryCount(retryCount + 1);
-  };
+  }, [retryCount, setRetryCount, toast]);
 
-  const cleanupVisibilityHandlers = () => {
+  const cleanupVisibilityHandlers = useCallback(() => {
     visibilityHandlersRef.current.forEach(handler => {
       document.removeEventListener('visibilitychange', handler);
     });
     visibilityHandlersRef.current = [];
-  };
+  }, []);
 
-  const cleanupChannel = async (channel: RealtimeChannel | null) => {
-    if (!channel) return;
+  const cleanupChannel = useCallback(async (channelKey: string) => {
+    const state = subscriptionStatesRef.current.get(channelKey);
+    if (!state?.channel) return;
     
     try {
-      console.log('[Chat] Cleaning up channel');
-      await channel.unsubscribe();
-      await supabase.removeChannel(channel);
+      console.log(`[Chat] Cleaning up channel: ${channelKey}`);
+      await state.channel.unsubscribe();
+      await supabase.removeChannel(state.channel);
+      subscriptionStatesRef.current.delete(channelKey);
     } catch (error) {
-      console.error('[Chat] Error cleaning up channel:', error);
+      console.error(`[Chat] Error cleaning up channel ${channelKey}:`, error);
     }
-  };
+  }, []);
 
-  const subscribeToMessages = async () => {
+  const handleVisibilityChange = useCallback((channelKey: string) => {
+    const state = subscriptionStatesRef.current.get(channelKey);
+    if (!state?.channel) return;
+    
+    if (document.visibilityState === 'visible') {
+      if (state.status === 'disconnected') {
+        state.channel.subscribe();
+      }
+    } else {
+      state.channel.unsubscribe();
+    }
+  }, []);
+
+  const setupChannel = useCallback(async (
+    channelKey: string,
+    config: {
+      name: string;
+      eventConfig: {
+        event: '*' | 'INSERT' | 'UPDATE' | 'DELETE';
+        schema: string;
+        table: string;
+        filter?: string;
+      };
+      onEvent: (payload: any) => void;
+    }
+  ) => {
     if (isSubscribingRef.current) {
-      console.log('[Chat] Already subscribing to messages, skipping.');
-      return null;
+      console.log(`[Chat] Already subscribing to ${channelKey}, skipping.`);
+      return;
     }
 
     // Clean up existing channel first
-    if (messageChannelRef.current) {
-      console.log('[Chat] Cleaning up existing message channel');
-      await cleanupChannel(messageChannelRef.current);
-      messageChannelRef.current = null;
-    }
+    await cleanupChannel(channelKey);
 
     isSubscribingRef.current = true;
-    console.log('[Chat] Setting up real-time subscription for channel:', channelId);
+    console.log(`[Chat] Setting up subscription for ${channelKey}`);
 
     try {
       const channel = supabase
-        .channel(`messages:${channelId}`)
+        .channel(config.name)
         .on(
           'postgres_changes',
           {
-            event: '*',
-            schema: 'public',
-            table: 'chat_messages',
-            filter: `channel_id=eq.${channelId}`,
+            event: config.eventConfig.event,
+            schema: config.eventConfig.schema,
+            table: config.eventConfig.table,
+            filter: config.eventConfig.filter,
           },
-          async (payload) => {
-            console.log('[Chat] Received real-time update:', payload);
-            await fetchMessages();
-            
-            if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
-              toast({
-                title: "Nouveau message",
-                description: "Un nouveau message a été reçu",
-              });
-            }
-          }
+          config.onEvent
         );
 
-      messageChannelRef.current = channel;
+      // Store the channel state
+      subscriptionStatesRef.current.set(channelKey, {
+        channel,
+        status: 'connecting'
+      });
 
       channel.subscribe((status) => {
-        console.log('[Chat] Messages subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          isSubscribingRef.current = false;
-          errorCountRef.current = 0;
-        }
-        if (status === 'CHANNEL_ERROR') {
-          isSubscribingRef.current = false;
-          handleSubscriptionError();
+        console.log(`[Chat] ${channelKey} subscription status:`, status);
+        const state = subscriptionStatesRef.current.get(channelKey);
+        
+        if (state) {
+          if (status === 'SUBSCRIBED') {
+            state.status = 'connected';
+            isSubscribingRef.current = false;
+            errorCountRef.current = 0;
+          } else if (status === 'CHANNEL_ERROR') {
+            state.status = 'error';
+            isSubscribingRef.current = false;
+            handleSubscriptionError();
+          } else if (status === 'CLOSED') {
+            state.status = 'disconnected';
+          }
+          subscriptionStatesRef.current.set(channelKey, state);
         }
       });
 
-      const messageVisibilityHandler = () => handleVisibilityChange(messageChannelRef.current);
-      document.addEventListener('visibilitychange', messageVisibilityHandler);
-      visibilityHandlersRef.current.push(messageVisibilityHandler);
+      const visibilityHandler = () => handleVisibilityChange(channelKey);
+      document.addEventListener('visibilitychange', visibilityHandler);
+      visibilityHandlersRef.current.push(visibilityHandler);
 
       return channel;
     } catch (error) {
-      console.error('[Chat] Error setting up message subscription:', error);
+      console.error(`[Chat] Error setting up ${channelKey} subscription:`, error);
       isSubscribingRef.current = false;
+      
+      if (error instanceof Error) {
+        subscriptionStatesRef.current.set(channelKey, {
+          channel: null,
+          status: 'error',
+          lastError: error
+        });
+      }
+      
       return null;
     }
-  };
+  }, [cleanupChannel, handleSubscriptionError, handleVisibilityChange]);
 
-  const subscribeToMentions = async () => {
-    // Clean up existing channel first
-    if (mentionChannelRef.current) {
-      console.log('[Chat] Cleaning up existing mention channel');
-      await cleanupChannel(mentionChannelRef.current);
-      mentionChannelRef.current = null;
-    }
+  const subscribeToMessages = useCallback(async () => {
+    return setupChannel('messages', {
+      name: `messages:${channelId}`,
+      eventConfig: {
+        event: '*',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `channel_id=eq.${channelId}`,
+      },
+      onEvent: async (payload) => {
+        console.log('[Chat] Received real-time update:', payload);
+        await fetchMessages();
+        
+        if (payload.eventType === 'INSERT' && payload.new.sender_id !== currentUserId) {
+          toast({
+            title: "Nouveau message",
+            description: "Un nouveau message a été reçu",
+          });
+        }
+      }
+    });
+  }, [channelId, currentUserId, fetchMessages, setupChannel, toast]);
 
-    console.log('[Chat] Setting up mentions subscription');
-    
-    try {
-      const channel = supabase
-        .channel(`mentions:${channelId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'message_mentions',
-            filter: `channel_id=eq.${channelId}`,
-          },
-          async (payload) => {
-            console.log('[Chat] Received mention update:', payload);
-            if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
-              toast({
-                title: "New Mention",
-                description: "You were mentioned in a message",
-              });
-            }
-          }
-        );
-
-      mentionChannelRef.current = channel;
-
-      channel.subscribe((status) => {
-        console.log('[Chat] Mentions subscription status:', status);
-      });
-
-      const mentionVisibilityHandler = () => handleVisibilityChange(mentionChannelRef.current);
-      document.addEventListener('visibilitychange', mentionVisibilityHandler);
-      visibilityHandlersRef.current.push(mentionVisibilityHandler);
-
-      return channel;
-    } catch (error) {
-      console.error('[Chat] Error setting up mention subscription:', error);
-      return null;
-    }
-  };
+  const subscribeToMentions = useCallback(async () => {
+    return setupChannel('mentions', {
+      name: `mentions:${channelId}`,
+      eventConfig: {
+        event: '*',
+        schema: 'public',
+        table: 'message_mentions',
+        filter: `channel_id=eq.${channelId}`,
+      },
+      onEvent: async (payload) => {
+        console.log('[Chat] Received mention update:', payload);
+        if (payload.eventType === 'INSERT' && payload.new.mentioned_user_id === currentUserId) {
+          toast({
+            title: "New Mention",
+            description: "You were mentioned in a message",
+          });
+        }
+      }
+    });
+  }, [channelId, currentUserId, setupChannel, toast]);
 
   useEffect(() => {
     let isMounted = true;
@@ -183,21 +206,10 @@ export const useSubscriptions = (
     
     const cleanup = async () => {
       console.log('[Chat] Running cleanup');
-      
-      if (messageChannelRef.current) {
-        await cleanupChannel(messageChannelRef.current);
-        messageChannelRef.current = null;
-      }
-      
-      if (mentionChannelRef.current) {
-        await cleanupChannel(mentionChannelRef.current);
-        mentionChannelRef.current = null;
-      }
-      
-      if (initialDelayRef.current) {
-        clearTimeout(initialDelayRef.current);
-      }
-      
+      await Promise.all([
+        cleanupChannel('messages'),
+        cleanupChannel('mentions')
+      ]);
       cleanupVisibilityHandlers();
       isSubscribingRef.current = false;
     };
@@ -221,9 +233,10 @@ export const useSubscriptions = (
       isMounted = false;
       void cleanup();
     };
-  }, [channelId]); // Only re-run if channelId changes
+  }, [channelId, cleanupChannel, cleanupVisibilityHandlers, subscribeToMentions, subscribeToMessages]);
 
   return {
+    subscriptionStates: Object.fromEntries(subscriptionStatesRef.current),
     handleSubscriptionError,
     subscribeToMessages,
     subscribeToMentions,
