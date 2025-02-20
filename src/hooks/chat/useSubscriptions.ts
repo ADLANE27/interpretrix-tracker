@@ -50,15 +50,32 @@ export const useSubscriptions = (
     visibilityHandlersRef.current = [];
   };
 
+  const cleanupChannel = async (channel: RealtimeChannel | null) => {
+    if (channel) {
+      try {
+        await channel.unsubscribe();
+        await supabase.removeChannel(channel);
+      } catch (error) {
+        console.error('[Chat] Error cleaning up channel:', error);
+      }
+    }
+  };
+
   const subscribeToMessages = () => {
-    if (isSubscribingRef.current || messageChannelRef.current) {
-      console.log('[Chat] Messages already subscribed or subscribing, skipping.');
-      return messageChannelRef.current;
+    if (isSubscribingRef.current) {
+      console.log('[Chat] Already subscribing to messages, skipping.');
+      return null;
     }
 
     isSubscribingRef.current = true;
     console.log('[Chat] Setting up real-time subscription for channel:', channelId);
     
+    // Clean up existing channel if it exists
+    if (messageChannelRef.current) {
+      cleanupChannel(messageChannelRef.current);
+      messageChannelRef.current = null;
+    }
+
     messageChannelRef.current = supabase
       .channel(`messages:${channelId}`)
       .on(
@@ -101,9 +118,10 @@ export const useSubscriptions = (
   };
 
   const subscribeToMentions = () => {
+    // Clean up existing channel if it exists
     if (mentionChannelRef.current) {
-      console.log('[Chat] Mentions already subscribed, skipping.');
-      return mentionChannelRef.current;
+      cleanupChannel(mentionChannelRef.current);
+      mentionChannelRef.current = null;
     }
 
     console.log('[Chat] Setting up mentions subscription');
@@ -142,37 +160,39 @@ export const useSubscriptions = (
   useEffect(() => {
     console.log('[Chat] Setting up subscriptions for channel:', channelId);
     
-    // Clean up previous subscriptions
-    if (messageChannelRef.current) {
-      supabase.removeChannel(messageChannelRef.current);
-      messageChannelRef.current = null;
-    }
-    if (mentionChannelRef.current) {
-      supabase.removeChannel(mentionChannelRef.current);
-      mentionChannelRef.current = null;
-    }
-    cleanupVisibilityHandlers();
-    
-    // Set up new subscriptions
-    subscribeToMessages();
-    subscribeToMentions();
-
-    // Cleanup on unmount or channelId change
-    return () => {
+    const cleanup = async () => {
       console.log('[Chat] Cleaning up subscriptions');
+      
       if (messageChannelRef.current) {
-        supabase.removeChannel(messageChannelRef.current);
+        await cleanupChannel(messageChannelRef.current);
         messageChannelRef.current = null;
       }
+      
       if (mentionChannelRef.current) {
-        supabase.removeChannel(mentionChannelRef.current);
+        await cleanupChannel(mentionChannelRef.current);
         mentionChannelRef.current = null;
       }
+      
       if (initialDelayRef.current) {
         clearTimeout(initialDelayRef.current);
       }
+      
       cleanupVisibilityHandlers();
       isSubscribingRef.current = false;
+    };
+
+    // Set up new subscriptions after cleaning up
+    const setupSubscriptions = async () => {
+      await cleanup();
+      subscribeToMessages();
+      subscribeToMentions();
+    };
+
+    setupSubscriptions();
+
+    // Cleanup on unmount or channelId change
+    return () => {
+      cleanup();
     };
   }, [channelId]); // Only re-run if channelId changes
 
