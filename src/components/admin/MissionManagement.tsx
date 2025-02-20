@@ -399,30 +399,36 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Prepare mission data
+      // Prepare mission data with proper array format for notified_interpreters
       const missionData = {
         source_language: sourceLanguage,
         target_language: targetLanguage,
         estimated_duration: calculatedDuration,
         status: "awaiting_acceptance",
-        notified_interpreters: selectedInterpreters,
+        notified_interpreters: selectedInterpreters, // This is already an array of UUIDs
         mission_type: missionType,
         scheduled_start_time: utcStartTime,
         scheduled_end_time: utcEndTime,
-        created_by: user.id
+        created_by: user.id,
+        client_name: "" // Adding default empty string for client_name
       };
 
-      console.log('[MissionManagement] Mission data:', missionData);
+      console.log('[MissionManagement] Mission data to be inserted:', missionData);
 
-      // Create the mission with updated fields
+      // Create the mission
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
-        .insert(missionData)
-        .select();
+        .insert([missionData]) // Wrap in array to ensure proper format
+        .select('*') // Select all columns to verify the insert
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
       if (missionError) {
         console.error('[MissionManagement] Error creating mission:', missionError);
         throw missionError;
+      }
+
+      if (!createdMission) {
+        throw new Error('No mission data returned after creation');
       }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
@@ -442,7 +448,8 @@ export const MissionManagement = () => {
       setScheduledStartTime("");
       setScheduledEndTime("");
 
-      fetchMissions();
+      // Refresh the missions list
+      await fetchMissions();
 
     } catch (error) {
       console.error('[MissionManagement] Error in createMission:', error);
