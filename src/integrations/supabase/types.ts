@@ -1103,6 +1103,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      process_mission_notification: {
+        Args: {
+          notification_id: string
+        }
+        Returns: undefined
+      }
       rename_storage_object: {
         Args: {
           bucket_name: string
@@ -1110,6 +1116,15 @@ export type Database = {
           new_path: string
         }
         Returns: undefined
+      }
+      send_web_push_notification: {
+        Args: {
+          subscription: Json
+          payload: Json
+          vapid_public_key: string
+          vapid_private_key: string
+        }
+        Returns: Json
       }
       text_to_bytea: {
         Args: {
