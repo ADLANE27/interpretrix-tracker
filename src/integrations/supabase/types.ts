@@ -607,6 +607,54 @@ export type Database = {
           },
         ]
       }
+      notification_queue: {
+        Row: {
+          created_at: string
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          notification_type: string
+          payload: Json
+          reference_id: string | null
+          reference_type: string | null
+          retry_count: number
+          scheduled_for: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          notification_type: string
+          payload: Json
+          reference_id?: string | null
+          reference_type?: string | null
+          retry_count?: number
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          notification_type?: string
+          payload?: Json
+          reference_id?: string | null
+          reference_type?: string | null
+          retry_count?: number
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       secrets: {
         Row: {
           created_at: string
@@ -826,6 +874,17 @@ export type Database = {
       bytea_to_text: {
         Args: {
           data: string
+        }
+        Returns: string
+      }
+      enqueue_notification: {
+        Args: {
+          p_user_id: string
+          p_payload: Json
+          p_notification_type: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_scheduled_for?: string
         }
         Returns: string
       }

@@ -17,16 +17,33 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+export const confirmNotificationDelivery = async (notificationId: string) => {
+  try {
+    const { error } = await supabase
+      .from('notification_queue')
+      .update({
+        status: 'delivered',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', notificationId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error('[pushNotifications] Confirmation error:', error);
+    return { success: false, error };
+  }
+};
+
 export const registerPushNotifications = async () => {
   try {
     console.log('[pushNotifications] Starting registration process');
 
-    // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       throw new Error('Les notifications push ne sont pas prises en charge par votre navigateur');
     }
 
-    // 2. Request permission if not already granted
     if (Notification.permission !== 'granted') {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
@@ -34,13 +51,11 @@ export const registerPushNotifications = async () => {
       }
     }
 
-    // 3. Get user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {
       throw new Error('Utilisateur non authentifié');
     }
 
-    // 4. Check for existing subscription and remove it
     console.log('[pushNotifications] Checking for existing subscription');
     const registration = await navigator.serviceWorker.ready;
     const existingSubscription = await registration.pushManager.getSubscription();
@@ -49,21 +64,18 @@ export const registerPushNotifications = async () => {
       console.log('[pushNotifications] Found existing subscription, removing it');
       await existingSubscription.unsubscribe();
       
-      // Remove from database
       await supabase
         .from('user_push_subscriptions')
         .delete()
         .eq('user_id', session.user.id);
     }
 
-    // 5. Get VAPID public key
     console.log('[pushNotifications] Getting VAPID public key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-keys');
     if (vapidError || !vapidData?.publicKey) {
       throw new Error('Impossible de récupérer la clé publique VAPID');
     }
 
-    // 6. Create new subscription
     console.log('[pushNotifications] Creating new push subscription');
     const subscribeOptions = {
       userVisibleOnly: true,
@@ -73,7 +85,6 @@ export const registerPushNotifications = async () => {
     const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
     console.log('[pushNotifications] Push subscription created:', pushSubscription);
 
-    // 7. Save to database
     const subscriptionJson = pushSubscription.toJSON();
     const subscriptionData = {
       endpoint: subscriptionJson.endpoint,
