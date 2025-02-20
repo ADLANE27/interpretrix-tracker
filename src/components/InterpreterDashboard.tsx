@@ -44,6 +44,10 @@ interface Profile {
   password_changed: boolean;
 }
 
+const isValidStatus = (status: string): status is Profile['status'] => {
+  return ['available', 'busy', 'pause', 'unavailable'].includes(status);
+};
+
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
@@ -108,9 +112,13 @@ export const InterpreterDashboard = () => {
         return { source, target };
       });
 
+      // Validate status and provide a default if invalid
+      const status = isValidStatus(data.status) ? data.status : 'available';
+
       const transformedProfile: Profile = {
         ...data,
-        languages: transformedLanguages
+        languages: transformedLanguages,
+        status
       };
 
       setProfile(transformedProfile);
