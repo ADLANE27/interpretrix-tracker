@@ -1,20 +1,8 @@
-import {
-  useState,
-  useEffect,
-  useRef,
-  ChangeEvent
-} from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { useState, useEffect, useRef, type ChangeEvent } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,8 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon } from "@radix-ui/react-icons"
-import { PopoverClose } from "@radix-ui/react-popover";
+import { CalendarIcon } from "@radix-ui/react-icons";
 
 interface ProfileProps {
   profile: {
@@ -77,7 +64,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [date, setDate] = useState<Date | undefined>(new Date("2023-01-23"))
+  const [date, setDate] = useState<Date | undefined>(new Date("2023-01-23"));
 
   useEffect(() => {
     setFirstName(profile.first_name);
@@ -98,9 +85,12 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
     setSelectedLanguages([...selectedLanguages, { source: "", target: "" }]);
   };
 
-  const handleLanguageChange = (index: number, field: string, value: string) => {
+  const handleLanguageChange = (index: number, field: "source" | "target", value: string) => {
     const newLanguages = [...selectedLanguages];
-    newLanguages[index][field] = value;
+    newLanguages[index] = {
+      ...newLanguages[index],
+      [field]: value
+    };
     setSelectedLanguages(newLanguages);
   };
 
@@ -228,13 +218,16 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="birthCountry">Pays de naissance</Label>
-              <Select value={birthCountry}>
-                <SelectTrigger className="w-full">
+              <Select 
+                value={birthCountry}
+                onValueChange={setBirthCountry}
+              >
+                <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un pays" />
                 </SelectTrigger>
                 <SelectContent>
                   {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.name} onSelect={(value) => setBirthCountry(value)}>
+                    <SelectItem key={country.code} value={country.name}>
                       {country.name}
                     </SelectItem>
                   ))}
@@ -243,13 +236,16 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
             </div>
             <div className="grid gap-2">
               <Label htmlFor="nationality">Nationalité</Label>
-              <Select value={nationality}>
-                <SelectTrigger className="w-full">
+              <Select 
+                value={nationality}
+                onValueChange={setNationality}
+              >
+                <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une nationalité" />
                 </SelectTrigger>
                 <SelectContent>
                   {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.name} onSelect={(value) => setNationality(value)}>
+                    <SelectItem key={country.code} value={country.name}>
                       {country.name}
                     </SelectItem>
                   ))}
