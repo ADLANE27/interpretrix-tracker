@@ -22,11 +22,14 @@ webPush.setVapidDetails(
 )
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    console.log('[process-notification-queue] Starting notification processing');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -46,14 +49,25 @@ serve(async (req) => {
       .limit(10)
 
     if (fetchError) {
+      console.error('[process-notification-queue] Error fetching notifications:', fetchError);
       throw fetchError
     }
 
-    console.log(`Processing ${notifications?.length ?? 0} notifications`)
+    console.log(`[process-notification-queue] Processing ${notifications?.length ?? 0} notifications`);
 
+    const results = [];
     for (const notification of notifications ?? []) {
       try {
-        console.log(`Processing notification ${notification.id} for user ${notification.user_id}`)
+        console.log(`[process-notification-queue] Processing notification ${notification.id} for user ${notification.user_id}`);
+
+        // Update status to processing
+        await supabaseClient
+          .from('notification_queue')
+          .update({
+            status: 'processing',
+            last_attempt_at: new Date().toISOString(),
+          })
+          .eq('id', notification.id);
 
         const { data: subscriptions, error: subscriptionError } = await supabaseClient
           .from('user_push_subscriptions')
@@ -62,37 +76,36 @@ serve(async (req) => {
           .single()
 
         if (subscriptionError) {
-          console.error(`Error fetching subscription for user ${notification.user_id}:`, subscriptionError)
-          continue
+          console.error(`[process-notification-queue] Error fetching subscription for user ${notification.user_id}:`, subscriptionError);
+          throw subscriptionError;
         }
 
         if (!subscriptions?.subscription) {
-          console.log(`No subscription found for user ${notification.user_id}`)
-          continue
+          console.log(`[process-notification-queue] No subscription found for user ${notification.user_id}`);
+          throw new Error('No subscription found');
         }
 
         // Create the proper notification payload structure
         const pushPayload = {
           title: notification.payload.title || 'Nouvelle mission',
           body: notification.payload.body || 'Une nouvelle mission est disponible',
-          type: 'mission',
-          missionType: notification.payload.missionType || 'immediate',
-          notificationId: notification.id,
           data: {
             ...notification.payload,
-            notificationId: notification.id
+            notificationId: notification.id,
+            url: `${Deno.env.get('PUBLIC_APP_URL') || 'https://app.aftranslation.fr'}/interpreter/missions`
           }
         }
 
-        console.log(`Sending push notification to user ${notification.user_id}:`, pushPayload)
+        console.log(`[process-notification-queue] Sending push notification to user ${notification.user_id}:`, pushPayload);
 
+        // Send the notification
         await webPush.sendNotification(
           subscriptions.subscription,
           JSON.stringify(pushPayload)
         )
 
         // Update notification status to sent
-        const { error: updateError } = await supabaseClient
+        await supabaseClient
           .from('notification_queue')
           .update({
             status: 'sent',
@@ -100,12 +113,8 @@ serve(async (req) => {
           })
           .eq('id', notification.id)
 
-        if (updateError) {
-          console.error(`Error updating notification ${notification.id}:`, updateError)
-        }
-
         // Add to notification history
-        const { error: historyError } = await supabaseClient
+        await supabaseClient
           .from('notification_history')
           .insert({
             user_id: notification.user_id,
@@ -119,15 +128,14 @@ serve(async (req) => {
             delivery_status: 'sent'
           })
 
-        if (historyError) {
-          console.error(`Error creating history entry for notification ${notification.id}:`, historyError)
-        }
+        results.push({ id: notification.id, status: 'success' });
+        console.log(`[process-notification-queue] Successfully processed notification ${notification.id}`);
 
       } catch (error) {
-        console.error(`Error processing notification ${notification.id}:`, error)
+        console.error(`[process-notification-queue] Error processing notification ${notification.id}:`, error);
 
         // Update notification status to failed
-        const { error: updateError } = await supabaseClient
+        await supabaseClient
           .from('notification_queue')
           .update({
             status: 'failed',
@@ -137,23 +145,26 @@ serve(async (req) => {
           })
           .eq('id', notification.id)
 
-        if (updateError) {
-          console.error(`Error updating failed notification ${notification.id}:`, updateError)
-        }
+        results.push({ id: notification.id, status: 'error', error: error.message });
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
+    return new Response(
+      JSON.stringify({ success: true, results }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    )
 
   } catch (error) {
-    console.error('Error in notification processor:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    console.error('[process-notification-queue] Fatal error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    )
   }
 })
-
