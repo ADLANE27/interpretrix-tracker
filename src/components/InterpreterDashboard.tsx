@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, type ChangeEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,12 +102,89 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
 
-      setProfile(data as Profile);
+      // Transform the languages array from strings to objects
+      const transformedLanguages = (data.languages || []).map((lang: string) => {
+        const [source, target] = lang.split('→').map(l => l.trim());
+        return { source, target };
+      });
+
+      const transformedProfile: Profile = {
+        ...data,
+        languages: transformedLanguages
+      };
+
+      setProfile(transformedProfile);
     } catch (error) {
       console.error("[InterpreterDashboard] Error loading profile:", error);
       toast({
         title: "Erreur",
         description: "Impossible de charger votre profil",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProfilePictureUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file || !profile) return;
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${profile.id}/${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Succès",
+        description: "Photo de profil mise à jour"
+      });
+    } catch (error) {
+      console.error("[InterpreterDashboard] Error uploading profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la photo de profil",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProfilePictureDelete = async () => {
+    try {
+      if (!profile) return;
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: null })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Succès",
+        description: "Photo de profil supprimée"
+      });
+    } catch (error) {
+      console.error("[InterpreterDashboard] Error deleting profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo de profil",
         variant: "destructive"
       });
     }
@@ -175,7 +253,14 @@ export const InterpreterDashboard = () => {
       case "messages":
         return <MessagingTab />;
       case "profile":
-        return <InterpreterProfile profile={profile} onProfileUpdate={fetchProfile} />;
+        return (
+          <InterpreterProfile 
+            profile={profile}
+            onProfileUpdate={fetchProfile}
+            onProfilePictureUpload={handleProfilePictureUpload}
+            onProfilePictureDelete={handleProfilePictureDelete}
+          />
+        );
       case "calendar":
         return <MissionsCalendar missions={scheduledMissions} />;
       default:
