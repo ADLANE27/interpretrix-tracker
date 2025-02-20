@@ -30,13 +30,20 @@ export const useInterpreterProfile = () => {
 
       // Transform the address from JSON to the expected structure
       let transformedAddress: Profile["address"] = null;
-      if (data.address && typeof data.address === 'object') {
+      if (data.address && typeof data.address === 'object' && !Array.isArray(data.address)) {
+        const addressObj = data.address as Record<string, string>;
         transformedAddress = {
-          street: data.address.street || "",
-          postal_code: data.address.postal_code || "",
-          city: data.address.city || ""
+          street: addressObj.street || "",
+          postal_code: addressObj.postal_code || "",
+          city: addressObj.city || ""
         };
       }
+
+      // Validate the status value
+      const validStatuses = ["available", "busy", "pause", "unavailable"] as const;
+      const status = validStatuses.includes(data.status as any) 
+        ? data.status as Profile["status"]
+        : "available";
 
       const transformedProfile: Profile = {
         id: data.id,
@@ -46,7 +53,7 @@ export const useInterpreterProfile = () => {
         phone_number: data.phone_number,
         languages: transformedLanguages,
         employment_status: data.employment_status,
-        status: data.status,
+        status: status,
         address: transformedAddress,
         birth_country: data.birth_country,
         nationality: data.nationality,
