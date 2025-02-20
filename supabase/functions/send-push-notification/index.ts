@@ -61,6 +61,36 @@ serve(async (req) => {
       }
     )
 
+    // Prepare notification content
+    const title = body.data.missionType === 'immediate' 
+      ? '🚨 Nouvelle mission immédiate'
+      : '📅 Nouvelle mission programmée'
+
+    const message = `${body.data.sourceLanguage} → ${body.data.targetLanguage} - ${body.data.duration} minutes`
+
+    // First create history entry with pending status
+    console.log('Creating notification history entry...')
+    const { data: historyData, error: historyError } = await supabaseClient
+      .from('notification_history')
+      .insert({
+        user_id: body.userId,
+        title,
+        body: message,
+        notification_type: 'mission',
+        reference_type: 'mission',
+        reference_id: body.data.missionId,
+        payload: body.data,
+        delivery_status: 'pending',
+        sent_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (historyError) {
+      console.error('Error creating notification history:', historyError)
+      throw new Error('Failed to create notification history')
+    }
+
     console.log('Getting user subscription...')
 
     // Get user's push subscription
@@ -72,15 +102,19 @@ serve(async (req) => {
 
     if (subscriptionError || !subscriptionData) {
       console.error('Error fetching subscription:', subscriptionError)
+      
+      // Update history to reflect the error
+      await supabaseClient
+        .from('notification_history')
+        .update({
+          delivery_status: 'failed',
+          error_message: 'Push subscription not found',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', historyData.id)
+      
       throw new Error('Push subscription not found')
     }
-
-    // Prepare notification content
-    const title = body.data.missionType === 'immediate' 
-      ? '🚨 Nouvelle mission immédiate'
-      : '📅 Nouvelle mission programmée'
-
-    const message = `${body.data.sourceLanguage} → ${body.data.targetLanguage} - ${body.data.duration} minutes`
 
     const payload = JSON.stringify({
       title,
@@ -90,48 +124,52 @@ serve(async (req) => {
 
     console.log('Sending push notification with payload:', payload)
 
-    // Send push notification
-    const pushResult = await webPush.sendNotification(
-      subscriptionData.subscription,
-      payload
-    )
+    try {
+      // Attempt to send push notification
+      const pushResult = await webPush.sendNotification(
+        subscriptionData.subscription,
+        payload
+      )
 
-    console.log('Push notification sent successfully:', pushResult)
+      console.log('Push notification sent successfully:', pushResult)
 
-    // Record notification in history
-    const { error: historyError } = await supabaseClient
-      .from('notification_history')
-      .insert({
-        user_id: body.userId,
-        title,
-        body: message,
-        notification_type: 'mission',
-        reference_type: 'mission',
-        reference_id: body.data.missionId,
-        payload: body.data,
-        delivery_status: 'delivered',
-        sent_at: new Date().toISOString(),
-        delivered_at: new Date().toISOString()
-      })
+      // Update history to reflect successful delivery
+      await supabaseClient
+        .from('notification_history')
+        .update({
+          delivery_status: 'delivered',
+          delivered_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', historyData.id)
 
-    if (historyError) {
-      console.error('Error recording notification history:', historyError)
-    } else {
-      console.log('Notification history recorded successfully')
+      return new Response(
+        JSON.stringify({ success: true }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      )
+
+    } catch (pushError) {
+      console.error('Error sending push notification:', pushError)
+
+      // Update history to reflect the error
+      await supabaseClient
+        .from('notification_history')
+        .update({
+          delivery_status: 'failed',
+          error_message: pushError instanceof Error ? pushError.message : 'Push notification failed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', historyData.id)
+
+      throw pushError
     }
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    )
 
   } catch (error) {
     console.error('Error in send-push-notification:', error)
 
-    // Try to get structured error message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorDetails = error instanceof Error && error.stack ? error.stack : ''
 
