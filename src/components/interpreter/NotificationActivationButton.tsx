@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Bell, BellOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { checkPushNotificationStatus, registerPushNotifications, unregisterPushNotifications } from "@/utils/pushNotifications";
+import { 
+  checkPushNotificationStatus, 
+  registerPushNotifications, 
+  unregisterPushNotifications 
+} from "@/utils/push-notifications";
 
 export function NotificationActivationButton() {
   const [isEnabled, setIsEnabled] = useState(false);
