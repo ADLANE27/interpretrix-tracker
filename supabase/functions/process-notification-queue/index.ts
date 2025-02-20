@@ -22,7 +22,6 @@ webPush.setVapidDetails(
 )
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -38,7 +37,7 @@ serve(async (req) => {
       }
     )
 
-    // Get pending notifications from the queue
+    // Get pending notifications
     const { data: notifications, error: fetchError } = await supabaseClient
       .from('notification_queue')
       .select('*')
@@ -52,12 +51,10 @@ serve(async (req) => {
 
     console.log(`Processing ${notifications?.length ?? 0} notifications`)
 
-    // Process each notification
     for (const notification of notifications ?? []) {
       try {
         console.log(`Processing notification ${notification.id} for user ${notification.user_id}`)
 
-        // Get user's push subscription
         const { data: subscriptions, error: subscriptionError } = await supabaseClient
           .from('user_push_subscriptions')
           .select('subscription')
@@ -74,11 +71,17 @@ serve(async (req) => {
           continue
         }
 
-        // Send push notification
+        // Create the proper notification payload structure
         const pushPayload = {
-          title: notification.payload.title || 'Nouvelle notification',
-          body: notification.payload.body || 'Vous avez reçu une nouvelle notification',
-          data: notification.payload
+          title: notification.payload.title || 'Nouvelle mission',
+          body: notification.payload.body || 'Une nouvelle mission est disponible',
+          type: 'mission',
+          missionType: notification.payload.missionType || 'immediate',
+          notificationId: notification.id,
+          data: {
+            ...notification.payload,
+            notificationId: notification.id
+          }
         }
 
         console.log(`Sending push notification to user ${notification.user_id}:`, pushPayload)
@@ -109,7 +112,7 @@ serve(async (req) => {
             notification_type: notification.notification_type,
             reference_id: notification.reference_id,
             reference_type: notification.reference_type,
-            payload: notification.payload,
+            payload: pushPayload,
             title: pushPayload.title,
             body: pushPayload.body,
             sent_at: new Date().toISOString(),
@@ -153,3 +156,4 @@ serve(async (req) => {
     })
   }
 })
+
