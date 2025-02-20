@@ -28,10 +28,33 @@ export const useInterpreterProfile = () => {
         return { source, target };
       });
 
+      // Transform the address from JSON to the expected structure
+      let transformedAddress: Profile["address"] = null;
+      if (data.address && typeof data.address === 'object') {
+        transformedAddress = {
+          street: data.address.street || "",
+          postal_code: data.address.postal_code || "",
+          city: data.address.city || ""
+        };
+      }
+
       const transformedProfile: Profile = {
-        ...data,
+        id: data.id,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone_number: data.phone_number,
         languages: transformedLanguages,
-        status: data.status as Profile["status"] // Ensure correct type casting
+        employment_status: data.employment_status,
+        status: data.status,
+        address: transformedAddress,
+        birth_country: data.birth_country,
+        nationality: data.nationality,
+        phone_interpretation_rate: data.phone_interpretation_rate,
+        siret_number: data.siret_number,
+        vat_number: data.vat_number,
+        profile_picture_url: data.profile_picture_url,
+        password_changed: data.password_changed
       };
 
       setProfile(transformedProfile);
