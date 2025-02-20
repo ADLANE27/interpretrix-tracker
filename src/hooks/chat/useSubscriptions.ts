@@ -13,6 +13,8 @@ interface SubscriptionStates {
   mentions?: SubscriptionState;
 }
 
+type SubscriptionStatus = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
+
 export const useSubscriptions = (
   channelId: string,
   currentUserId: string | null,
@@ -95,11 +97,11 @@ export const useSubscriptions = (
             );
         }
 
-        // Subscribe to the channel only once
-        const status = await channelRef.current.subscribe();
-        console.log('[Chat] Subscription status:', status);
+        // Subscribe to the channel only once and handle the typed status
+        const subscriptionStatus: SubscriptionStatus = await channelRef.current.subscribe();
+        console.log('[Chat] Subscription status:', subscriptionStatus);
 
-        if (status === 'SUBSCRIBED') {
+        if (subscriptionStatus === 'SUBSCRIBED') {
           setSubscriptionStates({
             messages: { status: 'SUBSCRIBED' },
             ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
@@ -126,7 +128,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, fetchMessages]); // Remove retryCount from dependencies
+  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]); // Added back required dependencies
 
   return {
     subscriptionStates,
