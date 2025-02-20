@@ -66,7 +66,7 @@ export const MessagingTab = () => {
   if (isFullScreen && selectedChannelId) {
     return (
       <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
-        <div className="w-full h-full flex flex-col">
+        <div className="w-full h-[calc(100vh-32px)] flex flex-col">
           <div className="flex items-center justify-between p-4 border-b">
             <h2 className="text-lg font-semibold">Messages</h2>
             <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ export const MessagingTab = () => {
                   "transition-all duration-200 p-2",
                   "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
                   "border border-gray-100 dark:border-gray-700",
-                  "rounded-lg flex items-center justify-center",
+                  "rounded-lg flex items-center justify-center relative",
                   totalUnreadCount > 0 && "text-purple-500"
                 )}>
                   <Bell className="h-4 w-4" />
@@ -112,7 +112,7 @@ export const MessagingTab = () => {
               </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 h-full overflow-hidden pb-4">
             <InterpreterChat 
               channelId={selectedChannelId}
               filters={filters}
@@ -155,7 +155,7 @@ export const MessagingTab = () => {
                 "transition-all duration-200 p-2",
                 "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
                 "border border-gray-100 dark:border-gray-700",
-                "rounded-lg flex items-center justify-center",
+                "rounded-lg flex items-center justify-center relative",
                 totalUnreadCount > 0 && "text-purple-500"
               )}>
                 <Bell className="h-4 w-4" />
