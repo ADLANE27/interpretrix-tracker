@@ -303,17 +303,15 @@ export const MissionManagement = () => {
     e.preventDefault();
     
     if (isProcessing) {
-      toast({
-        title: "Action en cours",
-        description: "Une mission est déjà en cours de création",
-        variant: "destructive",
-      });
+      console.log('[MissionManagement] Already processing a request');
       return;
     }
 
     try {
       setIsProcessing(true);
+      console.log('[MissionManagement] Starting mission creation process');
       
+      // Validation checks
       if (selectedInterpreters.length === 0) {
         toast({
           title: "Erreur de validation",
@@ -332,6 +330,7 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Scheduled mission validation
       if (missionType === 'scheduled') {
         if (!scheduledStartTime || !scheduledEndTime) {
           toast({
@@ -365,6 +364,7 @@ export const MissionManagement = () => {
         }
       }
 
+      // Immediate mission validation
       if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
         toast({
           title: "Erreur de validation",
@@ -399,24 +399,31 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Prepare mission data
+      const missionData = {
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        estimated_duration: calculatedDuration,
+        status: "awaiting_acceptance",
+        notified_interpreters: selectedInterpreters,
+        mission_type: missionType,
+        scheduled_start_time: utcStartTime,
+        scheduled_end_time: utcEndTime,
+        created_by: user.id
+      };
+
+      console.log('[MissionManagement] Mission data:', missionData);
+
       // Create the mission with updated fields
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
-        .insert({
-          source_language: sourceLanguage,
-          target_language: targetLanguage,
-          estimated_duration: calculatedDuration,
-          status: "awaiting_acceptance",
-          notified_interpreters: selectedInterpreters,
-          mission_type: missionType,
-          scheduled_start_time: utcStartTime,
-          scheduled_end_time: utcEndTime,
-          created_by: user.id
-        })
-        .select()
-        .single();
+        .insert(missionData)
+        .select();
 
-      if (missionError) throw missionError;
+      if (missionError) {
+        console.error('[MissionManagement] Error creating mission:', missionError);
+        throw missionError;
+      }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
@@ -440,8 +447,8 @@ export const MissionManagement = () => {
     } catch (error) {
       console.error('[MissionManagement] Error in createMission:', error);
       toast({
-        title: "Erreur inattendue",
-        description: error instanceof Error ? error.message : "Une erreur inattendue est survenue lors de la création de la mission",
+        title: "Erreur lors de la création",
+        description: "Une erreur est survenue lors de la création de la mission. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
