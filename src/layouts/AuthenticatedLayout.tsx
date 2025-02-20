@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { InterpreterDashboard } from '@/components/InterpreterDashboard';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 export const AuthenticatedLayout = () => {
   const navigate = useNavigate();
