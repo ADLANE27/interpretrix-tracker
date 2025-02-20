@@ -91,7 +91,7 @@ export const InterpreterDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-background to-muted">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -99,11 +99,11 @@ export const InterpreterDashboard = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <p className="text-destructive">{error}</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-background to-muted space-y-4">
+        <p className="text-destructive font-semibold">{error}</p>
         <button 
           onClick={() => navigate("/interpreter/login")}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-6 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors"
         >
           Retourner à la page de connexion
         </button>
@@ -112,16 +112,16 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-gradient-to-br from-background to-muted">
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         userStatus={profile?.status || "available"}
       />
       
-      <main className="flex-1 p-6">
-        <div className="container mx-auto">
-          <div className="flex justify-between items-center mb-6">
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex justify-between items-center mb-6 bg-card/80 backdrop-blur-sm p-4 rounded-lg shadow-sm">
             <StatusManager
               currentStatus={profile?.status}
               onStatusChange={async (newStatus) => {
