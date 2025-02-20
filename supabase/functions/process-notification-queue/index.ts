@@ -8,100 +8,85 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface NotificationQueueItem {
-  id: string;
-  user_id: string;
-  payload: {
-    title?: string;
-    body?: string;
-    type?: string;
-    missionId?: string;
-    missionType?: string;
-    [key: string]: any;
-  };
-  notification_type: string;
-  reference_id?: string;
-  reference_type?: string;
-  retry_count: number;
+const VAPID_PUBLIC_KEY = Deno.env.get('VAPID_PUBLIC_KEY')
+const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')
+
+if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  throw new Error('VAPID keys must be set')
 }
 
+webPush.setVapidDetails(
+  'mailto:admin@aftranslation.fr',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+)
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('[process-notification-queue] Starting notification processing');
-    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
     )
 
-    // First, mark notifications as processing
+    // Get pending notifications from the queue
     const { data: notifications, error: fetchError } = await supabaseClient
       .from('notification_queue')
-      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .select('*')
       .eq('status', 'pending')
-      .limit(50)
-      .select();
+      .order('created_at', { ascending: true })
+      .limit(10)
 
     if (fetchError) {
-      console.error('[process-notification-queue] Error fetching notifications:', fetchError);
-      throw fetchError;
+      throw fetchError
     }
 
-    console.log(`[process-notification-queue] Processing ${notifications?.length ?? 0} notifications`);
-
-    // Configure web push
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      throw new Error('VAPID keys not configured');
-    }
-
-    webPush.setVapidDetails(
-      'mailto:admin@example.com',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
+    console.log(`Processing ${notifications?.length ?? 0} notifications`)
 
     // Process each notification
     for (const notification of notifications ?? []) {
-      console.log(`[process-notification-queue] Processing notification ${notification.id}`);
-      
       try {
+        console.log(`Processing notification ${notification.id} for user ${notification.user_id}`)
+
         // Get user's push subscription
-        const { data: subscriptions, error: subError } = await supabaseClient
+        const { data: subscriptions, error: subscriptionError } = await supabaseClient
           .from('user_push_subscriptions')
           .select('subscription')
           .eq('user_id', notification.user_id)
-          .single();
+          .single()
 
-        if (subError) {
-          throw new Error(`Subscription fetch error: ${subError.message}`);
+        if (subscriptionError) {
+          console.error(`Error fetching subscription for user ${notification.user_id}:`, subscriptionError)
+          continue
         }
 
         if (!subscriptions?.subscription) {
-          throw new Error(`No subscription found for user ${notification.user_id}`);
+          console.log(`No subscription found for user ${notification.user_id}`)
+          continue
         }
 
-        // Add notification ID to payload for delivery confirmation
-        const pushPayload = {
-          ...notification.payload,
-          notificationId: notification.id
-        };
-
-        console.log(`[process-notification-queue] Sending push notification:`, pushPayload);
-
         // Send push notification
-        await webPush.sendNotification(
-          subscriptions.subscription as webPush.PushSubscription,
-          JSON.stringify(pushPayload)
-        );
+        const pushPayload = {
+          title: notification.payload.title || 'Nouvelle notification',
+          body: notification.payload.body || 'Vous avez reçu une nouvelle notification',
+          data: notification.payload
+        }
 
-        console.log(`[process-notification-queue] Push notification sent for ${notification.id}`);
+        console.log(`Sending push notification to user ${notification.user_id}:`, pushPayload)
+
+        await webPush.sendNotification(
+          subscriptions.subscription,
+          JSON.stringify(pushPayload)
+        )
 
         // Update notification status to sent
         const { error: updateError } = await supabaseClient
@@ -110,13 +95,13 @@ serve(async (req) => {
             status: 'sent',
             updated_at: new Date().toISOString()
           })
-          .eq('id', notification.id);
+          .eq('id', notification.id)
 
         if (updateError) {
-          console.error(`[process-notification-queue] Error updating notification status:`, updateError);
+          console.error(`Error updating notification ${notification.id}:`, updateError)
         }
 
-        // Record in notification history
+        // Add to notification history
         const { error: historyError } = await supabaseClient
           .from('notification_history')
           .insert({
@@ -124,76 +109,47 @@ serve(async (req) => {
             notification_type: notification.notification_type,
             reference_id: notification.reference_id,
             reference_type: notification.reference_type,
-            title: notification.payload.title ?? 'New Notification',
-            body: notification.payload.body ?? JSON.stringify(notification.payload),
             payload: notification.payload,
+            title: pushPayload.title,
+            body: pushPayload.body,
             sent_at: new Date().toISOString(),
             delivery_status: 'sent'
-          });
+          })
 
         if (historyError) {
-          console.error(`[process-notification-queue] Error recording history:`, historyError);
+          console.error(`Error creating history entry for notification ${notification.id}:`, historyError)
         }
 
       } catch (error) {
-        console.error(`[process-notification-queue] Error processing notification ${notification.id}:`, error);
+        console.error(`Error processing notification ${notification.id}:`, error)
 
-        // Update notification status to failed if max retries reached
-        const newRetryCount = (notification.retry_count || 0) + 1;
-        const status = newRetryCount >= 5 ? 'failed' : 'pending';
-        
+        // Update notification status to failed
         const { error: updateError } = await supabaseClient
           .from('notification_queue')
           .update({
-            status,
-            retry_count: newRetryCount,
+            status: 'failed',
             last_error: error.message,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            retry_count: (notification.retry_count || 0) + 1
           })
-          .eq('id', notification.id);
+          .eq('id', notification.id)
 
         if (updateError) {
-          console.error(`[process-notification-queue] Error updating failed notification:`, updateError);
-        }
-
-        if (status === 'failed') {
-          const { error: historyError } = await supabaseClient
-            .from('notification_history')
-            .insert({
-              user_id: notification.user_id,
-              notification_type: notification.notification_type,
-              reference_id: notification.reference_id,
-              reference_type: notification.reference_type,
-              title: notification.payload.title ?? 'New Notification',
-              body: notification.payload.body ?? JSON.stringify(notification.payload),
-              payload: notification.payload,
-              delivery_status: 'failed',
-              error_message: error.message
-            });
-
-          if (historyError) {
-            console.error(`[process-notification-queue] Error recording failed notification:`, historyError);
-          }
+          console.error(`Error updating failed notification ${notification.id}:`, updateError)
         }
       }
     }
 
-    return new Response(JSON.stringify({ 
-      success: true,
-      processed: notifications?.length ?? 0 
-    }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
-    });
+    })
 
   } catch (error) {
-    console.error('[process-notification-queue] Critical error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.stack 
-    }), {
+    console.error('Error in notification processor:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
-    });
+    })
   }
-});
+})
