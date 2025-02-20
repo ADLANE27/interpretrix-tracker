@@ -15,6 +15,7 @@ export const useSupabaseConnection = () => {
   const reconnectAttemptsRef = useRef(0);
   const isExplicitDisconnectRef = useRef(false);
   const isReconnectingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
   const { validateChannelPresence } = usePresence({
@@ -31,8 +32,8 @@ export const useSupabaseConnection = () => {
   
   const initializeChannel = useCallback(async () => {
     try {
-      if (isReconnectingRef.current) {
-        console.log('[useSupabaseConnection] Already reconnecting, skipping initialization');
+      if (isReconnectingRef.current || hasInitializedRef.current) {
+        console.log('[useSupabaseConnection] Already initialized or reconnecting, skipping initialization');
         return () => {};
       }
 
@@ -48,11 +49,15 @@ export const useSupabaseConnection = () => {
       isExplicitDisconnectRef.current = false;
       
       if (channelRef.current) {
+        console.log('[useSupabaseConnection] Removing existing channel');
         await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
 
-      channelRef.current = supabase.channel('app-health', {
+      const channelName = `app-health-${Date.now()}`;
+      console.log('[useSupabaseConnection] Creating new channel:', channelName);
+      
+      channelRef.current = supabase.channel(channelName, {
         config: {
           broadcast: { ack: true },
           presence: { key: 'status' }
@@ -97,6 +102,7 @@ export const useSupabaseConnection = () => {
         console.log('[useSupabaseConnection] Channel status:', status);
 
         if (status === 'SUBSCRIBED' && !isExplicitDisconnectRef.current) {
+          hasInitializedRef.current = true;
           isReconnectingRef.current = false;
           reconnectAttemptsRef.current = 0;
           updateLastHeartbeat();
@@ -146,6 +152,7 @@ export const useSupabaseConnection = () => {
         if (presenceValidationTimeout) {
           clearTimeout(presenceValidationTimeout);
         }
+        hasInitializedRef.current = false;
       };
 
     } catch (error) {
@@ -153,7 +160,9 @@ export const useSupabaseConnection = () => {
       if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
         handleReconnectRef.current?.();
       }
-      return () => {};
+      return () => {
+        hasInitializedRef.current = false;
+      };
     }
   }, [
     releaseWakeLock,
@@ -171,6 +180,7 @@ export const useSupabaseConnection = () => {
 
     isReconnectingRef.current = true;
     clearIntervals();
+    hasInitializedRef.current = false;
 
     if (reconnectAttemptsRef.current >= CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
       console.error('[useSupabaseConnection] Max reconnection attempts reached');
@@ -235,9 +245,10 @@ export const useSupabaseConnection = () => {
             channelRef.current = null;
           }
           releaseWakeLock();
+          hasInitializedRef.current = false;
         } else if (!channelRef.current || channelRef.current.state !== 'joined') {
           console.log('[useSupabaseConnection] Session check: Channel reconnect needed');
-          if (!isReconnectingRef.current) {
+          if (!isReconnectingRef.current && !hasInitializedRef.current) {
             await initializeChannel();
           }
         }
@@ -253,7 +264,7 @@ export const useSupabaseConnection = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useSupabaseConnection] Page visible');
         if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
-          if (!channelRef.current || channelRef.current.state !== 'joined') {
+          if ((!channelRef.current || channelRef.current.state !== 'joined') && !hasInitializedRef.current) {
             initializeChannel();
           }
         }
@@ -274,6 +285,7 @@ export const useSupabaseConnection = () => {
           channelRef.current = null;
         }
         releaseWakeLock();
+        hasInitializedRef.current = false;
       }
     });
 
@@ -285,6 +297,7 @@ export const useSupabaseConnection = () => {
       subscription.unsubscribe();
       clearIntervals();
       releaseWakeLock();
+      hasInitializedRef.current = false;
     };
   }, [clearIntervals, initializeChannel, releaseWakeLock]);
 
