@@ -97,16 +97,15 @@ export const useSubscriptions = (
             );
         }
 
-        // Subscribe to the channel only once and handle the typed status
-        const subscriptionStatus: SubscriptionStatus = await channelRef.current.subscribe();
-        console.log('[Chat] Subscription status:', subscriptionStatus);
+        // Subscribe to the channel and subscribe() returns the channel instance
+        const channel = await channelRef.current.subscribe();
+        console.log('[Chat] Channel subscribed:', channel);
 
-        if (subscriptionStatus === 'SUBSCRIBED') {
-          setSubscriptionStates({
-            messages: { status: 'SUBSCRIBED' },
-            ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
-          });
-        }
+        // After successful subscription, update states
+        setSubscriptionStates({
+          messages: { status: 'SUBSCRIBED' },
+          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+        });
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
         handleSubscriptionError(error as Error, 'messages');
@@ -128,7 +127,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]); // Added back required dependencies
+  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]);
 
   return {
     subscriptionStates,
