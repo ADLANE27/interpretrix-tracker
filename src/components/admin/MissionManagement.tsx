@@ -386,9 +386,6 @@ export const MissionManagement = () => {
         );
       }
 
-      const notificationExpiry = new Date();
-      notificationExpiry.setHours(notificationExpiry.getHours() + 24);
-
       console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -402,7 +399,7 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Create the mission
+      // Create the mission with updated fields
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert({
@@ -410,7 +407,6 @@ export const MissionManagement = () => {
           target_language: targetLanguage,
           estimated_duration: calculatedDuration,
           status: "awaiting_acceptance",
-          notification_expiry: notificationExpiry.toISOString(),
           notified_interpreters: selectedInterpreters,
           mission_type: missionType,
           scheduled_start_time: utcStartTime,
@@ -429,6 +425,7 @@ export const MissionManagement = () => {
         description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes seront notifiés`,
       });
       
+      // Reset form
       setSourceLanguage("");
       setTargetLanguage("");
       setEstimatedDuration("");

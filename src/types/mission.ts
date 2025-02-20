@@ -15,4 +15,5 @@ export interface Mission {
   creator_email?: string;
   creator_first_name?: string;
   creator_last_name?: string;
+  notified_interpreters?: string[];
 }
