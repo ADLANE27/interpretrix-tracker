@@ -311,116 +311,26 @@ export const MissionManagement = () => {
       setIsProcessing(true);
       console.log('[MissionManagement] Starting mission creation process');
       
-      // Validation checks
-      if (selectedInterpreters.length === 0) {
-        toast({
-          title: "Erreur de validation",
-          description: "Veuillez sélectionner au moins un interprète",
-          variant: "destructive",
-        });
+      // Initial validation
+      if (!validateMissionInput()) {
         return;
       }
-
-      if (!sourceLanguage || !targetLanguage) {
-        toast({
-          title: "Erreur de validation",
-          description: "Veuillez sélectionner les langues source et cible",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Scheduled mission validation
-      if (missionType === 'scheduled') {
-        if (!scheduledStartTime || !scheduledEndTime) {
-          toast({
-            title: "Erreur de validation",
-            description: "Veuillez spécifier les horaires de la mission programmée",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const startDate = new Date(scheduledStartTime);
-        const endDate = new Date(scheduledEndTime);
-        const now = new Date();
-
-        if (startDate < now) {
-          toast({
-            title: "Erreur de validation",
-            description: "La date de début ne peut pas être dans le passé",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        if (endDate <= startDate) {
-          toast({
-            title: "Erreur de validation",
-            description: "La date de fin doit être postérieure à la date de début",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      // Immediate mission validation
-      if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
-        toast({
-          title: "Erreur de validation",
-          description: "Veuillez spécifier une durée valide pour la mission",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      let calculatedDuration = parseInt(estimatedDuration);
-      let utcStartTime = null;
-      let utcEndTime = null;
-
-      if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-        utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
-        utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
-        calculatedDuration = Math.round(
-          (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
-        );
-      }
-
-      console.log('[MissionManagement] Creating mission for interpreters:', selectedInterpreters);
 
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast({
-          title: "Erreur",
-          description: "Vous devez être connecté pour créer une mission",
-          variant: "destructive",
-        });
-        return;
+        throw new Error("Vous devez être connecté pour créer une mission");
       }
 
-      // Prepare mission data with proper array format for notified_interpreters
-      const missionData = {
-        source_language: sourceLanguage,
-        target_language: targetLanguage,
-        estimated_duration: calculatedDuration,
-        status: "awaiting_acceptance",
-        notified_interpreters: selectedInterpreters, // This is already an array of UUIDs
-        mission_type: missionType,
-        scheduled_start_time: utcStartTime,
-        scheduled_end_time: utcEndTime,
-        created_by: user.id,
-        client_name: "" // Adding default empty string for client_name
-      };
-
-      console.log('[MissionManagement] Mission data to be inserted:', missionData);
+      const missionData = await prepareMissionData(user.id);
+      console.log('[MissionManagement] Prepared mission data:', missionData);
 
       // Create the mission
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
-        .insert([missionData]) // Wrap in array to ensure proper format
-        .select('*') // Select all columns to verify the insert
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+        .insert([missionData])
+        .select('*')
+        .maybeSingle();
 
       if (missionError) {
         console.error('[MissionManagement] Error creating mission:', missionError);
@@ -428,7 +338,7 @@ export const MissionManagement = () => {
       }
 
       if (!createdMission) {
-        throw new Error('No mission data returned after creation');
+        throw new Error('La mission n\'a pas pu être créée');
       }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
@@ -438,29 +348,121 @@ export const MissionManagement = () => {
         description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes seront notifiés`,
       });
       
-      // Reset form
-      setSourceLanguage("");
-      setTargetLanguage("");
-      setEstimatedDuration("");
-      setSelectedInterpreters([]);
-      setAvailableInterpreters([]);
-      setMissionType('immediate');
-      setScheduledStartTime("");
-      setScheduledEndTime("");
-
-      // Refresh the missions list
+      resetForm();
       await fetchMissions();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[MissionManagement] Error in createMission:', error);
       toast({
         title: "Erreur lors de la création",
-        description: "Une erreur est survenue lors de la création de la mission. Veuillez réessayer.",
+        description: error.message || "Une erreur est survenue lors de la création de la mission",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const validateMissionInput = () => {
+    if (selectedInterpreters.length === 0) {
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez sélectionner au moins un interprète",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!sourceLanguage || !targetLanguage) {
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez sélectionner les langues source et cible",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (missionType === 'scheduled') {
+      if (!scheduledStartTime || !scheduledEndTime) {
+        toast({
+          title: "Erreur de validation",
+          description: "Veuillez spécifier les horaires de la mission programmée",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      const startDate = new Date(scheduledStartTime);
+      const endDate = new Date(scheduledEndTime);
+      const now = new Date();
+
+      if (startDate < now) {
+        toast({
+          title: "Erreur de validation",
+          description: "La date de début ne peut pas être dans le passé",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      if (endDate <= startDate) {
+        toast({
+          title: "Erreur de validation",
+          description: "La date de fin doit être postérieure à la date de début",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+
+    if (missionType === 'immediate' && (!estimatedDuration || parseInt(estimatedDuration) <= 0)) {
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez spécifier une durée valide pour la mission",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const prepareMissionData = async (userId: string) => {
+    let calculatedDuration = parseInt(estimatedDuration);
+    let utcStartTime = null;
+    let utcEndTime = null;
+
+    if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+      utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+      utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+      calculatedDuration = Math.round(
+        (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
+      );
+    }
+
+    return {
+      source_language: sourceLanguage,
+      target_language: targetLanguage,
+      estimated_duration: calculatedDuration,
+      status: "awaiting_acceptance",
+      notified_interpreters: selectedInterpreters,
+      mission_type: missionType,
+      scheduled_start_time: utcStartTime,
+      scheduled_end_time: utcEndTime,
+      created_by: userId,
+      client_name: ""
+    };
+  };
+
+  const resetForm = () => {
+    setSourceLanguage("");
+    setTargetLanguage("");
+    setEstimatedDuration("");
+    setSelectedInterpreters([]);
+    setAvailableInterpreters([]);
+    setMissionType('immediate');
+    setScheduledStartTime("");
+    setScheduledEndTime("");
   };
 
   const handleMissionResponse = async (missionId: string, accept: boolean) => {
