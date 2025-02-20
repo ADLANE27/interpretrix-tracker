@@ -112,43 +112,50 @@ export const MissionsTab = () => {
         setTimeout(() => {
           channelRef.current = supabase
             .channel('interpreter-missions')
-            .on('broadcast', { event: 'postgres_changes' }, async (payload) => {
-              console.log('[MissionsTab] Mission update received:', payload);
-              
-              const mission = payload.payload as Mission;
-              
-              if (payload.type === 'INSERT' && 
-                  mission.notified_interpreters?.includes(currentUserId || '')) {
-                const isImmediate = mission.mission_type === 'immediate';
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'interpretation_missions'
+              },
+              async (payload: RealtimePostgresChangesPayload<Mission>) => {
+                console.log('[MissionsTab] Mission update received:', payload);
                 
-                if (!isMobile) {
-                  console.log('[MissionsTab] Showing toast for new mission (desktop only)');
-                  toast({
-                    title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                    description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                    variant: isImmediate ? "destructive" : "default",
-                    duration: 10000,
-                  });
-                }
+                const mission = payload.new;
+                
+                if (mission.notified_interpreters?.includes(currentUserId || '')) {
+                  const isImmediate = mission.mission_type === 'immediate';
+                  
+                  if (!isMobile) {
+                    console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                    toast({
+                      title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                      description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                      variant: isImmediate ? "destructive" : "default",
+                      duration: 10000,
+                    });
+                  }
 
-                if (soundEnabled) {
-                  try {
-                    console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                    await playNotificationSound(mission.mission_type);
-                  } catch (error) {
-                    console.error('[MissionsTab] Error playing sound:', error);
-                    initializeSound();
+                  if (soundEnabled) {
                     try {
+                      console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
                       await playNotificationSound(mission.mission_type);
-                    } catch (retryError) {
-                      console.error('[MissionsTab] Retry failed:', retryError);
+                    } catch (error) {
+                      console.error('[MissionsTab] Error playing sound:', error);
+                      initializeSound();
+                      try {
+                        await playNotificationSound(mission.mission_type);
+                      } catch (retryError) {
+                        console.error('[MissionsTab] Retry failed:', retryError);
+                      }
                     }
                   }
                 }
+                
+                fetchMissions();
               }
-              
-              fetchMissions();
-            })
+            )
             .subscribe(async (status) => {
               console.log('[MissionsTab] Subscription status:', status);
               
