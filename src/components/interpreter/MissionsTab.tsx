@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { playNotificationSound } from "@/utils/notificationSounds";
 import { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Mission } from "@/types/mission";
-import { NotificationActivationButton } from './NotificationActivationButton';
 
 interface MissionNotification {
   id: string;
@@ -351,12 +351,6 @@ export const MissionsTab = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-4">
-          <NotificationActivationButton />
-        </div>
-      </div>
-      
       {missions.map((mission) => {
         const statusDisplay = getMissionStatusDisplay(
           mission.status, 
