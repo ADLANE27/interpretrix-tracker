@@ -30,6 +30,7 @@ export const InterpreterDashboard = () => {
     handleProfilePictureUpload, 
     handleProfilePictureDelete 
   } = useInterpreterProfile();
+
   useSupabaseConnection();
 
   const fetchScheduledMissions = async () => {
@@ -58,44 +59,51 @@ export const InterpreterDashboard = () => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        if (!mounted) return;
         
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
           setError("Session expirée. Veuillez vous reconnecter.");
-          setIsLoading(false); // Set loading to false before navigating
           navigate("/interpreter/login");
           return;
         }
-        
+
         setAuthChecked(true);
         
-        // Use Promise.all to fetch both profile and missions concurrently
-        await Promise.all([
-          fetchProfile(),
-          fetchScheduledMissions()
-        ]);
+        // Sequential loading for better error handling
+        await fetchProfile();
+        await fetchScheduledMissions();
         
-        setIsLoading(false); // Set loading to false after all data is fetched
+        if (mounted) {
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error('[InterpreterDashboard] Initialization error:', error);
-        setError("Une erreur est survenue lors de l'initialisation.");
-        setIsLoading(false); // Make sure to set loading to false even if there's an error
-        toast({
-          title: "Erreur",
-          description: "Impossible d'initialiser le tableau de bord",
-          variant: "destructive",
-        });
+        if (mounted) {
+          setError("Une erreur est survenue lors de l'initialisation.");
+          setIsLoading(false);
+          toast({
+            title: "Erreur",
+            description: "Impossible d'initialiser le tableau de bord",
+            variant: "destructive",
+          });
+        }
       }
     };
 
     initializeAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, [navigate, toast, fetchProfile]);
 
+  // Early return for loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-background to-muted">
@@ -104,6 +112,7 @@ export const InterpreterDashboard = () => {
     );
   }
 
+  // Early return for error state
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-background to-muted space-y-4">
@@ -118,6 +127,7 @@ export const InterpreterDashboard = () => {
     );
   }
 
+  // Main dashboard render
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background to-muted">
       <Sidebar
