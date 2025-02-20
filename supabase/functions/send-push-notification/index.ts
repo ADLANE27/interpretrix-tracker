@@ -54,8 +54,14 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      { 
+        auth: {
+          persistSession: false
+        }
+      }
     )
+
+    console.log('Getting user subscription...')
 
     // Get user's push subscription
     const { data: subscriptionData, error: subscriptionError } = await supabaseClient
@@ -110,6 +116,8 @@ serve(async (req) => {
 
     if (historyError) {
       console.error('Error recording notification history:', historyError)
+    } else {
+      console.log('Notification history recorded successfully')
     }
 
     return new Response(
