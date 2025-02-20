@@ -30,8 +30,39 @@ export const InterpreterDashboard = () => {
     handleProfilePictureUpload, 
     handleProfilePictureDelete 
   } = useInterpreterProfile();
-
   useSupabaseConnection();
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setError("Session expirée. Veuillez vous reconnecter.");
+          navigate("/interpreter/login");
+          return;
+        }
+        
+        setAuthChecked(true);
+        await Promise.all([fetchProfile(), fetchScheduledMissions()]);
+      } catch (error) {
+        console.error('[InterpreterDashboard] Initialization error:', error);
+        setError("Une erreur est survenue lors de l'initialisation.");
+        toast({
+          title: "Erreur",
+          description: "Impossible d'initialiser le tableau de bord",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, [navigate, toast, fetchProfile]);
 
   const fetchScheduledMissions = async () => {
     try {
@@ -58,52 +89,6 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        if (!mounted) return;
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setError("Session expirée. Veuillez vous reconnecter.");
-          navigate("/interpreter/login");
-          return;
-        }
-
-        setAuthChecked(true);
-        
-        // Sequential loading for better error handling
-        await fetchProfile();
-        await fetchScheduledMissions();
-        
-        if (mounted) {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('[InterpreterDashboard] Initialization error:', error);
-        if (mounted) {
-          setError("Une erreur est survenue lors de l'initialisation.");
-          setIsLoading(false);
-          toast({
-            title: "Erreur",
-            description: "Impossible d'initialiser le tableau de bord",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-    };
-  }, [navigate, toast, fetchProfile]);
-
-  // Early return for loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-background to-muted">
@@ -112,7 +97,6 @@ export const InterpreterDashboard = () => {
     );
   }
 
-  // Early return for error state
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-background to-muted space-y-4">
@@ -127,7 +111,6 @@ export const InterpreterDashboard = () => {
     );
   }
 
-  // Main dashboard render
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background to-muted">
       <Sidebar
