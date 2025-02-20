@@ -119,12 +119,19 @@ export const MissionsTab = () => {
                 schema: 'public',
                 table: 'interpretation_missions'
               },
-              async (payload: RealtimePostgresChangesPayload<Mission>) => {
+              (payload: RealtimePostgresChangesPayload<{
+                id: string;
+                notified_interpreters: string[];
+                mission_type: 'immediate' | 'scheduled';
+                source_language: string;
+                target_language: string;
+                estimated_duration: number;
+              }>) => {
                 console.log('[MissionsTab] Mission update received:', payload);
                 
                 const mission = payload.new;
                 
-                if (mission.notified_interpreters?.includes(currentUserId || '')) {
+                if (mission && mission.notified_interpreters?.includes(currentUserId || '')) {
                   const isImmediate = mission.mission_type === 'immediate';
                   
                   if (!isMobile) {
@@ -140,12 +147,12 @@ export const MissionsTab = () => {
                   if (soundEnabled) {
                     try {
                       console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                      await playNotificationSound(mission.mission_type);
+                      void playNotificationSound(mission.mission_type);
                     } catch (error) {
                       console.error('[MissionsTab] Error playing sound:', error);
                       initializeSound();
                       try {
-                        await playNotificationSound(mission.mission_type);
+                        void playNotificationSound(mission.mission_type);
                       } catch (retryError) {
                         console.error('[MissionsTab] Retry failed:', retryError);
                       }
@@ -153,7 +160,7 @@ export const MissionsTab = () => {
                   }
                 }
                 
-                fetchMissions();
+                void fetchMissions();
               }
             )
             .subscribe(async (status) => {
