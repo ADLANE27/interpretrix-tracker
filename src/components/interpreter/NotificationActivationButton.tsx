@@ -1,13 +1,22 @@
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Settings2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { checkPushNotificationStatus, registerPushNotifications, unregisterPushNotifications } from "@/utils/pushNotifications";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function NotificationActivationButton() {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -20,6 +29,7 @@ export function NotificationActivationButton() {
       const status = await checkPushNotificationStatus();
       console.log('[NotificationActivationButton] Current status:', status);
       setIsEnabled(status.enabled);
+      setPermissionDenied(status.permission === 'denied');
       setIsLoading(false);
     } catch (error) {
       console.error('[NotificationActivationButton] Error checking status:', error);
@@ -30,6 +40,13 @@ export function NotificationActivationButton() {
   const handleToggleNotifications = async () => {
     try {
       setIsLoading(true);
+
+      // If permissions are denied, show the help dialog instead of trying to register
+      if (permissionDenied) {
+        setShowPermissionDialog(true);
+        setIsLoading(false);
+        return;
+      }
 
       if (isEnabled) {
         console.log('[NotificationActivationButton] Désactivation des notifications...');
@@ -46,7 +63,6 @@ export function NotificationActivationButton() {
         }
       } else {
         console.log('[NotificationActivationButton] Activation des notifications...');
-        // Vérifier d'abord l'état actuel pour s'assurer qu'il n'y a pas d'abonnement existant
         const currentStatus = await checkPushNotificationStatus();
         
         if (currentStatus.enabled) {
@@ -63,6 +79,11 @@ export function NotificationActivationButton() {
             description: "Vous recevrez des notifications pour les nouvelles missions",
           });
         } else {
+          // If permission was denied during registration, update the state
+          if (result.message.includes('Permission refusée')) {
+            setPermissionDenied(true);
+            setShowPermissionDialog(true);
+          }
           throw new Error(result.message);
         }
       }
@@ -90,22 +111,49 @@ export function NotificationActivationButton() {
   }
 
   return (
-    <Button
-      onClick={handleToggleNotifications}
-      variant={isEnabled ? "default" : "outline"}
-      className="gap-2"
-    >
-      {isEnabled ? (
-        <>
-          <Bell className="h-4 w-4" />
-          Notifications activées
-        </>
-      ) : (
-        <>
-          <BellOff className="h-4 w-4" />
-          Activer les notifications
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        onClick={handleToggleNotifications}
+        variant={isEnabled ? "default" : "outline"}
+        className="gap-2"
+      >
+        {isEnabled ? (
+          <>
+            <Bell className="h-4 w-4" />
+            Notifications activées
+          </>
+        ) : (
+          <>
+            {permissionDenied ? <Settings2 className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            {permissionDenied ? "Configurer les notifications" : "Activer les notifications"}
+          </>
+        )}
+      </Button>
+
+      <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Autoriser les notifications</DialogTitle>
+            <DialogDescription className="space-y-4 pt-4">
+              <p>
+                Pour recevoir des notifications de nouvelles missions, vous devez autoriser les notifications dans les paramètres de votre navigateur.
+              </p>
+              <div className="space-y-2">
+                <p className="font-medium">Comment autoriser les notifications :</p>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  <li>Cliquez sur l'icône de cadenas à gauche de la barre d'adresse</li>
+                  <li>Trouvez le paramètre "Notifications"</li>
+                  <li>Changez le paramètre sur "Autoriser"</li>
+                  <li>Rafraîchissez la page</li>
+                </ol>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Une fois les notifications autorisées, vous pourrez les activer en cliquant sur le bouton "Activer les notifications".
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
