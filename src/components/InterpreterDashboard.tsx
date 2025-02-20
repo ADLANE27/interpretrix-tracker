@@ -30,40 +30,51 @@ export const InterpreterDashboard = () => {
     handleProfilePictureUpload, 
     handleProfilePictureDelete 
   } = useInterpreterProfile();
+
+  // Initialize Supabase connection
   useSupabaseConnection();
 
+  // Check authentication status and fetch initial data
   useEffect(() => {
-    const initializeAuth = async () => {
+    const checkAuthAndFetchData = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        const { data: { session } } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
         
         if (!session) {
-          setError("Session expirée. Veuillez vous reconnecter.");
+          console.log('No active session, redirecting to login');
           navigate("/interpreter/login");
           return;
         }
-        
+
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (rolesError || roles?.role !== 'interpreter') {
+          console.error('User role verification failed:', rolesError);
+          navigate("/interpreter/login");
+          return;
+        }
+
         setAuthChecked(true);
-        await Promise.all([fetchProfile(), fetchScheduledMissions()]);
+        await fetchProfile();
+        await fetchScheduledMissions();
+        setIsLoading(false);
       } catch (error) {
-        console.error('[InterpreterDashboard] Initialization error:', error);
+        console.error('Auth check error:', error);
         setError("Une erreur est survenue lors de l'initialisation.");
-        toast({
-          title: "Erreur",
-          description: "Impossible d'initialiser le tableau de bord",
-          variant: "destructive",
-        });
-      } finally {
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
-  }, [navigate, toast, fetchProfile]);
+    checkAuthAndFetchData();
+  }, [navigate, fetchProfile]);
 
+  // Fetch scheduled missions
   const fetchScheduledMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
