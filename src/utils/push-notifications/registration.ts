@@ -74,7 +74,7 @@ export const registerPushNotifications = async () => {
       applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
     });
 
-    // 8. Save subscription to database
+    // 8. Save subscription to database with simplified data structure
     console.log('[pushNotifications] Saving subscription to database');
     const subscriptionJson = pushSubscription.toJSON();
     const subscriptionData = {
@@ -83,17 +83,17 @@ export const registerPushNotifications = async () => {
       expirationTime: subscriptionJson.expirationTime
     } as Json;
 
+    // Remove updated_at from the insert since it's handled by the database
     const { error: upsertError } = await supabase
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: subscriptionData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        subscription: subscriptionData
       });
 
     if (upsertError) {
-      throw upsertError;
+      console.error('[pushNotifications] Database error:', upsertError);
+      throw new Error('Erreur lors de l\'enregistrement des notifications');
     }
 
     return {
