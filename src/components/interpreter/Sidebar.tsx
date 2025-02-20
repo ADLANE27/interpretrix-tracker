@@ -1,6 +1,6 @@
 
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, User, Settings } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) =>
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "profile", label: "Profil", icon: User },
     { id: "calendar", label: "Calendrier", icon: Calendar },
-    { id: "settings", label: "Paramètres", icon: Settings },
   ];
 
   const getStatusColor = () => {
