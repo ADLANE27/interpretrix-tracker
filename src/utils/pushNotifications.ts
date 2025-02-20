@@ -40,10 +40,12 @@ export const registerPushNotifications = async () => {
   try {
     console.log('[pushNotifications] Starting registration process');
 
+    // 1. Check browser support
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       throw new Error('Les notifications push ne sont pas prises en charge par votre navigateur');
     }
 
+    // 2. Request notification permission if not granted
     if (Notification.permission !== 'granted') {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
@@ -51,40 +53,62 @@ export const registerPushNotifications = async () => {
       }
     }
 
+    // 3. Check authentication
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session?.user) {
       throw new Error('Utilisateur non authentifié');
     }
 
-    console.log('[pushNotifications] Checking for existing subscription');
-    const registration = await navigator.serviceWorker.ready;
-    const existingSubscription = await registration.pushManager.getSubscription();
+    // 4. Register service worker if not already registered
+    console.log('[pushNotifications] Registering service worker');
+    let registration = await navigator.serviceWorker.getRegistration();
     
-    if (existingSubscription) {
-      console.log('[pushNotifications] Found existing subscription, removing it');
-      await existingSubscription.unsubscribe();
-      
-      await supabase
-        .from('user_push_subscriptions')
-        .delete()
-        .eq('user_id', session.user.id);
+    if (!registration) {
+      registration = await navigator.serviceWorker.register('/service-worker.js');
+      await registration.update();
     }
 
+    // 5. Check existing subscription
+    console.log('[pushNotifications] Checking existing subscription');
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
+    // Only unsubscribe if the subscription is invalid
+    if (existingSubscription) {
+      try {
+        await existingSubscription.getKey('p256dh');
+        // If the subscription is valid, return it
+        console.log('[pushNotifications] Using existing valid subscription');
+        return {
+          success: true,
+          message: 'Notifications push déjà activées'
+        };
+      } catch (error) {
+        console.log('[pushNotifications] Found invalid subscription, removing it');
+        await existingSubscription.unsubscribe();
+        await supabase
+          .from('user_push_subscriptions')
+          .delete()
+          .eq('user_id', session.user.id);
+      }
+    }
+
+    // 6. Get VAPID public key
     console.log('[pushNotifications] Getting VAPID public key');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke('get-vapid-keys');
     if (vapidError || !vapidData?.publicKey) {
+      console.error('[pushNotifications] VAPID key error:', vapidError);
       throw new Error('Impossible de récupérer la clé publique VAPID');
     }
 
+    // 7. Create new subscription
     console.log('[pushNotifications] Creating new push subscription');
-    const subscribeOptions = {
+    const pushSubscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey)
-    };
+    });
 
-    const pushSubscription = await registration.pushManager.subscribe(subscribeOptions);
-    console.log('[pushNotifications] Push subscription created:', pushSubscription);
-
+    // 8. Save subscription to database
+    console.log('[pushNotifications] Saving subscription to database');
     const subscriptionJson = pushSubscription.toJSON();
     const subscriptionData = {
       endpoint: subscriptionJson.endpoint,
@@ -96,7 +120,9 @@ export const registerPushNotifications = async () => {
       .from('user_push_subscriptions')
       .upsert({
         user_id: session.user.id,
-        subscription: subscriptionData
+        subscription: subscriptionData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
 
     if (upsertError) {
@@ -110,6 +136,17 @@ export const registerPushNotifications = async () => {
 
   } catch (error) {
     console.error('[pushNotifications] Registration error:', error);
+    // Cleanup on error
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await subscription.unsubscribe();
+      }
+    } catch (cleanupError) {
+      console.error('[pushNotifications] Cleanup error:', cleanupError);
+    }
+    
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Impossible d\'activer les notifications push'
@@ -131,7 +168,7 @@ export const checkPushNotificationStatus = async () => {
     const permission = Notification.permission;
     console.log('[pushNotifications] Current permission:', permission);
 
-    // Check if service worker is registered and get subscription
+    // Check if service worker is registered
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
     
@@ -192,8 +229,6 @@ export const unregisterPushNotifications = async () => {
     if (subscription) {
       await subscription.unsubscribe();
       console.log('[pushNotifications] Successfully unsubscribed');
-    } else {
-      console.log('[pushNotifications] No subscription found to unsubscribe');
     }
 
     return {

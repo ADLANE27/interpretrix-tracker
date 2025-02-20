@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,35 +14,38 @@ serve(async (req) => {
   }
 
   try {
-    // Get public key from environment variable
+    // Get VAPID keys from secrets
     const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    
-    if (!publicKey) {
-      console.error('VAPID_PUBLIC_KEY not found in environment variables')
-      throw new Error('VAPID public key not configured')
+    const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+
+    if (!publicKey || !privateKey) {
+      throw new Error('VAPID keys not configured')
     }
 
+    // Only return the public key to the client
     return new Response(
-      JSON.stringify({ publicKey }),
-      { 
-        headers: { 
+      JSON.stringify({
+        publicKey
+      }),
+      {
+        headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json',
         },
-        status: 200 
-      }
+        status: 200,
+      },
     )
   } catch (error) {
-    console.error('Error retrieving VAPID key:', error)
+    console.error('Error in get-vapid-keys:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        headers: { 
+      {
+        headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json',
         },
-        status: 500
-      }
+        status: 500,
+      },
     )
   }
 })

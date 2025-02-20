@@ -56,22 +56,49 @@ serve(async (req) => {
       throw new Error('Method not allowed');
     }
 
-    const { signingInput, subscription, payload, vapidPublicKey, vapidPrivateKey } = await req.json();
+    const { subscription, payload } = await req.json();
 
-    if (!signingInput || !subscription || !payload || !vapidPublicKey || !vapidPrivateKey) {
+    if (!subscription || !payload) {
       throw new Error('Missing required parameters');
     }
 
-    console.log('Signing input received:', signingInput);
-    console.log('Subscription:', subscription);
+    // Get VAPID keys from environment
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
 
-    // Sign the input with ECDSA
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('VAPID keys not configured');
+    }
+
+    console.log('Processing push notification:', {
+      subscription: subscription,
+      payload: payload
+    });
+
+    // Create JWT components
+    const header = { typ: 'JWT', alg: 'ES256' };
+    const audience = new URL(subscription.endpoint).origin;
+    const expiration = Math.floor(Date.now() / 1000) + 12 * 3600;
+    const jwtPayload = {
+      aud: audience,
+      exp: expiration,
+      sub: 'mailto:admin@afttraduction.fr'
+    };
+
+    // Create signing input
+    const encodedHeader = btoa(JSON.stringify(header))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    const encodedPayload = btoa(JSON.stringify(jwtPayload))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    const signingInput = `${encodedHeader}.${encodedPayload}`;
+
+    // Sign the input
     const signature = await signECDSA(signingInput, vapidPrivateKey);
-    console.log('Generated signature:', signature);
-
-    // Create final JWT
     const jwt = `${signingInput}.${signature}`;
-    console.log('Final JWT:', jwt);
 
     // Create authorization header
     const authHeader = `vapid t=${jwt}, k=${vapidPublicKey}`;
@@ -90,11 +117,14 @@ serve(async (req) => {
 
     console.log('Push notification response:', pushResponse.status, await pushResponse.text());
 
+    if (!pushResponse.ok) {
+      throw new Error(`Push service responded with ${pushResponse.status}`);
+    }
+
     return new Response(
       JSON.stringify({
-        success: pushResponse.ok,
+        success: true,
         status: pushResponse.status,
-        statusText: pushResponse.statusText,
       }),
       {
         headers: {
@@ -119,4 +149,4 @@ serve(async (req) => {
       }
     );
   }
-})
+});
