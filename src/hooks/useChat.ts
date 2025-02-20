@@ -124,9 +124,7 @@ export const useChat = (channelId: string) => {
 
   const { 
     subscriptionStates, 
-    handleSubscriptionError, 
-    subscribeToMessages, 
-    subscribeToMentions 
+    handleSubscriptionError 
   } = useSubscriptions(
     channelId,
     currentUserId,
