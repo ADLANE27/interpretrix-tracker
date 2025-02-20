@@ -49,9 +49,12 @@ export const useMissionSubscription = (
                 }
 
                 const mission = payload.new as Mission;
+
+                // Only show toast for missions that this interpreter can potentially accept
+                const isAvailableForMission = mission.assigned_interpreter_id === null;
                 
-                if (!mission.notified_interpreters?.includes(currentUserId || '')) {
-                  console.log('[useMissionSubscription] Current user not in notified interpreters');
+                if (!isAvailableForMission) {
+                  console.log('[useMissionSubscription] Mission not available for current interpreter');
                   return;
                 }
 
