@@ -38,43 +38,37 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Configure web push with proper error handling
-    try {
-      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-      const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-      
-      if (!vapidPublicKey || !vapidPrivateKey) {
-        throw new Error('VAPID keys not configured');
-      }
-
-      webPush.setVapidDetails(
-        'mailto:admin@example.com',
-        vapidPublicKey,
-        vapidPrivateKey
-      );
-      console.log('[process-notification-queue] Web Push configured successfully');
-    } catch (error) {
-      console.error('[process-notification-queue] Web Push configuration error:', error);
-      throw error;
-    }
-
-    // Get pending notifications with proper type checking
+    // First, mark notifications as processing
     const { data: notifications, error: fetchError } = await supabaseClient
       .from('notification_queue')
-      .select('*')
-      .eq('status', 'processing')
-      .limit(50);
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .eq('status', 'pending')
+      .limit(50)
+      .select();
 
     if (fetchError) {
       console.error('[process-notification-queue] Error fetching notifications:', fetchError);
       throw fetchError;
     }
 
-    const typedNotifications = notifications as NotificationQueueItem[] | null;
-    console.log(`[process-notification-queue] Processing ${typedNotifications?.length ?? 0} notifications`);
+    console.log(`[process-notification-queue] Processing ${notifications?.length ?? 0} notifications`);
 
-    // Process each notification with proper error handling
-    for (const notification of typedNotifications ?? []) {
+    // Configure web push
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      throw new Error('VAPID keys not configured');
+    }
+
+    webPush.setVapidDetails(
+      'mailto:admin@example.com',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+
+    // Process each notification
+    for (const notification of notifications ?? []) {
       console.log(`[process-notification-queue] Processing notification ${notification.id}`);
       
       try {
@@ -93,13 +87,18 @@ serve(async (req) => {
           throw new Error(`No subscription found for user ${notification.user_id}`);
         }
 
+        // Add notification ID to payload for delivery confirmation
+        const pushPayload = {
+          ...notification.payload,
+          notificationId: notification.id
+        };
+
+        console.log(`[process-notification-queue] Sending push notification:`, pushPayload);
+
         // Send push notification
         await webPush.sendNotification(
           subscriptions.subscription as webPush.PushSubscription,
-          JSON.stringify({
-            ...notification.payload,
-            notificationId: notification.id // Include for delivery confirmation
-          })
+          JSON.stringify(pushPayload)
         );
 
         console.log(`[process-notification-queue] Push notification sent for ${notification.id}`);
@@ -140,12 +139,14 @@ serve(async (req) => {
         console.error(`[process-notification-queue] Error processing notification ${notification.id}:`, error);
 
         // Update notification status to failed if max retries reached
-        const status = notification.retry_count >= 5 ? 'failed' : 'pending';
+        const newRetryCount = (notification.retry_count || 0) + 1;
+        const status = newRetryCount >= 5 ? 'failed' : 'pending';
         
         const { error: updateError } = await supabaseClient
           .from('notification_queue')
           .update({
             status,
+            retry_count: newRetryCount,
             last_error: error.message,
             updated_at: new Date().toISOString()
           })
@@ -179,7 +180,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true,
-      processed: typedNotifications?.length ?? 0 
+      processed: notifications?.length ?? 0 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
