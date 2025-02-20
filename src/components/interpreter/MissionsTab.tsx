@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { playNotificationSound } from "@/utils/notificationSounds";
-import { RealtimeChannel } from "@supabase/supabase-js";
+import { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Mission } from "@/types/mission";
 import { NotificationActivationButton } from './NotificationActivationButton';
@@ -111,71 +111,44 @@ export const MissionsTab = () => {
         
         setTimeout(() => {
           channelRef.current = supabase
-            .channel('interpreter-missions', {
-              config: {
-                broadcast: { ack: true },
-                presence: { key: currentUserId || undefined }
-              }
-            })
-            .on(
-              'postgres_changes',
-              {
-                event: '*',
-                schema: 'public',
-                table: 'interpretation_missions'
-              },
-              async (payload) => {
-                console.log('[MissionsTab] Mission update received:', payload);
+            .channel('interpreter-missions')
+            .on('broadcast', { event: 'postgres_changes' }, async (payload) => {
+              console.log('[MissionsTab] Mission update received:', payload);
+              
+              const mission = payload.payload as Mission;
+              
+              if (payload.type === 'INSERT' && 
+                  mission.notified_interpreters?.includes(currentUserId || '')) {
+                const isImmediate = mission.mission_type === 'immediate';
                 
-                const mission = payload.new as Mission;
-                
-                if (payload.eventType === 'INSERT' && 
-                    mission.notified_interpreters?.includes(currentUserId || '')) {
-                  const isImmediate = mission.mission_type === 'immediate';
-                  
-                  if (!isMobile) {
-                    console.log('[MissionsTab] Showing toast for new mission (desktop only)');
-                    toast({
-                      title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                      description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                      variant: isImmediate ? "destructive" : "default",
-                      duration: 10000,
-                    });
-                  }
+                if (!isMobile) {
+                  console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                  toast({
+                    title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                    description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                    variant: isImmediate ? "destructive" : "default",
+                    duration: 10000,
+                  });
+                }
 
-                  if (soundEnabled) {
+                if (soundEnabled) {
+                  try {
+                    console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                    await playNotificationSound(mission.mission_type);
+                  } catch (error) {
+                    console.error('[MissionsTab] Error playing sound:', error);
+                    initializeSound();
                     try {
-                      console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
                       await playNotificationSound(mission.mission_type);
-                    } catch (error) {
-                      console.error('[MissionsTab] Error playing sound:', error);
-                      initializeSound();
-                      try {
-                        await playNotificationSound(mission.mission_type);
-                      } catch (retryError) {
-                        console.error('[MissionsTab] Retry failed:', retryError);
-                      }
+                    } catch (retryError) {
+                      console.error('[MissionsTab] Retry failed:', retryError);
                     }
                   }
                 }
-                
-                fetchMissions();
               }
-            )
-            .on(
-              'postgres_changes',
-              {
-                event: '*',
-                schema: 'public',
-                table: 'mission_notifications'
-              },
-              async (payload: { new: MissionNotification }) => {
-                console.log('[MissionsTab] Mission notification update received:', payload);
-                if (payload.new && payload.new.interpreter_id === currentUserId) {
-                  fetchMissions();
-                }
-              }
-            )
+              
+              fetchMissions();
+            })
             .subscribe(async (status) => {
               console.log('[MissionsTab] Subscription status:', status);
               
