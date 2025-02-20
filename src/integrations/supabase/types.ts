@@ -463,28 +463,40 @@ export type Database = {
       mission_notifications: {
         Row: {
           created_at: string
+          delivery_status: string
           error_message: string | null
           id: string
           interpreter_id: string
           mission_id: string
+          push_delivered_at: string | null
+          push_error: string | null
+          push_sent_at: string | null
           status: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          delivery_status?: string
           error_message?: string | null
           id?: string
           interpreter_id: string
           mission_id: string
+          push_delivered_at?: string | null
+          push_error?: string | null
+          push_sent_at?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          delivery_status?: string
           error_message?: string | null
           id?: string
           interpreter_id?: string
           mission_id?: string
+          push_delivered_at?: string | null
+          push_error?: string | null
+          push_sent_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -529,6 +541,68 @@ export type Database = {
             columns: ["mission_id"]
             isOneToOne: false
             referencedRelation: "mission_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_history: {
+        Row: {
+          body: string
+          created_at: string
+          delivered_at: string | null
+          delivery_status: string
+          error_message: string | null
+          id: string
+          notification_type: string
+          payload: Json
+          read_at: string | null
+          reference_id: string | null
+          reference_type: string | null
+          sent_at: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
+          error_message?: string | null
+          id?: string
+          notification_type: string
+          payload?: Json
+          read_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          delivered_at?: string | null
+          delivery_status?: string
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          payload?: Json
+          read_at?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          sent_at?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
             referencedColumns: ["id"]
           },
         ]

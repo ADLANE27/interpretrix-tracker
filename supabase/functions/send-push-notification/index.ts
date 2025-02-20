@@ -67,28 +67,109 @@ serve(async (req) => {
       data: payload.data
     }
 
+    console.log('Creating notification history record')
+
+    // Create notification history record
+    const { error: historyError } = await supabaseClient
+      .from('notification_history')
+      .insert({
+        user_id: payload.userId,
+        notification_type: 'mission',
+        title: notificationPayload.title,
+        body: notificationPayload.body,
+        payload: notificationPayload,
+        reference_type: 'mission',
+        reference_id: payload.data.missionId,
+        delivery_status: 'pending',
+        created_at: new Date().toISOString()
+      })
+
+    if (historyError) {
+      console.error('Error creating notification history:', historyError)
+      throw historyError
+    }
+
+    // Update mission notification status
+    await supabaseClient
+      .from('mission_notifications')
+      .update({
+        delivery_status: 'sending',
+        push_sent_at: new Date().toISOString()
+      })
+      .eq('mission_id', payload.data.missionId)
+      .eq('interpreter_id', payload.userId)
+
     console.log('Sending push notification with payload:', notificationPayload)
 
-    // Send push notification
-    const pushResult = await webpush.sendNotification(
-      subscription,
-      JSON.stringify(notificationPayload)
-    )
+    try {
+      // Send push notification
+      const pushResult = await webpush.sendNotification(
+        subscription,
+        JSON.stringify(notificationPayload)
+      )
 
-    console.log('Push notification sent successfully:', pushResult)
+      console.log('Push notification sent successfully:', pushResult)
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Push notification sent' }),
-      { 
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        } 
-      }
-    )
+      // Update notification history and mission notification with success
+      await Promise.all([
+        supabaseClient
+          .from('notification_history')
+          .update({
+            delivery_status: 'delivered',
+            delivered_at: new Date().toISOString()
+          })
+          .eq('reference_id', payload.data.missionId)
+          .eq('user_id', payload.userId),
+
+        supabaseClient
+          .from('mission_notifications')
+          .update({
+            delivery_status: 'delivered',
+            push_delivered_at: new Date().toISOString()
+          })
+          .eq('mission_id', payload.data.missionId)
+          .eq('interpreter_id', payload.userId)
+      ])
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Push notification sent' }),
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders
+          } 
+        }
+      )
+
+    } catch (pushError) {
+      console.error('Error sending push notification:', pushError)
+
+      // Update notification history and mission notification with error
+      await Promise.all([
+        supabaseClient
+          .from('notification_history')
+          .update({
+            delivery_status: 'failed',
+            error_message: pushError instanceof Error ? pushError.message : 'Unknown error'
+          })
+          .eq('reference_id', payload.data.missionId)
+          .eq('user_id', payload.userId),
+
+        supabaseClient
+          .from('mission_notifications')
+          .update({
+            delivery_status: 'failed',
+            push_error: pushError instanceof Error ? pushError.message : 'Unknown error'
+          })
+          .eq('mission_id', payload.data.missionId)
+          .eq('interpreter_id', payload.userId)
+      ])
+
+      throw pushError
+    }
 
   } catch (error) {
-    console.error('Error sending push notification:', error)
+    console.error('Error in push notification process:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 
