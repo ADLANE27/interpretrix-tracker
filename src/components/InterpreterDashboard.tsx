@@ -48,6 +48,16 @@ const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
 };
 
+const isValidAddress = (address: unknown): address is Profile['address'] => {
+  if (!address || typeof address !== 'object') return false;
+  const addr = address as any;
+  return (
+    typeof addr.street === 'string' &&
+    typeof addr.postal_code === 'string' &&
+    typeof addr.city === 'string'
+  );
+};
+
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
@@ -115,10 +125,14 @@ export const InterpreterDashboard = () => {
       // Validate status and provide a default if invalid
       const status = isValidStatus(data.status) ? data.status : 'available';
 
+      // Validate address structure
+      const address = isValidAddress(data.address) ? data.address : null;
+
       const transformedProfile: Profile = {
         ...data,
         languages: transformedLanguages,
-        status
+        status,
+        address
       };
 
       setProfile(transformedProfile);
