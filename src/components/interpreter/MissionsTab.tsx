@@ -23,6 +23,15 @@ interface MissionNotification {
   updated_at: string;
 }
 
+type RealtimeMission = {
+  id: string;
+  notified_interpreters: string[];
+  mission_type: 'immediate' | 'scheduled';
+  source_language: string;
+  target_language: string;
+  estimated_duration: number;
+}
+
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const { toast } = useToast();
@@ -119,43 +128,44 @@ export const MissionsTab = () => {
                 schema: 'public',
                 table: 'interpretation_missions'
               },
-              (payload: RealtimePostgresChangesPayload<{
-                id: string;
-                notified_interpreters: string[];
-                mission_type: 'immediate' | 'scheduled';
-                source_language: string;
-                target_language: string;
-                estimated_duration: number;
-              }>) => {
+              (payload: RealtimePostgresChangesPayload<RealtimeMission>) => {
                 console.log('[MissionsTab] Mission update received:', payload);
                 
-                const mission = payload.new;
-                
-                if (mission && mission.notified_interpreters?.includes(currentUserId || '')) {
-                  const isImmediate = mission.mission_type === 'immediate';
-                  
-                  if (!isMobile) {
-                    console.log('[MissionsTab] Showing toast for new mission (desktop only)');
-                    toast({
-                      title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                      description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                      variant: isImmediate ? "destructive" : "default",
-                      duration: 10000,
-                    });
-                  }
+                if (!payload.new) {
+                  console.log('[MissionsTab] No new mission data in payload');
+                  return;
+                }
 
-                  if (soundEnabled) {
+                const mission = payload.new as RealtimeMission;
+                
+                if (!mission.notified_interpreters?.includes(currentUserId || '')) {
+                  console.log('[MissionsTab] Current user not in notified interpreters');
+                  return;
+                }
+
+                const isImmediate = mission.mission_type === 'immediate';
+                
+                if (!isMobile) {
+                  console.log('[MissionsTab] Showing toast for new mission (desktop only)');
+                  toast({
+                    title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                    description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
+                    variant: isImmediate ? "destructive" : "default",
+                    duration: 10000,
+                  });
+                }
+
+                if (soundEnabled) {
+                  try {
+                    console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
+                    void playNotificationSound(mission.mission_type);
+                  } catch (error) {
+                    console.error('[MissionsTab] Error playing sound:', error);
+                    initializeSound();
                     try {
-                      console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
                       void playNotificationSound(mission.mission_type);
-                    } catch (error) {
-                      console.error('[MissionsTab] Error playing sound:', error);
-                      initializeSound();
-                      try {
-                        void playNotificationSound(mission.mission_type);
-                      } catch (retryError) {
-                        console.error('[MissionsTab] Retry failed:', retryError);
-                      }
+                    } catch (retryError) {
+                      console.error('[MissionsTab] Retry failed:', retryError);
                     }
                   }
                 }
