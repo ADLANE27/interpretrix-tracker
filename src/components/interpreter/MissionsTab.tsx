@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -173,7 +172,6 @@ export const MissionsTab = () => {
               async (payload: { new: MissionNotification }) => {
                 console.log('[MissionsTab] Mission notification update received:', payload);
                 if (payload.new && payload.new.interpreter_id === currentUserId) {
-                  // Refresh missions when notification status changes
                   fetchMissions();
                 }
               }
