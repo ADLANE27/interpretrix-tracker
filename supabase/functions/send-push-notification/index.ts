@@ -1,186 +1,139 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.21.0'
-import webpush from "npm:web-push@3.6.4"
+import webPush from 'npm:web-push'
+import { corsHeaders } from '../_shared/cors.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+interface PushData {
+  type: string;
+  missionId: string;
+  missionType: 'immediate' | 'scheduled';
+  sourceLanguage: string;
+  targetLanguage: string;
+  duration: number;
+  startTime?: string;
+  endTime?: string;
 }
 
-interface PushPayload {
+interface RequestBody {
   userId: string;
-  data: {
-    type: string;
-    missionId: string;
-    missionType: 'immediate' | 'scheduled';
-    sourceLanguage: string;
-    targetLanguage: string;
-    duration: number;
-    startTime?: string;
-    endTime?: string;
-  }
+  notificationId: string;
+  data: PushData;
 }
+
+console.log('Loading send-push-notification function')
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders })
+    }
+
+    // Get VAPID keys from environment variables
+    const publicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+    const privateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+
+    if (!publicKey || !privateKey) {
+      console.error('VAPID keys not found')
+      throw new Error('VAPID configuration missing')
+    }
+
+    // Configure web-push
+    webPush.setVapidDetails(
+      'mailto:support@interpreter-platform.com',
+      publicValue,
+      privateValue
+    )
+
+    // Get request body
+    const body: RequestBody = await req.json()
+    console.log('Received push notification request:', JSON.stringify(body))
+
+    // Create supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
-
-    // Initialize web-push with VAPID keys
-    webpush.setVapidDetails(
-      'mailto:contact@lovable.ai',
-      Deno.env.get('VAPID_PUBLIC_KEY') ?? '',
-      Deno.env.get('VAPID_PRIVATE_KEY') ?? ''
-    )
-
-    const payload: PushPayload = await req.json()
-    console.log('Received push notification request:', payload)
 
     // Get user's push subscription
-    const { data: subscriptions, error: subscriptionError } = await supabaseClient
+    const { data: subscriptionData, error: subscriptionError } = await supabaseClient
       .from('user_push_subscriptions')
       .select('subscription')
-      .eq('user_id', payload.userId)
+      .eq('user_id', body.userId)
       .single()
 
-    if (subscriptionError || !subscriptions?.subscription) {
+    if (subscriptionError || !subscriptionData) {
       console.error('Error fetching subscription:', subscriptionError)
-      throw new Error('No subscription found for user')
+      throw new Error('Push subscription not found')
     }
-
-    const subscription = subscriptions.subscription
 
     // Prepare notification content
-    const notificationPayload = {
-      title: payload.data.missionType === 'immediate' ? 
-        '🚨 Nouvelle mission immédiate' : 
-        '📅 Nouvelle mission programmée',
-      body: `${payload.data.sourceLanguage} → ${payload.data.targetLanguage} - ${payload.data.duration} minutes`,
-      data: payload.data
-    }
+    const title = body.data.missionType === 'immediate' 
+      ? '🚨 Nouvelle mission immédiate'
+      : '📅 Nouvelle mission programmée'
 
-    console.log('Creating notification history record')
+    const message = `${body.data.sourceLanguage} → ${body.data.targetLanguage} - ${body.data.duration} minutes`
 
-    // Create notification history record
+    const payload = JSON.stringify({
+      title,
+      message,
+      data: body.data
+    })
+
+    console.log('Sending push notification with payload:', payload)
+
+    // Send push notification
+    const pushResult = await webPush.sendNotification(
+      subscriptionData.subscription,
+      payload
+    )
+
+    console.log('Push notification sent successfully:', pushResult)
+
+    // Record notification in history
     const { error: historyError } = await supabaseClient
       .from('notification_history')
       .insert({
-        user_id: payload.userId,
+        user_id: body.userId,
+        title,
+        body: message,
         notification_type: 'mission',
-        title: notificationPayload.title,
-        body: notificationPayload.body,
-        payload: notificationPayload,
         reference_type: 'mission',
-        reference_id: payload.data.missionId,
-        delivery_status: 'pending',
-        created_at: new Date().toISOString()
+        reference_id: body.data.missionId,
+        payload: body.data,
+        delivery_status: 'delivered',
+        sent_at: new Date().toISOString(),
+        delivered_at: new Date().toISOString()
       })
 
     if (historyError) {
-      console.error('Error creating notification history:', historyError)
-      throw historyError
+      console.error('Error recording notification history:', historyError)
     }
 
-    // Update mission notification status
-    await supabaseClient
-      .from('mission_notifications')
-      .update({
-        delivery_status: 'sending',
-        push_sent_at: new Date().toISOString()
-      })
-      .eq('mission_id', payload.data.missionId)
-      .eq('interpreter_id', payload.userId)
-
-    console.log('Sending push notification with payload:', notificationPayload)
-
-    try {
-      // Send push notification
-      const pushResult = await webpush.sendNotification(
-        subscription,
-        JSON.stringify(notificationPayload)
-      )
-
-      console.log('Push notification sent successfully:', pushResult)
-
-      // Update notification history and mission notification with success
-      await Promise.all([
-        supabaseClient
-          .from('notification_history')
-          .update({
-            delivery_status: 'delivered',
-            delivered_at: new Date().toISOString()
-          })
-          .eq('reference_id', payload.data.missionId)
-          .eq('user_id', payload.userId),
-
-        supabaseClient
-          .from('mission_notifications')
-          .update({
-            delivery_status: 'delivered',
-            push_delivered_at: new Date().toISOString()
-          })
-          .eq('mission_id', payload.data.missionId)
-          .eq('interpreter_id', payload.userId)
-      ])
-
-      return new Response(
-        JSON.stringify({ success: true, message: 'Push notification sent' }),
-        { 
-          headers: { 
-            'Content-Type': 'application/json',
-            ...corsHeaders
-          } 
-        }
-      )
-
-    } catch (pushError) {
-      console.error('Error sending push notification:', pushError)
-
-      // Update notification history and mission notification with error
-      await Promise.all([
-        supabaseClient
-          .from('notification_history')
-          .update({
-            delivery_status: 'failed',
-            error_message: pushError instanceof Error ? pushError.message : 'Unknown error'
-          })
-          .eq('reference_id', payload.data.missionId)
-          .eq('user_id', payload.userId),
-
-        supabaseClient
-          .from('mission_notifications')
-          .update({
-            delivery_status: 'failed',
-            push_error: pushError instanceof Error ? pushError.message : 'Unknown error'
-          })
-          .eq('mission_id', payload.data.missionId)
-          .eq('interpreter_id', payload.userId)
-      ])
-
-      throw pushError
-    }
+    return new Response(
+      JSON.stringify({ success: true }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    )
 
   } catch (error) {
-    console.error('Error in push notification process:', error)
+    console.error('Error in send-push-notification:', error)
+
+    // Try to get structured error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorDetails = error instanceof Error && error.stack ? error.stack : ''
+
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: errorMessage,
+        details: errorDetails 
       }),
       { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders
-        }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
       }
     )
   }
