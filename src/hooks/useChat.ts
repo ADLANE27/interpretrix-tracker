@@ -122,7 +122,12 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId]);
 
-  const { subscriptionStates, handleSubscriptionError, subscribeToMessages, subscribeToMentions } = useSubscriptions(
+  const { 
+    subscriptionStates, 
+    handleSubscriptionError, 
+    subscribeToMessages, 
+    subscribeToMentions 
+  } = useSubscriptions(
     channelId,
     currentUserId,
     retryCount,
@@ -164,10 +169,9 @@ export const useChat = (channelId: string) => {
   }, []);
 
   useEffect(() => {
-    // Update subscription status whenever the subscription states change
     setSubscriptionStatus({
-      messages: subscriptionStates.messages?.status === 'connected',
-      mentions: subscriptionStates.mentions?.status === 'connected'
+      messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
+      mentions: subscriptionStates.mentions?.status === 'SUBSCRIBED'
     });
   }, [subscriptionStates]);
 
