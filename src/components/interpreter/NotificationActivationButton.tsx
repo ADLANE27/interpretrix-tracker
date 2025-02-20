@@ -10,29 +10,29 @@ export function NotificationActivationButton() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkNotificationStatus();
-  }, []);
-
   const checkNotificationStatus = async () => {
     try {
-      console.log('[NotificationActivationButton] Checking notification status...');
       const status = await checkPushNotificationStatus();
-      console.log('[NotificationActivationButton] Current status:', status);
       setIsEnabled(status.enabled);
-      setIsLoading(false);
     } catch (error) {
       console.error('[NotificationActivationButton] Error checking status:', error);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleToggleNotifications = async () => {
-    try {
-      setIsLoading(true);
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
 
+  const handleToggleNotifications = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    let shouldCheckStatus = false;
+
+    try {
       if (isEnabled) {
-        console.log('[NotificationActivationButton] Désactivation des notifications...');
         const result = await unregisterPushNotifications();
         
         if (result.success) {
@@ -45,17 +45,7 @@ export function NotificationActivationButton() {
           throw new Error(result.message);
         }
       } else {
-        console.log('[NotificationActivationButton] Activation des notifications...');
-        
-        // Force unregister any existing subscriptions first
-        await unregisterPushNotifications().catch(console.error);
-
-        // Request permission aggressively
-        if (Notification.permission !== 'granted') {
-          await Notification.requestPermission();
-        }
-
-        // Try to register even if permission was previously denied
+        // Clean attempt to register
         const result = await registerPushNotifications();
         
         if (result.success) {
@@ -65,8 +55,7 @@ export function NotificationActivationButton() {
             description: "Vous recevrez des notifications pour les nouvelles missions",
           });
         } else {
-          // Always try one more time if it fails
-          console.log('[NotificationActivationButton] First attempt failed, trying again...');
+          // Only retry once if first attempt fails
           const retryResult = await registerPushNotifications();
           
           if (retryResult.success) {
@@ -82,21 +71,7 @@ export function NotificationActivationButton() {
       }
     } catch (error) {
       console.error('[NotificationActivationButton] Error:', error);
-      // Even if there's an error, try one last time to enable notifications
-      try {
-        const lastAttempt = await registerPushNotifications();
-        if (lastAttempt.success) {
-          setIsEnabled(true);
-          toast({
-            title: "Notifications activées",
-            description: "Vous recevrez des notifications pour les nouvelles missions",
-          });
-          return;
-        }
-      } catch (e) {
-        console.error('[NotificationActivationButton] Final attempt failed:', e);
-      }
-      
+      shouldCheckStatus = true;
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Impossible d'activer les notifications",
@@ -104,7 +79,10 @@ export function NotificationActivationButton() {
       });
     } finally {
       setIsLoading(false);
-      await checkNotificationStatus();
+      // Only check status if we encountered an error
+      if (shouldCheckStatus) {
+        await checkNotificationStatus();
+      }
     }
   };
 
