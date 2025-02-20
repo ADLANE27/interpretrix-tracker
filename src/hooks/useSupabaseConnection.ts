@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -13,10 +14,11 @@ export const useSupabaseConnection = () => {
   const isExplicitDisconnectRef = useRef(false);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
   const heartbeatCheckIntervalRef = useRef<NodeJS.Timeout>();
+  const isReconnectingRef = useRef(false);
   const maxReconnectAttempts = 10;
-  const reconnectDelay = 5000;
-  const heartbeatTimeout = 35000;
-  const heartbeatInterval = 30000;
+  const baseReconnectDelay = 2000; // Start with 2 seconds
+  const heartbeatTimeout = 60000; // 60 seconds
+  const heartbeatInterval = 45000; // 45 seconds
 
   const requestWakeLock = async () => {
     try {
@@ -25,19 +27,13 @@ export const useSupabaseConnection = () => {
         wakeLockRef.current = await navigator.wakeLock.request('screen');
         console.log('[useSupabaseConnection] Wake Lock is active');
         
-        wakeLockRef.current.addEventListener('release', async () => {
+        wakeLockRef.current.addEventListener('release', () => {
           console.log('[useSupabaseConnection] Wake Lock was released');
           wakeLockRef.current = null;
-          if (!isExplicitDisconnectRef.current && document.visibilityState === 'visible') {
-            await requestWakeLock();
-          }
         });
       }
     } catch (err) {
       console.error('[useSupabaseConnection] Wake Lock error:', err);
-      if (document.visibilityState === 'visible' && !isExplicitDisconnectRef.current) {
-        setTimeout(() => requestWakeLock(), 5000);
-      }
     }
   };
 
@@ -74,13 +70,12 @@ export const useSupabaseConnection = () => {
     }
 
     clearAllIntervals();
-
     lastHeartbeatRef.current = new Date();
 
     const sendHeartbeat = async () => {
       try {
-        if (channel.state !== 'joined') {
-          console.warn('[useSupabaseConnection] Channel not joined during heartbeat');
+        if (channel.state !== 'joined' || isExplicitDisconnectRef.current) {
+          console.warn('[useSupabaseConnection] Channel not in correct state for heartbeat');
           return false;
         }
 
@@ -102,15 +97,19 @@ export const useSupabaseConnection = () => {
     sendHeartbeat();
 
     heartbeatIntervalRef.current = setInterval(async () => {
+      if (isExplicitDisconnectRef.current || isReconnectingRef.current) return;
+      
       const success = await sendHeartbeat();
-      if (!success && !isExplicitDisconnectRef.current) {
+      if (!success) {
         console.log('[useSupabaseConnection] Heartbeat failed, initiating reconnect');
         handleReconnectRef.current?.();
       }
     }, heartbeatInterval);
 
     heartbeatCheckIntervalRef.current = setInterval(() => {
-      if (lastHeartbeatRef.current && !isExplicitDisconnectRef.current) {
+      if (isExplicitDisconnectRef.current || isReconnectingRef.current) return;
+      
+      if (lastHeartbeatRef.current) {
         const timeSinceLastHeartbeat = new Date().getTime() - lastHeartbeatRef.current.getTime();
         if (timeSinceLastHeartbeat > heartbeatTimeout) {
           console.warn('[useSupabaseConnection] Heartbeat timeout detected:', {
@@ -121,14 +120,18 @@ export const useSupabaseConnection = () => {
           handleReconnectRef.current?.();
         }
       }
-    }, 5000);
+    }, 10000); // Check every 10 seconds
   }, [clearAllIntervals]);
 
-  // Pre-declare the function type to handle circular dependency
   const handleReconnectRef = useRef<() => Promise<void>>();
   
   const initializeChannel = useCallback(async () => {
     try {
+      if (isReconnectingRef.current) {
+        console.log('[useSupabaseConnection] Already reconnecting, skipping initialization');
+        return () => {};
+      }
+
       console.log('[useSupabaseConnection] Initializing channel');
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -139,7 +142,6 @@ export const useSupabaseConnection = () => {
       }
 
       isExplicitDisconnectRef.current = false;
-      await requestWakeLock();
       
       if (channelRef.current) {
         await supabase.removeChannel(channelRef.current);
@@ -188,6 +190,7 @@ export const useSupabaseConnection = () => {
         console.log('[useSupabaseConnection] Channel status:', status);
 
         if (status === 'SUBSCRIBED' && !isExplicitDisconnectRef.current) {
+          isReconnectingRef.current = false;
           reconnectAttemptsRef.current = 0;
           lastHeartbeatRef.current = new Date();
 
@@ -198,6 +201,7 @@ export const useSupabaseConnection = () => {
             });
             
             setupHeartbeat(channelRef.current);
+            await requestWakeLock();
           } catch (error) {
             console.error('[useSupabaseConnection] Track error:', error);
             if (!isExplicitDisconnectRef.current) {
@@ -208,7 +212,7 @@ export const useSupabaseConnection = () => {
 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           console.error(`[useSupabaseConnection] Channel ${status}`);
-          if (!isExplicitDisconnectRef.current) {
+          if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
             handleReconnectRef.current?.();
           }
         }
@@ -223,25 +227,26 @@ export const useSupabaseConnection = () => {
 
     } catch (error) {
       console.error('[useSupabaseConnection] Channel initialization error:', error);
-      if (!isExplicitDisconnectRef.current) {
+      if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
         handleReconnectRef.current?.();
       }
       return () => {};
     }
   }, [clearAllIntervals, releaseWakeLock, setupHeartbeat]);
 
-  // Implement handleReconnect and store it in the ref
   handleReconnectRef.current = async () => {
-    if (isExplicitDisconnectRef.current) {
-      console.log('[useSupabaseConnection] Skipping reconnect - explicit disconnect');
+    if (isExplicitDisconnectRef.current || isReconnectingRef.current) {
+      console.log('[useSupabaseConnection] Skipping reconnect - explicit disconnect or already reconnecting');
       return;
     }
 
+    isReconnectingRef.current = true;
     clearAllIntervals();
 
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       console.error('[useSupabaseConnection] Max reconnection attempts reached');
       isExplicitDisconnectRef.current = true;
+      isReconnectingRef.current = false;
       toast({
         title: "Erreur de connexion",
         description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
@@ -251,9 +256,11 @@ export const useSupabaseConnection = () => {
       return;
     }
 
+    const delay = Math.min(baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current), 30000);
     console.log('[useSupabaseConnection] Attempting reconnection:', {
       attempt: reconnectAttemptsRef.current + 1,
-      maxAttempts: maxReconnectAttempts
+      maxAttempts: maxReconnectAttempts,
+      delay
     });
 
     if (channelRef.current) {
@@ -264,7 +271,7 @@ export const useSupabaseConnection = () => {
     reconnectTimeoutRef.current = setTimeout(() => {
       reconnectAttemptsRef.current++;
       initializeChannel();
-    }, reconnectDelay);
+    }, delay);
   };
 
   useEffect(() => {
@@ -297,25 +304,25 @@ export const useSupabaseConnection = () => {
           releaseWakeLock();
         } else if (!channelRef.current || channelRef.current.state !== 'joined') {
           console.log('[useSupabaseConnection] Session check: Channel reconnect needed');
-          await initializeChannel();
+          if (!isReconnectingRef.current) {
+            await initializeChannel();
+          }
         }
       } catch (error) {
         console.error('[useSupabaseConnection] Session check error:', error);
-        if (!isExplicitDisconnectRef.current) {
+        if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
           handleReconnectRef.current?.();
         }
       }
-    }, 60000);
+    }, 60000); // Check session every minute
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useSupabaseConnection] Page visible');
-        if (!isExplicitDisconnectRef.current) {
-          requestWakeLock().then(() => {
-            if (!channelRef.current || channelRef.current.state !== 'joined') {
-              initializeChannel();
-            }
-          });
+        if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
+          if (!channelRef.current || channelRef.current.state !== 'joined') {
+            initializeChannel();
+          }
         }
       }
     };
