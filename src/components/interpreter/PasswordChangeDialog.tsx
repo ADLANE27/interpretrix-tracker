@@ -6,13 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface PasswordChangeDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+export interface PasswordChangeDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPasswordChanged: () => void;
 }
 
-export const PasswordChangeDialog = ({ isOpen, onClose, onSuccess }: PasswordChangeDialogProps) => {
+export const PasswordChangeDialog = ({ open, onOpenChange, onPasswordChanged }: PasswordChangeDialogProps) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,7 +46,7 @@ export const PasswordChangeDialog = ({ isOpen, onClose, onSuccess }: PasswordCha
 
       if (profileError) throw profileError;
 
-      onClose();
+      onOpenChange(false);
       setNewPassword("");
       setConfirmPassword("");
       
@@ -55,7 +55,7 @@ export const PasswordChangeDialog = ({ isOpen, onClose, onSuccess }: PasswordCha
         description: "Votre mot de passe a été mis à jour avec succès",
       });
       
-      onSuccess();
+      onPasswordChanged();
     } catch (error) {
       console.error("Error updating password:", error);
       toast({
@@ -69,7 +69,7 @@ export const PasswordChangeDialog = ({ isOpen, onClose, onSuccess }: PasswordCha
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Changer votre mot de passe</DialogTitle>

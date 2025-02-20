@@ -1,23 +1,21 @@
 
 {
-  "name": "AFTraduction",
-  "short_name": "AFTraduction",
-  "description": "Application de gestion des interprètes",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "short_name": "Interpretrix",
+  "name": "Interpretrix",
   "icons": [
     {
-      "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
-      "src": "/lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
+      "type": "image/png",
+      "sizes": "192x192"
     }
   ],
-  "gcm_sender_id": "103953800507"
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
 }
