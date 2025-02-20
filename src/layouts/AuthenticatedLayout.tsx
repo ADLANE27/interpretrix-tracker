@@ -42,12 +42,15 @@ export const AuthenticatedLayout = () => {
         setLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
-        toast({
-          title: "Erreur d'authentification",
-          description: "Une erreur est survenue lors de la vérification de vos permissions",
-          variant: "destructive",
-        });
-        navigate('/interpreter/login');
+        // Ignore DataCloneError from postMessage operations
+        if (!(error instanceof DOMException && error.name === 'DataCloneError')) {
+          toast({
+            title: "Erreur d'authentification",
+            description: "Une erreur est survenue lors de la vérification de vos permissions",
+            variant: "destructive",
+          });
+          navigate('/interpreter/login');
+        }
       }
     };
 
@@ -59,16 +62,67 @@ export const AuthenticatedLayout = () => {
       }
     });
 
+    // Clean up function to handle any remaining subscriptions
     return () => {
-      subscription.unsubscribe();
+      try {
+        subscription.unsubscribe();
+      } catch (error) {
+        // Ignore DataCloneError from postMessage operations
+        if (!(error instanceof DOMException && error.name === 'DataCloneError')) {
+          console.error('Error during cleanup:', error);
+        }
+      }
     };
   }, [navigate, toast]);
 
+  // Add error boundary to handle any uncaught errors
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
-    </div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
-  return <InterpreterDashboard />;
+  return (
+    <ErrorBoundary
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+          <p className="text-destructive">Une erreur est survenue lors du chargement du tableau de bord</p>
+          <Button onClick={() => window.location.reload()}>Recharger la page</Button>
+        </div>
+      }
+    >
+      <InterpreterDashboard />
+    </ErrorBoundary>
+  );
 };
+
+// Simple ErrorBoundary component
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    // Ignore DataCloneError from postMessage operations
+    if (!(error instanceof DOMException && error.name === 'DataCloneError')) {
+      console.error('Error caught by boundary:', error);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
