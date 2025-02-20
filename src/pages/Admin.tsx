@@ -60,11 +60,8 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background transition-colors duration-300">
       <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Tableau de bord administrateur</h1>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-          </div>
+        <div className="flex justify-end items-center mb-6">
+          <ThemeToggle />
         </div>
 
         <AdminDashboard />
