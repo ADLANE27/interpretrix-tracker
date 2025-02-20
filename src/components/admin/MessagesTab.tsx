@@ -8,39 +8,100 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 
+interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  channel_id: string;
+  sender_id: string;
+}
+
 export const MessagesTab = () => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const { toast } = useToast();
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [channelId, setChannelId] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    fetchMessages();
+    const getOrCreateGeneralChannel = async () => {
+      try {
+        // First, try to find the general channel
+        let { data: channel, error } = await supabase
+          .from('chat_channels')
+          .select('id')
+          .eq('name', 'general')
+          .single();
+
+        if (error) {
+          // If not found, create it
+          const { data: newChannel, error: createError } = await supabase
+            .from('chat_channels')
+            .insert({ 
+              name: 'general',
+              description: 'Canal général',
+              created_by: 'system'
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          channel = newChannel;
+        }
+
+        setChannelId(channel.id);
+        fetchMessages(channel.id);
+      } catch (error) {
+        console.error("Error setting up channel:", error);
+        toast({
+          title: "Error",
+          description: "Failed to setup messaging channel",
+          variant: "destructive",
+        });
+      }
+    };
+
+    getOrCreateGeneralChannel();
+  }, []);
+
+  useEffect(() => {
+    if (!channelId) return;
+
     const channel = supabase
-      .channel("messages")
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
-        fetchMessages();
-      })
+      .channel("chat_messages")
+      .on(
+        "postgres_changes",
+        { 
+          event: "*", 
+          schema: "public", 
+          table: "chat_messages",
+          filter: `channel_id=eq.${channelId}`
+        },
+        () => {
+          if (channelId) fetchMessages(channelId);
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [channelId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (channelId: string) => {
     try {
       const { data, error } = await supabase
-        .from("messages")
+        .from("chat_messages")
         .select("*")
+        .eq('channel_id', channelId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -55,12 +116,22 @@ export const MessagesTab = () => {
     }
   };
 
-  const sendMessage = async (e) => {
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !channelId) return;
 
     try {
-      const { error } = await supabase.from("messages").insert([{ content: newMessage }]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("chat_messages")
+        .insert([{ 
+          content: newMessage,
+          channel_id: channelId,
+          sender_id: user.id
+        }]);
+
       if (error) throw error;
       setNewMessage("");
     } catch (error) {

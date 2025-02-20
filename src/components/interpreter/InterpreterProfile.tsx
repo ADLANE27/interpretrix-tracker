@@ -1,254 +1,149 @@
-import React, { useState, useEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  ChangeEvent
+} from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { PersonalInfoSection } from "./profile/PersonalInfoSection";
-import { AddressSection } from "./profile/AddressSection";
-import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
+import { LANGUAGES } from "@/constants/languages";
+import { COUNTRIES } from "@/constants/countries";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Trash2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { CalendarIcon } from "@radix-ui/react-icons"
+import { PopoverClose } from "@radix-ui/react-popover";
 
-type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-
-interface Address {
-  street: string;
-  postal_code: string;
-  city: string;
+interface ProfileProps {
+  profile: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string | null;
+    languages: {
+      source: string;
+      target: string;
+    }[];
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+    status: "available" | "busy" | "pause" | "unavailable";
+    address: {
+      street: string;
+      postal_code: string;
+      city: string;
+    } | null;
+    birth_country: string | null;
+    nationality: string | null;
+    phone_interpretation_rate: number | null;
+    siret_number: string | null;
+    vat_number: string | null;
+    profile_picture_url: string | null;
+  };
+  onProfileUpdate: () => Promise<void>;
+  onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onProfilePictureDelete: () => Promise<void>;
 }
 
-interface LanguagePair {
-  source: string;
-  target: string;
-}
-
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string | null;
-  landline_phone: string | null;
-  address: Address | null;
-  nationality: string | null;
-  employment_status: EmploymentStatus;
-  languages: LanguagePair[];
-  tarif_15min: number;
-}
-
-export const InterpreterProfile = () => {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const { toast } = useToast();
+export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureUpload, onProfilePictureDelete }: ProfileProps) => {
+  const [firstName, setFirstName] = useState(profile.first_name);
+  const [lastName, setLastName] = useState(profile.last_name);
+  const [phoneNumber, setPhoneNumber] = useState(profile.phone_number || "");
+  const [street, setStreet] = useState(profile.address?.street || "");
+  const [postalCode, setPostalCode] = useState(profile.address?.postal_code || "");
+  const [city, setCity] = useState(profile.address?.city || "");
+  const [birthCountry, setBirthCountry] = useState(profile.birth_country || "");
+  const [nationality, setNationality] = useState(profile.nationality || "");
+  const [phoneInterpretationRate, setPhoneInterpretationRate] = useState<number | null>(profile.phone_interpretation_rate);
+  const [siretNumber, setSiretNumber] = useState(profile.siret_number || "");
+  const [vatNumber, setVatNumber] = useState(profile.vat_number || "");
+  const [selectedLanguages, setSelectedLanguages] = useState(profile.languages);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [date, setDate] = useState<Date | undefined>(new Date("2023-01-23"))
 
   useEffect(() => {
-    const initializeProfile = async () => {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("[InterpreterProfile] Session error:", sessionError);
-        window.location.href = "/interpreter/login";
-        return;
-      }
-      
-      if (!session) {
-        console.log("[InterpreterProfile] No active session");
-        window.location.href = "/interpreter/login";
-        return;
-      }
+    setFirstName(profile.first_name);
+    setLastName(profile.last_name);
+    setPhoneNumber(profile.phone_number || "");
+    setStreet(profile.address?.street || "");
+    setPostalCode(profile.address?.postal_code || "");
+    setCity(profile.address?.city || "");
+    setBirthCountry(profile.birth_country || "");
+    setNationality(profile.nationality || "");
+    setPhoneInterpretationRate(profile.phone_interpretation_rate);
+    setSiretNumber(profile.siret_number || "");
+    setVatNumber(profile.vat_number || "");
+    setSelectedLanguages(profile.languages);
+  }, [profile]);
 
-      await Promise.all([fetchProfile(), checkAdminStatus()]);
-    };
-
-    initializeProfile();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[InterpreterProfile] Auth state changed:", event);
-      if (event === 'SIGNED_OUT' || !session) {
-        window.location.href = "/interpreter/login";
-      } else {
-        await Promise.all([fetchProfile(), checkAdminStatus()]);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const checkAdminStatus = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("[InterpreterProfile] No authenticated user found");
-        return;
-      }
-
-      console.log("[InterpreterProfile] Checking admin status for user:", user.id);
-      const { data: userRole, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (roleError) {
-        console.error("[InterpreterProfile] Error fetching user role:", roleError);
-        return;
-      }
-
-      console.log("[InterpreterProfile] User role data:", userRole);
-      setIsAdmin(userRole?.role === 'admin');
-    } catch (error) {
-      console.error('[InterpreterProfile] Error checking admin status:', error);
-    }
+  const handleLanguageAdd = () => {
+    setSelectedLanguages([...selectedLanguages, { source: "", target: "" }]);
   };
 
-  const createProfile = async (userId: string, userEmail: string) => {
-    console.log("[InterpreterProfile] Creating new profile for user:", userId);
-    
-    const { data, error } = await supabase
-      .from("interpreter_profiles")
-      .insert({
-        id: userId,
-        first_name: '',
-        last_name: '',
-        email: userEmail,
-        employment_status: 'salaried_aft',
-        languages: [],
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("[InterpreterProfile] Error creating profile:", error);
-      throw error;
-    }
-
-    console.log("[InterpreterProfile] Profile created successfully:", data);
-    return data;
+  const handleLanguageChange = (index: number, field: string, value: string) => {
+    const newLanguages = [...selectedLanguages];
+    newLanguages[index][field] = value;
+    setSelectedLanguages(newLanguages);
   };
 
-  const fetchProfile = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("[InterpreterProfile] No authenticated user found");
-        toast({
-          title: "Non authentifié",
-          description: "Veuillez vous connecter pour accéder à votre profil",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("[InterpreterProfile] Fetching profile for user:", user.id);
-      
-      let { data, error } = await supabase
-        .from("interpreter_profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("[InterpreterProfile] Error fetching profile:", error);
-        throw error;
-      }
-
-      if (!data) {
-        console.log("[InterpreterProfile] No profile found, creating one");
-        try {
-          data = await createProfile(user.id, user.email || '');
-        } catch (createError) {
-          console.error("[InterpreterProfile] Error creating profile:", createError);
-          toast({
-            title: "Erreur",
-            description: "Impossible de créer votre profil",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-
-      console.log("[InterpreterProfile] Profile data:", data);
-
-      // Transform language strings to LanguagePair objects
-      const languagePairs: LanguagePair[] = (data.languages || []).map((lang: string) => {
-        const [source, target] = lang.split(" → ");
-        return { source, target };
-      });
-
-      // Safely transform the address from JSON
-      const addressData = data.address as { street: string; postal_code: string; city: string; } | null;
-      const transformedAddress: Address | null = addressData ? {
-        street: addressData.street || "",
-        postal_code: addressData.postal_code || "",
-        city: addressData.city || "",
-      } : null;
-
-      const transformedProfile: Profile = {
-        id: data.id,
-        first_name: data.first_name || '',
-        last_name: data.last_name || '',
-        email: data.email || '',
-        phone_number: data.phone_number,
-        landline_phone: data.landline_phone,
-        address: transformedAddress,
-        nationality: data.nationality,
-        employment_status: data.employment_status,
-        languages: languagePairs,
-        tarif_15min: data.tarif_15min || 0,
-      };
-
-      setProfile(transformedProfile);
-    } catch (error) {
-      console.error("[InterpreterProfile] Error in profile flow:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger votre profil",
-        variant: "destructive",
-      });
-    }
+  const handleLanguageRemove = (index: number) => {
+    const newLanguages = [...selectedLanguages];
+    newLanguages.splice(index, 1);
+    setSelectedLanguages(newLanguages);
   };
 
   const handleProfileUpdate = async () => {
-    if (!profile) return;
-
+    setIsSaving(true);
     try {
-      // Transform LanguagePair objects back to strings
-      const languageStrings = profile.languages.map(pair => 
-        `${pair.source} → ${pair.target}`
-      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non authentifié");
 
-      // Transform Address to a plain object for JSON storage
-      const addressForStorage = profile.address ? {
-        street: profile.address.street,
-        postal_code: profile.address.postal_code,
-        city: profile.address.city,
-      } : null;
+      const languagesStringArray = selectedLanguages.map(lang => `${lang.source} → ${lang.target}`);
 
       const { error } = await supabase
-        .from("interpreter_profiles")
+        .from('interpreter_profiles')
         .update({
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          email: profile.email,
-          phone_number: profile.phone_number,
-          landline_phone: profile.landline_phone,
-          address: addressForStorage,
-          nationality: profile.nationality,
-          employment_status: profile.employment_status,
-          languages: languageStrings,
-          ...(isAdmin && { tarif_15min: profile.tarif_15min }),
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phoneNumber,
+          address: {
+            street: street,
+            postal_code: postalCode,
+            city: city
+          },
+          birth_country: birthCountry,
+          nationality: nationality,
+          phone_interpretation_rate: phoneInterpretationRate,
+          siret_number: siretNumber,
+          vat_number: vatNumber,
+          languages: languagesStringArray
         })
-        .eq("id", profile.id);
+        .eq('id', user.id);
 
       if (error) throw error;
 
-      setIsEditing(false);
+      await onProfileUpdate();
       toast({
         title: "Profil mis à jour",
-        description: "Vos informations ont été mises à jour avec succès",
+        description: "Votre profil a été mis à jour avec succès",
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -257,79 +152,231 @@ export const InterpreterProfile = () => {
         description: "Impossible de mettre à jour votre profil",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  if (!profile) {
-    return <div>Chargement...</div>;
-  }
-
   return (
-    <Card className="w-full max-w-4xl p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Mon Profil</h2>
-        <Button 
-          onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}
-        >
-          {isEditing ? "Enregistrer" : "Modifier"}
-        </Button>
-      </div>
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Informations personnelles</CardTitle>
+          <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="firstName">Prénom</Label>
+              <Input
+                type="text"
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="lastName">Nom</Label>
+              <Input
+                type="text"
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="phoneNumber">Numéro de téléphone</Label>
+            <Input
+              type="tel"
+              id="phoneNumber"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+          </div>
+          <Separator />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="street">Rue</Label>
+              <Input
+                type="text"
+                id="street"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="postalCode">Code postal</Label>
+              <Input
+                type="text"
+                id="postalCode"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="city">Ville</Label>
+              <Input
+                type="text"
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+          </div>
+          <Separator />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="birthCountry">Pays de naissance</Label>
+              <Select value={birthCountry}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner un pays" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country.code} value={country.name} onSelect={(value) => setBirthCountry(value)}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="nationality">Nationalité</Label>
+              <Select value={nationality}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner une nationalité" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((country) => (
+                    <SelectItem key={country.code} value={country.name} onSelect={(value) => setNationality(value)}>
+                      {country.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Separator />
+          <div className="grid gap-2">
+            <Label htmlFor="phoneInterpretationRate">Tarif d'interprétation téléphonique (€/min)</Label>
+            <Input
+              type="number"
+              id="phoneInterpretationRate"
+              value={phoneInterpretationRate !== null ? phoneInterpretationRate.toString() : ""}
+              onChange={(e) => setPhoneInterpretationRate(e.target.value === "" ? null : parseFloat(e.target.value))}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="siretNumber">Numéro SIRET</Label>
+              <Input
+                type="text"
+                id="siretNumber"
+                value={siretNumber}
+                onChange={(e) => setSiretNumber(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="vatNumber">Numéro de TVA</Label>
+              <Input
+                type="text"
+                id="vatNumber"
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="space-y-8">
-        <PersonalInfoSection
-          firstName={profile.first_name}
-          lastName={profile.last_name}
-          email={profile.email}
-          mobilePhone={profile.phone_number}
-          landlinePhone={profile.landline_phone}
-          nationality={profile.nationality}
-          rate15min={profile.tarif_15min}
-          isEditing={isEditing}
-          isAdmin={isAdmin}
-          onChange={(field, value) => {
-            if (field === "rate15min" && typeof value === "number") {
-              setProfile({
-                ...profile,
-                tarif_15min: value,
-              });
-            } else if (typeof value === "string") {
-              setProfile({
-                ...profile,
-                [field]: value,
-              });
-            }
-          }}
-        />
+      <Card>
+        <CardHeader>
+          <CardTitle>Langues</CardTitle>
+          <CardDescription>Ajouter vos paires de langues.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {selectedLanguages.map((language, index) => (
+            <div key={index} className="flex items-center space-x-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                <div className="grid gap-2">
+                  <Label htmlFor={`sourceLanguage-${index}`}>Langue source</Label>
+                  <Select value={language.source}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner une langue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LANGUAGES).map(([code, name]) => (
+                        <SelectItem key={code} value={code} onSelect={(value) => handleLanguageChange(index, "source", value)}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor={`targetLanguage-${index}`}>Langue cible</Label>
+                  <Select value={language.target}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sélectionner une langue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(LANGUAGES).map(([code, name]) => (
+                        <SelectItem key={code} value={code} onSelect={(value) => handleLanguageChange(index, "target", value)}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button variant="outline" size="icon" onClick={() => handleLanguageRemove(index)} disabled={isDeleting}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button variant="secondary" onClick={handleLanguageAdd}>Ajouter une langue</Button>
+        </CardContent>
+      </Card>
 
-        <AddressSection
-          address={profile.address}
-          isEditing={isEditing}
-          onChange={(newAddress) => {
-            setProfile({
-              ...profile,
-              address: newAddress,
-            });
-          }}
-        />
+      <Card>
+        <CardHeader>
+          <CardTitle>Photo de profil</CardTitle>
+          <CardDescription>Mettez à jour votre photo de profil.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <div className="flex items-center space-x-4">
+            <Avatar>
+              {profile.profile_picture_url ? (
+                <AvatarImage src={profile.profile_picture_url} alt="Profile picture" />
+              ) : (
+                <AvatarFallback>{profile.first_name[0]}{profile.last_name[0]}</AvatarFallback>
+              )}
+            </Avatar>
+            <div className="space-y-2">
+              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                Télécharger une nouvelle photo
+              </Button>
+              <Input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={onProfilePictureUpload}
+              />
+              {profile.profile_picture_url && (
+                <Button variant="destructive" onClick={onProfilePictureDelete} disabled={isDeleting}>
+                  Supprimer la photo
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <ProfessionalInfoSection
-          employmentStatus={profile.employment_status}
-          languages={profile.languages}
-          isEditing={isEditing}
-          onEmploymentStatusChange={(status) => {
-            setProfile({
-              ...profile,
-              employment_status: status,
-            });
-          }}
-          onLanguagesChange={(languages) => {
-            setProfile({
-              ...profile,
-              languages,
-            });
-          }}
-        />
-      </div>
-    </Card>
+      <Button onClick={handleProfileUpdate} disabled={isSaving}>
+        {isSaving ? "Enregistrement..." : "Mettre à jour le profil"}
+      </Button>
+    </div>
   );
 };
