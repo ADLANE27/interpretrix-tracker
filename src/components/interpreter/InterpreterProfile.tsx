@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -297,13 +298,16 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
                 <div className="grid gap-2">
                   <Label htmlFor={`sourceLanguage-${index}`}>Langue source</Label>
-                  <Select value={language.source}>
+                  <Select 
+                    value={language.source}
+                    onValueChange={(value) => handleLanguageChange(index, "source", value)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(LANGUAGES).map(([code, name]) => (
-                        <SelectItem key={code} value={code} onSelect={(value) => handleLanguageChange(index, "source", value)}>
+                        <SelectItem key={code} value={code}>
                           {name}
                         </SelectItem>
                       ))}
@@ -312,13 +316,16 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor={`targetLanguage-${index}`}>Langue cible</Label>
-                  <Select value={language.target}>
+                  <Select 
+                    value={language.target}
+                    onValueChange={(value) => handleLanguageChange(index, "target", value)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Sélectionner une langue" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(LANGUAGES).map(([code, name]) => (
-                        <SelectItem key={code} value={code} onSelect={(value) => handleLanguageChange(index, "target", value)}>
+                        <SelectItem key={code} value={code}>
                           {name}
                         </SelectItem>
                       ))}
