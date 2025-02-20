@@ -32,38 +32,6 @@ export const InterpreterDashboard = () => {
   } = useInterpreterProfile();
   useSupabaseConnection();
 
-  useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setError("Session expirée. Veuillez vous reconnecter.");
-          navigate("/interpreter/login");
-          return;
-        }
-        
-        setAuthChecked(true);
-        await Promise.all([fetchProfile(), fetchScheduledMissions()]);
-      } catch (error) {
-        console.error('[InterpreterDashboard] Initialization error:', error);
-        setError("Une erreur est survenue lors de l'initialisation.");
-        toast({
-          title: "Erreur",
-          description: "Impossible d'initialiser le tableau de bord",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeAuth();
-  }, [navigate, toast, fetchProfile]);
-
   const fetchScheduledMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -88,6 +56,45 @@ export const InterpreterDashboard = () => {
       });
     }
   };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          setError("Session expirée. Veuillez vous reconnecter.");
+          setIsLoading(false); // Set loading to false before navigating
+          navigate("/interpreter/login");
+          return;
+        }
+        
+        setAuthChecked(true);
+        
+        // Use Promise.all to fetch both profile and missions concurrently
+        await Promise.all([
+          fetchProfile(),
+          fetchScheduledMissions()
+        ]);
+        
+        setIsLoading(false); // Set loading to false after all data is fetched
+      } catch (error) {
+        console.error('[InterpreterDashboard] Initialization error:', error);
+        setError("Une erreur est survenue lors de l'initialisation.");
+        setIsLoading(false); // Make sure to set loading to false even if there's an error
+        toast({
+          title: "Erreur",
+          description: "Impossible d'initialiser le tableau de bord",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initializeAuth();
+  }, [navigate, toast, fetchProfile]);
 
   if (isLoading) {
     return (
