@@ -12,6 +12,7 @@ import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
 import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { DashboardContent } from "./interpreter/DashboardContent";
 import { useInterpreterProfile } from "@/hooks/useInterpreterProfile";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const InterpreterDashboard = () => {
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
@@ -19,6 +20,7 @@ export const InterpreterDashboard = () => {
   const [activeTab, setActiveTab] = useState("missions");
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -91,6 +93,7 @@ export const InterpreterDashboard = () => {
 
         if (isMounted) {
           await fetchScheduledMissions();
+          setIsInitialized(true);
         }
       } catch (error) {
         console.error('[InterpreterDashboard] Initialization error:', error);
@@ -117,18 +120,28 @@ export const InterpreterDashboard = () => {
   }, [navigate, toast, fetchProfile]);
 
   // Handle loading state
-  if (isProfileLoading) {
+  if (isProfileLoading && !isInitialized) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex items-center justify-center h-screen bg-background"
+      >
         <LoadingSpinner size="lg" />
-      </div>
+      </motion.div>
     );
   }
 
   // Handle error state
   if (dashboardError || profileError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-background space-y-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="flex flex-col items-center justify-center h-screen bg-background space-y-4"
+      >
         <p className="text-destructive font-medium">
           {dashboardError || (profileError instanceof Error ? profileError.message : "Erreur de chargement du profil")}
         </p>
@@ -138,21 +151,32 @@ export const InterpreterDashboard = () => {
         >
           Retourner à la page de connexion
         </button>
-      </div>
+      </motion.div>
     );
   }
 
   // Handle no profile state
   if (!profile) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="flex items-center justify-center h-screen bg-background"
+      >
         <p className="text-muted-foreground">Chargement du profil...</p>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex min-h-screen bg-background"
+    >
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -161,7 +185,12 @@ export const InterpreterDashboard = () => {
       
       <main className="flex-1 p-6">
         <div className="container mx-auto">
-          <div className="flex justify-between items-center mb-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex justify-between items-center mb-6"
+          >
             <StatusManager
               currentStatus={profile?.status}
               onStatusChange={async (newStatus) => {
@@ -172,16 +201,26 @@ export const InterpreterDashboard = () => {
               }}
             />
             <ThemeToggle />
-          </div>
+          </motion.div>
 
-          <DashboardContent
-            activeTab={activeTab}
-            profile={profile}
-            scheduledMissions={scheduledMissions}
-            onProfileUpdate={fetchProfile}
-            onProfilePictureUpload={handleProfilePictureUpload}
-            onProfilePictureDelete={handleProfilePictureDelete}
-          />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <DashboardContent
+                activeTab={activeTab}
+                profile={profile}
+                scheduledMissions={scheduledMissions}
+                onProfileUpdate={fetchProfile}
+                onProfilePictureUpload={handleProfilePictureUpload}
+                onProfilePictureDelete={handleProfilePictureDelete}
+              />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
 
@@ -195,6 +234,6 @@ export const InterpreterDashboard = () => {
         open={isGuideOpen}
         onOpenChange={setIsGuideOpen}
       />
-    </div>
+    </motion.div>
   );
 };
