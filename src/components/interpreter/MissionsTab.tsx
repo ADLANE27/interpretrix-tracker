@@ -8,67 +8,20 @@ import { CheckSquare, XSquare, Calendar, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { playNotificationSound } from "@/utils/notificationSounds";
-import { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Mission } from "@/types/mission";
-
-interface MissionNotification {
-  id: string;
-  mission_id: string;
-  interpreter_id: string;
-  status: string;
-  error_message?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-type RealtimeMission = {
-  id: string;
-  notified_interpreters: string[];
-  mission_type: 'immediate' | 'scheduled';
-  source_language: string;
-  target_language: string;
-  estimated_duration: number;
-}
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundInitialized, setSoundInitialized] = useState(false);
   const isMobile = useIsMobile();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectCountRef = useRef(0);
   const visibilityTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const initializeSound = () => {
-    if (!soundInitialized) {
-      console.log('[MissionsTab] Initializing sounds...');
-      try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const buffer = audioContext.createBuffer(1, 1, 22050);
-        const source = audioContext.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContext.destination);
-        source.start(0);
-        source.stop(0.001);
-        setSoundInitialized(true);
-        
-        Promise.all([
-          playNotificationSound('immediate', true),
-          playNotificationSound('scheduled', true)
-        ]).catch(console.error);
-        
-        console.log('[MissionsTab] Sounds initialized successfully');
-      } catch (error) {
-        console.error('[MissionsTab] Error initializing sounds:', error);
-      }
-    }
-  };
 
   const fetchMissions = async () => {
     try {
@@ -128,7 +81,7 @@ export const MissionsTab = () => {
                 schema: 'public',
                 table: 'interpretation_missions'
               },
-              (payload: RealtimePostgresChangesPayload<RealtimeMission>) => {
+              (payload) => {
                 console.log('[MissionsTab] Mission update received:', payload);
                 
                 if (!payload.new) {
@@ -136,7 +89,7 @@ export const MissionsTab = () => {
                   return;
                 }
 
-                const mission = payload.new as RealtimeMission;
+                const mission = payload.new as Mission;
                 
                 if (!mission.notified_interpreters?.includes(currentUserId || '')) {
                   console.log('[MissionsTab] Current user not in notified interpreters');
@@ -153,21 +106,6 @@ export const MissionsTab = () => {
                     variant: isImmediate ? "destructive" : "default",
                     duration: 10000,
                   });
-                }
-
-                if (soundEnabled) {
-                  try {
-                    console.log('[MissionsTab] Playing notification sound for:', mission.mission_type);
-                    void playNotificationSound(mission.mission_type);
-                  } catch (error) {
-                    console.error('[MissionsTab] Error playing sound:', error);
-                    initializeSound();
-                    try {
-                      void playNotificationSound(mission.mission_type);
-                    } catch (retryError) {
-                      console.error('[MissionsTab] Retry failed:', retryError);
-                    }
-                  }
                 }
                 
                 void fetchMissions();
@@ -313,23 +251,8 @@ export const MissionsTab = () => {
     console.log('[MissionsTab] Component mounted');
     fetchMissions();
     const cleanup = setupRealtimeSubscription();
-
-    const handleUserInteraction = () => {
-      console.log('[MissionsTab] User interaction detected, initializing sound');
-      initializeSound();
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('touchstart', handleUserInteraction);
-
-    return () => {
-      cleanup();
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-    };
-  }, [soundEnabled, toast, currentUserId]);
+    return cleanup;
+  }, [toast, currentUserId]);
 
   const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null) => {
     if (status === 'accepted') {

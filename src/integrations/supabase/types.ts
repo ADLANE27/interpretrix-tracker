@@ -151,7 +151,6 @@ export type Database = {
           estimated_duration: number
           id: string
           mission_type: string
-          notification_expiry: string
           notified_interpreters: string[] | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
@@ -169,7 +168,6 @@ export type Database = {
           estimated_duration: number
           id?: string
           mission_type?: string
-          notification_expiry: string
           notified_interpreters?: string[] | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
@@ -187,7 +185,6 @@ export type Database = {
           estimated_duration?: number
           id?: string
           mission_type?: string
-          notification_expiry?: string
           notified_interpreters?: string[] | null
           scheduled_end_time?: string | null
           scheduled_start_time?: string | null
@@ -460,201 +457,6 @@ export type Database = {
           },
         ]
       }
-      mission_notifications: {
-        Row: {
-          created_at: string
-          delivery_status: string
-          error_message: string | null
-          id: string
-          interpreter_id: string
-          mission_id: string
-          push_delivered_at: string | null
-          push_error: string | null
-          push_sent_at: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          delivery_status?: string
-          error_message?: string | null
-          id?: string
-          interpreter_id: string
-          mission_id: string
-          push_delivered_at?: string | null
-          push_error?: string | null
-          push_sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          delivery_status?: string
-          error_message?: string | null
-          id?: string
-          interpreter_id?: string
-          mission_id?: string
-          push_delivered_at?: string | null
-          push_error?: string | null
-          push_sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreter_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "interpreters_with_next_mission"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["mission_id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "interpretation_missions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mission_notifications_mission_id_fkey"
-            columns: ["mission_id"]
-            isOneToOne: false
-            referencedRelation: "mission_details"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_history: {
-        Row: {
-          body: string
-          created_at: string
-          delivered_at: string | null
-          delivery_status: string
-          error_message: string | null
-          id: string
-          notification_type: string
-          payload: Json
-          read_at: string | null
-          reference_id: string | null
-          reference_type: string | null
-          sent_at: string | null
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          delivered_at?: string | null
-          delivery_status?: string
-          error_message?: string | null
-          id?: string
-          notification_type: string
-          payload?: Json
-          read_at?: string | null
-          reference_id?: string | null
-          reference_type?: string | null
-          sent_at?: string | null
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          delivered_at?: string | null
-          delivery_status?: string
-          error_message?: string | null
-          id?: string
-          notification_type?: string
-          payload?: Json
-          read_at?: string | null
-          reference_id?: string | null
-          reference_type?: string | null
-          sent_at?: string | null
-          title?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_queue: {
-        Row: {
-          created_at: string
-          id: string
-          last_attempt_at: string | null
-          last_error: string | null
-          notification_type: string
-          payload: Json
-          reference_id: string | null
-          reference_type: string | null
-          retry_count: number
-          scheduled_for: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_attempt_at?: string | null
-          last_error?: string | null
-          notification_type: string
-          payload: Json
-          reference_id?: string | null
-          reference_type?: string | null
-          retry_count?: number
-          scheduled_for?: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_attempt_at?: string | null
-          last_error?: string | null
-          notification_type?: string
-          payload?: Json
-          reference_id?: string | null
-          reference_type?: string | null
-          retry_count?: number
-          scheduled_for?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       secrets: {
         Row: {
           created_at: string
@@ -800,7 +602,6 @@ export type Database = {
           estimated_duration: number | null
           id: string | null
           mission_type: string | null
-          notification_expiry: string | null
           notified_interpreters: string[] | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
@@ -845,17 +646,6 @@ export type Database = {
       bytea_to_text: {
         Args: {
           data: string
-        }
-        Returns: string
-      }
-      enqueue_notification: {
-        Args: {
-          p_user_id: string
-          p_payload: Json
-          p_notification_type: string
-          p_reference_id?: string
-          p_reference_type?: string
-          p_scheduled_for?: string
         }
         Returns: string
       }
@@ -1072,12 +862,6 @@ export type Database = {
       }
       migrate_interpreter_languages: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      process_mission_notification: {
-        Args: {
-          notification_id: string
-        }
         Returns: undefined
       }
       rename_storage_object: {
