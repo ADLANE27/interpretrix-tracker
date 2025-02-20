@@ -16,65 +16,24 @@ import { useInterpreterProfile } from "@/hooks/useInterpreterProfile";
 export const InterpreterDashboard = () => {
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState("missions");
   const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
   const { 
     profile, 
     setProfile, 
     fetchProfile, 
     handleProfilePictureUpload, 
-    handleProfilePictureDelete 
+    handleProfilePictureDelete,
+    isLoading: isProfileLoading,
+    error: profileError
   } = useInterpreterProfile();
 
-  // Initialize Supabase connection
   useSupabaseConnection();
 
-  // Check authentication status and fetch initial data
-  useEffect(() => {
-    const checkAuthAndFetchData = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) throw sessionError;
-        
-        if (!session) {
-          console.log('No active session, redirecting to login');
-          navigate("/interpreter/login");
-          return;
-        }
-
-        const { data: roles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (rolesError || roles?.role !== 'interpreter') {
-          console.error('User role verification failed:', rolesError);
-          navigate("/interpreter/login");
-          return;
-        }
-
-        setAuthChecked(true);
-        await fetchProfile();
-        await fetchScheduledMissions();
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setError("Une erreur est survenue lors de l'initialisation.");
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthAndFetchData();
-  }, [navigate, fetchProfile]);
-
-  // Fetch scheduled missions
   const fetchScheduledMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -100,24 +59,95 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  if (isLoading) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeDashboard = async () => {
+      try {
+        // Check session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        
+        if (!session) {
+          console.log('No active session, redirecting to login');
+          navigate("/interpreter/login");
+          return;
+        }
+
+        // Verify interpreter role
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (rolesError || roles?.role !== 'interpreter') {
+          console.error('User role verification failed:', rolesError);
+          throw new Error("Accès non autorisé");
+        }
+
+        // Fetch profile and missions
+        const { success, error } = await fetchProfile();
+        if (!success) throw error;
+
+        if (isMounted) {
+          await fetchScheduledMissions();
+        }
+      } catch (error) {
+        console.error('[InterpreterDashboard] Initialization error:', error);
+        if (isMounted) {
+          setDashboardError(
+            error instanceof Error 
+              ? error.message 
+              : "Une erreur est survenue lors de l'initialisation"
+          );
+          toast({
+            title: "Erreur",
+            description: "Impossible d'initialiser le tableau de bord",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    initializeDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, toast, fetchProfile]);
+
+  // Handle loading state
+  if (isProfileLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-background">
         <LoadingSpinner size="lg" />
       </div>
     );
   }
 
-  if (error) {
+  // Handle error state
+  if (dashboardError || profileError) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <p className="text-destructive">{error}</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-background space-y-4">
+        <p className="text-destructive font-medium">
+          {dashboardError || (profileError instanceof Error ? profileError.message : "Erreur de chargement du profil")}
+        </p>
         <button 
           onClick={() => navigate("/interpreter/login")}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors"
         >
           Retourner à la page de connexion
         </button>
+      </div>
+    );
+  }
+
+  // Handle no profile state
+  if (!profile) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <p className="text-muted-foreground">Chargement du profil...</p>
       </div>
     );
   }
@@ -127,19 +157,17 @@ export const InterpreterDashboard = () => {
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        userStatus={profile?.status || "available"}
+        userStatus={profile.status}
       />
       
       <main className="flex-1 p-6">
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-6">
             <StatusManager
-              currentStatus={profile?.status}
+              currentStatus={profile.status}
               onStatusChange={async (newStatus) => {
-                if (profile) {
-                  const updatedProfile = { ...profile, status: newStatus };
-                  setProfile(updatedProfile);
-                }
+                const updatedProfile = { ...profile, status: newStatus };
+                setProfile(updatedProfile);
               }}
             />
             <ThemeToggle />
@@ -157,7 +185,7 @@ export const InterpreterDashboard = () => {
       </main>
 
       <PasswordChangeDialog
-        open={!profile?.password_changed}
+        open={!profile.password_changed}
         onOpenChange={setIsPasswordDialogOpen}
         onPasswordChanged={fetchProfile}
       />

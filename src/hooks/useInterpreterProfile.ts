@@ -7,12 +7,19 @@ import type { Profile } from "@/types/interpreter";
 
 export const useInterpreterProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
   const fetchProfile = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        throw new Error("No authenticated user found");
+      }
 
       const { data, error } = await supabase
         .from("interpreter_profiles")
@@ -21,6 +28,10 @@ export const useInterpreterProfile = () => {
         .single();
 
       if (error) throw error;
+
+      if (!data) {
+        throw new Error("No profile found");
+      }
 
       // Transform the languages array from strings to objects
       const transformedLanguages = (data.languages || []).map((lang: string) => {
@@ -65,13 +76,14 @@ export const useInterpreterProfile = () => {
       };
 
       setProfile(transformedProfile);
-    } catch (error) {
+      setIsLoading(false);
+      return { success: true, profile: transformedProfile };
+    } catch (err) {
+      const error = err as Error;
       console.error("[useInterpreterProfile] Error loading profile:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger votre profil",
-        variant: "destructive"
-      });
+      setError(error);
+      setIsLoading(false);
+      return { success: false, error };
     }
   };
 
@@ -146,6 +158,8 @@ export const useInterpreterProfile = () => {
     setProfile,
     fetchProfile,
     handleProfilePictureUpload,
-    handleProfilePictureDelete
+    handleProfilePictureDelete,
+    isLoading: isLoading,
+    error
   };
 };
