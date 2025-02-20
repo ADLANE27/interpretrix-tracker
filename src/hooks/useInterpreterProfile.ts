@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { type ChangeEvent } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +10,7 @@ export const useInterpreterProfile = () => {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
     
@@ -77,13 +76,12 @@ export const useInterpreterProfile = () => {
 
       setProfile(transformedProfile);
       setIsLoading(false);
-      return { success: true, profile: transformedProfile };
     } catch (err) {
       const error = err as Error;
       console.error("[useInterpreterProfile] Error loading profile:", error);
       setError(error);
       setIsLoading(false);
-      return { success: false, error };
+      throw error; // Re-throw the error to be caught by the dashboard
     }
   };
 
@@ -159,7 +157,7 @@ export const useInterpreterProfile = () => {
     fetchProfile,
     handleProfilePictureUpload,
     handleProfilePictureDelete,
-    isLoading: isLoading,
+    isLoading,
     error
   };
 };

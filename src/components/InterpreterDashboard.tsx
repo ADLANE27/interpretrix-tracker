@@ -87,8 +87,7 @@ export const InterpreterDashboard = () => {
         }
 
         // Fetch profile and missions
-        const { success, error } = await fetchProfile();
-        if (!success) throw error;
+        await fetchProfile();
 
         if (isMounted) {
           await fetchScheduledMissions();
@@ -157,17 +156,19 @@ export const InterpreterDashboard = () => {
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        userStatus={profile.status}
+        userStatus={profile?.status || "available"}
       />
       
       <main className="flex-1 p-6">
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-6">
             <StatusManager
-              currentStatus={profile.status}
+              currentStatus={profile?.status}
               onStatusChange={async (newStatus) => {
-                const updatedProfile = { ...profile, status: newStatus };
-                setProfile(updatedProfile);
+                if (profile) {
+                  const updatedProfile = { ...profile, status: newStatus };
+                  setProfile(updatedProfile);
+                }
               }}
             />
             <ThemeToggle />
@@ -185,7 +186,7 @@ export const InterpreterDashboard = () => {
       </main>
 
       <PasswordChangeDialog
-        open={!profile.password_changed}
+        open={profile?.password_changed === false}
         onOpenChange={setIsPasswordDialogOpen}
         onPasswordChanged={fetchProfile}
       />
