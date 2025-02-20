@@ -358,4 +358,165 @@ export const InterpreterDashboard = () => {
       await supabase.auth.signOut();
       toast({
         title: "Déconnexion réussie",
-        description: "Vous avez été déconnecté avec succès
+        description: "Vous avez été déconnecté avec succès"
+      });
+      navigate("/interpreter/login");
+    } catch (error) {
+      console.error("[InterpreterDashboard] Error during logout:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de vous déconnecter",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen space-y-4">
+        <p className="text-destructive">{error}</p>
+        <Button onClick={() => navigate("/interpreter/login")}>
+          Retourner à la page de connexion
+        </Button>
+      </div>
+    );
+  }
+
+  if (!profile || !authChecked) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-4 space-y-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            {isMobile && (
+              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72">
+                  <SheetHeader>
+                    <SheetTitle>Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 space-y-4">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        setIsGuideOpen(true);
+                      }}
+                    >
+                      Guide d'utilisation
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => setIsConfirmLogoutOpen(true)}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Déconnexion
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+            <ProfileHeader profile={profile} />
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {!isMobile && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsGuideOpen(true)}
+                >
+                  Guide d'utilisation
+                </Button>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setIsConfirmLogoutOpen(true)}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Déconnexion
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[1fr_300px]">
+          <Card className="p-4">
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="missions">Missions</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="profile">Profil</TabsTrigger>
+                <TabsTrigger value="calendar">Calendrier</TabsTrigger>
+              </TabsList>
+              <div className="mt-4">
+                <TabsContent value="missions">
+                  <MissionsTab />
+                </TabsContent>
+                <TabsContent value="messages">
+                  <MessagingTab />
+                </TabsContent>
+                <TabsContent value="profile">
+                  <InterpreterProfile
+                    profile={profile}
+                    onProfileUpdate={fetchProfile}
+                    onProfilePictureUpload={handleProfilePictureUpload}
+                    onProfilePictureDelete={handleProfilePictureDelete}
+                  />
+                </TabsContent>
+                <TabsContent value="calendar">
+                  <MissionsCalendar missions={scheduledMissions} />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </Card>
+          <div className="space-y-4">
+            <StatusManager
+              currentStatus={profile.status}
+              onStatusChange={handleStatusChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      <PasswordChangeDialog
+        open={!profile.password_changed}
+        onOpenChange={setIsPasswordDialogOpen}
+        onPasswordChanged={fetchProfile}
+      />
+
+      <HowToUseGuide
+        open={isGuideOpen}
+        onOpenChange={setIsGuideOpen}
+      />
+
+      <ConfirmationDialog
+        isOpen={isConfirmLogoutOpen}
+        onConfirm={handleLogout}
+        onCancel={() => setIsConfirmLogoutOpen(false)}
+        title="Déconnexion"
+        description="Êtes-vous sûr de vouloir vous déconnecter ?"
+        confirmText="Se déconnecter"
+        cancelText="Annuler"
+      />
+    </div>
+  );
+};
