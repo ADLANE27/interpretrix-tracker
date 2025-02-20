@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { motion } from "framer-motion";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -15,46 +16,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [status, setStatus] = useState<Status>(currentStatus || "available");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (!onStatusChange) {
-      const fetchStatus = async () => {
-        setIsLoading(true);
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error('Not authenticated');
-
-          const { data: profile, error } = await supabase
-            .from('interpreter_profiles')
-            .select('status')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching status:', error);
-            toast({
-              title: "Erreur",
-              description: "Impossible de récupérer votre statut actuel",
-              variant: "destructive",
-            });
-          } else if (profile?.status) {
-            setStatus(profile.status as Status);
-          }
-        } catch (error) {
-          console.error('Error fetching status:', error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de récupérer votre statut actuel",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchStatus();
-    }
-  }, [toast, onStatusChange]);
 
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
@@ -77,20 +38,13 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
           .update({ status: newStatus })
           .eq('id', user.id);
 
-        if (error) {
-          console.error('Error updating status:', error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de mettre à jour votre statut",
-            variant: "destructive",
-          });
-        } else {
-          setStatus(newStatus);
-          toast({
-            title: "Statut mis à jour",
-            description: `Votre statut est maintenant ${newStatus}`,
-          });
-        }
+        if (error) throw error;
+
+        setStatus(newStatus);
+        toast({
+          title: "Statut mis à jour",
+          description: `Votre statut est maintenant ${newStatus}`,
+        });
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -104,46 +58,53 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     }
   };
 
+  const statusConfig = {
+    available: {
+      color: "bg-interpreter-available hover:bg-interpreter-available/90",
+      label: "Disponible"
+    },
+    unavailable: {
+      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
+      label: "Indisponible"
+    },
+    pause: {
+      color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
+      label: "En pause"
+    },
+    busy: {
+      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
+      label: "En appel"
+    }
+  };
+
   return (
-    <div className="w-full flex justify-between items-center gap-4 mb-4">
-      <div className="flex items-center gap-4">
-        <Button
-          variant={status === 'available' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleStatusChange('available')}
-          disabled={isLoading}
-          className={status === 'available' ? 'bg-interpreter-available hover:bg-interpreter-available/90' : ''}
+    <motion.div 
+      className="flex items-center gap-2"
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {(Object.keys(statusConfig) as Status[]).map((statusKey) => (
+        <motion.div
+          key={statusKey}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          Disponible
-        </Button>
-        <Button
-          variant={status === 'unavailable' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleStatusChange('unavailable')}
-          disabled={isLoading}
-          className={status === 'unavailable' ? 'bg-interpreter-unavailable hover:bg-interpreter-unavailable/90' : ''}
-        >
-          Indisponible
-        </Button>
-        <Button
-          variant={status === 'pause' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleStatusChange('pause')}
-          disabled={isLoading}
-          className={status === 'pause' ? 'bg-interpreter-pause hover:bg-interpreter-pause/90' : ''}
-        >
-          En pause
-        </Button>
-        <Button
-          variant={status === 'busy' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleStatusChange('busy')}
-          disabled={isLoading}
-          className={status === 'busy' ? 'bg-interpreter-busy hover:bg-interpreter-busy/90' : ''}
-        >
-          En appel
-        </Button>
-      </div>
-    </div>
+          <Button
+            variant={status === statusKey ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleStatusChange(statusKey)}
+            disabled={isLoading}
+            className={`
+              transition-all duration-200
+              ${status === statusKey ? statusConfig[statusKey].color : ''}
+              ${status === statusKey ? 'shadow-lg' : ''}
+            `}
+          >
+            {statusConfig[statusKey].label}
+          </Button>
+        </motion.div>
+      ))}
+    </motion.div>
   );
 };
