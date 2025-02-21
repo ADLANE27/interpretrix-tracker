@@ -1,5 +1,4 @@
 
-import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "../ThemeToggle";
 import { StatusManager } from "../StatusManager";
@@ -21,9 +20,6 @@ export const DashboardHeader = ({ profile, onStatusChange }: DashboardHeaderProp
       </div>
       
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon">
-          <ExternalLink className="h-5 w-5" />
-        </Button>
         <ThemeToggle />
       </div>
     </header>
