@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -52,26 +51,16 @@ export const MessagingTab = () => {
     setIsFullScreen(!isFullScreen);
   };
 
-  const handleMentionClick = async (mention: any) => {
-    if (mention.channel_id) {
-      setSelectedChannelId(mention.channel_id);
-      if (isMobile) {
-        setShowChannels(false);
-      }
-    }
-    await markMentionAsRead(mention.mention_id);
-    await refreshMentions();
-  };
-
   if (isFullScreen && selectedChannelId) {
     return (
-      <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
+      <div className="fixed inset-0 z-[100] bg-background">
         <InterpreterChat 
           channelId={selectedChannelId}
           filters={filters}
           onFiltersChange={handleFiltersChange}
           onClearFilters={handleClearFilters}
           isFullScreen={true}
+          onExitFullScreen={toggleFullScreen}
         />
       </div>
     );
@@ -142,6 +131,7 @@ export const MessagingTab = () => {
             onFiltersChange={handleFiltersChange}
             onClearFilters={handleClearFilters}
             isFullScreen={false}
+            onExitFullScreen={toggleFullScreen}
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (

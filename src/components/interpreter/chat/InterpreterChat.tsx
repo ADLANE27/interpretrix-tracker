@@ -45,6 +45,7 @@ interface InterpreterChatProps {
   onFiltersChange: (filters: InterpreterChatProps['filters']) => void;
   onClearFilters: () => void;
   isFullScreen?: boolean;
+  onExitFullScreen?: () => void;
 }
 
 export const InterpreterChat = ({ 
@@ -52,7 +53,8 @@ export const InterpreterChat = ({
   filters,
   onFiltersChange,
   onClearFilters,
-  isFullScreen = false
+  isFullScreen = false,
+  onExitFullScreen
 }: InterpreterChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -505,11 +507,11 @@ export const InterpreterChat = ({
 
   return (
     <div className={cn(
-      "flex flex-col w-full",
-      isFullScreen ? "h-screen" : "h-[calc(100vh-300px)]"
+      "flex flex-col w-full h-full",
+      isFullScreen ? "min-h-screen" : "h-[calc(100vh-300px)]"
     )}>
       {isFullScreen && (
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
           <h2 className="text-lg font-semibold">Messages</h2>
           <div className="flex items-center gap-2">
             <MentionsPopover
@@ -541,7 +543,7 @@ export const InterpreterChat = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleFullScreen}
+              onClick={onExitFullScreen}
               className={cn(
                 "transition-all duration-200",
                 "bg-white/80 hover:bg-white shadow-sm hover:shadow dark:bg-gray-800/80 dark:hover:bg-gray-800",
@@ -576,7 +578,7 @@ export const InterpreterChat = ({
             ref={scrollAreaRef}
             className={cn(
               "flex-1",
-              isFullScreen ? "h-[calc(100vh-220px)]" : "h-[calc(100%-120px)]"
+              isFullScreen ? "h-[calc(100vh-180px)]" : "h-[calc(100%-120px)]"
             )}
             onScrollCapture={handleScroll}
           >
@@ -710,11 +712,11 @@ export const InterpreterChat = ({
 
           <div className={cn(
             "absolute bottom-0 left-0 right-0",
-            "bg-gradient-to-t from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900",
+            "bg-gradient-to-t from-background via-background to-transparent",
             isFullScreen ? "pt-8 pb-4" : "pt-10"
           )}>
             <div className="px-6 max-w-[95%] mx-auto">
-              <div className="chat-input-container">
+              <div className="chat-input-container relative">
                 {replyingTo && (
                   <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-purple-700">
