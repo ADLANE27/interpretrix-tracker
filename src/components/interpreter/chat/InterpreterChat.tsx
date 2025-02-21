@@ -505,12 +505,11 @@ export const InterpreterChat = ({
 
   return (
     <div className={cn(
-      "flex flex-col",
-      isFullScreen ? "h-screen" : "h-[calc(100vh-300px)]",
-      isFullScreen ? "bg-white dark:bg-gray-900" : "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
+      "flex flex-col w-full",
+      isFullScreen ? "h-screen" : "h-[calc(100vh-300px)]"
     )}>
       {isFullScreen && (
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-white/50 backdrop-blur-sm dark:bg-gray-900/50">
           <h2 className="text-lg font-semibold">Messages</h2>
           <div className="flex items-center gap-2">
             <MentionsPopover
@@ -557,22 +556,27 @@ export const InterpreterChat = ({
         </div>
       )}
 
-      <ChatFilters
-        onFiltersChange={onFiltersChange}
-        users={channelUsers}
-        onClearFilters={onClearFilters}
-      />
+      <div className={cn(
+        "px-4",
+        isFullScreen ? "py-2" : "py-4"
+      )}>
+        <ChatFilters
+          onFiltersChange={onFiltersChange}
+          users={channelUsers}
+          onClearFilters={onClearFilters}
+        />
+      </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         <div className={cn(
-          "flex-1 flex flex-col relative h-full",
+          "flex-1 flex flex-col relative",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
             className={cn(
-              "flex-1 pb-[120px]",
-              isFullScreen ? "h-[calc(100vh-180px)]" : "h-full"
+              "flex-1",
+              isFullScreen ? "h-[calc(100vh-220px)]" : "h-[calc(100%-120px)]"
             )}
             onScrollCapture={handleScroll}
           >
@@ -694,8 +698,8 @@ export const InterpreterChat = ({
             <Button
               onClick={scrollToBottom}
               className={cn(
-                "fixed right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce",
-                isFullScreen ? "bottom-28" : "bottom-[180px]"
+                "fixed right-6 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce",
+                isFullScreen ? "bottom-32" : "bottom-[180px]"
               )}
               size="icon"
               variant="outline"
@@ -706,10 +710,10 @@ export const InterpreterChat = ({
 
           <div className={cn(
             "absolute bottom-0 left-0 right-0",
-            "bg-gradient-to-t from-white via-white to-transparent",
-            isFullScreen ? "pt-6" : "pt-10"
+            "bg-gradient-to-t from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900",
+            isFullScreen ? "pt-8 pb-4" : "pt-10"
           )}>
-            <div className="p-4 max-w-[95%] mx-auto">
+            <div className="px-6 max-w-[95%] mx-auto">
               <div className="chat-input-container">
                 {replyingTo && (
                   <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
@@ -799,7 +803,11 @@ export const InterpreterChat = ({
         </div>
 
         {selectedThread && (
-          <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm lg:static lg:w-1/3 lg:border-l flex flex-col">
+          <div className={cn(
+            "fixed inset-0 z-50 bg-white/95 backdrop-blur-sm lg:static",
+            isFullScreen ? "lg:w-1/3 lg:border-l lg:h-[calc(100vh-64px)]" : "lg:w-1/3 lg:border-l",
+            "flex flex-col"
+          )}>
             <div className="p-3 border-b flex items-center justify-between bg-gray-50">
               <h3 className="font-semibold">Conversation</h3>
               <Button

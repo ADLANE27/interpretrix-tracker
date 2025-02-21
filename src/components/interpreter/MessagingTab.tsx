@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -64,7 +65,7 @@ export const MessagingTab = () => {
 
   if (isFullScreen && selectedChannelId) {
     return (
-      <div className="fixed inset-0 z-[100]">
+      <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
         <InterpreterChat 
           channelId={selectedChannelId}
           filters={filters}
