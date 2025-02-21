@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +40,21 @@ export const InterpreterDashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   useSupabaseConnection();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsSidebarOpen(false);
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -234,7 +248,7 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900">
+    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 ${
           isMobile && isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -242,9 +256,12 @@ export const InterpreterDashboard = () => {
         onClick={() => setIsSidebarOpen(false)}
       />
       
-      <div className={`fixed left-0 top-0 h-full z-50 transition-transform duration-300 ${
-        isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'relative translate-x-0'
-      }`}>
+      <div 
+        className={`fixed left-0 top-0 h-[100vh] z-50 transition-transform duration-300 touch-manipulation ${
+          isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'relative translate-x-0'
+        }`}
+        style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+      >
         <Sidebar
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -255,7 +272,8 @@ export const InterpreterDashboard = () => {
         />
       </div>
       
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative touch-manipulation no-select">
+        <div className="mobile-safe-top" />
         <DashboardHeader 
           profile={profile}
           onStatusChange={async (newStatus) => {
@@ -276,6 +294,7 @@ export const InterpreterDashboard = () => {
           onProfilePictureUpload={handleProfilePictureUpload}
           onProfilePictureDelete={handleProfilePictureDelete}
         />
+        <div className="mobile-safe-bottom" />
       </main>
 
       <PasswordChangeDialog

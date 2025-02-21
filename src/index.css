@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -59,12 +60,18 @@
     -moz-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    @apply touch-manipulation overscroll-none;
   }
   
   body {
     @apply bg-background text-foreground antialiased transition-colors duration-300;
     text-rendering: optimizeLegibility;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
+    @apply fixed inset-0 overflow-hidden;
+  }
+
+  #root {
+    @apply h-full w-full overflow-hidden;
   }
 }
 
@@ -103,4 +110,43 @@
       transform: translateY(0);
     }
   }
+}
+
+/* Mobile App Styles */
+@supports (-webkit-touch-callout: none) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile touch feedback */
+@media (hover: none) {
+  .touch-feedback {
+    -webkit-tap-highlight-color: transparent;
+    @apply active:bg-gray-100 dark:active:bg-gray-800 transition-colors;
+  }
+}
+
+/* Prevent text selection on mobile */
+.no-select {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
