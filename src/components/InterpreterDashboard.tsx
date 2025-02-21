@@ -235,7 +235,16 @@ export const InterpreterDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900">
-      {(!isMobile || isSidebarOpen) && (
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 ${
+          isMobile && isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+      
+      <div className={`fixed left-0 top-0 h-full z-50 transition-transform duration-300 ${
+        isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'relative translate-x-0'
+      }`}>
         <Sidebar
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -244,9 +253,9 @@ export const InterpreterDashboard = () => {
           }}
           userStatus={profile?.status || "available"}
         />
-      )}
+      </div>
       
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <DashboardHeader 
           profile={profile}
           onStatusChange={async (newStatus) => {
@@ -255,6 +264,8 @@ export const InterpreterDashboard = () => {
               setProfile(updatedProfile);
             }
           }}
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          isMobile={isMobile}
         />
 
         <DashboardContent 
