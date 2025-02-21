@@ -66,8 +66,8 @@ export const MessagingTab = () => {
   if (isFullScreen && selectedChannelId) {
     return (
       <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
-        <div className="w-full h-[calc(100vh-32px)] flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex flex-col h-screen">
+          <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-gray-900 shadow-sm">
             <h2 className="text-lg font-semibold">Messages</h2>
             <div className="flex items-center gap-2">
               <MentionsPopover
@@ -112,7 +112,7 @@ export const MessagingTab = () => {
               </Button>
             </div>
           </div>
-          <div className="flex-1 h-full overflow-hidden pb-4">
+          <div className="flex-1 overflow-hidden">
             <InterpreterChat 
               channelId={selectedChannelId}
               filters={filters}
