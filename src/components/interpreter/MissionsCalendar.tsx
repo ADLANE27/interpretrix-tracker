@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +37,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { toast } = useToast();
 
-  // Fetch all missions for the current user
   const fetchMissions = async (userId: string) => {
     console.log('[MissionsCalendar] Fetching missions for user:', userId);
     const { data: missionsData, error } = await supabase
@@ -66,7 +64,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     }
   };
 
-  // Set up realtime subscription
   useEffect(() => {
     console.log('[MissionsCalendar] Setting up realtime subscription');
     let isSubscribed = true;
@@ -81,7 +78,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
         return;
       }
 
-      // Initial fetch
       await fetchMissions(user.id);
       
       const channel = supabase
@@ -98,11 +94,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             console.log('[MissionsCalendar] Mission update received:', payload);
 
             if (payload.eventType === 'UPDATE' && payload.new.status === 'accepted') {
-              // Check if this is a mission being accepted for the current user
               if (payload.new.assigned_interpreter_id === user.id) {
                 console.log('[MissionsCalendar] Mission accepted by current user:', payload.new);
                 
-                // Immediately add the new mission to the state if it's not there
                 setMissions(prevMissions => {
                   const exists = prevMissions.some(m => m.id === payload.new.id);
                   if (!exists) {
@@ -120,7 +114,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               }
             }
 
-            // Fetch fresh data to ensure we're in sync
             await fetchMissions(user.id);
           }
         )
@@ -142,7 +135,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
       if (ch) channel = ch;
     });
 
-    // Cleanup function
     return () => {
       console.log('[MissionsCalendar] Cleaning up subscription for channel:', channelName);
       isSubscribed = false;
@@ -154,9 +146,8 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
         });
       }
     };
-  }, [selectedDate]); // Added selectedDate to dependencies
+  }, [selectedDate]);
 
-  // Filter missions for the calendar view - only show accepted missions with scheduled times
   const scheduledMissions = missions.filter(mission => {
     const isAccepted = mission.status === 'accepted';
     const hasScheduledTime = mission.scheduled_start_time !== null;
@@ -164,7 +155,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     return isAccepted && hasScheduledTime;
   });
 
-  // Filter missions for the selected date
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
@@ -178,7 +168,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     return matches;
   });
 
-  // Get all dates that have missions
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
@@ -188,13 +177,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
     })
     .filter((date): date is Date => date !== null);
 
-  console.log('[MissionsCalendar] Scheduled missions:', scheduledMissions);
-  console.log('[MissionsCalendar] Dates with missions:', datesWithMissions);
-  console.log('[MissionsCalendar] Missions for selected date:', missionsForSelectedDate);
-
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <Card className="p-4">
+    <div className="flex flex-col md:grid md:grid-cols-2 gap-4 p-4">
+      <Card className="p-4 order-2 md:order-1">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -209,17 +194,36 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               backgroundColor: "rgb(59 130 246 / 0.1)",
             },
           }}
-          className="rounded-md border"
+          className="w-full max-w-full rounded-md border"
+          classNames={{
+            months: "w-full flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+            month: "w-full space-y-4",
+            caption: "flex justify-center pt-1 relative items-center text-sm sm:text-base",
+            caption_label: "text-sm sm:text-base font-medium",
+            nav: "space-x-1 flex items-center",
+            nav_button: "h-7 w-7 sm:h-8 sm:w-8 p-0",
+            table: "w-full border-collapse space-y-1",
+            head_row: "flex",
+            head_cell: "text-muted-foreground rounded-md w-8 sm:w-9 font-normal text-[0.8rem] sm:text-sm",
+            row: "flex w-full mt-2",
+            cell: "relative p-0 text-center text-sm rounded-md h-8 w-8 sm:h-9 sm:w-9 hover:bg-accent hover:text-accent-foreground focus-within:relative focus-within:z-20",
+            day: "h-8 w-8 sm:h-9 sm:w-9 p-0 font-normal",
+            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+            day_today: "bg-accent text-accent-foreground",
+            day_outside: "text-muted-foreground opacity-50",
+            day_disabled: "text-muted-foreground opacity-50",
+            day_hidden: "invisible",
+          }}
         />
       </Card>
 
-      <Card className="p-4">
-        <h3 className="font-semibold mb-4">
+      <Card className="p-4 order-1 md:order-2">
+        <h3 className="font-semibold mb-4 text-sm sm:text-base">
           {selectedDate
             ? format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })
             : "Sélectionnez une date"}
         </h3>
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto hide-scrollbar">
           {missionsForSelectedDate.length === 0 ? (
             <p className="text-sm text-gray-500">
               Aucune mission programmée pour cette date
@@ -232,11 +236,11 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                 : null;
 
               return (
-                <Card key={mission.id} className="p-3">
+                <Card key={mission.id} className="p-3 touch-feedback">
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Clock className="h-4 w-4 text-blue-500" />
+                        <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <span className="text-sm font-medium">
                           {formatInTimeZone(startTime, userTimeZone, "HH:mm")}
                           {endTime &&
@@ -244,15 +248,15 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <p>
+                        <p className="truncate">
                           {mission.source_language} → {mission.target_language}
                         </p>
                         {mission.client_name && (
-                          <p className="text-gray-500">{mission.client_name}</p>
+                          <p className="text-gray-500 truncate">{mission.client_name}</p>
                         )}
                       </div>
                     </div>
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="flex-shrink-0">
                       {mission.estimated_duration} min
                     </Badge>
                   </div>
