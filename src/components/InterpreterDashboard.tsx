@@ -11,6 +11,7 @@ import { HowToUseGuide } from "./interpreter/HowToUseGuide";
 import { DashboardHeader } from "./interpreter/dashboard/DashboardHeader";
 import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
 import { Profile } from "@/types/profile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -35,6 +36,8 @@ export const InterpreterDashboard = () => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
   useSupabaseConnection();
@@ -218,8 +221,8 @@ export const InterpreterDashboard = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <p className="text-destructive">{error}</p>
+      <div className="flex flex-col items-center justify-center h-screen space-y-4 px-4">
+        <p className="text-destructive text-center">{error}</p>
         <button 
           onClick={() => navigate("/interpreter/login")}
           className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium"
@@ -232,11 +235,16 @@ export const InterpreterDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900">
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        userStatus={profile?.status || "available"}
-      />
+      {(!isMobile || isSidebarOpen) && (
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (isMobile) setIsSidebarOpen(false);
+          }}
+          userStatus={profile?.status || "available"}
+        />
+      )}
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <DashboardHeader 
