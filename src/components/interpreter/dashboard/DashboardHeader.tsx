@@ -15,7 +15,6 @@ export const DashboardHeader = ({ profile, onStatusChange }: DashboardHeaderProp
   return (
     <header className="h-16 border-b bg-white dark:bg-gray-800 flex items-center justify-between px-6 sticky top-0 z-40">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold">AFTRADUCTION</h1>
         <StatusManager
           currentStatus={profile?.status}
           onStatusChange={onStatusChange}
