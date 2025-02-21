@@ -1,51 +1,16 @@
-import { useState, useEffect, type ChangeEvent } from "react";
-import { Card } from "@/components/ui/card";
+
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { MissionsTab } from "./interpreter/MissionsTab";
-import { MessagingTab } from "./interpreter/MessagingTab";
-import { InterpreterProfile } from "./interpreter/InterpreterProfile";
-import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
-import { StatusManager } from "./interpreter/StatusManager";
-import { HowToUseGuide } from "./interpreter/HowToUseGuide";
-import { MissionsCalendar } from "./interpreter/MissionsCalendar";
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "./interpreter/Sidebar";
-import { ThemeToggle } from "./interpreter/ThemeToggle";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string | null;
-  languages: {
-    source: string;
-    target: string;
-  }[];
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-  status: "available" | "busy" | "pause" | "unavailable";
-  address: {
-    street: string;
-    postal_code: string;
-    city: string;
-  } | null;
-  birth_country: string | null;
-  nationality: string | null;
-  phone_interpretation_rate: number | null;
-  siret_number: string | null;
-  vat_number: string | null;
-  profile_picture_url: string | null;
-  password_changed: boolean;
-}
+import { PasswordChangeDialog } from "./interpreter/PasswordChangeDialog";
+import { HowToUseGuide } from "./interpreter/HowToUseGuide";
+import { DashboardHeader } from "./interpreter/dashboard/DashboardHeader";
+import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
+import { Profile } from "@/types/profile";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -125,7 +90,6 @@ export const InterpreterDashboard = () => {
       });
 
       const status = isValidStatus(data.status) ? data.status : 'available';
-
       const address = isValidAddress(data.address) ? data.address : null;
 
       const transformedProfile: Profile = {
@@ -146,7 +110,7 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  const handleProfilePictureUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
       if (!file || !profile) return;
@@ -266,28 +230,6 @@ export const InterpreterDashboard = () => {
     );
   }
 
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case "missions":
-        return <MissionsTab />;
-      case "messages":
-        return <MessagingTab />;
-      case "profile":
-        return (
-          <InterpreterProfile 
-            profile={profile}
-            onProfileUpdate={fetchProfile}
-            onProfilePictureUpload={handleProfilePictureUpload}
-            onProfilePictureDelete={handleProfilePictureDelete}
-          />
-        );
-      case "calendar":
-        return <MissionsCalendar missions={scheduledMissions} />;
-      default:
-        return <MissionsTab />;
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900">
       <Sidebar
@@ -297,59 +239,24 @@ export const InterpreterDashboard = () => {
       />
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <header className="h-16 border-b bg-white dark:bg-gray-800 flex items-center justify-between px-6 sticky top-0 z-40">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">AFTRADUCTION</h1>
-            <StatusManager
-              currentStatus={profile?.status}
-              onStatusChange={async (newStatus) => {
-                if (profile) {
-                  const updatedProfile = { ...profile, status: newStatus };
-                  setProfile(updatedProfile);
-                }
-              }}
-            />
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="relative text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              <Bell className="h-5 w-5" />
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
-              >
-                3
-              </Badge>
-            </Button>
-            <Button variant="ghost" size="icon">
-              <ExternalLink className="h-5 w-5" />
-            </Button>
-            <ThemeToggle />
-          </div>
-        </header>
+        <DashboardHeader 
+          profile={profile}
+          onStatusChange={async (newStatus) => {
+            if (profile) {
+              const updatedProfile = { ...profile, status: newStatus };
+              setProfile(updatedProfile);
+            }
+          }}
+        />
 
-        <div className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="w-full"
-              >
-                <Card className="shadow-sm border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-                  {renderActiveTab()}
-                </Card>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
+        <DashboardContent 
+          activeTab={activeTab}
+          profile={profile}
+          scheduledMissions={scheduledMissions}
+          onProfileUpdate={fetchProfile}
+          onProfilePictureUpload={handleProfilePictureUpload}
+          onProfilePictureDelete={handleProfilePictureDelete}
+        />
       </main>
 
       <PasswordChangeDialog
