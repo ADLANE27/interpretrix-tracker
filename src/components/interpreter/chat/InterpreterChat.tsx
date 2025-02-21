@@ -507,11 +507,11 @@ export const InterpreterChat = ({
 
   return (
     <div className={cn(
-      "flex flex-col w-full h-full",
-      isFullScreen ? "min-h-screen" : "h-[calc(100vh-300px)]"
+      "flex flex-col w-full",
+      isFullScreen ? "h-screen absolute inset-0" : "h-[calc(100vh-300px)]"
     )}>
       {isFullScreen && (
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-card">
+        <div className="flex items-center justify-between px-6 py-4 border-b bg-card/80 backdrop-blur-sm">
           <h2 className="text-lg font-semibold">Messages</h2>
           <div className="flex items-center gap-2">
             <MentionsPopover
@@ -558,333 +558,337 @@ export const InterpreterChat = ({
         </div>
       )}
 
-      <div className={cn(
-        "px-4",
-        isFullScreen ? "py-2" : "py-4"
-      )}>
-        <ChatFilters
-          onFiltersChange={onFiltersChange}
-          users={channelUsers}
-          onClearFilters={onClearFilters}
-        />
-      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {filters && (
+          <div className={cn(
+            "px-4",
+            isFullScreen ? "py-2" : "py-4"
+          )}>
+            <ChatFilters
+              onFiltersChange={onFiltersChange}
+              users={channelUsers}
+              onClearFilters={onClearFilters}
+            />
+          </div>
+        )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className={cn(
-          "flex-1 flex flex-col relative",
-          selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
-        )}>
-          <ScrollArea 
-            ref={scrollAreaRef}
-            className={cn(
-              "flex-1",
-              isFullScreen ? "h-[calc(100vh-180px)]" : "h-[calc(100%-120px)]"
+        <div className="flex-1 flex overflow-hidden relative">
+          <div className={cn(
+            "flex-1 flex flex-col relative",
+            selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
+          )}>
+            <ScrollArea 
+              ref={scrollAreaRef}
+              className={cn(
+                "flex-1",
+                isFullScreen ? "h-[calc(100vh-160px)]" : "h-[calc(100%-120px)]"
+              )}
+              onScrollCapture={handleScroll}
+            >
+              <div className="p-4 space-y-6">
+                {filteredMessages.map(message => {
+                  const userColors = getUserColors(message.sender.id);
+                  const avatarStyle = {
+                    background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
+                  };
+                  const messageStyle = message.sender.id === currentUserId ? {
+                    background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
+                  } : {};
+
+                  return (
+                    <div 
+                      key={message.id} 
+                      id={`message-${message.id}`}
+                      className="group message-appear"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg" style={avatarStyle}>
+                          <AvatarFallback style={avatarStyle}>
+                            {message.sender.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm" style={{ color: userColors.from }}>
+                              {message.sender.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {format(message.timestamp, 'HH:mm')}
+                            </span>
+                          </div>
+                          {message.parent_message_id && (
+                            <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
+                              <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
+                            </div>
+                          )}
+                          <div className="group">
+                            <div className={cn(
+                              "chat-bubble",
+                              message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
+                            )} style={messageStyle}>
+                              <p className="text-sm whitespace-pre-wrap break-words">
+                                {message.content}
+                              </p>
+                              {message.attachments && message.attachments.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {message.attachments.map((attachment, index) => (
+                                    <div 
+                                      key={index}
+                                      className={cn(
+                                        "rounded-lg p-3 transition-all duration-300",
+                                        "bg-white/10 backdrop-blur-sm",
+                                        "hover:bg-white/20",
+                                        "border border-white/20",
+                                        "animate-fade-in"
+                                      )}
+                                    >
+                                      <a 
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 group/attachment"
+                                      >
+                                        <div className="p-2 rounded-lg bg-white/20">
+                                          <Paperclip className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium text-white truncate group-hover/attachment:underline">
+                                            {attachment.filename}
+                                          </p>
+                                          <p className="text-xs text-white/70">
+                                            {(attachment.size / 1024).toFixed(1)} KB • {attachment.type}
+                                          </p>
+                                        </div>
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex justify-end mt-2 gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
+                                onClick={() => handleThreadClick(message)}
+                              >
+                                <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
+                                {threadCounts[message.id] > 0 && (
+                                  <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                    {threadCounts[message.id]}
+                                  </span>
+                                )}
+                              </Button>
+                              {currentUserId === message.sender.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteMessage(message.id)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+
+            {showScrollButton && (
+              <Button
+                onClick={scrollToBottom}
+                className={cn(
+                  "fixed right-6 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce",
+                  isFullScreen ? "bottom-32" : "bottom-[180px]"
+                )}
+                size="icon"
+                variant="outline"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
             )}
-            onScrollCapture={handleScroll}
-          >
-            <div className="p-4 space-y-6">
-              {filteredMessages.map(message => {
-                const userColors = getUserColors(message.sender.id);
-                const avatarStyle = {
-                  background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
-                };
-                const messageStyle = message.sender.id === currentUserId ? {
-                  background: `linear-gradient(135deg, ${userColors.from}, ${userColors.to})`
-                } : {};
 
-                return (
-                  <div 
-                    key={message.id} 
-                    id={`message-${message.id}`}
-                    className="group message-appear"
-                  >
+            <div className={cn(
+              "sticky bottom-0 left-0 right-0",
+              "bg-gradient-to-t from-background via-background to-transparent",
+              isFullScreen ? "pt-8 pb-4" : "pt-10"
+            )}>
+              <div className="px-6 max-w-[95%] mx-auto">
+                <div className="chat-input-container relative">
+                  {replyingTo && (
+                    <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-purple-700">
+                        <ArrowRight className="h-4 w-4" />
+                        <span>En réponse à {replyingTo.sender.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={cancelReply}
+                        className="hover:bg-purple-100 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <Textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={handleMessageChange}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Écrivez votre message..."
+                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                  />
+
+                  <MentionSuggestions
+                    suggestions={mentionSuggestions}
+                    onSelect={handleMentionSelect}
+                    visible={showMentions}
+                  />
+
+                  <div className="absolute bottom-2 right-2 flex items-center gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
+                    >
+                      <Paperclip className="h-4 w-4 text-purple-500" />
+                    </Button>
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
+                        >
+                          <Smile className="h-4 w-4 text-purple-500" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="end">
+                        <Picker
+                          data={data}
+                          onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
+                          theme="light"
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                    <Button 
+                      onClick={handleSendMessage}
+                      disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
+                      className={cn(
+                        "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
+                        "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
+                        "text-white flex items-center gap-2 px-4",
+                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      <Send className="h-4 w-4" />
+                      <span className="hidden sm:inline">Envoyer</span>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {selectedThread && (
+            <div className={cn(
+              "fixed inset-0 z-50 bg-white/95 backdrop-blur-sm lg:static lg:relative",
+              isFullScreen ? "lg:w-1/3 lg:border-l lg:h-screen" : "lg:w-1/3 lg:border-l",
+              "flex flex-col"
+            )}>
+              <div className="p-3 border-b flex items-center justify-between bg-gray-50">
+                <h3 className="font-semibold">Conversation</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseThread}
+                  className="h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="p-3 bg-gray-50 border-b">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-interpreter-navy text-white">
+                      {selectedThread.sender.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{selectedThread.sender.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(selectedThread.timestamp, 'HH:mm')}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-1">{selectedThread.content}</p>
+                  </div>
+                </div>
+              </div>
+
+              <ScrollArea className="flex-1 px-4">
+                {threadMessages.map(message => (
+                  <div key={message.id} className="py-3">
                     <div className="flex items-start gap-3">
-                      <Avatar className="chat-gradient-avatar h-10 w-10 flex-shrink-0 shadow-lg" style={avatarStyle}>
-                        <AvatarFallback style={avatarStyle}>
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-interpreter-navy text-white">
                           {message.sender.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0 space-y-1">
+                      <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm" style={{ color: userColors.from }}>
-                            {message.sender.name}
-                          </span>
+                          <span className="font-semibold text-sm">{message.sender.name}</span>
                           <span className="text-xs text-muted-foreground">
                             {format(message.timestamp, 'HH:mm')}
                           </span>
                         </div>
-                        {message.parent_message_id && (
-                          <div className="ml-0 pl-2 border-l-2 border-purple-200 text-xs text-muted-foreground">
-                            <p>En réponse à {messages.find(m => m.id === message.parent_message_id)?.sender.name}</p>
-                          </div>
-                        )}
-                        <div className="group">
-                          <div className={cn(
-                            "chat-bubble",
-                            message.sender.id === currentUserId ? "chat-bubble-right ml-auto" : "chat-bubble-left"
-                          )} style={messageStyle}>
-                            <p className="text-sm whitespace-pre-wrap break-words">
-                              {message.content}
-                            </p>
-                            {message.attachments && message.attachments.length > 0 && (
-                              <div className="mt-3 space-y-2">
-                                {message.attachments.map((attachment, index) => (
-                                  <div 
-                                    key={index}
-                                    className={cn(
-                                      "rounded-lg p-3 transition-all duration-300",
-                                      "bg-white/10 backdrop-blur-sm",
-                                      "hover:bg-white/20",
-                                      "border border-white/20",
-                                      "animate-fade-in"
-                                    )}
-                                  >
-                                    <a 
-                                      href={attachment.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-3 group/attachment"
-                                    >
-                                      <div className="p-2 rounded-lg bg-white/20">
-                                        <Paperclip className="h-4 w-4 text-white" />
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-white truncate group-hover/attachment:underline">
-                                          {attachment.filename}
-                                        </p>
-                                        <p className="text-xs text-white/70">
-                                          {(attachment.size / 1024).toFixed(1)} KB • {attachment.type}
-                                        </p>
-                                      </div>
-                                    </a>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex justify-end mt-2 gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-50"
-                              onClick={() => handleThreadClick(message)}
-                            >
-                              <MessageSquare className="h-4 w-4 text-purple-500 mr-1" />
-                              {threadCounts[message.id] > 0 && (
-                                <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
-                                  {threadCounts[message.id]}
-                                </span>
-                              )}
-                            </Button>
-                            {currentUserId === message.sender.id && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteMessage(message.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
+                        <p className="text-sm mt-1">{message.content}</p>
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
+                ))}
+              </ScrollArea>
 
-          {showScrollButton && (
-            <Button
-              onClick={scrollToBottom}
-              className={cn(
-                "fixed right-6 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce",
-                isFullScreen ? "bottom-32" : "bottom-[180px]"
-              )}
-              size="icon"
-              variant="outline"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </Button>
-          )}
-
-          <div className={cn(
-            "absolute bottom-0 left-0 right-0",
-            "bg-gradient-to-t from-background via-background to-transparent",
-            isFullScreen ? "pt-8 pb-4" : "pt-10"
-          )}>
-            <div className="px-6 max-w-[95%] mx-auto">
-              <div className="chat-input-container relative">
-                {replyingTo && (
-                  <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-purple-700">
-                      <ArrowRight className="h-4 w-4" />
-                      <span>En réponse à {replyingTo.sender.name}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={cancelReply}
-                      className="hover:bg-purple-100 transition-colors"
+              <div className="p-4 border-t bg-white">
+                <div className="relative rounded-lg border bg-background">
+                  <Textarea
+                    value={message}
+                    onChange={handleMessageChange}
+                    placeholder="Répondre dans la conversation..."
+                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <Button 
+                      onClick={handleSendThreadMessage}
+                      className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
                     >
-                      <X className="h-4 w-4" />
+                      <Send className="h-4 w-4 mr-2" />
+                      Répondre
                     </Button>
                   </div>
-                )}
-                <Textarea
-                  ref={textareaRef}
-                  value={message}
-                  onChange={handleMessageChange}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Écrivez votre message..."
-                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
-                />
-
-                <MentionSuggestions
-                  suggestions={mentionSuggestions}
-                  onSelect={handleMentionSelect}
-                  visible={showMentions}
-                />
-
-                <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
-                  >
-                    <Paperclip className="h-4 w-4 text-purple-500" />
-                  </Button>
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-8 w-8 hover:bg-purple-50 rounded-full transition-colors"
-                      >
-                        <Smile className="h-4 w-4 text-purple-500" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0" align="end">
-                      <Picker
-                        data={data}
-                        onEmojiSelect={(emoji: any) => setMessage(prev => prev + emoji.native)}
-                        theme="light"
-                      />
-                    </PopoverContent>
-                  </Popover>
-
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-                    className={cn(
-                      "h-8 rounded-full transition-all duration-300 shadow-md hover:shadow-lg",
-                      "bg-gradient-to-r from-[#9b87f5] to-[#8B5CF6] hover:from-[#8B5CF6] hover:to-[#7c4dff]",
-                      "text-white flex items-center gap-2 px-4",
-                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                    )}
-                  >
-                    <Send className="h-4 w-4" />
-                    <span className="hidden sm:inline">Envoyer</span>
-                  </Button>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
-
-        {selectedThread && (
-          <div className={cn(
-            "fixed inset-0 z-50 bg-white/95 backdrop-blur-sm lg:static",
-            isFullScreen ? "lg:w-1/3 lg:border-l lg:h-[calc(100vh-64px)]" : "lg:w-1/3 lg:border-l",
-            "flex flex-col"
-          )}>
-            <div className="p-3 border-b flex items-center justify-between bg-gray-50">
-              <h3 className="font-semibold">Conversation</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCloseThread}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="p-3 bg-gray-50 border-b">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-interpreter-navy text-white">
-                    {selectedThread.sender.name.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{selectedThread.sender.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {format(selectedThread.timestamp, 'HH:mm')}
-                    </span>
-                  </div>
-                  <p className="text-sm mt-1">{selectedThread.content}</p>
-                </div>
-              </div>
-            </div>
-
-            <ScrollArea className="flex-1 px-4">
-              {threadMessages.map(message => (
-                <div key={message.id} className="py-3">
-                  <div className="flex items-start gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-interpreter-navy text-white">
-                        {message.sender.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{message.sender.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {format(message.timestamp, 'HH:mm')}
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{message.content}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </ScrollArea>
-
-            <div className="p-4 border-t bg-white">
-              <div className="relative rounded-lg border bg-background">
-                <Textarea
-                  value={message}
-                  onChange={handleMessageChange}
-                  placeholder="Répondre dans la conversation..."
-                  className="min-h-[80px] resize-none border-0 focus-visible:ring-0"
-                />
-                <div className="absolute bottom-2 right-2">
-                  <Button 
-                    onClick={handleSendThreadMessage}
-                    className="h-8 bg-interpreter-navy hover:bg-interpreter-navy/90"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Répondre
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
