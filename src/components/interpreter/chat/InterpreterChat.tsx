@@ -79,7 +79,7 @@ export const InterpreterChat = ({
   const { 
     unreadMentions, 
     totalUnreadCount, 
-    markMentionAsRead: markMentionAsReadNew, 
+    markMentionAsRead: markSingleMentionAsRead, 
     deleteMention 
   } = useUnreadMentions();
 
@@ -305,7 +305,7 @@ export const InterpreterChat = ({
       }, 2000);
     }
 
-    markMentionAsReadNew(mention.mention_id);
+    markSingleMentionAsRead(mention.mention_id);
   };
 
   const [selectedThread, setSelectedThread] = useState<Message | null>(null);
@@ -520,7 +520,7 @@ export const InterpreterChat = ({
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
               onMentionClick={handleMentionClick}
-              onMarkAsRead={markMentionAsRead}
+              onMarkAsRead={markSingleMentionAsRead}
               onDelete={deleteMention}
             >
               <div className={cn(
