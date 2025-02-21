@@ -505,16 +505,13 @@ export const InterpreterChat = ({
 
   return (
     <div className={cn(
-      "flex flex-col relative",
+      "flex flex-col",
       isFullScreen ? "h-screen" : "h-[calc(100vh-300px)]",
-      "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
+      isFullScreen ? "bg-white dark:bg-gray-900" : "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
-      <div className={cn(
-        "flex items-center justify-between p-4",
-        isFullScreen ? "border-b bg-white dark:bg-gray-900" : ""
-      )}>
-        {isFullScreen && <h2 className="text-lg font-semibold">Messages</h2>}
-        {isFullScreen && (
+      {isFullScreen && (
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Messages</h2>
           <div className="flex items-center gap-2">
             <MentionsPopover
               mentions={unreadMentions}
@@ -557,8 +554,8 @@ export const InterpreterChat = ({
               <Minimize2 className="h-4 w-4" />
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <ChatFilters
         onFiltersChange={onFiltersChange}
@@ -566,14 +563,17 @@ export const InterpreterChat = ({
         onClearFilters={onClearFilters}
       />
 
-      <div className="flex flex-1 overflow-hidden relative h-full">
+      <div className="flex flex-1 overflow-hidden">
         <div className={cn(
           "flex-1 flex flex-col relative h-full",
           selectedThread ? "hidden lg:flex lg:w-2/3" : "w-full"
         )}>
           <ScrollArea 
             ref={scrollAreaRef}
-            className="flex-1 h-full pb-[120px]"
+            className={cn(
+              "flex-1 pb-[120px]",
+              isFullScreen ? "h-[calc(100vh-180px)]" : "h-full"
+            )}
             onScrollCapture={handleScroll}
           >
             <div className="p-4 space-y-6">
@@ -693,7 +693,10 @@ export const InterpreterChat = ({
           {showScrollButton && (
             <Button
               onClick={scrollToBottom}
-              className="fixed bottom-[180px] right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce"
+              className={cn(
+                "fixed right-4 rounded-full shadow-lg bg-white hover:bg-gray-100 z-10 animate-bounce",
+                isFullScreen ? "bottom-28" : "bottom-[180px]"
+              )}
               size="icon"
               variant="outline"
             >
@@ -701,7 +704,11 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
+          <div className={cn(
+            "absolute bottom-0 left-0 right-0",
+            "bg-gradient-to-t from-white via-white to-transparent",
+            isFullScreen ? "pt-6" : "pt-10"
+          )}>
             <div className="p-4 max-w-[95%] mx-auto">
               <div className="chat-input-container">
                 {replyingTo && (

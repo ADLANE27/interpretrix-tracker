@@ -64,16 +64,14 @@ export const MessagingTab = () => {
 
   if (isFullScreen && selectedChannelId) {
     return (
-      <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
-        <div className="h-screen w-full">
-          <InterpreterChat 
-            channelId={selectedChannelId}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onClearFilters={handleClearFilters}
-            isFullScreen={true}
-          />
-        </div>
+      <div className="fixed inset-0 z-[100]">
+        <InterpreterChat 
+          channelId={selectedChannelId}
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onClearFilters={handleClearFilters}
+          isFullScreen={true}
+        />
       </div>
     );
   }
