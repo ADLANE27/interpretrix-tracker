@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -49,6 +50,17 @@ export const MessagingTab = () => {
 
   const toggleFullScreen = () => {
     setIsFullScreen(!isFullScreen);
+  };
+
+  const handleMentionClick = async (mention: any) => {
+    if (mention.channel_id) {
+      setSelectedChannelId(mention.channel_id);
+      if (isMobile) {
+        setShowChannels(false);
+      }
+    }
+    await markMentionAsRead(mention.mention_id);
+    await refreshMentions();
   };
 
   if (isFullScreen && selectedChannelId) {
