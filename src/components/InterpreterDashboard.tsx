@@ -1,4 +1,3 @@
-
 import { useState, useEffect, type ChangeEvent } from "react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +16,10 @@ import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { motion, AnimatePresence } from "framer-motion";
+import { Bell, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   id: string;
@@ -116,16 +119,13 @@ export const InterpreterDashboard = () => {
 
       if (error) throw error;
 
-      // Transform the languages array from strings to objects
       const transformedLanguages = (data.languages || []).map((lang: string) => {
         const [source, target] = lang.split('→').map(l => l.trim());
         return { source, target };
       });
 
-      // Validate status and provide a default if invalid
       const status = isValidStatus(data.status) ? data.status : 'available';
 
-      // Validate address structure
       const address = isValidAddress(data.address) ? data.address : null;
 
       const transformedProfile: Profile = {
@@ -289,16 +289,17 @@ export const InterpreterDashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900">
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
         userStatus={profile?.status || "available"}
       />
       
-      <main className="flex-1 p-6">
-        <div className="container mx-auto">
-          <div className="flex justify-between items-center mb-6">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-16 border-b bg-white dark:bg-gray-800 flex items-center justify-between px-6 sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold">AFTRADUCTION</h1>
             <StatusManager
               currentStatus={profile?.status}
               onStatusChange={async (newStatus) => {
@@ -308,23 +309,46 @@ export const InterpreterDashboard = () => {
                 }
               }}
             />
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <Bell className="h-5 w-5" />
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0"
+              >
+                3
+              </Badge>
+            </Button>
+            <Button variant="ghost" size="icon">
+              <ExternalLink className="h-5 w-5" />
+            </Button>
             <ThemeToggle />
           </div>
+        </header>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="w-full"
-            >
-              <Card className="p-6 shadow-lg backdrop-blur-sm bg-card/80">
-                {renderActiveTab()}
-              </Card>
-            </motion.div>
-          </AnimatePresence>
+        <div className="flex-1 overflow-auto">
+          <div className="container mx-auto p-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <Card className="shadow-sm border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+                  {renderActiveTab()}
+                </Card>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </main>
 
