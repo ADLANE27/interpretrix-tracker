@@ -14,7 +14,8 @@ import {
   MessageSquare,
   X,
   ArrowDown,
-  Bell
+  Bell,
+  Minimize2
 } from 'lucide-react';
 import { 
   Popover, 
@@ -32,6 +33,7 @@ import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
 import { ChatFilters } from '@/components/chat/ChatFilters';
 import { Message } from '@/types/messaging';
 import { getUserColors } from '@/utils/colorUtils';
+import { MentionsPopover } from '@/components/chat/MentionsPopover';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -497,12 +499,67 @@ export const InterpreterChat = ({
     }
   }, [messages]);
 
+  const toggleFullScreen = () => {
+    // Implement toggleFullScreen logic here
+  };
+
   return (
     <div className={cn(
       "flex flex-col relative",
-      isFullScreen ? "h-full" : "h-[calc(100vh-300px)]",
+      isFullScreen ? "h-screen" : "h-[calc(100vh-300px)]",
       "bg-gradient-to-br from-[#f8f9ff] to-[#f1f0fb]"
     )}>
+      <div className={cn(
+        "flex items-center justify-between p-4",
+        isFullScreen ? "border-b bg-white dark:bg-gray-900" : ""
+      )}>
+        {isFullScreen && <h2 className="text-lg font-semibold">Messages</h2>}
+        {isFullScreen && (
+          <div className="flex items-center gap-2">
+            <MentionsPopover
+              mentions={unreadMentions}
+              totalCount={totalUnreadCount}
+              onMentionClick={handleMentionClick}
+              onMarkAsRead={markMentionAsRead}
+              onDelete={deleteMention}
+            >
+              <div className={cn(
+                "transition-all duration-200 p-2",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
+                "rounded-lg flex items-center justify-center relative",
+                totalUnreadCount > 0 && "text-purple-500"
+              )}>
+                <Bell className="h-4 w-4" />
+                {totalUnreadCount > 0 && (
+                  <Badge 
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {totalUnreadCount}
+                  </Badge>
+                )}
+              </div>
+            </MentionsPopover>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullScreen}
+              className={cn(
+                "transition-all duration-200",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
+                "rounded-lg",
+                "hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              )}
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
       <ChatFilters
         onFiltersChange={onFiltersChange}
         users={channelUsers}
@@ -644,10 +701,7 @@ export const InterpreterChat = ({
             </Button>
           )}
 
-          <div className={cn(
-            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10",
-            isFullScreen ? "pb-4" : ""
-          )}>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-10">
             <div className="p-4 max-w-[95%] mx-auto">
               <div className="chat-input-container">
                 {replyingTo && (

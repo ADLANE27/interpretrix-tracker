@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -66,61 +65,14 @@ export const MessagingTab = () => {
   if (isFullScreen && selectedChannelId) {
     return (
       <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-900">
-        <div className="flex flex-col h-screen">
-          <div className="flex items-center justify-between p-4 border-b bg-white dark:bg-gray-900 shadow-sm">
-            <h2 className="text-lg font-semibold">Messages</h2>
-            <div className="flex items-center gap-2">
-              <MentionsPopover
-                mentions={unreadMentions}
-                totalCount={totalUnreadCount}
-                onMentionClick={handleMentionClick}
-                onMarkAsRead={markMentionAsRead}
-                onDelete={deleteMention}
-              >
-                <div className={cn(
-                  "transition-all duration-200 p-2",
-                  "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                  "border border-gray-100 dark:border-gray-700",
-                  "rounded-lg flex items-center justify-center relative",
-                  totalUnreadCount > 0 && "text-purple-500"
-                )}>
-                  <Bell className="h-4 w-4" />
-                  {totalUnreadCount > 0 && (
-                    <Badge 
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {totalUnreadCount}
-                    </Badge>
-                  )}
-                </div>
-              </MentionsPopover>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleFullScreen}
-                className={cn(
-                  "transition-all duration-200",
-                  "bg-white/80 hover:bg-white shadow-sm hover:shadow dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                  "border border-gray-100 dark:border-gray-700",
-                  "rounded-lg",
-                  "hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                )}
-              >
-                <Minimize2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <InterpreterChat 
-              channelId={selectedChannelId}
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onClearFilters={handleClearFilters}
-              isFullScreen={true}
-            />
-          </div>
+        <div className="h-screen w-full">
+          <InterpreterChat 
+            channelId={selectedChannelId}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+            isFullScreen={true}
+          />
         </div>
       </div>
     );
