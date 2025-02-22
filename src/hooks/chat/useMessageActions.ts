@@ -5,16 +5,27 @@ import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
 
 const sanitizeFilename = (filename: string): string => {
-  const sanitized = filename
+  // Get the file extension
+  const ext = filename.split('.').pop() || '';
+  
+  // Remove the extension from the name for processing
+  const nameWithoutExt = filename.slice(0, -(ext.length + 1));
+  
+  // Sanitize the filename:
+  // 1. Remove diacritics
+  // 2. Replace any non-alphanumeric characters (except hyphens and underscores) with underscores
+  // 3. Remove any consecutive underscores
+  const sanitizedName = nameWithoutExt
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9.-]/g, '_');
+    .replace(/[^a-zA-Z0-9-_]/g, '_')
+    .replace(/_+/g, '_');
   
+  // Add timestamp to ensure uniqueness and prevent collisions
   const timestamp = Date.now();
-  const ext = sanitized.split('.').pop();
-  const name = sanitized.split('.').slice(0, -1).join('.');
   
-  return `${name}_${timestamp}.${ext}`;
+  // Combine everything back together
+  return `${sanitizedName}_${timestamp}.${ext}`;
 };
 
 export const useMessageActions = (
@@ -26,6 +37,7 @@ export const useMessageActions = (
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
     const sanitizedFilename = sanitizeFilename(file.name);
+    console.log('[Chat] Uploading file with sanitized name:', sanitizedFilename);
     
     try {
       const { data, error: uploadError } = await supabase.storage
@@ -35,7 +47,10 @@ export const useMessageActions = (
           upsert: false
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[Chat] Upload error:', uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('chat-attachments')
@@ -43,7 +58,7 @@ export const useMessageActions = (
 
       return {
         url: publicUrl,
-        filename: file.name,
+        filename: file.name, // Keep original filename for display
         type: file.type,
         size: file.size
       };
