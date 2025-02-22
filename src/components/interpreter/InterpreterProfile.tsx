@@ -220,7 +220,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle>Informations professionnelles</CardTitle>
             <CardDescription>Consulter vos informations professionnelles.</CardDescription>
@@ -274,7 +274,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle>Langues</CardTitle>
             <CardDescription>Vos paires de langues.</CardDescription>
@@ -292,7 +292,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle>Photo de profil</CardTitle>
             <CardDescription>Gérer votre photo de profil.</CardDescription>
