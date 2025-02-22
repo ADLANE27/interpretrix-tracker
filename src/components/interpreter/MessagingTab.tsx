@@ -79,13 +79,7 @@ export const MessagingTab = () => {
           "hover:shadow-xl rounded-xl",
           "lg:col-span-2"
         )}>
-          <div className="flex justify-between items-center mb-4">
-            <InterpreterChat 
-              channelId={selectedChannelId}
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onClearFilters={handleClearFilters}
-            />
+          <div className="absolute top-4 right-4 z-10">
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -112,6 +106,12 @@ export const MessagingTab = () => {
               </div>
             </MentionsPopover>
           </div>
+          <InterpreterChat 
+            channelId={selectedChannelId}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+          />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
         <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
