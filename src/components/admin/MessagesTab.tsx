@@ -163,7 +163,7 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   const fetchMessages = async (channelId: string) => {
     try {
