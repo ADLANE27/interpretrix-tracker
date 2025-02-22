@@ -20,24 +20,29 @@ const sanitizeFilename = (filename: string): string => {
   // Get the file extension
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   
-  // Remove the extension from the name for processing
-  const nameWithoutExt = filename.slice(0, -(ext.length + 1));
-  
-  // Sanitize the filename:
-  // 1. Convert to base64 to handle all special characters
-  // 2. Remove any non-alphanumeric characters
-  // 3. Limit length to prevent issues with very long filenames
-  const sanitizedName = Buffer.from(nameWithoutExt)
-    .toString('base64')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .slice(0, 32);
-  
-  // Add timestamp and random string to ensure uniqueness
+  // Remove the extension and convert to ASCII-only characters
+  const nameWithoutExt = filename
+    .slice(0, -(ext.length + 1))
+    // Remove accents/diacritics
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Replace spaces and special chars with underscores
+    .replace(/[^a-zA-Z0-9]/g, '_')
+    // Remove consecutive underscores
+    .replace(/_+/g, '_')
+    // Remove leading/trailing underscores
+    .replace(/^_+|_+$/g, '')
+    // Ensure the name isn't empty
+    || 'file';
+
+  // Add timestamp for uniqueness
   const timestamp = Date.now();
-  const randomString = Math.random().toString(36).substring(2, 8);
+  // Add random string to prevent collisions
+  const randomString = Math.random().toString(36).substring(2, 6);
   
-  // Combine everything back together
-  return `${sanitizedName}_${timestamp}_${randomString}.${ext}`;
+  // Combine everything with underscores and ensure extension is clean
+  const cleanExt = ext.replace(/[^a-zA-Z0-9]/g, '');
+  return `${nameWithoutExt}_${timestamp}_${randomString}.${cleanExt}`;
 };
 
 const validateFile = (file: File): string | null => {
