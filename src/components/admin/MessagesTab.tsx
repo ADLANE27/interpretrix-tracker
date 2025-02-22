@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,8 +12,9 @@ import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2 } from "lucide-rea
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import Picker from '@emoji-mart/react";
 
 interface Message {
   id: string;
@@ -327,17 +327,14 @@ export const MessagesTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Create bucket if it doesn't exist
       await supabase.storage.createBucket('chat-attachments', {
         public: true,
-        fileSizeLimit: 52428800, // 50MB
+        fileSizeLimit: 52428800,
         allowedMimeTypes: ['application/pdf', 'image/*', 'text/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
       });
 
-      // Generate a unique filename to avoid collisions
       const fileName = `${Date.now()}-${file.name}`;
 
-      // Upload the file with owner metadata
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('chat-attachments')
@@ -352,7 +349,6 @@ export const MessagesTab = () => {
         throw uploadError;
       }
 
-      // Get the public URL
       const { data: publicUrlData } = supabase
         .storage
         .from('chat-attachments')
@@ -362,11 +358,20 @@ export const MessagesTab = () => {
         throw new Error("Failed to generate public URL");
       }
 
-      // Create the message with the file link
+      const messageContent = JSON.stringify({
+        type: 'attachment',
+        file: {
+          name: file.name,
+          url: publicUrlData.publicUrl,
+          size: file.size,
+          mimeType: file.type
+        }
+      });
+
       const { error: messageError } = await supabase
         .from("chat_messages")
-        .insert([{ 
-          content: `[File: ${file.name}](${publicUrlData.publicUrl})`,
+        .insert([{
+          content: messageContent,
           channel_id: selectedChannel.id,
           sender_id: user.id,
         }]);
@@ -410,6 +415,18 @@ export const MessagesTab = () => {
       }
     };
     fetchChannels();
+  };
+
+  const renderMessageContent = (content: string) => {
+    try {
+      const data = JSON.parse(content);
+      if (data.type === 'attachment' && data.file) {
+        return <MessageAttachment url={data.file.url} filename={data.file.name} />;
+      }
+    } catch (e) {
+      return <p className="ml-10">{content}</p>;
+    }
+    return <p className="ml-10">{content}</p>;
   };
 
   return (
@@ -489,7 +506,7 @@ export const MessagesTab = () => {
                       </Button>
                     )}
                   </div>
-                  <p className="ml-10">{message.content}</p>
+                  {renderMessageContent(message.content)}
                 </Card>
               ))}
               <div ref={messagesEndRef} />
