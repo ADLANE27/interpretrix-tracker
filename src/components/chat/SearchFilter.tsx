@@ -6,16 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Search, User, X, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Command, CommandInput, CommandList, CommandGroup, CommandItem } from "@/components/ui/command";
 
 interface ChatMember {
   id: string;
@@ -40,8 +30,6 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   onClearFilters,
   chatMembers = []
 }) => {
-  const [showFilters, setShowFilters] = React.useState(false);
-
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-2 px-2 py-1 bg-white border rounded-lg max-w-[200px]">
@@ -90,29 +78,29 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
 
             <div className="space-y-2">
               <h4 className="font-medium text-sm">Filtrer par utilisateur</h4>
-              <Command className="border rounded-md">
-                <CommandInput placeholder="Rechercher un utilisateur..." />
-                <CommandList>
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => onFiltersChange({ ...filters, userId: undefined })}
-                      className="cursor-pointer"
-                    >
-                      Tous les utilisateurs
-                    </CommandItem>
-                    {chatMembers.map((member) => (
-                      <CommandItem
-                        key={member.id}
-                        onSelect={() => onFiltersChange({ ...filters, userId: member.id })}
-                        className="cursor-pointer"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        {member.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+              <div className="space-y-1">
+                <div 
+                  className={`flex items-center px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 ${
+                    !filters.userId ? 'bg-gray-100' : ''
+                  }`}
+                  onClick={() => onFiltersChange({ ...filters, userId: undefined })}
+                >
+                  <User className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-sm">Tous les utilisateurs</span>
+                </div>
+                {chatMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className={`flex items-center px-2 py-1.5 rounded-md cursor-pointer hover:bg-gray-100 ${
+                      filters.userId === member.id ? 'bg-gray-100' : ''
+                    }`}
+                    onClick={() => onFiltersChange({ ...filters, userId: member.id })}
+                  >
+                    <User className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-sm">{member.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
