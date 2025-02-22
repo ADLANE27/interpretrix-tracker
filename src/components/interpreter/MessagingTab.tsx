@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell } from "lucide-react";
+import { Bell, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -62,6 +62,12 @@ export const MessagingTab = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className="p-3 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              <h3 className="font-semibold">Messages</h3>
+            </div>
+          </div>
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
           />

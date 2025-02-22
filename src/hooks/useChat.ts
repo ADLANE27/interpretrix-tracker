@@ -25,6 +25,15 @@ export const useChat = (channelId: string) => {
     try {
       console.log('[Chat] Fetching messages for channel:', channelId);
       
+      // First get the channel type to check if it's a direct message
+      const { data: channelData, error: channelError } = await supabase
+        .from('chat_channels')
+        .select('channel_type, created_by')
+        .eq('id', channelId)
+        .single();
+
+      if (channelError) throw channelError;
+
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
@@ -91,7 +100,8 @@ export const useChat = (channelId: string) => {
             },
             timestamp: new Date(message.created_at),
             reactions: parsedReactions,
-            attachments: parsedAttachments
+            attachments: parsedAttachments,
+            channelType: channelData.channel_type
           };
 
           return formattedMessage;

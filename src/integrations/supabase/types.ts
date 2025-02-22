@@ -50,6 +50,7 @@ export type Database = {
       }
       chat_channels: {
         Row: {
+          channel_type: string
           created_at: string
           created_by: string
           description: string | null
@@ -58,6 +59,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel_type?: string
           created_at?: string
           created_by: string
           description?: string | null
@@ -66,6 +68,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel_type?: string
           created_at?: string
           created_by?: string
           description?: string | null
@@ -727,6 +730,13 @@ export type Database = {
           name: string
           avatar_url: string
         }[]
+      }
+      get_or_create_direct_channel: {
+        Args: {
+          user1_id: string
+          user2_id: string
+        }
+        Returns: string
       }
       handle_mission_acceptance: {
         Args: {

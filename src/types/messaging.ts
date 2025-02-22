@@ -1,3 +1,4 @@
+
 export interface Message {
   id: string;
   content: string;
@@ -10,6 +11,7 @@ export interface Message {
   parent_message_id?: string | null;
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
+  channelType?: 'group' | 'direct';
 }
 
 export interface MessageData {
