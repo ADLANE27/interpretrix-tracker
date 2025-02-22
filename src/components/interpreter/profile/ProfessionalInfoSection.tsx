@@ -1,43 +1,28 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { type LanguagePair } from "@/types/languages";
-import { LanguageSelector } from "../LanguageSelector";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LanguagePair } from "@/types/languages";
 
-interface ProfessionalInfoSectionProps {
+export interface ProfessionalInfoSectionProps {
+  employmentStatus: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  onEmploymentStatusChange: (status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter") => void;
   languages: LanguagePair[];
   onLanguagesChange: (languages: LanguagePair[]) => void;
-  isEditing: boolean;
-  employmentStatus: string;
-  onEmploymentStatusChange: (status: string) => void;
   tarif5min: number;
-  onTarif5minChange: (tarif: number) => void;
+  onTarif5minChange: (value: number) => void;
   tarif15min: number;
-  onTarif15minChange: (tarif: number) => void;
+  onTarif15minChange: (value: number) => void;
   phoneInterpretationRate: number;
-  onPhoneInterpretationRateChange: (rate: number) => void;
+  onPhoneInterpretationRateChange: (value: number) => void;
   siretNumber: string;
-  onSiretNumberChange: (siret: string) => void;
+  onSiretNumberChange: (value: string) => void;
   vatNumber: string;
-  onVatNumberChange: (vat: string) => void;
+  onVatNumberChange: (value: string) => void;
+  isEditing: boolean;
 }
 
-export const ProfessionalInfoSection = ({
-  languages,
-  onLanguagesChange,
-  isEditing,
+export const ProfessionalInfoSection = ({ 
   employmentStatus,
   onEmploymentStatusChange,
+  languages,
+  onLanguagesChange,
   tarif5min,
   onTarif5minChange,
   tarif15min,
@@ -48,6 +33,7 @@ export const ProfessionalInfoSection = ({
   onSiretNumberChange,
   vatNumber,
   onVatNumberChange,
+  isEditing 
 }: ProfessionalInfoSectionProps) => {
   return (
     <Card>

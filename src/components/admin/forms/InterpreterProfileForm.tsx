@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
+import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
+import { LanguagePair } from "@/types/languages";
 
 interface Address {
   street: string;
@@ -53,7 +54,7 @@ export interface InterpreterFormData {
 interface InterpreterProfileFormProps {
   isEditing: boolean;
   onSubmit: (data: InterpreterFormData) => Promise<void>;
-  initialData?: Partial<InterpreterFormData> & { languages?: string[] };
+  initialData?: Partial<InterpreterFormData> & { languages?: LanguagePair[] };
   isSubmitting: boolean;
 }
 

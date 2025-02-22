@@ -95,7 +95,7 @@ export const InterpreterList = ({
         lang.toLowerCase().includes(searchTerm)
       )
     );
-  }) : [];
+  }) : interpreters;
 
   const handleEdit = (interpreter: InterpreterData) => {
     setSelectedInterpreter(interpreter);
