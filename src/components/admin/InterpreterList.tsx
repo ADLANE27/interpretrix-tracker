@@ -111,6 +111,14 @@ export const InterpreterList = ({
     }
   };
 
+  // Function to convert string array to LanguagePair array
+  const convertLanguagesToPairs = (languages: string[] = []): LanguagePair[] => {
+    return languages.map(lang => {
+      const [source, target] = lang.split('→').map(l => l.trim());
+      return { source: source || '', target: target || '' };
+    }).filter(pair => pair.source && pair.target);
+  };
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -253,8 +261,7 @@ export const InterpreterList = ({
                 isSubmitting={isSubmitting}
                 initialData={{
                   ...selectedInterpreter,
-                  // Convert languages format for the form
-                  languages: selectedInterpreter.languages || []
+                  languages: convertLanguagesToPairs(selectedInterpreter.languages)
                 }}
               />
             )}
