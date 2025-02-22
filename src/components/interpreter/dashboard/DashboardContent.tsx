@@ -47,8 +47,8 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto -mt-[1px]">
-      <div className="container mx-auto px-0 sm:px-4 py-0 sm:py-4 h-full">
+    <div className="flex-1 overflow-auto h-full">
+      <div className="container mx-auto p-0 sm:p-4 h-full">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -58,7 +58,7 @@ export const DashboardContent = ({
             transition={{ duration: 0.2 }}
             className="w-full h-full"
           >
-            <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:h-auto sm:rounded-xl rounded-none">
+            <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
               {renderActiveTab()}
             </Card>
           </motion.div>

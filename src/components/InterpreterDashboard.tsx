@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,15 +45,19 @@ export const InterpreterDashboard = () => {
   useEffect(() => {
     const handleResize = () => {
       setIsSidebarOpen(false);
+      
+      // Fix for mobile viewport height
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
 
     window.addEventListener('resize', handleResize);
-    
-    const vh = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    window.addEventListener('orientationchange', handleResize);
+    handleResize();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, []);
 
@@ -227,7 +232,7 @@ export const InterpreterDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -235,7 +240,7 @@ export const InterpreterDashboard = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen space-y-4 px-4">
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4">
         <p className="text-destructive text-center">{error}</p>
         <button 
           onClick={() => navigate("/interpreter/login")}
@@ -248,18 +253,20 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
+    <div className="flex flex-col md:flex-row min-h-screen w-full bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
+      {/* Overlay for mobile sidebar */}
       <div 
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 ${
-          isMobile && isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
+          isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsSidebarOpen(false)}
       />
       
+      {/* Sidebar */}
       <div 
-        className={`fixed left-0 top-0 h-[100vh] z-50 transition-transform duration-300 touch-manipulation ${
-          isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'relative translate-x-0'
-        }`}
+        className={`fixed md:relative w-[280px] z-50 transition-transform duration-300 h-[100vh] ${
+          isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
+        } md:translate-x-0`}
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
       >
         <Sidebar
@@ -272,8 +279,9 @@ export const InterpreterDashboard = () => {
         />
       </div>
       
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative touch-manipulation no-select">
-        <div className="mobile-safe-top" />
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-h-screen w-full overflow-hidden">
+        <div className="safe-area-top" />
         <DashboardHeader 
           profile={profile}
           onStatusChange={async (newStatus) => {
@@ -286,15 +294,17 @@ export const InterpreterDashboard = () => {
           isMobile={isMobile}
         />
 
-        <DashboardContent 
-          activeTab={activeTab}
-          profile={profile}
-          scheduledMissions={scheduledMissions}
-          onProfileUpdate={fetchProfile}
-          onProfilePictureUpload={handleProfilePictureUpload}
-          onProfilePictureDelete={handleProfilePictureDelete}
-        />
-        <div className="mobile-safe-bottom" />
+        <div className="flex-1 overflow-hidden">
+          <DashboardContent 
+            activeTab={activeTab}
+            profile={profile}
+            scheduledMissions={scheduledMissions}
+            onProfileUpdate={fetchProfile}
+            onProfilePictureUpload={handleProfilePictureUpload}
+            onProfilePictureDelete={handleProfilePictureDelete}
+          />
+        </div>
+        <div className="safe-area-bottom" />
       </main>
 
       <PasswordChangeDialog
