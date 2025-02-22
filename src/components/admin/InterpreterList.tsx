@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
+import { LanguagePair } from "@/components/interpreter/LanguageSelector";
 
 interface InterpreterData {
   id: string;
@@ -92,16 +94,7 @@ export const InterpreterList = ({
   });
 
   const handleEdit = (interpreter: InterpreterData) => {
-    // Convert string[] languages to LanguagePair[]
-    const formattedInterpreter = {
-      ...interpreter,
-      languages: interpreter.languages?.map((lang) => {
-        const [source, target] = lang.split('→').map(l => l.trim());
-        return { source, target };
-      }) || []
-    };
-    
-    setSelectedInterpreter(formattedInterpreter);
+    setSelectedInterpreter(interpreter);
     setIsEditDialogOpen(true);
   };
 
@@ -258,7 +251,11 @@ export const InterpreterList = ({
                 isEditing={true}
                 onSubmit={handleUpdateSubmit}
                 isSubmitting={isSubmitting}
-                initialData={selectedInterpreter}
+                initialData={{
+                  ...selectedInterpreter,
+                  // Convert languages format for the form
+                  languages: selectedInterpreter.languages || []
+                }}
               />
             )}
           </ScrollArea>
