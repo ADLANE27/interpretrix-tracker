@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
@@ -548,14 +549,19 @@ export const MessagesTab = () => {
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
-      <div className="flex-1 flex">
-        <div className={`${
-          isMobile ? (
-            showChannelList ? 'w-full' : 'hidden'
-          ) : 'w-64'
-        } border-r flex flex-col`}>
-          <div className="p-4 border-b">
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
+      <div className="flex h-full">
+        {/* Channel List */}
+        <div 
+          className={`${
+            isMobile 
+              ? showChannelList 
+                ? 'absolute inset-0 z-30 bg-background' 
+                : 'hidden'
+              : 'w-80'
+          } border-r flex flex-col`}
+        >
+          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
@@ -563,17 +569,17 @@ export const MessagesTab = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowDirectMessageDialog(true)}
-                  className="h-8 w-8 p-0"
+                  className="h-9 w-9 p-0"
                 >
-                  <UserPlus className="h-4 w-4" />
+                  <UserPlus className="h-5 w-5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowCreateDialog(true)}
-                  className="h-8 w-8 p-0"
+                  className="h-9 w-9 p-0"
                 >
-                  <PlusCircle className="h-4 w-4" />
+                  <PlusCircle className="h-5 w-5" />
                 </Button>
               </div>
             </div>
@@ -582,11 +588,11 @@ export const MessagesTab = () => {
               className="w-full"
             />
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {channels.map((channel) => (
               <div
                 key={channel.id}
-                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-accent ${
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
                   selectedChannel?.id === channel.id ? 'bg-accent' : ''
                 }`}
                 onClick={() => {
@@ -594,7 +600,7 @@ export const MessagesTab = () => {
                   if (isMobile) setShowChannelList(false);
                 }}
               >
-                <span className="truncate">{channel.display_name}</span>
+                <span className="truncate text-sm font-medium">{channel.display_name}</span>
                 {selectedChannel?.id === channel.id && (
                   <div className="flex items-center gap-1">
                     <Button
@@ -604,9 +610,9 @@ export const MessagesTab = () => {
                         e.stopPropagation();
                         setShowMemberManagement(true);
                       }}
-                      className="h-6 w-6 p-0"
+                      className="h-8 w-8 p-0"
                     >
-                      <Settings className="h-3 w-3" />
+                      <Settings className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -616,9 +622,9 @@ export const MessagesTab = () => {
                         setChannelToDelete(channel);
                         setShowDeleteDialog(true);
                       }}
-                      className="h-6 w-6 p-0 text-destructive"
+                      className="h-8 w-8 p-0 text-destructive"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
@@ -627,26 +633,29 @@ export const MessagesTab = () => {
           </div>
         </div>
 
-        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'w-full' : ''}`}>
+        {/* Chat Area */}
+        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <>
-              <div className="p-4 border-b flex items-center">
-                {isMobile && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowChannelList(true)}
-                    className="mr-2 h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                )}
-                <h2 className="text-lg font-semibold">{selectedChannel.display_name}</h2>
+              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="flex items-center gap-3">
+                  {isMobile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowChannelList(true)}
+                      className="h-9 w-9 p-0"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                  )}
+                  <h2 className="text-lg font-semibold flex-1">{selectedChannel.display_name}</h2>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <Card key={message.id} className="p-3 group">
+                  <Card key={message.id} className="p-4 group">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -658,9 +667,9 @@ export const MessagesTab = () => {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{message.sender?.name || 'Unknown User'}</p>
+                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(new Date(message.created_at), "PPpp", { locale: fr })}
+                            {format(new Date(message.created_at), "PPp", { locale: fr })}
                           </p>
                         </div>
                       </div>
@@ -708,7 +717,7 @@ export const MessagesTab = () => {
                             {messageThreads[message.id]
                               .filter(reply => reply.id !== message.id)
                               .map(reply => (
-                                <Card key={reply.id} className="p-3 bg-gray-50">
+                                <Card key={reply.id} className="p-3 bg-accent/50">
                                   <div className="flex items-center gap-2 mb-1">
                                     <Avatar className="h-6 w-6">
                                       {reply.sender?.avatarUrl && (
@@ -719,7 +728,7 @@ export const MessagesTab = () => {
                                       </AvatarFallback>
                                     </Avatar>
                                     <span className="text-sm font-medium">{reply.sender?.name}</span>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-muted-foreground">
                                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                                     </span>
                                   </div>
@@ -735,19 +744,34 @@ export const MessagesTab = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t p-4 bg-background">
+              <div className="border-t p-4 bg-background safe-area-bottom">
+                {replyTo && (
+                  <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
+                    <span className="text-sm text-muted-foreground">
+                      En réponse à : {replyTo.sender?.name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setReplyTo(null)}
+                      className="h-6 px-2 text-xs"
+                    >
+                      Annuler
+                    </Button>
+                  </div>
+                )}
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   sendMessage(e);
                 }}>
                   <div className="flex items-end gap-2">
-                    <div className="flex-1 min-h-[44px]">
+                    <div className="flex-1 relative">
                       <Input
                         ref={inputRef}
                         value={newMessage}
                         onChange={handleInput}
                         placeholder="Écrivez un message..."
-                        className="min-h-[44px]"
+                        className="pr-24"
                       />
                       {showMentions && (
                         <MentionSuggestions
@@ -756,60 +780,61 @@ export const MessagesTab = () => {
                           visible={showMentions}
                         />
                       )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10"
-                          >
-                            <Smile className="h-5 w-5" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" side="top" align="end">
-                          <Picker
-                            data={data}
-                            onEmojiSelect={(emoji: any) => {
-                              handleEmojiSelect(emoji);
-                            }}
-                            locale="fr"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                      >
-                        <Paperclip className="h-5 w-5" />
-                      </Button>
-                      <Button
-                        type="submit"
-                        size="icon"
-                        className="h-10 w-10"
-                        disabled={!newMessage.trim() || isUploading}
-                      >
-                        <Send className="h-5 w-5" />
-                      </Button>
+                      <div className="absolute right-2 bottom-1/2 translate-y-1/2 flex items-center gap-1">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <Smile className="h-5 w-5" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" side="top" align="end">
+                            <Picker
+                              data={data}
+                              onEmojiSelect={(emoji: any) => {
+                                handleEmojiSelect(emoji);
+                              }}
+                              locale="fr"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          multiple
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          type="submit"
+                          size="icon"
+                          className="h-8 w-8"
+                          disabled={!newMessage.trim() || isUploading}
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </form>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center">
               <p>Sélectionnez un canal pour commencer à discuter</p>
             </div>
           )}
