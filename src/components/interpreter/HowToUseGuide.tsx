@@ -33,7 +33,15 @@ export const HowToUseGuide = ({ open, onOpenChange }: HowToUseGuideProps) => {
                   <li>🟢 <span className="font-medium">Disponible</span> - Prêt à recevoir des missions</li>
                   <li>🟡 <span className="font-medium">En pause</span> - Pause temporaire</li>
                   <li>🔴 <span className="font-medium">Indisponible</span> - Pas de missions</li>
+                  <li>🔵 <span className="font-medium">En appel</span> - Vous êtes en train d'effectuer une mission d'interprétariat</li>
                 </ul>
+                <div className="mt-3 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                  <p className="font-medium text-sm text-gray-700 dark:text-gray-300">Important :</p>
+                  <ul className="list-disc ml-6 mt-2 text-sm space-y-1">
+                    <li>N'oubliez pas d'actualiser votre statut à la fin de chaque mission</li>
+                    <li>Mettez-vous en "Indisponible" à la fin de votre journée ou en cas d'absence autorisée par la hiérarchie</li>
+                  </ul>
+                </div>
               </div>
             </section>
 
