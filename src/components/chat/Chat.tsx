@@ -1,17 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useChat } from '@/hooks/useChat';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Paperclip, Send, Smile, Trash2 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
-import { MentionSuggestions } from './MentionSuggestions';
-import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { ChatFilters } from './ChatFilters';
+
+import React, { useState, useRef } from 'react';
+import { useChat } from "@/hooks/useChat";
+import { ChatInput } from "@/components/chat/ChatInput";
+import { MessageList } from "@/components/chat/MessageList";
+import { Message } from "@/types/messaging";
+import { SearchFilter } from "@/components/chat/SearchFilter";
+import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 
 interface ChatProps {
   channelId: string;
@@ -20,238 +14,24 @@ interface ChatProps {
     keyword?: string;
     date?: Date;
   };
-  onFiltersChange: (newFilters: typeof filters) => void;
+  onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
 }
 
 export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: ChatProps) => {
   const [message, setMessage] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionSearch, setMentionSearch] = useState('');
-  const [mentionSuggestions, setMentionSuggestions] = useState<Array<{
-    id: string;
-    name: string;
-    email: string;
-    role: 'admin' | 'interpreter';
-    type?: 'language';
-  }>>([]);
-  const [cursorPosition, setCursorPosition] = useState(0);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [replyTo, setReplyTo] = useState<{ id: string } | null>(null);
-  const [channelUsers, setChannelUsers] = useState<Array<{ id: string; name: string; }>>([]);
-  
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const { toast } = useToast();
-  const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
-  const [filteredMessages, setFilteredMessages] = useState(messages);
 
-  useEffect(() => {
-    const fetchChannelUsers = async () => {
-      try {
-        const { data: users, error } = await supabase
-          .rpc('get_channel_members', { channel_id: channelId });
-
-        if (error) throw error;
-
-        setChannelUsers(users.map(user => ({
-          id: user.user_id,
-          name: `${user.first_name} ${user.last_name}`
-        })));
-      } catch (error) {
-        console.error('Error fetching channel users:', error);
-      }
-    };
-
-    if (channelId) {
-      fetchChannelUsers();
-    }
-  }, [channelId]);
-
-  useEffect(() => {
-    if (channelId && currentUserId) {
-      markMentionsAsRead();
-    }
-  }, [channelId, currentUserId, markMentionsAsRead]);
-
-  useEffect(() => {
-    let filtered = [...messages];
-
-    if (filters.userId) {
-      filtered = filtered.filter(msg => msg.sender.id === filters.userId);
-    }
-
-    if (filters.keyword) {
-      const keyword = filters.keyword.toLowerCase();
-      filtered = filtered.filter(msg => 
-        msg.content.toLowerCase().includes(keyword) ||
-        msg.sender.name.toLowerCase().includes(keyword)
-      );
-    }
-
-    if (filters.date) {
-      filtered = filtered.filter(msg => {
-        const msgDate = new Date(msg.timestamp);
-        const filterDate = new Date(filters.date!);
-        return (
-          msgDate.getDate() === filterDate.getDate() &&
-          msgDate.getMonth() === filterDate.getMonth() &&
-          msgDate.getFullYear() === filterDate.getFullYear()
-        );
-      });
-    }
-
-    setFilteredMessages(filtered);
-  }, [messages, filters]);
-
-  const fetchMentionSuggestions = async (search: string) => {
-    try {
-      if (!channelId) {
-        console.warn('[Chat Debug] No channel ID provided');
-        setMentionSuggestions([]);
-        return;
-      }
-
-      // Fetch target languages for the channel
-      const { data: languages, error: languagesError } = await supabase
-        .rpc('get_channel_target_languages', { channel_id: channelId });
-
-      if (languagesError) {
-        console.error('[Chat Debug] Error fetching languages:', languagesError);
-      }
-
-      // Fetch channel members
-      const { data: members, error: membersError } = await supabase
-        .rpc('get_channel_members', { channel_id: channelId });
-
-      if (membersError) {
-        console.error('[Chat Debug] Error fetching members:', membersError);
-        setMentionSuggestions([]);
-        return;
-      }
-
-      const suggestions: Array<{
-        id: string;
-        name: string;
-        email: string;
-        role: 'admin' | 'interpreter';
-        type?: 'language';
-      }> = [];
-
-      // Add language suggestions
-      if (languages) {
-        const languageSuggestions = languages
-          .filter(lang => 
-            lang.target_language.toLowerCase().includes(search.toLowerCase())
-          )
-          .map(lang => ({
-            id: `lang_${lang.target_language}`,
-            name: lang.target_language,
-            email: '',
-            role: 'interpreter' as const,
-            type: 'language' as const
-          }));
-        suggestions.push(...languageSuggestions);
-      }
-
-      // Add member suggestions
-      if (Array.isArray(members)) {
-        const memberSuggestions = members
-          .filter(member => {
-            const fullName = `${member.first_name} ${member.last_name}`.toLowerCase();
-            return fullName.includes(search.toLowerCase()) || 
-                   member.email.toLowerCase().includes(search.toLowerCase());
-          })
-          .map(member => ({
-            id: member.user_id,
-            name: `${member.first_name} ${member.last_name}`,
-            email: member.email,
-            role: member.role as 'admin' | 'interpreter'
-          }));
-        suggestions.push(...memberSuggestions);
-      }
-
-      setMentionSuggestions(suggestions);
-    } catch (error) {
-      console.error('[Chat Debug] Error in fetchMentionSuggestions:', error);
-      setMentionSuggestions([]);
-    }
-  };
-
-  const handleMentionSelect = async (suggestion: any) => {
-    try {
-      const beforeMention = message.substring(0, message.lastIndexOf('@'));
-      const afterMention = message.substring(cursorPosition);
-      
-      if (suggestion.type === 'language') {
-        // Add the language mention directly
-        const mentionText = `@${suggestion.name}`;
-        setMessage(`${beforeMention}${mentionText} ${afterMention}`);
-        
-        // Get interpreters for this language in the background
-        const { data: interpreters, error } = await supabase
-          .rpc('get_channel_interpreters_by_language', {
-            p_channel_id: channelId,
-            p_target_language: suggestion.name
-          });
-
-        if (error) {
-          console.error('[Chat Debug] Error fetching interpreters:', error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de récupérer les interprètes pour cette langue",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Store interpreters to be notified when the message is sent
-        if (interpreters && interpreters.length > 0) {
-          const interpreterIds = interpreters.map(interpreter => interpreter.user_id);
-          console.log('[Chat Debug] Found interpreters for language:', interpreterIds);
-        }
-      } else {
-        // Regular user mention
-        setMessage(`${beforeMention}@${suggestion.name} ${afterMention}`);
-      }
-      
-      setShowMentions(false);
-      textareaRef.current?.focus();
-    } catch (error) {
-      console.error('[Chat Debug] Error in handleMentionSelect:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de traiter la mention",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newMessage = e.target.value;
-    setMessage(newMessage);
-    setCursorPosition(e.target.selectionStart);
-
-    const lastAtSymbol = newMessage.lastIndexOf('@', e.target.selectionStart);
-    if (lastAtSymbol !== -1 && lastAtSymbol === newMessage.lastIndexOf('@')) {
-      const searchTerm = newMessage.substring(lastAtSymbol + 1, e.target.selectionStart);
-      setMentionSearch(searchTerm);
-      setShowMentions(true);
-      fetchMentionSuggestions(searchTerm);
-    } else {
-      setShowMentions(false);
-    }
-  };
-
-  const handleFiltersChange = (newFilters: typeof filters) => {
-    onFiltersChange(newFilters);
-  };
-
-  const handleClearFilters = () => {
-    onClearFilters();
-  };
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    deleteMessage,
+    currentUserId,
+    reactToMessage,
+  } = useChat(channelId);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -277,147 +57,62 @@ export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: Ch
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      await deleteMessage(messageId);
-      toast({
-        title: "Succès",
-        description: "Message supprimé",
-      });
-    } catch (error) {
-      console.error('Error deleting message:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le message",
-        variant: "destructive",
-      });
-    }
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => {
+      const newAttachments = [...prev];
+      newAttachments.splice(index, 1);
+      return newAttachments;
+    });
   };
 
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage(prev => prev + emoji.native);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const filteredMessages = messages.filter(msg => {
+    if (filters.userId && msg.sender.id !== filters.userId) return false;
+    if (filters.keyword && !msg.content.toLowerCase().includes(filters.keyword.toLowerCase())) return false;
+    if (filters.date) {
+      const messageDate = new Date(msg.timestamp).toDateString();
+      const filterDate = filters.date.toDateString();
+      return messageDate === filterDate;
     }
-  };
+    return true;
+  });
 
   return (
     <div className="flex flex-col h-full">
-      <ChatFilters
-        onFiltersChange={handleFiltersChange}
-        users={channelUsers}
-        onClearFilters={handleClearFilters}
-      />
-      <ScrollArea 
-        className="flex-1 px-6 py-4 overflow-y-auto chat-messages-container"
-        onScroll={onScroll}
-      >
-        <div className="space-y-6">
-          {filteredMessages.map(message => (
-            <div 
-              key={message.id} 
-              id={`message-${message.id}`}
-              className="group transition-all duration-300 ease-in-out hover:bg-gray-50/50 rounded-lg p-3"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-blue-500">
-                      {message.sender.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {format(message.timestamp, 'dd/MM/yyyy HH:mm')}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-gray-700 leading-relaxed">
-                    {message.content}
-                  </div>
-                </div>
-                {currentUserId === message.sender.id && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteMessage(message.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-all duration-300"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-400 hover:text-red-500 transition-colors" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-
-      <div className="mt-auto border-t border-gray-100 p-6 bg-white/80 backdrop-blur-sm">
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={handleMessageChange}
-            onKeyPress={handleKeyPress}
-            placeholder="Écrivez votre message..."
-            className="min-h-[80px] bg-white/70 backdrop-blur-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
-          />
-
-          <MentionSuggestions
-            suggestions={mentionSuggestions}
-            onSelect={handleMentionSelect}
-            visible={showMentions}
-          />
-
-          <div className="absolute bottom-3 right-3 flex items-center gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="hover:bg-gray-100/80 transition-colors duration-200"
-            >
-              <Paperclip className="h-4 w-4 text-gray-500" />
-            </Button>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="hover:bg-gray-100/80 transition-colors duration-200"
-                >
-                  <Smile className="h-4 w-4 text-gray-500" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="end">
-                <Picker
-                  data={data}
-                  onEmojiSelect={handleEmojiSelect}
-                  theme="light"
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Button 
-              onClick={handleSendMessage}
-              disabled={isUploading || (!message.trim() && !fileInputRef.current?.files?.length)}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Envoyer
-            </Button>
-          </div>
+      <div className="border-b p-4">
+        <div className="flex items-center justify-between">
+          <SearchFilter filters={filters} onFiltersChange={onFiltersChange} onClearFilters={onClearFilters} />
+          <ChannelMembersPopover channelId={channelId} />
         </div>
       </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <p>Loading messages...</p>
+          </div>
+        ) : (
+          <MessageList
+            messages={filteredMessages}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReactToMessage={reactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+          />
+        )}
+      </div>
+
+      <ChatInput
+        message={message}
+        setMessage={setMessage}
+        onSendMessage={handleSendMessage}
+        handleFileChange={handleFileChange}
+        attachments={attachments}
+        handleRemoveAttachment={handleRemoveAttachment}
+        inputRef={inputRef}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
+      />
     </div>
   );
 };

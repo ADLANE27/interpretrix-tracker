@@ -1,10 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
 
 const sanitizeFilename = (filename: string): string => {
-  // Remove special characters and replace spaces with underscores
   const sanitized = filename
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -62,17 +62,20 @@ export const useMessageActions = (
     if (!content.trim() && files.length === 0) throw new Error("Message cannot be empty");
     
     try {
-      // Upload all attachments first
       const uploadedAttachments = await Promise.all(
         files.map(file => uploadAttachment(file))
       );
+
+      const attachmentsForDb = uploadedAttachments.map(att => ({
+        ...att
+      })) as unknown as Json[];
 
       const newMessage = {
         channel_id: channelId,
         sender_id: currentUserId,
         content: content.trim(),
         parent_message_id: parentMessageId,
-        attachments: uploadedAttachments as Json[],
+        attachments: attachmentsForDb,
         reactions: {} as Json
       };
 
