@@ -1,11 +1,13 @@
 
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, Headset } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { useState } from "react";
+import { HowToUseGuide } from "./HowToUseGuide";
 
 interface SidebarProps {
   activeTab: string;
@@ -17,6 +19,7 @@ interface SidebarProps {
 export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl }: SidebarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -41,6 +44,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "profile", label: "Profil", icon: Headset },
     { id: "calendar", label: "Calendrier", icon: Calendar },
+    { id: "guide", label: "Guide", icon: BookOpen, onClick: () => setIsGuideOpen(true) },
   ];
 
   const getStatusColor = () => {
@@ -100,7 +104,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 "transition-all duration-200 font-medium",
                 activeTab === tab.id && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               )}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -108,6 +112,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
           );
         })}
       </nav>
+
+      <HowToUseGuide open={isGuideOpen} onOpenChange={setIsGuideOpen} />
     </div>
   );
 };
