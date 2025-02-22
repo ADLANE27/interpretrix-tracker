@@ -2,6 +2,7 @@
 import React from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
+import { Trash2 } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
@@ -30,11 +31,20 @@ export const MessageList: React.FC<MessageListProps> = ({
           }`}
         >
           <div className="max-w-[70%]">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2 group">
               {message.sender.id !== currentUserId && (
                 <div className="font-medium text-sm">{message.sender.name}:</div>
               )}
               <div className="text-sm">{message.content}</div>
+              {message.sender.id === currentUserId && (
+                <button
+                  onClick={() => onDeleteMessage(message.id)}
+                  className="p-1 rounded-md hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete message"
+                >
+                  <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                </button>
+              )}
             </div>
             {message.attachments && message.attachments.map((attachment, index) => (
               <MessageAttachment

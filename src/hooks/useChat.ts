@@ -6,7 +6,6 @@ import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
 
-// Type guard to validate channel type
 function isValidChannelType(type: string): type is 'group' | 'direct' {
   return type === 'group' || type === 'direct';
 }
@@ -39,7 +38,6 @@ export const useChat = (channelId: string) => {
 
       if (channelError) throw channelError;
 
-      // Validate channel type
       if (!channelData?.channel_type || !isValidChannelType(channelData.channel_type)) {
         throw new Error('Invalid channel type');
       }
