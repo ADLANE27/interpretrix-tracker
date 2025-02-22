@@ -79,7 +79,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   return (
     <motion.div 
-      className="flex flex-wrap items-center gap-2 mx-auto max-w-full overflow-x-auto hide-scrollbar"
+      className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -87,19 +87,21 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       {(Object.keys(statusConfig) as Status[]).map((statusKey) => (
         <motion.div
           key={statusKey}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="shrink-0"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full sm:w-auto"
         >
           <Button
             variant={status === statusKey ? "default" : "outline"}
-            size="sm"
+            size="default"
             onClick={() => handleStatusChange(statusKey)}
             disabled={isLoading}
             className={`
-              transition-all duration-200 whitespace-nowrap min-w-[90px]
+              w-full sm:w-auto transition-all duration-200 whitespace-nowrap 
+              min-w-[120px] h-11 sm:h-10 text-sm font-medium
               ${status === statusKey ? statusConfig[statusKey].color : ''}
               ${status === statusKey ? 'shadow-lg' : ''}
+              ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
             `}
           >
             {statusConfig[statusKey].label}
