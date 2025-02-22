@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -47,7 +48,12 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
     let filtered = messages;
 
     if (filters.userId) {
-      filtered = filtered.filter(msg => msg.sender.id === filters.userId);
+      filtered = filtered.filter(msg => {
+        if (filters.userId === 'current') {
+          return msg.sender.id === currentUserId;
+        }
+        return msg.sender.id === filters.userId;
+      });
     }
 
     if (filters.keyword) {
@@ -66,7 +72,7 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
     }
 
     return filtered;
-  }, [messages, filters]);
+  }, [messages, filters, currentUserId]);
 
   useEffect(() => {
     if (channelId) {
@@ -105,6 +111,29 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
       return newAttachments;
     });
   };
+
+  // Effect to update chatMembers based on messages
+  useEffect(() => {
+    const uniqueMembers = new Map();
+    
+    // Add current user first
+    if (currentUserId) {
+      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
+    }
+
+    // Add other members from messages
+    messages.forEach(msg => {
+      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
+        uniqueMembers.set(msg.sender.id, {
+          id: msg.sender.id,
+          name: msg.sender.name,
+          avatarUrl: msg.sender.avatarUrl
+        });
+      }
+    });
+
+    setChatMembers(Array.from(uniqueMembers.values()));
+  }, [messages, currentUserId]);
 
   return (
     <div className="flex flex-col h-full">
