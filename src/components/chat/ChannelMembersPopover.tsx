@@ -11,7 +11,7 @@ export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
 }) => {
   return (
     <Button variant="ghost" size="sm">
-      Members
+      Participants
     </Button>
   );
 };

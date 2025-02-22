@@ -107,28 +107,27 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
     <div className="flex flex-col h-full">
       <div className="border-b pb-3 pt-2 px-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Conversation</h2>
+          <div className="flex items-center justify-between mt-2 w-full">
+            <SearchFilter filters={filters} onFiltersChange={onFiltersChange} onClearFilters={onClearFilters} />
+            <ChannelMembersPopover channelId={channelId} />
+          </div>
           {isMobile && (
             <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
               <X className="h-4 w-4" />
             </Button>
           )}
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <SearchFilter filters={filters} onFiltersChange={onFiltersChange} onClearFilters={onClearFilters} />
-          <ChannelMembersPopover channelId={channelId} />
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 relative">
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Loading messages...</p>
+            <p className="text-lg font-semibold">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">
-              Subscribing to {subscriptionStatus.messages ? 'mentions' : 'messages'}...
+              Connexion en cours...
             </p>
           </div>
         ) : null}

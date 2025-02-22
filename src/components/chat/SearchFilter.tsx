@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Search, X } from "lucide-react";
+import { CalendarIcon, Search, User, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -70,6 +70,23 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
           />
         </PopoverContent>
       </Popover>
+
+      <Button
+        variant={filters.userId ? "default" : "outline"}
+        size="sm"
+        className={`${filters.userId ? 'bg-purple-100 text-purple-900 hover:bg-purple-200' : ''}`}
+        onClick={() => {
+          if (filters.userId) {
+            onFiltersChange({ ...filters, userId: undefined });
+          } else {
+            // Set to current user's ID to filter their messages
+            onFiltersChange({ ...filters, userId: 'current' });
+          }
+        }}
+      >
+        <User className="mr-2 h-4 w-4" />
+        {filters.userId ? "Mes messages" : "Messages de tous"}
+      </Button>
 
       {(filters.keyword || filters.date || filters.userId) && (
         <Button
