@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -180,7 +179,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
 
   return (
     <div className="flex flex-col md:grid md:grid-cols-2 gap-4 p-4">
-      <Card className="p-4 order-2 md:order-1">
+      <Card className="p-4 order-2 md:order-1 border-0">
         <Calendar
           mode="single"
           selected={selectedDate}
@@ -195,7 +194,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
               backgroundColor: "rgb(59 130 246 / 0.1)",
             },
           }}
-          className="w-full max-w-full rounded-md border"
+          className="w-full max-w-full rounded-md"
           classNames={{
             months: "w-full flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
             month: "w-full space-y-4",
