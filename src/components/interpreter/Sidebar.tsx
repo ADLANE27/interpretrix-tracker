@@ -60,7 +60,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
 
   return (
     <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
-      <div className="flex flex-col items-center justify-center py-6 space-y-2">
+      <div className="flex flex-col items-center justify-center py-6 space-y-4">
         <div className="relative">
           <div className={cn(
             "w-3 h-3 rounded-full absolute -right-1 -top-1",
@@ -78,6 +78,14 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             </AvatarFallback>
           </Avatar>
         </div>
+        <Button
+          variant="ghost"
+          className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 w-full"
+          onClick={handleLogout}
+        >
+          <LogOut className="w-4 h-4" />
+          Déconnexion
+        </Button>
       </div>
 
       <nav className="flex-1 space-y-2">
@@ -100,15 +108,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
           );
         })}
       </nav>
-
-      <Button
-        variant="ghost"
-        className="mt-auto gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-        onClick={handleLogout}
-      >
-        <LogOut className="w-4 h-4" />
-        Déconnexion
-      </Button>
     </div>
   );
 };
