@@ -23,4 +23,9 @@ export interface Profile {
   vat_number: string | null;
   profile_picture_url: string | null;
   password_changed: boolean;
+  // Ajout des nouvelles propriétés
+  tarif_5min: number;
+  tarif_15min: number;
+  specializations: string[];
+  landline_phone: string | null;
 }
