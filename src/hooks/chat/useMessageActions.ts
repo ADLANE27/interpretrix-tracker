@@ -4,28 +4,47 @@ import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
 
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
+const ALLOWED_FILE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+]);
+
 const sanitizeFilename = (filename: string): string => {
   // Get the file extension
-  const ext = filename.split('.').pop() || '';
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
   
   // Remove the extension from the name for processing
   const nameWithoutExt = filename.slice(0, -(ext.length + 1));
   
   // Sanitize the filename:
-  // 1. Remove diacritics
-  // 2. Replace any non-alphanumeric characters (except hyphens and underscores) with underscores
-  // 3. Remove any consecutive underscores
-  const sanitizedName = nameWithoutExt
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9-_]/g, '_')
-    .replace(/_+/g, '_');
+  // 1. Convert to base64 to handle all special characters
+  // 2. Remove any non-alphanumeric characters
+  // 3. Limit length to prevent issues with very long filenames
+  const sanitizedName = Buffer.from(nameWithoutExt)
+    .toString('base64')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, 32);
   
-  // Add timestamp to ensure uniqueness and prevent collisions
+  // Add timestamp and random string to ensure uniqueness
   const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 8);
   
   // Combine everything back together
-  return `${sanitizedName}_${timestamp}.${ext}`;
+  return `${sanitizedName}_${timestamp}_${randomString}.${ext}`;
+};
+
+const validateFile = (file: File): string | null => {
+  if (!file) return 'No file provided';
+  if (file.size > MAX_FILE_SIZE) return 'File is too large (max 100MB)';
+  if (!ALLOWED_FILE_TYPES.has(file.type)) return 'File type not supported';
+  return null;
 };
 
 export const useMessageActions = (
@@ -36,36 +55,55 @@ export const useMessageActions = (
   const { toast } = useToast();
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
+    // Validate file before upload
+    const validationError = validateFile(file);
+    if (validationError) {
+      console.error('[Chat] File validation error:', validationError);
+      throw new Error(validationError);
+    }
+
     const sanitizedFilename = sanitizeFilename(file.name);
     console.log('[Chat] Uploading file with sanitized name:', sanitizedFilename);
     
-    try {
-      const { data, error: uploadError } = await supabase.storage
-        .from('chat-attachments')
-        .upload(sanitizedFilename, file, {
-          cacheControl: '3600',
-          upsert: false
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const { data, error: uploadError } = await supabase.storage
+          .from('chat-attachments')
+          .upload(sanitizedFilename, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('[Chat] Upload error:', uploadError);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-attachments')
+          .getPublicUrl(sanitizedFilename);
+
+        console.log('[Chat] Upload successful:', {
+          originalName: file.name,
+          sanitizedName: sanitizedFilename,
+          publicUrl
         });
 
-      if (uploadError) {
-        console.error('[Chat] Upload error:', uploadError);
-        throw uploadError;
+        return {
+          url: publicUrl,
+          filename: file.name, // Keep original filename for display
+          type: file.type,
+          size: file.size
+        };
+      } catch (error) {
+        console.error(`[Chat] Upload attempt ${4 - retries} failed:`, error);
+        retries--;
+        if (retries === 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('chat-attachments')
-        .getPublicUrl(sanitizedFilename);
-
-      return {
-        url: publicUrl,
-        filename: file.name, // Keep original filename for display
-        type: file.type,
-        size: file.size
-      };
-    } catch (error) {
-      console.error('[Chat] Error uploading file:', error);
-      throw error;
     }
+    throw new Error('Upload failed after all retries');
   };
 
   const sendMessage = async (
@@ -77,9 +115,11 @@ export const useMessageActions = (
     if (!content.trim() && files.length === 0) throw new Error("Message cannot be empty");
     
     try {
+      console.log('[Chat] Starting file uploads:', files.length);
       const uploadedAttachments = await Promise.all(
         files.map(file => uploadAttachment(file))
       );
+      console.log('[Chat] All files uploaded successfully');
 
       const attachmentsForDb = uploadedAttachments.map(att => ({
         ...att
