@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -43,6 +42,10 @@ interface ProfileProps {
     siret_number: string | null;
     vat_number: string | null;
     profile_picture_url: string | null;
+    tarif_5min: number;
+    tarif_15min: number;
+    specializations: string[];
+    landline_phone: string | null;
   };
   onProfileUpdate: () => Promise<void>;
   onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
@@ -153,135 +156,117 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
       <Card>
         <CardHeader>
           <CardTitle>Informations personnelles</CardTitle>
-          <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
+          <CardDescription>Consulter vos informations personnelles.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="firstName">Prénom</Label>
-              <Input
-                type="text"
-                id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
+              <Label>Prénom</Label>
+              <Input type="text" value={profile.first_name} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="lastName">Nom</Label>
-              <Input
-                type="text"
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
+              <Label>Nom</Label>
+              <Input type="text" value={profile.last_name} readOnly />
             </div>
           </div>
+
           <div className="grid gap-2">
-            <Label htmlFor="phoneNumber">Numéro de téléphone</Label>
-            <Input
-              type="tel"
-              id="phoneNumber"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-            />
+            <Label>Email</Label>
+            <Input type="email" value={profile.email} readOnly />
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label>Téléphone mobile</Label>
+              <Input type="tel" value={profile.phone_number || ''} readOnly />
+            </div>
+            <div className="grid gap-2">
+              <Label>Téléphone fixe</Label>
+              <Input type="tel" value={profile.landline_phone || ''} readOnly />
+            </div>
+          </div>
+
           <Separator />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="street">Rue</Label>
-              <Input
-                type="text"
-                id="street"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-              />
+              <Label>Rue</Label>
+              <Input type="text" value={profile.address?.street || ''} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="postalCode">Code postal</Label>
-              <Input
-                type="text"
-                id="postalCode"
-                value={postalCode}
-                onChange={(e) => setPostalCode(e.target.value)}
-              />
+              <Label>Code postal</Label>
+              <Input type="text" value={profile.address?.postal_code || ''} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="city">Ville</Label>
-              <Input
-                type="text"
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
+              <Label>Ville</Label>
+              <Input type="text" value={profile.address?.city || ''} readOnly />
             </div>
           </div>
+
           <Separator />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="birthCountry">Pays de naissance</Label>
-              <Select 
-                value={birthCountry}
-                onValueChange={setBirthCountry}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un pays" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.name}>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Pays de naissance</Label>
+              <Input type="text" value={profile.birth_country || ''} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="nationality">Nationalité</Label>
-              <Select 
-                value={nationality}
-                onValueChange={setNationality}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une nationalité" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.code} value={country.name}>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Nationalité</Label>
+              <Input type="text" value={profile.nationality || ''} readOnly />
             </div>
           </div>
-          <Separator />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Informations professionnelles</CardTitle>
+          <CardDescription>Consulter vos informations professionnelles.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="phoneInterpretationRate">Tarif d'interprétation téléphonique (€/min)</Label>
-            <Input
-              type="number"
-              id="phoneInterpretationRate"
-              value={phoneInterpretationRate !== null ? phoneInterpretationRate.toString() : ""}
-              onChange={(e) => setPhoneInterpretationRate(e.target.value === "" ? null : parseFloat(e.target.value))}
+            <Label>Statut professionnel</Label>
+            <Input 
+              type="text" 
+              value={
+                profile.employment_status === 'salaried_aft' ? 'Salarié AFTrad' :
+                profile.employment_status === 'salaried_aftcom' ? 'Salarié AFTCOM' :
+                profile.employment_status === 'salaried_planet' ? 'Salarié PLANET' :
+                profile.employment_status === 'permanent_interpreter' ? 'Interprète permanent' :
+                'Auto-entrepreneur'
+              } 
+              readOnly 
             />
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="siretNumber">Numéro SIRET</Label>
-              <Input
-                type="text"
-                id="siretNumber"
-                value={siretNumber}
-                onChange={(e) => setSiretNumber(e.target.value)}
-              />
+              <Label>Tarif (15 minutes)</Label>
+              <Input type="text" value={`${profile.tarif_15min} €`} readOnly />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="vatNumber">Numéro de TVA</Label>
-              <Input
-                type="text"
-                id="vatNumber"
-                value={vatNumber}
-                onChange={(e) => setVatNumber(e.target.value)}
-              />
+              <Label>Tarif (5 minutes)</Label>
+              <Input type="text" value={`${profile.tarif_5min} €`} readOnly />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Tarif d'interprétation téléphonique (€/min)</Label>
+            <Input
+              type="text"
+              value={profile.phone_interpretation_rate ? `${profile.phone_interpretation_rate} €` : ''}
+              readOnly
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label>Numéro SIRET</Label>
+              <Input type="text" value={profile.siret_number || ''} readOnly />
+            </div>
+            <div className="grid gap-2">
+              <Label>Numéro de TVA</Label>
+              <Input type="text" value={profile.vat_number || ''} readOnly />
             </div>
           </div>
         </CardContent>
@@ -290,85 +275,48 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
       <Card>
         <CardHeader>
           <CardTitle>Langues</CardTitle>
-          <CardDescription>Ajouter vos paires de langues.</CardDescription>
+          <CardDescription>Vos paires de langues.</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          {selectedLanguages.map((language, index) => (
-            <div key={index} className="flex items-center space-x-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
-                <div className="grid gap-2">
-                  <Label htmlFor={`sourceLanguage-${index}`}>Langue source</Label>
-                  <Select 
-                    value={language.source}
-                    onValueChange={(value) => handleLanguageChange(index, "source", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner une langue" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(LANGUAGES).map(([code, name]) => (
-                        <SelectItem key={code} value={code}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor={`targetLanguage-${index}`}>Langue cible</Label>
-                  <Select 
-                    value={language.target}
-                    onValueChange={(value) => handleLanguageChange(index, "target", value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sélectionner une langue" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(LANGUAGES).map(([code, name]) => (
-                        <SelectItem key={code} value={code}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <CardContent>
+          <div className="space-y-2">
+            {profile.languages.map((lang, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Badge variant="secondary">{lang.source}</Badge>
+                <span>→</span>
+                <Badge variant="secondary">{lang.target}</Badge>
               </div>
-              <Button variant="outline" size="icon" onClick={() => handleLanguageRemove(index)} disabled={isDeleting}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button variant="secondary" onClick={handleLanguageAdd}>Ajouter une langue</Button>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Photo de profil</CardTitle>
-          <CardDescription>Mettez à jour votre photo de profil.</CardDescription>
+          <CardDescription>Gérer votre photo de profil.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="flex items-center space-x-4">
             <Avatar>
               {profile.profile_picture_url ? (
-                <AvatarImage src={profile.profile_picture_url} alt="Profile picture" />
+                <AvatarImage src={profile.profile_picture_url} alt="Photo de profil" />
               ) : (
                 <AvatarFallback>{profile.first_name[0]}{profile.last_name[0]}</AvatarFallback>
               )}
             </Avatar>
             <div className="space-y-2">
-              <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="secondary" onClick={() => document.getElementById('profile-picture-input')?.click()}>
                 Télécharger une nouvelle photo
               </Button>
               <Input
+                id="profile-picture-input"
                 type="file"
                 accept="image/*"
                 className="hidden"
-                ref={fileInputRef}
                 onChange={onProfilePictureUpload}
               />
               {profile.profile_picture_url && (
-                <Button variant="destructive" onClick={onProfilePictureDelete} disabled={isDeleting}>
+                <Button variant="destructive" onClick={onProfilePictureDelete}>
                   Supprimer la photo
                 </Button>
               )}
@@ -376,10 +324,6 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           </div>
         </CardContent>
       </Card>
-
-      <Button onClick={handleProfileUpdate} disabled={isSaving}>
-        {isSaving ? "Enregistrement..." : "Mettre à jour le profil"}
-      </Button>
     </div>
   );
 };
