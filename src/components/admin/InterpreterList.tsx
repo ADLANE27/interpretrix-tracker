@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -107,11 +106,11 @@ export const InterpreterList = ({
     
     try {
       setIsSubmitting(true);
-      const dataToSubmit = {
+      const submissionData: InterpreterFormData = {
         ...data,
-        languages: convertLanguagePairsToStrings(data.languages),
+        languages: data.languages
       };
-      await onUpdateInterpreter(selectedInterpreter.id, dataToSubmit);
+      await onUpdateInterpreter(selectedInterpreter.id, submissionData);
       setIsEditDialogOpen(false);
       setSelectedInterpreter(null);
     } finally {

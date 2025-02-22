@@ -67,14 +67,7 @@ export const InterpreterProfileForm = ({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   
-  const initialLanguages: LanguagePair[] = initialData?.languages?.map((lang: string) => {
-    const parts = lang.split('→');
-    return {
-      source: parts[0]?.trim() || '',
-      target: parts[1]?.trim() || ''
-    };
-  }).filter(lang => lang.source && lang.target) || [];
-
+  const initialLanguages = initialData?.languages || [];
   const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
 
   const defaultValues: InterpreterFormData = {
