@@ -2,13 +2,15 @@
 import React from 'react';
 import { FileText, FileImage, File, Download, ExternalLink } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { TRANSLATIONS } from "@/constants/languages";
 
 interface AttachmentProps {
   url: string;
   filename: string;
+  locale?: keyof typeof TRANSLATIONS.download; // Making locale optional with default
 }
 
-export const MessageAttachment = ({ url, filename }: AttachmentProps) => {
+export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentProps) => {
   const fileType = filename.split('.').pop()?.toLowerCase() || '';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType);
   const isPdf = fileType === 'pdf';
@@ -38,7 +40,7 @@ export const MessageAttachment = ({ url, filename }: AttachmentProps) => {
               className="text-xs"
             >
               <Download className="h-4 w-4 mr-1" />
-              Download
+              {TRANSLATIONS.download[locale]}
             </Button>
           </div>
         </div>
@@ -61,7 +63,7 @@ export const MessageAttachment = ({ url, filename }: AttachmentProps) => {
                 className="text-xs"
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
-                Preview
+                {TRANSLATIONS.preview[locale]}
               </Button>
               <Button
                 variant="ghost"
@@ -70,7 +72,7 @@ export const MessageAttachment = ({ url, filename }: AttachmentProps) => {
                 className="text-xs"
               >
                 <Download className="h-4 w-4 mr-1" />
-                Download
+                {TRANSLATIONS.download[locale]}
               </Button>
             </div>
           </div>
@@ -92,7 +94,7 @@ export const MessageAttachment = ({ url, filename }: AttachmentProps) => {
             className="text-xs"
           >
             <Download className="h-4 w-4 mr-1" />
-            Download
+            {TRANSLATIONS.download[locale]}
           </Button>
         </div>
       </div>
