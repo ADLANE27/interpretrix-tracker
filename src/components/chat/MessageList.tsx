@@ -47,12 +47,22 @@ export const MessageList: React.FC<MessageListProps> = ({
               )}
             </div>
             {message.attachments && message.attachments.map((attachment, index) => (
-              <MessageAttachment
-                key={index}
-                url={attachment.url}
-                filename={attachment.filename}
-                locale="fr"
-              />
+              <div key={index} className="mt-2 relative group">
+                <MessageAttachment
+                  url={attachment.url}
+                  filename={attachment.filename}
+                  locale="fr"
+                />
+                {message.sender.id === currentUserId && (
+                  <button
+                    onClick={() => onDeleteMessage(message.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    aria-label="Delete attachment"
+                  >
+                    <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
