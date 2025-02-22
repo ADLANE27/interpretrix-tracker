@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,6 +82,10 @@ export const MessagesTab = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const mentionStartRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -617,7 +620,7 @@ export const MessagesTab = () => {
                     ref={inputRef}
                     value={newMessage}
                     onChange={handleInput}
-                    placeholder={`Message #${selectedChannel.name}`}
+                    placeholder={`Message ${selectedChannel.display_name}`}
                     className="flex-1 border-0"
                   />
                   <div className="flex items-center gap-1 px-2">
