@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -306,6 +305,61 @@ export const UserManagement = () => {
     }
   };
 
+  const handleUpdateInterpreter = async (userId: string, formData: InterpreterFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
+
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone_number: formData.phone_number,
+          languages: languageStrings,
+          employment_status: formData.employment_status,
+          address: addressJson,
+          birth_country: formData.birth_country,
+          nationality: formData.nationality,
+          phone_interpretation_rate: formData.phone_interpretation_rate,
+          siret_number: formData.siret_number,
+          vat_number: formData.vat_number,
+          tarif_5min: formData.tarif_5min,
+          tarif_15min: formData.tarif_15min,
+          specializations: formData.specializations || [],
+          landline_phone: formData.landline_phone
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil de l'interprète a été mis à jour avec succès",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error updating interpreter:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -370,6 +424,7 @@ export const UserManagement = () => {
           setSelectedUserId(userId);
           setIsResetPasswordOpen(true);
         }}
+        onUpdateInterpreter={handleUpdateInterpreter}
       />
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
