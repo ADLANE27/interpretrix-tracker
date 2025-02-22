@@ -80,8 +80,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) =>
               variant={activeTab === tab.id ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start gap-2",
-                "transition-all duration-200",
-                activeTab === tab.id && "bg-primary/10 dark:bg-primary/20"
+                "transition-all duration-200 font-medium",
+                activeTab === tab.id && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               )}
               onClick={() => onTabChange(tab.id)}
             >
