@@ -440,7 +440,7 @@ export const MessagesTab = () => {
           <>
             <div className="flex-1 overflow-y-auto mb-4 space-y-4">
               {messages.map((message) => (
-                <Card key={message.id} className="p-4">
+                <Card key={message.id} className="p-4 group">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
