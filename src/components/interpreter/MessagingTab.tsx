@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell } from "lucide-react";
+import { Bell, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -61,9 +61,16 @@ export const MessagingTab = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
-        <Card className="p-3 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+        <Card className={cn(
+          "p-3 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+          "transition-all duration-300 hover:shadow-xl rounded-xl",
+          "dark:from-gray-800 dark:to-gray-900",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+        )}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Conversations</h2>
             </div>
           </div>
           <InterpreterChannelList 
@@ -77,8 +84,20 @@ export const MessagingTab = () => {
           "p-3 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-xl",
-          "lg:col-span-2"
+          "lg:col-span-2",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannels(true)}
+              className="absolute top-4 left-4 z-10"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Retour
+            </Button>
+          )}
           <div className="absolute top-4 right-4 z-10">
             <MentionsPopover
               mentions={unreadMentions}

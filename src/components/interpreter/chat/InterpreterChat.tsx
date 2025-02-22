@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -21,7 +20,12 @@ interface InterpreterChatProps {
   onClearFilters: () => void;
 }
 
-export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFilters }: InterpreterChatProps) => {
+export const InterpreterChat = ({ 
+  channelId, 
+  filters, 
+  onFiltersChange, 
+  onClearFilters 
+}: InterpreterChatProps) => {
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -112,16 +116,13 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
     });
   };
 
-  // Effect to update chatMembers based on messages
   useEffect(() => {
     const uniqueMembers = new Map();
     
-    // Add current user first
     if (currentUserId) {
       uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
     }
 
-    // Add other members from messages
     messages.forEach(msg => {
       if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
         uniqueMembers.set(msg.sender.id, {
@@ -136,23 +137,20 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b pb-3 pt-2 px-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center justify-between mt-2 w-full">
+    <div className="flex flex-col h-full pt-12 sm:pt-0">
+      <div className="border-b pb-3 px-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="w-full overflow-x-auto hide-scrollbar">
             <SearchFilter 
               filters={filters} 
               onFiltersChange={onFiltersChange} 
               onClearFilters={onClearFilters}
               chatMembers={chatMembers}
             />
+          </div>
+          <div className="flex items-center gap-2">
             <ChannelMembersPopover channelId={channelId} />
           </div>
-          {isMobile && (
-            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
 
