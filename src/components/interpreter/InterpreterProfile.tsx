@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -154,7 +155,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
 
   return (
     <ScrollArea className="h-[calc(100vh-6rem)]">
-      <div className="grid gap-6 p-6">
+      <div className="grid gap-6 p-6 pb-24">
         <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle>Informations personnelles</CardTitle>
