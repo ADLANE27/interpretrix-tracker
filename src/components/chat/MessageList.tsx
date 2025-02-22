@@ -5,6 +5,7 @@ import { MessageAttachment } from './MessageAttachment';
 import { Trash2 } from 'lucide-react';
 import { Avatar } from "@/components/ui/avatar";
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface MessageListProps {
   messages: Message[];
@@ -58,7 +59,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             }`}>
               <span className="font-medium">{message.sender.name}</span>
               <span className="text-gray-500 text-xs">
-                {format(message.timestamp, 'HH:mm')}
+                {format(message.timestamp, 'HH:mm', { locale: fr })}
               </span>
             </div>
             <div className={`group relative ${
@@ -71,7 +72,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 <button
                   onClick={() => onDeleteMessage(message.id)}
                   className="absolute -right-8 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Delete message"
+                  aria-label="Supprimer le message"
                 >
                   <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                 </button>
@@ -88,7 +89,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   <button
                     onClick={() => onDeleteMessage(message.id)}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                    aria-label="Delete attachment"
+                    aria-label="Supprimer la pièce jointe"
                   >
                     <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                   </button>

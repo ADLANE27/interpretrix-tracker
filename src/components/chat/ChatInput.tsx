@@ -43,13 +43,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     <div className="border-t p-4 bg-white">
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-          <span>Replying to: {replyTo.sender.name}</span>
+          <span>En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
           >
-            Cancel
+            Annuler
           </Button>
         </div>
       )}
@@ -60,7 +60,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type a message..."
+              placeholder="Écrivez un message..."
               className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -90,6 +90,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   data={data}
                   onEmojiSelect={handleEmojiSelect}
                   theme="light"
+                  locale="fr"
                 />
               </PopoverContent>
             </Popover>
@@ -129,7 +130,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 className="h-6 hover:text-red-500"
                 onClick={() => handleRemoveAttachment(index)}
               >
-                Remove
+                Supprimer
               </Button>
             </div>
           ))}
