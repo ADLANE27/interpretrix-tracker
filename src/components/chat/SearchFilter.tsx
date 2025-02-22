@@ -1,21 +1,11 @@
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Search, User, X, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Command, CommandInput, CommandList, CommandGroup, CommandItem } from "@/components/ui/command";
 
 interface ChatMember {
   id: string;
@@ -40,10 +30,75 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
   onClearFilters,
   chatMembers = []
 }) => {
-  const [showFilters, setShowFilters] = React.useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showUserResults, setShowUserResults] = useState(false);
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!userSearchQuery) return [];
+    const query = userSearchQuery.toLowerCase();
+    return chatMembers.filter(member => 
+      member.name.toLowerCase().includes(query)
+    ).slice(0, 5); // Limit to first 5 matches
+  }, [userSearchQuery, chatMembers]);
+
+  const handleUserSelect = (user: ChatMember) => {
+    onFiltersChange({ ...filters, userId: user.id });
+    setUserSearchQuery(user.name);
+    setShowUserResults(false);
+  };
 
   return (
     <div className="flex items-center gap-2">
+      <div className="relative">
+        <div className="flex items-center gap-2 px-2 py-1 bg-white border rounded-lg min-w-[200px]">
+          <User className="w-4 h-4 text-gray-400 shrink-0" />
+          <input
+            type="text"
+            placeholder="Rechercher un utilisateur..."
+            className="border-none outline-none bg-transparent text-sm w-full"
+            value={userSearchQuery}
+            onChange={(e) => {
+              setUserSearchQuery(e.target.value);
+              if (!e.target.value) {
+                onFiltersChange({ ...filters, userId: undefined });
+              }
+              setShowUserResults(true);
+            }}
+            onFocus={() => setShowUserResults(true)}
+          />
+          {userSearchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 p-0"
+              onClick={() => {
+                setUserSearchQuery('');
+                onFiltersChange({ ...filters, userId: undefined });
+              }}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+
+        {/* Dropdown for user search results */}
+        {showUserResults && filteredUsers.length > 0 && (
+          <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+            {filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                onClick={() => handleUserSelect(user)}
+              >
+                <User className="w-4 h-4 text-gray-400" />
+                <span className="text-sm">{user.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center gap-2 px-2 py-1 bg-white border rounded-lg max-w-[200px]">
         <Search className="w-4 h-4 text-gray-400 shrink-0" />
         <input
@@ -87,36 +142,9 @@ export const SearchFilter: React.FC<SearchFilterProps> = ({
                 locale={fr}
               />
             </div>
-
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Filtrer par utilisateur</h4>
-              <Command className="border rounded-md">
-                <CommandInput placeholder="Rechercher un utilisateur..." />
-                <CommandList>
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => onFiltersChange({ ...filters, userId: undefined })}
-                      className="cursor-pointer"
-                    >
-                      Tous les utilisateurs
-                    </CommandItem>
-                    {chatMembers.map((member) => (
-                      <CommandItem
-                        key={member.id}
-                        onSelect={() => onFiltersChange({ ...filters, userId: member.id })}
-                        className="cursor-pointer"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        {member.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
           </div>
 
-          {(filters.date || filters.userId) && (
+          {filters.date && (
             <Button
               variant="ghost"
               size="sm"
