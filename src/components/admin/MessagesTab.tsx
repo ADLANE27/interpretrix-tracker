@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,9 +8,12 @@ import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings } from "lucide-react";
+import { PlusCircle, Settings, Paperclip, Send, Smile } from "lucide-react";
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import data from '@emoji-mart/data/sets/14/fr.json';
+import Picker from '@emoji-mart/react";
 
 interface Message {
   id: string;
@@ -55,16 +57,17 @@ export const MessagesTab = () => {
   const [showMemberManagement, setShowMemberManagement] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showMentions, setShowMentions] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mentionStartRef = useRef<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Fetch channels
   useEffect(() => {
     const fetchChannels = async () => {
       try {
@@ -76,7 +79,6 @@ export const MessagesTab = () => {
         if (error) throw error;
         setChannels(data);
         
-        // Select the first channel by default if none is selected
         if (data.length > 0 && !selectedChannel) {
           setSelectedChannel(data[0]);
         }
@@ -93,7 +95,6 @@ export const MessagesTab = () => {
     fetchChannels();
   }, [selectedChannel]);
 
-  // Subscribe to messages and member changes for the selected channel
   useEffect(() => {
     if (!selectedChannel) return;
 
@@ -124,7 +125,6 @@ export const MessagesTab = () => {
           filter: `channel_id=eq.${selectedChannel.id}`
         },
         () => {
-          // Refresh messages to update any UI elements that depend on member status
           fetchMessages(selectedChannel.id);
         }
       )
@@ -152,7 +152,6 @@ export const MessagesTab = () => {
 
       if (messagesError) throw messagesError;
 
-      // Fetch sender details for each message
       const messagesWithSenders = await Promise.all(
         (messagesData || []).map(async (message) => {
           const { data: senderData, error: senderError } = await supabase
@@ -192,7 +191,6 @@ export const MessagesTab = () => {
     if (!selectedChannel) return;
 
     try {
-      // Fetch channel members
       const { data: memberData } = await supabase
         .rpc('get_channel_members', { channel_id: selectedChannel.id });
 
@@ -207,7 +205,6 @@ export const MessagesTab = () => {
           role: member.role
         }));
 
-      // Fetch available languages in the channel
       const { data: languageData } = await supabase
         .rpc('get_channel_target_languages', { channel_id: selectedChannel.id });
 
@@ -234,7 +231,6 @@ export const MessagesTab = () => {
     setNewMessage(`${beforeMention}@${mentionText} ${afterMention}`);
     setShowMentions(false);
 
-    // Focus back on input
     inputRef.current.focus();
   };
 
@@ -242,7 +238,6 @@ export const MessagesTab = () => {
     const value = e.target.value;
     setNewMessage(value);
 
-    // Check for mention triggers
     const lastAtSymbol = value.lastIndexOf('@');
     if (lastAtSymbol !== -1 && lastAtSymbol >= value.lastIndexOf(' ')) {
       const query = value.slice(lastAtSymbol + 1);
@@ -283,6 +278,61 @@ export const MessagesTab = () => {
     }
   };
 
+  const handleEmojiSelect = (emoji: any) => {
+    setNewMessage(prev => prev + emoji.native);
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedChannel) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke('upload-chat-attachment', {
+        body: formData,
+      });
+
+      if (!response.data) {
+        throw new Error("Upload failed");
+      }
+
+      const { filePath } = response.data;
+
+      const fileUrl = `${supabase.storageUrl}/object/public/chat-attachments/${filePath}`;
+      
+      await supabase
+        .from("chat_messages")
+        .insert([{ 
+          content: `[File: ${file.name}](${fileUrl})`,
+          channel_id: selectedChannel.id,
+          sender_id: user.id,
+        }]);
+
+      toast({
+        title: "Succès",
+        description: "Fichier téléchargé avec succès",
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec du téléchargement du fichier",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
       try {
@@ -302,10 +352,9 @@ export const MessagesTab = () => {
 
   return (
     <div className="flex h-[calc(100vh-200px)] gap-4">
-      {/* Channels List */}
       <div className="w-64 flex flex-col border-r pr-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Channels</h3>
+          <h3 className="text-lg font-semibold">Canaux</h3>
           <Button
             variant="ghost"
             size="icon"
@@ -344,7 +393,6 @@ export const MessagesTab = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 flex flex-col">
         {selectedChannel ? (
           <>
@@ -374,14 +422,60 @@ export const MessagesTab = () => {
             </div>
             <div className="relative">
               <form onSubmit={sendMessage} className="flex gap-2">
-                <Input
-                  ref={inputRef}
-                  value={newMessage}
-                  onChange={handleInput}
-                  placeholder={`Message #${selectedChannel.name}`}
-                  className="flex-1"
-                />
-                <Button type="submit">Send</Button>
+                <div className="flex-1 flex items-center gap-2 bg-background rounded-lg border">
+                  <Input
+                    ref={inputRef}
+                    value={newMessage}
+                    onChange={handleInput}
+                    placeholder={`Message #${selectedChannel.name}`}
+                    className="flex-1 border-0"
+                  />
+                  <div className="flex items-center gap-1 px-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                        >
+                          <Smile className="h-5 w-5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-auto p-0"
+                        side="top"
+                        align="end"
+                      >
+                        <Picker
+                          data={data}
+                          onEmojiSelect={handleEmojiSelect}
+                          locale="fr"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? "..." : "Envoyer"}
+                  <Send className="ml-2 h-4 w-4" />
+                </Button>
               </form>
               {showMentions && suggestions.length > 0 && (
                 <div className="absolute bottom-full mb-1">
@@ -396,12 +490,11 @@ export const MessagesTab = () => {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a channel to start messaging
+            Sélectionnez un canal pour commencer à envoyer des messages
           </div>
         )}
       </div>
 
-      {/* Dialogs */}
       <CreateChannelDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
