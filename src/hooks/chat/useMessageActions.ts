@@ -72,8 +72,8 @@ export const useMessageActions = (
         sender_id: currentUserId,
         content: content.trim(),
         parent_message_id: parentMessageId,
-        attachments: uploadedAttachments,
-        reactions: {}
+        attachments: uploadedAttachments as unknown as Json[], // Type assertion to match Supabase's expected type
+        reactions: {} as Json // Type assertion for reactions
       };
 
       const { data, error } = await supabase

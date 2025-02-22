@@ -62,3 +62,4 @@ export interface MessageListProps {
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
 }
+
