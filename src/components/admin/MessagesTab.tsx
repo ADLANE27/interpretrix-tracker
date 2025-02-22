@@ -753,6 +753,7 @@ export const MessagesTab = () => {
                         <MentionSuggestions
                           suggestions={suggestions}
                           onSelect={handleMentionSelect}
+                          visible={showMentions}
                         />
                       )}
                     </div>
