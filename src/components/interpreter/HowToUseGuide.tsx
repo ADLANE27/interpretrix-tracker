@@ -45,9 +45,9 @@ export const HowToUseGuide = ({ open, onOpenChange }: HowToUseGuideProps) => {
               <div className="ml-7">
                 <ul className="list-disc ml-6">
                   <li><span className="font-medium">Missions</span> - Voir et gérer vos missions</li>
-                  <li><span className="font-medium">Messages</span> - Communiquer avec les clients</li>
-                  <li><span className="font-medium">Profil</span> - Modifier vos informations</li>
-                  <li><span className="font-medium">Calendrier</span> - Planifier vos disponibilités</li>
+                  <li><span className="font-medium">Messages</span> - Communiquer avec vos collègues</li>
+                  <li><span className="font-medium">Profil</span> - Consulter vos informations</li>
+                  <li><span className="font-medium">Calendrier</span> - Consulter vos missions réservées</li>
                 </ul>
               </div>
             </section>
