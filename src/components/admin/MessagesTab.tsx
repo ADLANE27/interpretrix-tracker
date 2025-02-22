@@ -90,6 +90,10 @@ export const MessagesTab = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
     const fetchChannels = async () => {
       try {
@@ -120,6 +124,10 @@ export const MessagesTab = () => {
 
     fetchChannels();
   }, [selectedChannel]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (!selectedChannel) return;
@@ -163,10 +171,6 @@ export const MessagesTab = () => {
       supabase.removeChannel(membersChannel);
     };
   }, [selectedChannel]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
 
   const fetchMessages = async (channelId: string) => {
     try {
@@ -543,10 +547,6 @@ export const MessagesTab = () => {
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
       <div className="flex-1 flex">
@@ -646,7 +646,7 @@ export const MessagesTab = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <Card key={message.id} className="p-3">
+                  <Card key={message.id} className="p-3 group">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -685,7 +685,7 @@ export const MessagesTab = () => {
                         )}
                       </div>
                     </div>
-                    <div className="ml-10">{message.content}</div>
+                    {renderMessageContent(message.content)}
                     
                     {messageThreads[message.id]?.length > 1 && (
                       <div className="ml-10 mt-2">
@@ -723,7 +723,7 @@ export const MessagesTab = () => {
                                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                                     </span>
                                   </div>
-                                  <p className="ml-8 text-sm">{reply.content}</p>
+                                  {renderMessageContent(reply.content)}
                                 </Card>
                               ))}
                           </div>
@@ -745,10 +745,16 @@ export const MessagesTab = () => {
                       <Input
                         ref={inputRef}
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInput}
                         placeholder="Écrivez un message..."
                         className="min-h-[44px]"
                       />
+                      {showMentions && (
+                        <MentionSuggestions
+                          suggestions={suggestions}
+                          onSelect={handleMentionSelect}
+                        />
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Popover>
@@ -766,7 +772,7 @@ export const MessagesTab = () => {
                           <Picker
                             data={data}
                             onEmojiSelect={(emoji: any) => {
-                              setNewMessage(prev => prev + emoji.native);
+                              handleEmojiSelect(emoji);
                             }}
                             locale="fr"
                           />
