@@ -67,7 +67,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
             <select
               value={selectedUserId}
               onChange={handleUserChange}
-              className="h-9 rounded-lg border border-gray-200 bg-white/70 px-3 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+              className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
             >
               <option value="">Tous les utilisateurs</option>
               {users.map(user => (
@@ -80,8 +80,8 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
             <Input
               value={keyword}
               onChange={handleKeywordChange}
-              placeholder="Rechercher..."
-              className="h-9 rounded-lg border-gray-200 bg-white/70 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+              placeholder="Rechercher un message..."
+              className="h-9 rounded-lg border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all duration-300"
             />
 
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
@@ -90,7 +90,7 @@ export const ChatFilters = ({ onFiltersChange, users, onClearFilters }: ChatFilt
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`w-full sm:w-[200px] h-9 justify-start text-left rounded-lg border-gray-200 bg-white/70 hover:bg-gray-100/80 transition-all duration-300 ${!date && "text-muted-foreground"}`}
+                    className={`w-full sm:w-[200px] h-9 justify-start text-left rounded-lg border-gray-300 bg-white shadow-sm hover:bg-gray-50 transition-all duration-300 ${!date && "text-muted-foreground"}`}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                     {date ? format(date, "dd/MM/yyyy") : "Sélectionner une date"}
