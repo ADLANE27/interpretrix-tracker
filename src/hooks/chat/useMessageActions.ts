@@ -17,32 +17,49 @@ const ALLOWED_FILE_TYPES = new Set([
 ]);
 
 const sanitizeFilename = (filename: string): string => {
-  // Get the file extension
+  // Create a mapping of accented characters to their non-accented equivalents
+  const accentMap: { [key: string]: string } = {
+    'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
+    'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+    'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+    'ò': 'o', 'ó': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+    'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+    'ý': 'y', 'ÿ': 'y',
+    'ñ': 'n',
+    'ç': 'c'
+  };
+
+  // Extract extension
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   
-  // Remove the extension and convert to ASCII-only characters
-  const nameWithoutExt = filename
-    .slice(0, -(ext.length + 1))
-    // Remove accents/diacritics
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    // Replace spaces and special chars with underscores
-    .replace(/[^a-zA-Z0-9]/g, '_')
-    // Remove consecutive underscores
+  // Process the name without extension
+  let nameWithoutExt = filename.slice(0, -(ext.length + 1)).toLowerCase();
+  
+  // Replace accented characters
+  nameWithoutExt = nameWithoutExt.split('').map(char => accentMap[char] || char).join('');
+  
+  // Remove any remaining non-alphanumeric characters
+  nameWithoutExt = nameWithoutExt
+    .replace(/[^a-z0-9]/g, '_')
     .replace(/_+/g, '_')
-    // Remove leading/trailing underscores
-    .replace(/^_+|_+$/g, '')
-    // Ensure the name isn't empty
+    .replace(/^_|_$/g, '')
     || 'file';
 
-  // Add timestamp for uniqueness
+  // Add uniqueness with timestamp and random string
   const timestamp = Date.now();
-  // Add random string to prevent collisions
   const randomString = Math.random().toString(36).substring(2, 6);
   
-  // Combine everything with underscores and ensure extension is clean
-  const cleanExt = ext.replace(/[^a-zA-Z0-9]/g, '');
-  return `${nameWithoutExt}_${timestamp}_${randomString}.${cleanExt}`;
+  // Clean extension and construct final filename
+  const cleanExt = ext.replace(/[^a-z0-9]/g, '');
+
+  const finalName = `${nameWithoutExt}_${timestamp}_${randomString}.${cleanExt}`;
+  
+  console.log('[Chat] Filename sanitization:', {
+    original: filename,
+    sanitized: finalName
+  });
+
+  return finalName;
 };
 
 const validateFile = (file: File): string | null => {
