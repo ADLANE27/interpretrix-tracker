@@ -44,6 +44,8 @@ export const useChat = (channelId: string) => {
         throw new Error('Invalid channel type');
       }
 
+      const channelType = channelData.channel_type as 'group' | 'direct';
+
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
@@ -111,7 +113,7 @@ export const useChat = (channelId: string) => {
             timestamp: new Date(message.created_at),
             reactions: parsedReactions,
             attachments: parsedAttachments,
-            channelType: channelData.channel_type
+            channelType: channelType
           };
 
           return formattedMessage;
