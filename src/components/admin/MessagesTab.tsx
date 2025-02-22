@@ -15,6 +15,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Message {
   id: string;
@@ -59,6 +69,8 @@ export const MessagesTab = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -429,6 +441,53 @@ export const MessagesTab = () => {
     return <p className="ml-10">{content}</p>;
   };
 
+  const handleDeleteChannel = async () => {
+    if (!channelToDelete) return;
+
+    try {
+      const { error: messagesError } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('channel_id', channelToDelete.id);
+
+      if (messagesError) throw messagesError;
+
+      const { error: membersError } = await supabase
+        .from('channel_members')
+        .delete()
+        .eq('channel_id', channelToDelete.id);
+
+      if (membersError) throw membersError;
+
+      const { error: channelError } = await supabase
+        .from('chat_channels')
+        .delete()
+        .eq('id', channelToDelete.id);
+
+      if (channelError) throw channelError;
+
+      setChannels(channels.filter(c => c.id !== channelToDelete.id));
+      if (selectedChannel?.id === channelToDelete.id) {
+        setSelectedChannel(null);
+      }
+
+      toast({
+        title: "Succès",
+        description: "Le canal a été supprimé",
+      });
+    } catch (error) {
+      console.error("Error deleting channel:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du canal",
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeleteDialog(false);
+      setChannelToDelete(null);
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-200px)] gap-4">
       <div className="w-64 flex flex-col border-r pr-4">
@@ -455,17 +514,31 @@ export const MessagesTab = () => {
             >
               <span className="truncate">{channel.name}</span>
               {selectedChannel?.id === channel.id && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMemberManagement(true);
-                  }}
-                  className="h-8 w-8"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMemberManagement(true);
+                    }}
+                    className="h-8 w-8"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChannelToDelete(channel);
+                      setShowDeleteDialog(true);
+                    }}
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               )}
             </div>
           ))}
@@ -599,6 +672,28 @@ export const MessagesTab = () => {
           channelId={selectedChannel.id}
         />
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce canal ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Tous les messages et les données associés seront supprimés définitivement.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowDeleteDialog(false)}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteChannel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
