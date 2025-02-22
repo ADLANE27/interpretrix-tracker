@@ -128,7 +128,7 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
         ) : !isSubscribed ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">
-              {subscriptionStatus.messages === 'SUBSCRIBED' ? 'Subscribing to mentions...' : 'Subscribing to messages...'}
+              Subscribing to {subscriptionStatus.messages ? 'mentions' : 'messages'}...
             </p>
           </div>
         ) : null}
