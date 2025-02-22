@@ -42,8 +42,12 @@ interface Message {
 
 interface Channel {
   id: string;
-  name: string;
+  display_name: string;
   description: string | null;
+  channel_type: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
 }
 
 interface MemberSuggestion {
@@ -86,10 +90,13 @@ export const MessagesTab = () => {
   useEffect(() => {
     const fetchChannels = async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
         const { data, error } = await supabase
-          .from('chat_channels')
-          .select('*')
-          .order('name');
+          .rpc('get_channels_with_display_names', {
+            current_user_id: user.id
+          });
 
         if (error) throw error;
         setChannels(data);
@@ -526,20 +533,22 @@ export const MessagesTab = () => {
               }`}
               onClick={() => setSelectedChannel(channel)}
             >
-              <span className="truncate">{channel.name}</span>
+              <span className="truncate">{channel.display_name}</span>
               {selectedChannel?.id === channel.id && (
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMemberManagement(true);
-                    }}
-                    className="h-8 w-8"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
+                  {channel.channel_type !== 'direct' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMemberManagement(true);
+                      }}
+                      className="h-8 w-8"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
