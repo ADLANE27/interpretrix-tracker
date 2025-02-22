@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -31,7 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
-import { LanguagePair } from "@/components/interpreter/LanguageSelector";
+import { convertStringsToLanguagePairs } from "@/types/languages";
+import type { LanguagePair } from "@/types/languages";
 
 interface InterpreterData {
   id: string;
@@ -109,25 +109,6 @@ export const InterpreterList = ({
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const formatLanguagePairs = (languages: string[]): LanguagePair[] => {
-    return languages.map(lang => {
-      // First, check if the language is already a LanguagePair object
-      if (typeof lang !== 'string') {
-        console.warn('Received non-string language:', lang);
-        return { source: '', target: '' };
-      }
-
-      // Handle empty or malformed strings
-      if (!lang.includes('→')) {
-        console.warn('Invalid language format:', lang);
-        return { source: lang, target: '' };
-      }
-
-      const [source, target] = lang.split('→').map(l => l.trim());
-      return { source: source || '', target: target || '' };
-    });
   };
 
   return (
@@ -274,7 +255,7 @@ export const InterpreterList = ({
                 isSubmitting={isSubmitting}
                 initialData={{
                   ...selectedInterpreter,
-                  languages: formatLanguagePairs(selectedInterpreter.languages)
+                  languages: convertStringsToLanguagePairs(selectedInterpreter.languages)
                 }}
               />
             )}

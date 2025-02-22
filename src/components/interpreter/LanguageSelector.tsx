@@ -1,14 +1,11 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LANGUAGES } from "@/lib/constants";
-
-export interface LanguagePair {
-  source: string;
-  target: string;
-}
+import { LanguagePair, isValidLanguagePair } from "@/types/languages";
 
 interface LanguageSelectorProps {
   languages: LanguagePair[];
@@ -35,7 +32,7 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
 
   return (
     <div className="space-y-4">
-      {languages.map((lang, index) => (
+      {languages.filter(isValidLanguagePair).map((lang, index) => (
         <div key={index} className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2">
             <Badge variant="secondary">{lang.source}</Badge>

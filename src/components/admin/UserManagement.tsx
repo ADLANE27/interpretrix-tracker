@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,7 @@ import { InterpreterProfileForm, InterpreterFormData } from "./forms/Interpreter
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
+import { convertLanguagePairsToStrings, type LanguagePair } from "@/types/languages";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
@@ -32,7 +32,7 @@ interface UserData {
   tarif_15min: number;
   tarif_5min: number;
   employment_status: EmploymentStatus;
-  languages: string[]; // Changed from optional to required
+  languages: string[];
   status?: string;
 }
 
@@ -79,7 +79,7 @@ export const UserManagement = () => {
                 first_name: data.first_name || "",
                 last_name: data.last_name || "",
                 active: userRole.active || false,
-                languages: profile?.languages || [], // Ensure languages is always an array
+                languages: profile?.languages || [],
                 tarif_15min: 0,
                 tarif_5min: 0,
                 employment_status: 'salaried_aft' as EmploymentStatus
@@ -93,7 +93,7 @@ export const UserManagement = () => {
               first_name: data.first_name || "",
               last_name: data.last_name || "",
               active: userRole.active || false,
-              languages: [], // Add empty array for non-interpreters
+              languages: [],
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
@@ -107,7 +107,7 @@ export const UserManagement = () => {
               first_name: "",
               last_name: "",
               active: userRole.active || false,
-              languages: [], // Add empty array for error cases
+              languages: [],
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
@@ -156,9 +156,7 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      const languageStrings = formData.languages.map(
-        (pair) => `${pair.source} → ${pair.target}`
-      );
+      const languageStrings = convertLanguagePairsToStrings(formData.languages);
 
       const addressJson = formData.address ? {
         street: formData.address.street,
