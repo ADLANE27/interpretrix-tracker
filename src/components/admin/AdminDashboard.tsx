@@ -217,69 +217,69 @@ export const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="container mx-auto py-0 max-h-screen overflow-y-auto">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <div className="flex justify-between items-center mb-4 sticky top-0 bg-background z-10 py-4">
-            {isMobile ? (
-              <div className="flex items-center gap-4 w-full">
-                <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <Menu className="h-5 w-5" />
+    <div className="flex flex-col h-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full">
+        <div className="flex justify-between items-center mb-4 sticky top-0 bg-background z-10 py-4 px-6">
+          {isMobile ? (
+            <div className="flex items-center gap-4 w-full">
+              <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[240px]">
+                  <div className="flex flex-col gap-2 mt-6">
+                    <Button variant={activeTab === "interpreters" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("interpreters")}>
+                      Interprètes
                     </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[240px]">
-                    <div className="flex flex-col gap-2 mt-6">
-                      <Button variant={activeTab === "interpreters" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("interpreters")}>
-                        Interprètes
-                      </Button>
-                      <Button variant={activeTab === "missions" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("missions")}>
-                        Missions
-                      </Button>
-                      <Button variant={activeTab === "calendar" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("calendar")}>
-                        Calendrier
-                      </Button>
-                      <Button variant={activeTab === "messages" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("messages")}>
-                        Messages
-                      </Button>
-                      <Button variant={activeTab === "users" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("users")}>
-                        Utilisateurs
-                      </Button>
-                      <Button variant={activeTab === "guide" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("guide")}>
-                        Guide d'utilisation
-                      </Button>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-                <div className="flex-1 text-lg font-semibold">
-                  {activeTab === "interpreters" && "Interprètes"}
-                  {activeTab === "missions" && "Missions"}
-                  {activeTab === "calendar" && "Calendrier"}
-                  {activeTab === "messages" && "Messages"}
-                  {activeTab === "users" && "Utilisateurs"}
-                  {activeTab === "guide" && "Guide d'utilisation"}
-                </div>
+                    <Button variant={activeTab === "missions" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("missions")}>
+                      Missions
+                    </Button>
+                    <Button variant={activeTab === "calendar" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("calendar")}>
+                      Calendrier
+                    </Button>
+                    <Button variant={activeTab === "messages" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("messages")}>
+                      Messages
+                    </Button>
+                    <Button variant={activeTab === "users" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("users")}>
+                      Utilisateurs
+                    </Button>
+                    <Button variant={activeTab === "guide" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("guide")}>
+                      Guide d'utilisation
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <div className="flex-1 text-lg font-semibold">
+                {activeTab === "interpreters" && "Interprètes"}
+                {activeTab === "missions" && "Missions"}
+                {activeTab === "calendar" && "Calendrier"}
+                {activeTab === "messages" && "Messages"}
+                {activeTab === "users" && "Utilisateurs"}
+                {activeTab === "guide" && "Guide d'utilisation"}
               </div>
-            ) : (
-              <div className="flex gap-4 items-center">
-                <TabsList>
-                  <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-                  <TabsTrigger value="missions">Missions</TabsTrigger>
-                  <TabsTrigger value="calendar">Calendrier</TabsTrigger>
-                  <TabsTrigger value="messages">Messages</TabsTrigger>
-                  <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-                  <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
-                </TabsList>
-              </div>
-            )}
-            <Button variant="outline" onClick={handleLogout} className="gap-2">
-              <LogOut className="h-4 w-4" />
-              {!isMobile && "Se déconnecter"}
-            </Button>
-          </div>
+            </div>
+          ) : (
+            <div className="flex gap-4 items-center">
+              <TabsList>
+                <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
+                <TabsTrigger value="missions">Missions</TabsTrigger>
+                <TabsTrigger value="calendar">Calendrier</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
+                <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
+              </TabsList>
+            </div>
+          )}
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            {!isMobile && "Se déconnecter"}
+          </Button>
+        </div>
 
-          <TabsContent value="interpreters" className="h-[calc(100vh-120px)] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto px-6">
+          <TabsContent value="interpreters" className="h-full">
             <div className="space-y-6">
               <div className="mb-4">
                 <h2 className="text-2xl font-bold">Liste des interprètes</h2>
@@ -370,7 +370,7 @@ export const AdminDashboard = () => {
 
               <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 {filteredInterpreters.map(interpreter => (
                   <InterpreterCard key={interpreter.id} interpreter={{
                     id: interpreter.id,
@@ -408,12 +408,12 @@ export const AdminDashboard = () => {
           <TabsContent value="guide">
             <AdminGuideContent />
           </TabsContent>
-        </Tabs>
+        </div>
 
-        <footer className="w-full py-4 mt-8 text-center text-sm text-gray-500 border-t">
+        <footer className="py-4 text-center text-sm text-gray-500 border-t px-6">
           © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
-      </div>
+      </Tabs>
     </div>
   );
 };

@@ -57,8 +57,8 @@ const Admin = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300 overflow-y-auto">
-      <div className="container mx-auto p-6 px-0 py-0">
+    <div className="h-screen bg-background transition-colors duration-300">
+      <div className="h-full container mx-auto p-6 px-0 py-0">
         <AdminDashboard />
       </div>
     </div>
