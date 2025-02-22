@@ -29,7 +29,6 @@ export const DashboardHeader = ({
         )}
         <div className="flex items-center gap-2 md:gap-3 ml-auto">
           <ThemeToggle />
-          <HowToUseGuide open={false} onOpenChange={() => {}} />
         </div>
       </div>
       
