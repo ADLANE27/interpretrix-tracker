@@ -276,6 +276,7 @@ export const InterpreterDashboard = () => {
             if (isMobile) setIsSidebarOpen(false);
           }}
           userStatus={profile?.status || "available"}
+          profilePictureUrl={profile?.profile_picture_url}
         />
       </div>
       
