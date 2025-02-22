@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
@@ -11,11 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight } from 'lucide-react';
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
+import { useIsMobile } from "@/hooks/use-mobile";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import {
@@ -82,15 +82,13 @@ export const MessagesTab = () => {
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [showChannelList, setShowChannelList] = useState(true);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mentionStartRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -545,84 +543,110 @@ export const MessagesTab = () => {
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
-    <div className="flex h-[calc(100vh-200px)] gap-4">
-      <div className="w-64 flex flex-col border-r pr-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Canaux</h3>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowDirectMessageDialog(true)}
-              className="h-8 w-8"
-              title="New Direct Message"
-            >
-              <UserPlus className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowCreateDialog(true)}
-              className="h-8 w-8"
-              title="New Channel"
-            >
-              <PlusCircle className="h-5 w-5" />
-            </Button>
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
+      <div className="flex-1 flex">
+        <div className={`${
+          isMobile ? (
+            showChannelList ? 'w-full' : 'hidden'
+          ) : 'w-64'
+        } border-r flex flex-col`}>
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Canaux</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDirectMessageDialog(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCreateDialog(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <Input
+              placeholder="Rechercher un canal..."
+              className="w-full"
+            />
           </div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {channels.map((channel) => (
-            <div
-              key={channel.id}
-              className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-accent ${
-                selectedChannel?.id === channel.id ? 'bg-accent' : ''
-              }`}
-              onClick={() => setSelectedChannel(channel)}
-            >
-              <span className="truncate">{channel.display_name}</span>
-              {selectedChannel?.id === channel.id && (
-                <div className="flex items-center gap-1">
-                  {channel.channel_type !== 'direct' && (
+          <div className="flex-1 overflow-y-auto p-2">
+            {channels.map((channel) => (
+              <div
+                key={channel.id}
+                className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-accent ${
+                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                }`}
+                onClick={() => {
+                  setSelectedChannel(channel);
+                  if (isMobile) setShowChannelList(false);
+                }}
+              >
+                <span className="truncate">{channel.display_name}</span>
+                {selectedChannel?.id === channel.id && (
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMemberManagement(true);
                       }}
-                      className="h-8 w-8"
+                      className="h-6 w-6 p-0"
                     >
-                      <Settings className="h-4 w-4" />
+                      <Settings className="h-3 w-3" />
                     </Button>
-                  )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setChannelToDelete(channel);
+                        setShowDeleteDialog(true);
+                      }}
+                      className="h-6 w-6 p-0 text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'w-full' : ''}`}>
+          {selectedChannel ? (
+            <>
+              <div className="p-4 border-b flex items-center">
+                {isMobile && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setChannelToDelete(channel);
-                      setShowDeleteDialog(true);
-                    }}
-                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    size="sm"
+                    onClick={() => setShowChannelList(true)}
+                    className="mr-2 h-8 w-8 p-0"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" />
                   </Button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+                )}
+                <h2 className="text-lg font-semibold">{selectedChannel.display_name}</h2>
+              </div>
 
-      <div className="flex-1 flex flex-col">
-        {selectedChannel ? (
-          <>
-            <div className="flex-1 overflow-y-auto mb-4 space-y-4">
-              {rootMessages.map((message) => (
-                <React.Fragment key={message.id}>
-                  <Card className="p-4 group relative">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((message) => (
+                  <Card key={message.id} className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
@@ -707,98 +731,82 @@ export const MessagesTab = () => {
                       </div>
                     )}
                   </Card>
-                </React.Fragment>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="relative">
-              {replyTo && (
-                <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-gray-50 rounded-t-lg border-t border-x">
-                  <span className="text-sm text-gray-600">
-                    Réponse à {replyTo.sender?.name}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReplyTo(null)}
-                    className="h-6 px-2 text-xs"
-                  >
-                    Annuler
-                  </Button>
-                </div>
-              )}
-              <form onSubmit={sendMessage} className="flex gap-2">
-                <div className="flex-1 flex items-center gap-2 bg-background rounded-lg border">
-                  <Input
-                    ref={inputRef}
-                    value={newMessage}
-                    onChange={handleInput}
-                    placeholder={`Message ${selectedChannel.display_name}`}
-                    className="flex-1 border-0"
-                  />
-                  <div className="flex items-center gap-1 px-2">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <Smile className="h-5 w-5" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="w-auto p-0"
-                        side="top"
-                        align="end"
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="border-t p-4 bg-background">
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage(e);
+                }}>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 min-h-[44px]">
+                      <Input
+                        ref={inputRef}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Écrivez un message..."
+                        className="min-h-[44px]"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10"
+                          >
+                            <Smile className="h-5 w-5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" side="top" align="end">
+                          <Picker
+                            data={data}
+                            onEmojiSelect={(emoji: any) => {
+                              setNewMessage(prev => prev + emoji.native);
+                            }}
+                            locale="fr"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
                       >
-                        <Picker
-                          data={data}
-                          onEmojiSelect={handleEmojiSelect}
-                          locale="fr"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="h-10 w-10"
+                        disabled={!newMessage.trim() || isUploading}
+                      >
+                        <Send className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? "..." : "Envoyer"}
-                  <Send className="ml-2 h-4 w-4" />
-                </Button>
-              </form>
-              {showMentions && suggestions.length > 0 && (
-                <div className="absolute bottom-full mb-1">
-                  <MentionSuggestions
-                    suggestions={suggestions}
-                    onSelect={handleMentionSelect}
-                    visible={showMentions}
-                  />
-                </div>
-              )}
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <p>Sélectionnez un canal pour commencer à discuter</p>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Sélectionnez un canal pour commencer à envoyer des messages
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <CreateChannelDialog
@@ -806,13 +814,11 @@ export const MessagesTab = () => {
         onClose={() => setShowCreateDialog(false)}
         onChannelCreated={handleChannelCreated}
       />
-
       <NewDirectMessageDialog
         isOpen={showDirectMessageDialog}
         onClose={() => setShowDirectMessageDialog(false)}
         onChannelCreated={handleChannelCreated}
       />
-
       {selectedChannel && (
         <ChannelMemberManagement
           isOpen={showMemberManagement}
@@ -820,7 +826,6 @@ export const MessagesTab = () => {
           channelId={selectedChannel.id}
         />
       )}
-
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

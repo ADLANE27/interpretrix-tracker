@@ -18,7 +18,7 @@ import { InterpreterProfileForm, InterpreterFormData } from "./forms/Interpreter
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
-import { convertLanguagePairsToStrings, type LanguagePair } from "@/types/languages";
+import { convertLanguagePairsToStrings } from "@/types/languages";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 
@@ -362,13 +362,15 @@ export const UserManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 max-w-full px-4 sm:px-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
         <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">Ajouter un administrateur</Button>
+              <Button variant="outline" className="w-full sm:w-auto whitespace-nowrap">
+                Ajouter un administrateur
+              </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -386,10 +388,12 @@ export const UserManagement = () => {
 
           <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
             <DialogTrigger asChild>
-              <Button>Ajouter un interprète</Button>
+              <Button className="w-full sm:w-auto whitespace-nowrap">
+                Ajouter un interprète
+              </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh]">
-              <ScrollArea className="max-h-[85vh]">
+              <ScrollArea className="max-h-[85vh] px-1">
                 <DialogHeader>
                   <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
                   <DialogDescription>
@@ -407,26 +411,28 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      <AdminList
-        admins={adminUsers}
-        onToggleStatus={toggleUserStatus}
-        onDeleteUser={handleDeleteUser}
-        onResetPassword={(userId) => {
-          setSelectedUserId(userId);
-          setIsResetPasswordOpen(true);
-        }}
-      />
+      <div className="space-y-6 overflow-x-hidden">
+        <AdminList
+          admins={adminUsers}
+          onToggleStatus={toggleUserStatus}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={(userId) => {
+            setSelectedUserId(userId);
+            setIsResetPasswordOpen(true);
+          }}
+        />
 
-      <InterpreterList
-        interpreters={interpreterUsers}
-        onToggleStatus={toggleUserStatus}
-        onDeleteUser={handleDeleteUser}
-        onResetPassword={(userId) => {
-          setSelectedUserId(userId);
-          setIsResetPasswordOpen(true);
-        }}
-        onUpdateInterpreter={handleUpdateInterpreter}
-      />
+        <InterpreterList
+          interpreters={interpreterUsers}
+          onToggleStatus={toggleUserStatus}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={(userId) => {
+            setSelectedUserId(userId);
+            setIsResetPasswordOpen(true);
+          }}
+          onUpdateInterpreter={handleUpdateInterpreter}
+        />
+      </div>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
