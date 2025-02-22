@@ -30,7 +30,11 @@ export const MessagesTab = () => {
   useEffect(() => {
     const getOrCreateGeneralChannel = async () => {
       try {
-        // First, try to find the general channel
+        // First, get the current user's ID
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        // Try to find the general channel
         let { data: channel, error } = await supabase
           .from('chat_channels')
           .select('id')
@@ -38,18 +42,29 @@ export const MessagesTab = () => {
           .single();
 
         if (error) {
-          // If not found, create it
+          // If not found, create it with the current user's ID
           const { data: newChannel, error: createError } = await supabase
             .from('chat_channels')
             .insert({ 
               name: 'general',
               description: 'Canal général',
-              created_by: 'system'
+              created_by: user.id // Using the current user's ID
             })
             .select()
             .single();
 
           if (createError) throw createError;
+          
+          // Add the creator as a channel member
+          const { error: memberError } = await supabase
+            .from('channel_members')
+            .insert({
+              channel_id: newChannel.id,
+              user_id: user.id
+            });
+
+          if (memberError) throw memberError;
+          
           channel = newChannel;
         }
 
