@@ -324,19 +324,19 @@ export const UserManagement = () => {
         .update({
           first_name: formData.first_name,
           last_name: formData.last_name,
-          phone_number: formData.phone_number,
-          languages: languageStrings,
           employment_status: formData.employment_status,
-          address: addressJson,
-          birth_country: formData.birth_country,
-          nationality: formData.nationality,
-          phone_interpretation_rate: formData.phone_interpretation_rate,
-          siret_number: formData.siret_number,
-          vat_number: formData.vat_number,
+          languages: languageStrings,
           tarif_5min: formData.tarif_5min,
           tarif_15min: formData.tarif_15min,
+          address: addressJson,
+          phone_number: formData.phone_number || null,
+          birth_country: formData.birth_country || null,
+          nationality: formData.nationality || null,
+          phone_interpretation_rate: formData.phone_interpretation_rate || null,
+          siret_number: formData.siret_number || null,
+          vat_number: formData.vat_number || null,
           specializations: formData.specializations || [],
-          landline_phone: formData.landline_phone
+          landline_phone: formData.landline_phone || null
         })
         .eq('id', userId);
 

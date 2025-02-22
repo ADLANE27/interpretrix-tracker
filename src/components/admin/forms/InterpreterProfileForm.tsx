@@ -36,6 +36,14 @@ export interface InterpreterFormData {
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: LanguagePair[];
   address?: Address;
+  phone_number?: string;
+  birth_country?: string;
+  nationality?: string;
+  phone_interpretation_rate?: number;
+  siret_number?: string;
+  vat_number?: string;
+  specializations?: string[];
+  landline_phone?: string;
   password?: string;
 }
 
@@ -77,6 +85,14 @@ export const InterpreterProfileForm = ({
     employment_status: initialData?.employment_status || "salaried_aft",
     languages: languages,
     address: initialData?.address,
+    phone_number: initialData?.phone_number,
+    birth_country: initialData?.birth_country,
+    nationality: initialData?.nationality,
+    phone_interpretation_rate: initialData?.phone_interpretation_rate,
+    siret_number: initialData?.siret_number,
+    vat_number: initialData?.vat_number,
+    specializations: initialData?.specializations,
+    landline_phone: initialData?.landline_phone,
     password: "",
   };
 

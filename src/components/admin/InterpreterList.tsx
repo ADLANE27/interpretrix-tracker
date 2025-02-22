@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -54,6 +53,8 @@ interface InterpreterData {
   phone_interpretation_rate?: number | null;
   siret_number?: string | null;
   vat_number?: string | null;
+  specializations?: string[];
+  landline_phone?: string | null;
 }
 
 interface InterpreterListProps {
@@ -91,7 +92,16 @@ export const InterpreterList = ({
   });
 
   const handleEdit = (interpreter: InterpreterData) => {
-    setSelectedInterpreter(interpreter);
+    // Convert string[] languages to LanguagePair[]
+    const formattedInterpreter = {
+      ...interpreter,
+      languages: interpreter.languages?.map((lang) => {
+        const [source, target] = lang.split('→').map(l => l.trim());
+        return { source, target };
+      }) || []
+    };
+    
+    setSelectedInterpreter(formattedInterpreter);
     setIsEditDialogOpen(true);
   };
 
