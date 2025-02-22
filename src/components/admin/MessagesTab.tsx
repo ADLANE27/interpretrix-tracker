@@ -147,6 +147,24 @@ export const MessagesTab = () => {
     }
   };
 
+  const handleChannelCreated = () => {
+    // Refresh the channels list
+    const fetchChannels = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('chat_channels')
+          .select('*')
+          .order('name');
+
+        if (error) throw error;
+        setChannels(data);
+      } catch (error) {
+        console.error("Error fetching channels:", error);
+      }
+    };
+    fetchChannels();
+  };
+
   return (
     <div className="flex h-[calc(100vh-200px)] gap-4">
       {/* Channels List */}
@@ -225,14 +243,15 @@ export const MessagesTab = () => {
 
       {/* Dialogs */}
       <CreateChannelDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onChannelCreated={handleChannelCreated}
       />
 
       {selectedChannel && (
         <ChannelMemberManagement
-          open={showMemberManagement}
-          onOpenChange={setShowMemberManagement}
+          isOpen={showMemberManagement}
+          onClose={() => setShowMemberManagement(false)}
           channelId={selectedChannel.id}
         />
       )}
