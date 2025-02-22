@@ -7,8 +7,9 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
+import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2 } from "lucide-react";
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus } from "lucide-react";
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -65,6 +66,7 @@ export const MessagesTab = () => {
   const [newMessage, setNewMessage] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDirectMessageDialog, setShowDirectMessageDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showMentions, setShowMentions] = useState(false);
@@ -493,14 +495,26 @@ export const MessagesTab = () => {
       <div className="w-64 flex flex-col border-r pr-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Canaux</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowCreateDialog(true)}
-            className="h-8 w-8"
-          >
-            <PlusCircle className="h-5 w-5" />
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowDirectMessageDialog(true)}
+              className="h-8 w-8"
+              title="New Direct Message"
+            >
+              <UserPlus className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowCreateDialog(true)}
+              className="h-8 w-8"
+              title="New Channel"
+            >
+              <PlusCircle className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto space-y-2">
@@ -662,6 +676,12 @@ export const MessagesTab = () => {
       <CreateChannelDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
+        onChannelCreated={handleChannelCreated}
+      />
+
+      <NewDirectMessageDialog
+        isOpen={showDirectMessageDialog}
+        onClose={() => setShowDirectMessageDialog(false)}
         onChannelCreated={handleChannelCreated}
       />
 
