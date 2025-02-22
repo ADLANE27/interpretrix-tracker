@@ -63,23 +63,23 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       color: "bg-interpreter-available hover:bg-interpreter-available/90",
       label: "Disponible"
     },
-    unavailable: {
-      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
-      label: "Indisponible"
+    busy: {
+      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
+      label: "En appel"
     },
     pause: {
       color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
       label: "En pause"
     },
-    busy: {
-      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
-      label: "En appel"
+    unavailable: {
+      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
+      label: "Indisponible"
     }
   };
 
   return (
     <motion.div 
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2 mx-auto max-w-full overflow-x-auto hide-scrollbar"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -89,6 +89,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
           key={statusKey}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          className="shrink-0"
         >
           <Button
             variant={status === statusKey ? "default" : "outline"}
@@ -96,7 +97,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
             onClick={() => handleStatusChange(statusKey)}
             disabled={isLoading}
             className={`
-              transition-all duration-200
+              transition-all duration-200 whitespace-nowrap min-w-[90px]
               ${status === statusKey ? statusConfig[statusKey].color : ''}
               ${status === statusKey ? 'shadow-lg' : ''}
             `}
