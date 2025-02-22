@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Maximize2, Minimize2, Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showChannels, setShowChannels] = useState(true);
-  const [isFullScreen, setIsFullScreen] = useState(false);
   const [filters, setFilters] = useState<{
     userId?: string;
     keyword?: string;
@@ -48,10 +47,6 @@ export const MessagingTab = () => {
     setShowChannels(!showChannels);
   };
 
-  const toggleFullScreen = () => {
-    setIsFullScreen(!isFullScreen);
-  };
-
   const handleMentionClick = async (mention: any) => {
     if (mention.channel_id) {
       setSelectedChannelId(mention.channel_id);
@@ -62,21 +57,6 @@ export const MessagingTab = () => {
     await markMentionAsRead(mention.mention_id);
     await refreshMentions();
   };
-
-  if (isFullScreen && selectedChannelId) {
-    return (
-      <div className="fixed inset-0 z-[100] bg-background w-screen h-screen overflow-hidden">
-        <InterpreterChat 
-          channelId={selectedChannelId}
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          onClearFilters={handleClearFilters}
-          isFullScreen={true}
-          onExitFullScreen={toggleFullScreen}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[600px] relative">
@@ -95,7 +75,7 @@ export const MessagingTab = () => {
           "hover:shadow-xl rounded-xl",
           "lg:col-span-2"
         )}>
-          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <div className="absolute top-4 right-4 z-10">
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -121,29 +101,12 @@ export const MessagingTab = () => {
                 )}
               </div>
             </MentionsPopover>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullScreen}
-              className={cn(
-                "transition-all duration-200",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                "border border-gray-100 dark:border-gray-700",
-                "rounded-lg",
-                "hover:bg-purple-50 hover:text-purple-500 dark:hover:bg-purple-900/20"
-              )}
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
           </div>
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
             onFiltersChange={handleFiltersChange}
             onClearFilters={handleClearFilters}
-            isFullScreen={false}
-            onExitFullScreen={toggleFullScreen}
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
