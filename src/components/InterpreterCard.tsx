@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -42,7 +41,6 @@ interface InterpreterProfile {
   tarif_15min: number;
 }
 
-// Add new interfaces for Supabase real-time types
 interface RealtimePostgresUpdatePayload {
   commit_timestamp: string;
   errors: null | any[];
@@ -89,7 +87,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Define fetchTarifs before using it
   const fetchTarifs = async () => {
     const { data, error } = await supabase
       .from('interpreter_profiles')
@@ -110,15 +107,14 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     }
   };
 
-  // Define fetchMissions before using it
   const fetchMissions = async () => {
     const { data, error } = await supabase
       .from('interpretation_missions')
       .select('*')
       .eq('assigned_interpreter_id', interpreter.id)
-      .eq('status', 'accepted')
+      .or('status.eq.accepted,status.eq.in_progress')
       .eq('mission_type', 'scheduled')
-      .gte('scheduled_start_time', new Date().toISOString())
+      .gte('scheduled_end_time', new Date().toISOString())
       .order('scheduled_start_time', { ascending: true });
 
     if (error) {
@@ -156,7 +152,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     }
   };
 
-  // Handle online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -170,13 +165,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     };
   }, []);
 
-  // Handle visibility changes
   useEffect(() => {
     let visibilityTimeout: NodeJS.Timeout;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Refresh data when tab becomes visible
         fetchTarifs();
         fetchMissions();
         fetchCurrentStatus();
@@ -210,7 +203,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       interpreter_id: interpreter.id
     });
 
-    // Set up real-time subscriptions with proper channel configuration
     const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`, {
       config: {
         broadcast: { self: true },
@@ -225,7 +217,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       },
     });
 
-    // Subscribe to status changes
     statusChannel
       .on('postgres_changes' as any, {
         event: 'UPDATE',
@@ -242,7 +233,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         console.log('[InterpreterCard] Status subscription status:', status);
       });
 
-    // Subscribe to mission changes
     missionChannel
       .on('postgres_changes' as any, {
         event: 'UPDATE',
@@ -257,11 +247,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         console.log('[InterpreterCard] Mission subscription status:', status);
       });
 
-    // Initial data fetch
     fetchMissions();
     fetchCurrentStatus();
 
-    // Cleanup subscriptions
     return () => {
       supabase.removeChannel(statusChannel);
       supabase.removeChannel(missionChannel);
@@ -387,7 +375,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
-                  {format(new Date(nextMission.scheduled_start_time), "d MMMM à HH:mm", { locale: fr })}
+                  {format(new Date(nextMission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                  {nextMission.scheduled_end_time && (
+                    <> - {format(new Date(nextMission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -411,7 +402,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">
-                        {format(new Date(mission.scheduled_start_time), "d MMMM à HH:mm", { locale: fr })}
+                        {format(new Date(mission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                        {mission.scheduled_end_time && (
+                          <> - {format(new Date(mission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
