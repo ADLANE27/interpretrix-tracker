@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -27,6 +26,10 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+
+  const [chatMembers, setChatMembers] = useState([
+    { id: 'current', name: 'Mes messages' },
+  ]);
 
   const {
     messages,
@@ -108,7 +111,12 @@ export const InterpreterChat = ({ channelId, filters, onFiltersChange, onClearFi
       <div className="border-b pb-3 pt-2 px-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between mt-2 w-full">
-            <SearchFilter filters={filters} onFiltersChange={onFiltersChange} onClearFilters={onClearFilters} />
+            <SearchFilter 
+              filters={filters} 
+              onFiltersChange={onFiltersChange} 
+              onClearFilters={onClearFilters}
+              chatMembers={chatMembers}
+            />
             <ChannelMembersPopover channelId={channelId} />
           </div>
           {isMobile && (
