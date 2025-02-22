@@ -699,6 +699,20 @@ export type Database = {
           target_language: string
         }[]
       }
+      get_channels_with_display_names: {
+        Args: {
+          current_user_id: string
+        }
+        Returns: {
+          id: string
+          display_name: string
+          description: string
+          channel_type: string
+          created_at: string
+          updated_at: string
+          created_by: string
+        }[]
+      }
       get_full_name_from_metadata: {
         Args: {
           metadata: Json

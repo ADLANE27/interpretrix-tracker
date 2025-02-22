@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,10 +84,6 @@ export const MessagesTab = () => {
   const mentionStartRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
     const fetchChannels = async () => {
       try {
@@ -96,13 +93,14 @@ export const MessagesTab = () => {
         const { data, error } = await supabase
           .rpc('get_channels_with_display_names', {
             current_user_id: user.id
-          });
+          }) as { data: Channel[] | null; error: any };
 
         if (error) throw error;
-        setChannels(data);
-        
-        if (data.length > 0 && !selectedChannel) {
-          setSelectedChannel(data[0]);
+        if (data) {
+          setChannels(data);
+          if (data.length > 0 && !selectedChannel) {
+            setSelectedChannel(data[0]);
+          }
         }
       } catch (error) {
         console.error("Error fetching channels:", error);
@@ -424,13 +422,18 @@ export const MessagesTab = () => {
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
         const { data, error } = await supabase
-          .from('chat_channels')
-          .select('*')
-          .order('name');
+          .rpc('get_channels_with_display_names', {
+            current_user_id: user.id
+          }) as { data: Channel[] | null; error: any };
 
         if (error) throw error;
-        setChannels(data);
+        if (data) {
+          setChannels(data);
+        }
       } catch (error) {
         console.error("Error fetching channels:", error);
       }
