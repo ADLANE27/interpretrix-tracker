@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -7,10 +8,12 @@ import { MessageCircle, Bell } from "lucide-react";
 
 interface Channel {
   id: string;
-  name: string;
   display_name: string;
   description: string | null;
   channel_type: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
 }
 
 export const InterpreterChannelList = ({ 
