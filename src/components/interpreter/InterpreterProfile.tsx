@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -155,7 +154,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
 
   return (
     <ScrollArea className="h-[calc(100vh-6rem)]">
-      <div className="max-w-4xl mx-auto grid gap-8 p-6 pb-24">
+      <div className="max-w-4xl mx-auto grid gap-8 p-6 pb-32">
         <Card className="border-0 shadow-none">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Informations personnelles</CardTitle>
@@ -329,6 +328,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
             </div>
           </CardContent>
         </Card>
+        <div className="h-px bg-border w-full opacity-50 mt-4" />
       </div>
     </ScrollArea>
   );
