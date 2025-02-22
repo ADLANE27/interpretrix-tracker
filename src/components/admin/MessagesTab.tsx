@@ -12,7 +12,7 @@ import { PlusCircle, Settings, Paperclip, Send, Smile } from "lucide-react";
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import data from '@emoji-mart/data/sets/14/fr.json';
+import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
 interface Message {
@@ -282,7 +282,7 @@ export const MessagesTab = () => {
     setNewMessage(prev => prev + emoji.native);
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedChannel) return;
 
@@ -304,7 +304,8 @@ export const MessagesTab = () => {
 
       const { filePath } = response.data;
 
-      const fileUrl = `${supabase.storageUrl}/object/public/chat-attachments/${filePath}`;
+      // Use the project URL for file access
+      const fileUrl = `${process.env.VITE_SUPABASE_URL}/storage/v1/object/public/chat-attachments/${filePath}`;
       
       await supabase
         .from("chat_messages")
