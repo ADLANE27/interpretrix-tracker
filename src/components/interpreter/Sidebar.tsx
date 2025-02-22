@@ -1,6 +1,6 @@
 
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, User } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +37,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) =>
   const tabs = [
     { id: "missions", label: "Missions", icon: Calendar },
     { id: "messages", label: "Messages", icon: MessageCircle },
-    { id: "profile", label: "Profil", icon: User },
+    { id: "profile", label: "Profil", icon: Headset },
     { id: "calendar", label: "Calendrier", icon: Calendar },
   ];
 
@@ -66,7 +66,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) =>
             "animate-pulse"
           )} />
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/30 flex items-center justify-center">
-            <User className="w-6 h-6 text-primary" />
+            <Headset className="w-6 h-6 text-primary" />
           </div>
         </div>
       </div>
