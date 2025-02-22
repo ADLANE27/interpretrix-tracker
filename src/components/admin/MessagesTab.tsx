@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -440,7 +441,7 @@ export const MessagesTab = () => {
           <>
             <div className="flex-1 overflow-y-auto mb-4 space-y-4">
               {messages.map((message) => (
-                <Card key={message.id} className="p-4 group">
+                <Card key={message.id} className="p-4 group relative">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
@@ -463,7 +464,7 @@ export const MessagesTab = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => deleteMessage(message.id, message.sender_id)}
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
