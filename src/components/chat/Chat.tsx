@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,16 @@ import { ChatFilters } from './ChatFilters';
 
 interface ChatProps {
   channelId: string;
-  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  filters: {
+    userId?: string;
+    keyword?: string;
+    date?: Date;
+  };
+  onFiltersChange: (newFilters: typeof filters) => void;
+  onClearFilters: () => void;
 }
 
-export const Chat = ({ channelId, onScroll }: ChatProps) => {
+export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -31,15 +37,13 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
     type?: 'language';
   }>>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [filters, setFilters] = useState<{
-    userId?: string;
-    keyword?: string;
-    date?: Date;
-  }>({});
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [replyTo, setReplyTo] = useState<{ id: string } | null>(null);
   const [channelUsers, setChannelUsers] = useState<Array<{ id: string; name: string; }>>([]);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const { messages, sendMessage, deleteMessage, currentUserId, reactToMessage, markMentionsAsRead } = useChat(channelId);
   const [filteredMessages, setFilteredMessages] = useState(messages);
@@ -242,65 +246,34 @@ export const Chat = ({ channelId, onScroll }: ChatProps) => {
   };
 
   const handleFiltersChange = (newFilters: typeof filters) => {
-    setFilters(newFilters);
+    onFiltersChange(newFilters);
   };
 
   const handleClearFilters = () => {
-    setFilters({});
+    onClearFilters();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const { data: uploadData, error: uploadError } = await supabase.functions.invoke('upload-chat-attachment', {
-        body: formData,
-      });
-
-      if (uploadError) throw uploadError;
-
-      const attachment = {
-        url: uploadData.url,
-        filename: file.name,
-        type: file.type,
-        size: file.size
-      };
-
-      await sendMessage(message, undefined, [attachment]);
-      setMessage('');
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le fichier",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    
+    const fileArray = Array.from(files);
+    setAttachments(prev => [...prev, ...fileArray]);
   };
 
   const handleSendMessage = async () => {
-    if (!message.trim() && !fileInputRef.current?.files?.length) return;
+    if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
     try {
-      await sendMessage(message);
+      await sendMessage(message, replyTo?.id, attachments);
       setMessage('');
+      setAttachments([]);
+      setReplyTo(null);
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'envoyer le message",
-        variant: "destructive",
-      });
     }
   };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -155,26 +154,12 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
-
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('id', messageId);
-
-      if (error) {
-        console.error('[Chat] Error deleting message:', error);
-        await fetchMessages();
-        throw error;
-      }
-    } catch (error) {
-      console.error('[Chat] Error deleting message:', error);
-    }
-  };
-
-  const { sendMessage, reactToMessage, markMentionsAsRead } = useMessageActions(
+  const { 
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
+    reactToMessage,
+    markMentionsAsRead,
+  } = useMessageActions(
     channelId,
     currentUserId,
     fetchMessages

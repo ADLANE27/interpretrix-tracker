@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -44,7 +43,7 @@ export const useMessageActions = (
 
       return {
         url: publicUrl,
-        filename: file.name, // Keep original filename for display
+        filename: file.name,
         type: file.type,
         size: file.size
       };
@@ -56,32 +55,24 @@ export const useMessageActions = (
 
   const sendMessage = async (
     content: string,
-    parentMessageId?: string,
-    attachments: File[] = []
+    parentMessageId?: string | null,
+    files: File[] = []
   ): Promise<string> => {
     if (!channelId || !currentUserId) throw new Error("Missing required data");
-    if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
+    if (!content.trim() && files.length === 0) throw new Error("Message cannot be empty");
     
     try {
       // Upload all attachments first
       const uploadedAttachments = await Promise.all(
-        attachments.map(file => uploadAttachment(file))
+        files.map(file => uploadAttachment(file))
       );
-
-      // Convert attachments to plain objects to match Json type
-      const attachmentsForDb = uploadedAttachments.map(att => ({
-        url: att.url,
-        filename: att.filename,
-        type: att.type,
-        size: att.size
-      })) as Json[];
 
       const newMessage = {
         channel_id: channelId,
         sender_id: currentUserId,
         content: content.trim(),
         parent_message_id: parentMessageId,
-        attachments: attachmentsForDb,
+        attachments: uploadedAttachments as Json[],
         reactions: {} as Json
       };
 
