@@ -153,8 +153,8 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-10rem)] px-4">
-      <div className="grid gap-6 py-6">
+    <ScrollArea className="h-[calc(100vh-6rem)]">
+      <div className="grid gap-6 p-6">
         <Card className="border-0 shadow-none">
           <CardHeader>
             <CardTitle>Informations personnelles</CardTitle>
