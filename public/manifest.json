@@ -4,9 +4,9 @@
   "name": "AFTraduction",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
+      "src": "/lovable-uploads/6e10035d-9f88-462d-8801-4e8385181993.png",
+      "sizes": "192x192",
+      "type": "image/png"
     }
   ],
   "start_url": ".",
