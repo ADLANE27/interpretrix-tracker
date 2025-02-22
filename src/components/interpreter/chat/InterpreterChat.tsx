@@ -719,7 +719,7 @@ export const InterpreterChat = ({
               isFullScreen ? "pt-8 pb-4" : "pt-10"
             )}>
               <div className="px-6 max-w-[95%] mx-auto">
-                <div className="chat-input-container relative">
+                <div className="chat-input-container relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                   {replyingTo && (
                     <div className="px-4 py-2 bg-purple-50 border-b rounded-t-2xl flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-purple-700">
@@ -742,7 +742,7 @@ export const InterpreterChat = ({
                     onChange={handleMessageChange}
                     onKeyPress={handleKeyPress}
                     placeholder="Écrivez votre message..."
-                    className="min-h-[80px] resize-none border-0 focus-visible:ring-0 rounded-2xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500"
+                    className="min-h-[80px] resize-none rounded-xl bg-transparent px-4 py-3 text-[15px] leading-relaxed placeholder:text-gray-500 border-0 focus-visible:ring-0 focus-visible:border-0"
                   />
 
                   <MentionSuggestions
