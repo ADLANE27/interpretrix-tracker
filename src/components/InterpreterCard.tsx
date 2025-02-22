@@ -35,12 +35,6 @@ interface InterpreterCardProps {
   };
 }
 
-interface InterpreterProfile {
-  status: string;
-  tarif_5min: number;
-  tarif_15min: number;
-}
-
 interface RealtimePostgresUpdatePayload {
   commit_timestamp: string;
   errors: null | any[];
@@ -86,6 +80,22 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   });
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
+  const [isInterpreter, setIsInterpreter] = useState(true);
+
+  const checkIfInterpreter = async () => {
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', interpreter.id)
+      .single();
+
+    if (roleError) {
+      console.error('[InterpreterCard] Error checking role:', roleError);
+      return;
+    }
+
+    setIsInterpreter(roleData?.role === 'interpreter');
+  };
 
   const fetchTarifs = async () => {
     const { data, error } = await supabase
@@ -255,6 +265,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       supabase.removeChannel(missionChannel);
     };
   }, [interpreter.id]);
+
+  if (!isInterpreter) {
+    return null;
+  }
 
   const nextMission = missions[0];
   const additionalMissions = missions.slice(1);
