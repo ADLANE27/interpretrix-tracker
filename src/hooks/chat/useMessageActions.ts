@@ -3,6 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 
+const sanitizeFilename = (filename: string): string => {
+  // Remove special characters and replace spaces with underscores
+  const sanitized = filename
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9.-]/g, '_');
+  
+  const timestamp = Date.now();
+  const ext = sanitized.split('.').pop();
+  const name = sanitized.split('.').slice(0, -1).join('.');
+  
+  return `${name}_${timestamp}.${ext}`;
+};
+
 export const useMessageActions = (
   channelId: string,
   currentUserId: string | null,
@@ -10,29 +24,58 @@ export const useMessageActions = (
 ) => {
   const { toast } = useToast();
 
+  const uploadAttachment = async (file: File): Promise<Attachment> => {
+    const sanitizedFilename = sanitizeFilename(file.name);
+    
+    try {
+      const { data, error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(sanitizedFilename, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(sanitizedFilename);
+
+      return {
+        url: publicUrl,
+        filename: file.name, // Keep original filename for display
+        type: file.type,
+        size: file.size
+      };
+    } catch (error) {
+      console.error('[Chat] Error uploading file:', error);
+      throw error;
+    }
+  };
+
   const sendMessage = async (
     content: string,
     parentMessageId?: string,
-    attachments: Attachment[] = []
+    attachments: File[] = []
   ): Promise<string> => {
     if (!channelId || !currentUserId) throw new Error("Missing required data");
     if (!content.trim() && attachments.length === 0) throw new Error("Message cannot be empty");
     
-    const newMessage = {
-      channel_id: channelId,
-      sender_id: currentUserId,
-      content: content.trim(),
-      parent_message_id: parentMessageId,
-      attachments: attachments.map(att => ({
-        url: att.url,
-        filename: att.filename,
-        type: att.type,
-        size: att.size
-      })),
-      reactions: {}
-    };
-
     try {
+      // Upload all attachments first
+      const uploadedAttachments = await Promise.all(
+        attachments.map(file => uploadAttachment(file))
+      );
+
+      const newMessage = {
+        channel_id: channelId,
+        sender_id: currentUserId,
+        content: content.trim(),
+        parent_message_id: parentMessageId,
+        attachments: uploadedAttachments,
+        reactions: {}
+      };
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(newMessage)
@@ -42,7 +85,6 @@ export const useMessageActions = (
       if (error) throw error;
       if (!data) throw new Error("No data returned from insert");
 
-      // No need to fetch all messages, just update the local state
       await fetchMessages();
       return data.id;
     } catch (error) {
