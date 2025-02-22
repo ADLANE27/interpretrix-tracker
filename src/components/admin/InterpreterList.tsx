@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -110,12 +111,23 @@ export const InterpreterList = ({
     }
   };
 
-  const formatLanguagePairs = (languages: string[]): LanguagePair[] & string[] => {
-    const pairs = languages.map(lang => {
+  const formatLanguagePairs = (languages: string[]): LanguagePair[] => {
+    return languages.map(lang => {
+      // First, check if the language is already a LanguagePair object
+      if (typeof lang !== 'string') {
+        console.warn('Received non-string language:', lang);
+        return { source: '', target: '' };
+      }
+
+      // Handle empty or malformed strings
+      if (!lang.includes('→')) {
+        console.warn('Invalid language format:', lang);
+        return { source: lang, target: '' };
+      }
+
       const [source, target] = lang.split('→').map(l => l.trim());
-      return { source, target };
+      return { source: source || '', target: target || '' };
     });
-    return pairs as LanguagePair[] & string[];
   };
 
   return (
