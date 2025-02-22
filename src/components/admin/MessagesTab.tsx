@@ -324,38 +324,47 @@ export const MessagesTab = () => {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data: storageData, error: storageError } = await supabase
-        .storage
-        .createBucket('chat-attachments', {
-          public: true,
-          fileSizeLimit: 52428800 // 50MB
-        });
+      // Create bucket if it doesn't exist
+      await supabase.storage.createBucket('chat-attachments', {
+        public: true,
+        fileSizeLimit: 52428800, // 50MB
+        allowedMimeTypes: ['application/pdf', 'image/*', 'text/*', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+      });
 
+      // Generate a unique filename to avoid collisions
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${file.name}`;
+
+      // Upload the file
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('chat-attachments')
-        .upload(`${Date.now()}-${file.name}`, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase
+      // Get the public URL using the correct path structure
+      const { data: publicUrlData } = supabase
         .storage
         .from('chat-attachments')
-        .getPublicUrl(uploadData.path);
+        .getPublicUrl(fileName);
 
-      await supabase
+      // Create the message with the file link
+      const { error: messageError } = await supabase
         .from("chat_messages")
         .insert([{ 
-          content: `[File: ${file.name}](${publicUrl})`,
+          content: `[File: ${file.name}](${publicUrlData.publicUrl})`,
           channel_id: selectedChannel.id,
           sender_id: user.id,
         }]);
+
+      if (messageError) throw messageError;
 
       toast({
         title: "Succès",
