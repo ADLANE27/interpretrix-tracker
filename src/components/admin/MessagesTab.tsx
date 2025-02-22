@@ -8,12 +8,12 @@ import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile } from "lucide-react";
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2 } from "lucide-react";
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import Picker from '@emoji-mart/react";
 
 interface Message {
   id: string;
@@ -282,7 +282,42 @@ export const MessagesTab = () => {
     setNewMessage(prev => prev + emoji.native);
   };
 
-const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const deleteMessage = async (messageId: string, senderId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      if (user.id !== senderId) {
+        toast({
+          title: "Erreur",
+          description: "Vous ne pouvez pas supprimer les messages des autres utilisateurs",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("id", messageId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Message supprimé",
+      });
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedChannel) return;
 
@@ -294,23 +329,29 @@ const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const response = await supabase.functions.invoke('upload-chat-attachment', {
-        body: formData,
-      });
+      const { data: storageData, error: storageError } = await supabase
+        .storage
+        .createBucket('chat-attachments', {
+          public: true,
+          fileSizeLimit: 52428800 // 50MB
+        });
 
-      if (!response.data) {
-        throw new Error("Upload failed");
-      }
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from('chat-attachments')
+        .upload(`${Date.now()}-${file.name}`, file);
 
-      const { filePath } = response.data;
+      if (uploadError) throw uploadError;
 
-      // Use the project URL for file access
-      const fileUrl = `${process.env.VITE_SUPABASE_URL}/storage/v1/object/public/chat-attachments/${filePath}`;
-      
+      const { data: { publicUrl } } = supabase
+        .storage
+        .from('chat-attachments')
+        .getPublicUrl(uploadData.path);
+
       await supabase
         .from("chat_messages")
         .insert([{ 
-          content: `[File: ${file.name}](${fileUrl})`,
+          content: `[File: ${file.name}](${publicUrl})`,
           channel_id: selectedChannel.id,
           sender_id: user.id,
         }]);
@@ -400,21 +441,33 @@ const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
             <div className="flex-1 overflow-y-auto mb-4 space-y-4">
               {messages.map((message) => (
                 <Card key={message.id} className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Avatar className="h-8 w-8">
-                      {message.sender?.avatarUrl && (
-                        <AvatarImage src={message.sender.avatarUrl} />
-                      )}
-                      <AvatarFallback>
-                        {message.sender?.name.substring(0, 2) || '??'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{message.sender?.name || 'Unknown User'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(message.created_at), "PPpp", { locale: fr })}
-                      </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        {message.sender?.avatarUrl && (
+                          <AvatarImage src={message.sender.avatarUrl} />
+                        )}
+                        <AvatarFallback>
+                          {message.sender?.name.substring(0, 2) || '??'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{message.sender?.name || 'Unknown User'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(message.created_at), "PPpp", { locale: fr })}
+                        </p>
+                      </div>
                     </div>
+                    {message.sender?.id && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => deleteMessage(message.id, message.sender_id)}
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                   <p className="ml-10">{message.content}</p>
                 </Card>
