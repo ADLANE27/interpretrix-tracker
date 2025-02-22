@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +8,9 @@ import { MessageCircle, Bell } from "lucide-react";
 interface Channel {
   id: string;
   name: string;
+  display_name: string;
   description: string | null;
+  channel_type: string;
 }
 
 export const InterpreterChannelList = ({ 
@@ -27,26 +28,10 @@ export const InterpreterChannelList = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data: memberChannels, error: memberError } = await supabase
-        .from('channel_members')
-        .select('channel_id')
-        .eq('user_id', user.id);
+      const { data: channels, error } = await supabase
+        .rpc('get_channels_with_display_names', { current_user_id: user.id });
 
-      if (memberError) throw memberError;
-
-      if (!memberChannels?.length) {
-        setChannels([]);
-        return;
-      }
-
-      const channelIds = memberChannels.map(mc => mc.channel_id);
-      const { data: channels, error: channelsError } = await supabase
-        .from('chat_channels')
-        .select('*')
-        .in('id', channelIds)
-        .order('name');
-
-      if (channelsError) throw channelsError;
+      if (error) throw error;
       setChannels(channels || []);
     } catch (error) {
       console.error("[InterpreterChat] Error fetching channels:", error);
@@ -145,7 +130,7 @@ export const InterpreterChannelList = ({
             >
               <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
               <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="font-medium truncate">{channel.name}</span>
+                <span className="font-medium truncate">{channel.display_name}</span>
                 {unreadMentions[channel.id] > 0 && (
                   <Badge 
                     variant="destructive" 
