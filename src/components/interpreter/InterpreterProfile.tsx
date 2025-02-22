@@ -164,57 +164,57 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Prénom</Label>
-                <Input type="text" value={profile.first_name} readOnly />
+                <Input type="text" value={profile.first_name} readOnly className="border-0 bg-white shadow-sm" />
               </div>
               <div className="grid gap-2">
                 <Label>Nom</Label>
-                <Input type="text" value={profile.last_name} readOnly />
+                <Input type="text" value={profile.last_name} readOnly className="border-0 bg-white shadow-sm" />
               </div>
             </div>
 
             <div className="grid gap-2">
               <Label>Email</Label>
-              <Input type="email" value={profile.email} readOnly />
+              <Input type="email" value={profile.email} readOnly className="border-0 bg-white shadow-sm" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Téléphone mobile</Label>
-                <Input type="tel" value={profile.phone_number || ''} readOnly />
+                <Input type="tel" value={profile.phone_number || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
               <div className="grid gap-2">
                 <Label>Téléphone fixe</Label>
-                <Input type="tel" value={profile.landline_phone || ''} readOnly />
+                <Input type="tel" value={profile.landline_phone || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-[#E5DEFF]" />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Rue</Label>
-                <Input type="text" value={profile.address?.street || ''} readOnly />
+                <Input type="text" value={profile.address?.street || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
               <div className="grid gap-2">
                 <Label>Code postal</Label>
-                <Input type="text" value={profile.address?.postal_code || ''} readOnly />
+                <Input type="text" value={profile.address?.postal_code || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
               <div className="grid gap-2">
                 <Label>Ville</Label>
-                <Input type="text" value={profile.address?.city || ''} readOnly />
+                <Input type="text" value={profile.address?.city || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-[#E5DEFF]" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Pays de naissance</Label>
-                <Input type="text" value={profile.birth_country || ''} readOnly />
+                <Input type="text" value={profile.birth_country || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
               <div className="grid gap-2">
                 <Label>Nationalité</Label>
-                <Input type="text" value={profile.nationality || ''} readOnly />
+                <Input type="text" value={profile.nationality || ''} readOnly className="border-0 bg-white shadow-sm" />
               </div>
             </div>
           </CardContent>
