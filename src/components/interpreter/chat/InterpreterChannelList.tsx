@@ -4,16 +4,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Bell } from "lucide-react";
+import { MessageCircle, Bell, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Channel {
   id: string;
   display_name: string;
   description: string | null;
-  channel_type: string;
+  channel_type: 'direct' | 'group';
   created_at: string;
   updated_at: string;
   created_by: string;
+}
+
+interface DeleteChannelConfirmation {
+  isOpen: boolean;
+  channelId: string | null;
+  channelName: string;
 }
 
 export const InterpreterChannelList = ({ 
@@ -24,6 +40,11 @@ export const InterpreterChannelList = ({
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
+  const [deleteConfirmation, setDeleteConfirmation] = useState<DeleteChannelConfirmation>({
+    isOpen: false,
+    channelId: null,
+    channelName: ''
+  });
   const { toast } = useToast();
 
   const fetchChannels = async () => {
@@ -42,6 +63,38 @@ export const InterpreterChannelList = ({
         title: "Error",
         description: "Failed to fetch channels",
         variant: "destructive",
+      });
+    }
+  };
+
+  const removeFromChannel = async (channelId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('channel_members')
+        .delete()
+        .match({ 
+          channel_id: channelId,
+          user_id: user.id 
+        });
+
+      if (error) throw error;
+
+      // Refresh channels list
+      await fetchChannels();
+      
+      toast({
+        title: "Success",
+        description: "Removed from conversation"
+      });
+    } catch (error) {
+      console.error('[InterpreterChat] Error removing from channel:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove from conversation",
+        variant: "destructive"
       });
     }
   };
@@ -112,42 +165,96 @@ export const InterpreterChannelList = ({
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-400px)]">
-      <div className="space-y-2 pr-4">
-        {channels.length === 0 ? (
-          <div className="text-center text-muted-foreground p-4">
-            You are not a member of any chat channels
-          </div>
-        ) : (
-          channels.map((channel) => (
-            <div
-              key={channel.id}
-              className={`
-                flex items-center gap-3 p-3 rounded-lg 
-                cursor-pointer transition-all duration-200
-                ${selectedChannelId === channel.id 
-                  ? 'bg-interpreter-navy text-white' 
-                  : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
-              `}
-              onClick={() => handleChannelSelect(channel.id)}
-            >
-              <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
-              <div className="flex items-center justify-between flex-1 min-w-0">
-                <span className="font-medium truncate">{channel.display_name}</span>
-                {unreadMentions[channel.id] > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="ml-2 animate-pulse"
-                  >
-                    <Bell className="h-3 w-3 mr-1" />
-                    {unreadMentions[channel.id]}
-                  </Badge>
-                )}
-              </div>
+    <>
+      <ScrollArea className="h-[calc(100vh-400px)]">
+        <div className="space-y-2 pr-4">
+          {channels.length === 0 ? (
+            <div className="text-center text-muted-foreground p-4">
+              You are not a member of any chat channels
             </div>
-          ))
-        )}
-      </div>
-    </ScrollArea>
+          ) : (
+            channels.map((channel) => (
+              <div
+                key={channel.id}
+                className={`
+                  flex items-center gap-3 p-3 rounded-lg 
+                  cursor-pointer transition-all duration-200
+                  ${selectedChannelId === channel.id 
+                    ? 'bg-interpreter-navy text-white' 
+                    : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
+                `}
+                onClick={() => handleChannelSelect(channel.id)}
+              >
+                <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="font-medium truncate">{channel.display_name}</span>
+                  <div className="flex items-center gap-2">
+                    {unreadMentions[channel.id] > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="animate-pulse"
+                      >
+                        <Bell className="h-3 w-3 mr-1" />
+                        {unreadMentions[channel.id]}
+                      </Badge>
+                    )}
+                    {channel.channel_type === 'direct' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmation({
+                            isOpen: true,
+                            channelId: channel.id,
+                            channelName: channel.display_name
+                          });
+                        }}
+                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                      >
+                        <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
+
+      <AlertDialog
+        open={deleteConfirmation.isOpen}
+        onOpenChange={(isOpen) => 
+          setDeleteConfirmation(prev => ({ ...prev, isOpen }))
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Conversation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove the conversation with {deleteConfirmation.channelName}? 
+              You can still message them again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteConfirmation.channelId) {
+                  removeFromChannel(deleteConfirmation.channelId);
+                }
+                setDeleteConfirmation({
+                  isOpen: false,
+                  channelId: null,
+                  channelName: ''
+                });
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
