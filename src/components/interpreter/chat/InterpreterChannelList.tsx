@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -47,16 +46,29 @@ export const InterpreterChannelList = ({
   });
   const { toast } = useToast();
 
+  const isValidChannelType = (type: string): type is 'direct' | 'group' => {
+    return type === 'direct' || type === 'group';
+  };
+
   const fetchChannels = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { data: channels, error } = await supabase
+      const { data: rawChannels, error } = await supabase
         .rpc('get_channels_with_display_names', { current_user_id: user.id });
 
       if (error) throw error;
-      setChannels(channels || []);
+
+      const validChannels: Channel[] = (rawChannels || []).map(channel => {
+        if (!isValidChannelType(channel.channel_type)) {
+          console.error(`Invalid channel type: ${channel.channel_type}`);
+          return { ...channel, channel_type: 'group' as const };
+        }
+        return channel as Channel;
+      });
+
+      setChannels(validChannels);
     } catch (error) {
       console.error("[InterpreterChat] Error fetching channels:", error);
       toast({
@@ -82,7 +94,6 @@ export const InterpreterChannelList = ({
 
       if (error) throw error;
 
-      // Refresh channels list
       await fetchChannels();
       
       toast({
