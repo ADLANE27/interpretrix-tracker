@@ -335,25 +335,32 @@ export const MessagesTab = () => {
       });
 
       // Generate a unique filename to avoid collisions
-      const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${file.name}`;
 
-      // Upload the file
+      // Upload the file with owner metadata
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from('chat-attachments')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          duplex: 'half'
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
-      // Get the public URL using the correct path structure
+      // Get the public URL
       const { data: publicUrlData } = supabase
         .storage
         .from('chat-attachments')
         .getPublicUrl(fileName);
+
+      if (!publicUrlData.publicUrl) {
+        throw new Error("Failed to generate public URL");
+      }
 
       // Create the message with the file link
       const { error: messageError } = await supabase
@@ -364,7 +371,10 @@ export const MessagesTab = () => {
           sender_id: user.id,
         }]);
 
-      if (messageError) throw messageError;
+      if (messageError) {
+        console.error("Message error:", messageError);
+        throw messageError;
+      }
 
       toast({
         title: "Succès",
