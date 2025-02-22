@@ -5,14 +5,16 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   userStatus: string;
+  profilePictureUrl?: string;
 }
 
-export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) => {
+export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl }: SidebarProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -65,9 +67,16 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus }: SidebarProps) =>
             getStatusColor(),
             "animate-pulse"
           )} />
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/30 flex items-center justify-center">
-            <Headset className="w-6 h-6 text-primary" />
-          </div>
+          <Avatar className="w-12 h-12">
+            <AvatarImage 
+              src={profilePictureUrl} 
+              alt="Photo de profil"
+              className="rounded-full object-cover"
+            />
+            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30">
+              <Headset className="w-6 h-6 text-primary" />
+            </AvatarFallback>
+          </Avatar>
         </div>
       </div>
 
