@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { AddressSection } from "./profile/AddressSection";
 import { PersonalInfoSection } from "./profile/PersonalInfoSection";
@@ -22,9 +21,13 @@ interface ExtendedProfile {
     city: string;
   } | null;
   tarif_15min: number;
+  tarif_5min: number;
+  phone_interpretation_rate: number;
+  siret_number: string;
+  vat_number: string;
 }
 
-export function ProfileTab() {
+export const ProfileTab = () => {
   const [profile, setProfile] = useState<ExtendedProfile | null>(null);
 
   useEffect(() => {
@@ -44,14 +47,12 @@ export function ProfileTab() {
           return { source, target };
         });
 
-        // Cast l'adresse JSON en type ExtendedProfile.address
         const formattedAddress = data.address ? {
           street: (data.address as any).street || '',
           postal_code: (data.address as any).postal_code || '',
           city: (data.address as any).city || ''
         } : null;
 
-        // Créer un objet ExtendedProfile valide
         const formattedProfile: ExtendedProfile = {
           id: data.id,
           first_name: data.first_name,
@@ -63,7 +64,11 @@ export function ProfileTab() {
           employment_status: data.employment_status,
           languages: languagePairs,
           address: formattedAddress,
-          tarif_15min: data.tarif_15min
+          tarif_15min: data.tarif_15min,
+          tarif_5min: data.tarif_5min,
+          phone_interpretation_rate: data.phone_interpretation_rate || 0,
+          siret_number: data.siret_number || '',
+          vat_number: data.vat_number || ''
         };
 
         setProfile(formattedProfile);
@@ -80,8 +85,8 @@ export function ProfileTab() {
   }
 
   return (
-    <div className="space-y-8">
-      <PersonalInfoSection 
+    <div className="space-y-6">
+      <PersonalInfoSection
         firstName={profile.first_name}
         lastName={profile.last_name}
         email={profile.email}
@@ -92,21 +97,30 @@ export function ProfileTab() {
         isEditing={false}
         onChange={() => {}}
       />
-      <AddressSection 
+
+      <ProfessionalInfoSection
+        employmentStatus={profile.employment_status}
+        onEmploymentStatusChange={() => {}}
+        languages={profile.languages}
+        onLanguagesChange={() => {}}
+        tarif5min={profile.tarif_5min}
+        onTarif5minChange={() => {}}
+        tarif15min={profile.tarif_15min}
+        onTarif15minChange={() => {}}
+        phoneInterpretationRate={profile.phone_interpretation_rate || 0}
+        onPhoneInterpretationRateChange={() => {}}
+        siretNumber={profile.siret_number || ''}
+        onSiretNumberChange={() => {}}
+        vatNumber={profile.vat_number || ''}
+        onVatNumberChange={() => {}}
+        isEditing={false}
+      />
+
+      <AddressSection
         address={profile.address}
         isEditing={false}
         onChange={() => {}}
       />
-      <ProfessionalInfoSection 
-        employmentStatus={profile.employment_status}
-        languages={profile.languages}
-        isEditing={false}
-        onEmploymentStatusChange={() => {}}
-        onLanguagesChange={() => {}}
-      />
-      <div className="flex justify-end">
-        <ThemeToggle />
-      </div>
     </div>
   );
-}
+};

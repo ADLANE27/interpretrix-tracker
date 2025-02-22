@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,7 @@ export interface InterpreterFormData {
 interface InterpreterProfileFormProps {
   isEditing: boolean;
   onSubmit: (data: InterpreterFormData) => Promise<void>;
-  initialData?: Partial<InterpreterFormData> & { languages?: LanguagePair[] };
+  initialData?: Partial<InterpreterFormData>;
   isSubmitting: boolean;
 }
 
@@ -68,7 +67,6 @@ export const InterpreterProfileForm = ({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   
-  // Convert string array to LanguagePair array
   const initialLanguages: LanguagePair[] = initialData?.languages?.map((lang: string) => {
     const parts = lang.split('→');
     return {

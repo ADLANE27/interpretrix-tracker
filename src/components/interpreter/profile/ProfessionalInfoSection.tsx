@@ -1,3 +1,15 @@
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
 import { LanguagePair } from "@/types/languages";
 
 export interface ProfessionalInfoSectionProps {

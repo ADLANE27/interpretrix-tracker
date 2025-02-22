@@ -107,10 +107,11 @@ export const InterpreterList = ({
     
     try {
       setIsSubmitting(true);
-      await onUpdateInterpreter(selectedInterpreter.id, {
+      const dataToSubmit = {
         ...data,
-        languages: convertLanguagePairsToStrings(data.languages)
-      });
+        languages: convertLanguagePairsToStrings(data.languages),
+      };
+      await onUpdateInterpreter(selectedInterpreter.id, dataToSubmit);
       setIsEditDialogOpen(false);
       setSelectedInterpreter(null);
     } finally {
