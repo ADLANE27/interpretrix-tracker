@@ -280,7 +280,7 @@ export const AdminDashboard = () => {
 
         <div className="flex-1 overflow-y-auto px-6">
           <TabsContent value="interpreters" className="h-full">
-            <div className="space-y-6">
+            <div className="space-y-6 pb-16">
               <div className="mb-4">
                 <h2 className="text-2xl font-bold">Liste des interprètes</h2>
               </div>
@@ -370,7 +370,7 @@ export const AdminDashboard = () => {
 
               <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredInterpreters.map(interpreter => (
                   <InterpreterCard key={interpreter.id} interpreter={{
                     id: interpreter.id,
