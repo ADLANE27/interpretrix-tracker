@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -30,8 +31,11 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
-import { convertStringsToLanguagePairs } from "@/types/languages";
-import type { LanguagePair } from "@/types/languages";
+import { convertLanguagePairsToStrings, convertStringsToLanguagePairs, type LanguagePair } from "@/types/languages";
+
+interface InterpreterFormData extends Omit<InterpreterData, 'languages'> {
+  languages: LanguagePair[];
+}
 
 interface InterpreterData {
   id: string;
@@ -64,7 +68,7 @@ interface InterpreterListProps {
   onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onResetPassword: (userId: string) => void;
-  onUpdateInterpreter: (userId: string, data: any) => Promise<void>;
+  onUpdateInterpreter: (userId: string, data: InterpreterFormData) => Promise<void>;
 }
 
 export const InterpreterList = ({ 
@@ -98,12 +102,15 @@ export const InterpreterList = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateSubmit = async (data: any) => {
+  const handleUpdateSubmit = async (data: InterpreterFormData) => {
     if (!selectedInterpreter) return;
     
     try {
       setIsSubmitting(true);
-      await onUpdateInterpreter(selectedInterpreter.id, data);
+      await onUpdateInterpreter(selectedInterpreter.id, {
+        ...data,
+        languages: convertLanguagePairsToStrings(data.languages)
+      });
       setIsEditDialogOpen(false);
       setSelectedInterpreter(null);
     } finally {
