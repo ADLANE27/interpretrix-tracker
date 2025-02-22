@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -165,6 +166,7 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
+  // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -173,6 +175,15 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
+  // Fetch messages when channel changes or when component mounts
+  useEffect(() => {
+    if (channelId) {
+      console.log('[Chat] Initial messages fetch for channel:', channelId);
+      fetchMessages();
+    }
+  }, [channelId, fetchMessages]);
+
+  // Update subscription status
   useEffect(() => {
     setSubscriptionStatus({
       messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
