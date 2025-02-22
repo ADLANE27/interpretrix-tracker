@@ -17,6 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "@radix-ui/react-icons";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProfileProps {
   profile: {
@@ -152,178 +153,180 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
   };
 
   return (
-    <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations personnelles</CardTitle>
-          <CardDescription>Consulter vos informations personnelles.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Prénom</Label>
-              <Input type="text" value={profile.first_name} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Nom</Label>
-              <Input type="text" value={profile.last_name} readOnly />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Email</Label>
-            <Input type="email" value={profile.email} readOnly />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Téléphone mobile</Label>
-              <Input type="tel" value={profile.phone_number || ''} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Téléphone fixe</Label>
-              <Input type="tel" value={profile.landline_phone || ''} readOnly />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="grid gap-2">
-              <Label>Rue</Label>
-              <Input type="text" value={profile.address?.street || ''} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Code postal</Label>
-              <Input type="text" value={profile.address?.postal_code || ''} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Ville</Label>
-              <Input type="text" value={profile.address?.city || ''} readOnly />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Pays de naissance</Label>
-              <Input type="text" value={profile.birth_country || ''} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Nationalité</Label>
-              <Input type="text" value={profile.nationality || ''} readOnly />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations professionnelles</CardTitle>
-          <CardDescription>Consulter vos informations professionnelles.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label>Statut professionnel</Label>
-            <Input 
-              type="text" 
-              value={
-                profile.employment_status === 'salaried_aft' ? 'Salarié AFTrad' :
-                profile.employment_status === 'salaried_aftcom' ? 'Salarié AFTCOM' :
-                profile.employment_status === 'salaried_planet' ? 'Salarié PLANET' :
-                profile.employment_status === 'permanent_interpreter' ? 'Interprète permanent' :
-                'Auto-entrepreneur'
-              } 
-              readOnly 
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Tarif (15 minutes)</Label>
-              <Input type="text" value={`${profile.tarif_15min} €`} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Tarif (5 minutes)</Label>
-              <Input type="text" value={`${profile.tarif_5min} €`} readOnly />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label>Tarif d'interprétation téléphonique (€/min)</Label>
-            <Input
-              type="text"
-              value={profile.phone_interpretation_rate ? `${profile.phone_interpretation_rate} €` : ''}
-              readOnly
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label>Numéro SIRET</Label>
-              <Input type="text" value={profile.siret_number || ''} readOnly />
-            </div>
-            <div className="grid gap-2">
-              <Label>Numéro de TVA</Label>
-              <Input type="text" value={profile.vat_number || ''} readOnly />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Langues</CardTitle>
-          <CardDescription>Vos paires de langues.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {profile.languages.map((lang, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Badge variant="secondary">{lang.source}</Badge>
-                <span>→</span>
-                <Badge variant="secondary">{lang.target}</Badge>
+    <ScrollArea className="h-[calc(100vh-10rem)] px-4">
+      <div className="grid gap-4 pb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations personnelles</CardTitle>
+            <CardDescription>Consulter vos informations personnelles.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Prénom</Label>
+                <Input type="text" value={profile.first_name} readOnly />
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Photo de profil</CardTitle>
-          <CardDescription>Gérer votre photo de profil.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex items-center space-x-4">
-            <Avatar>
-              {profile.profile_picture_url ? (
-                <AvatarImage src={profile.profile_picture_url} alt="Photo de profil" />
-              ) : (
-                <AvatarFallback>{profile.first_name[0]}{profile.last_name[0]}</AvatarFallback>
-              )}
-            </Avatar>
-            <div className="space-y-2">
-              <Button variant="secondary" onClick={() => document.getElementById('profile-picture-input')?.click()}>
-                Télécharger une nouvelle photo
-              </Button>
-              <Input
-                id="profile-picture-input"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onProfilePictureUpload}
-              />
-              {profile.profile_picture_url && (
-                <Button variant="destructive" onClick={onProfilePictureDelete}>
-                  Supprimer la photo
-                </Button>
-              )}
+              <div className="grid gap-2">
+                <Label>Nom</Label>
+                <Input type="text" value={profile.last_name} readOnly />
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+
+            <div className="grid gap-2">
+              <Label>Email</Label>
+              <Input type="email" value={profile.email} readOnly />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Téléphone mobile</Label>
+                <Input type="tel" value={profile.phone_number || ''} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Téléphone fixe</Label>
+                <Input type="tel" value={profile.landline_phone || ''} readOnly />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid gap-2">
+                <Label>Rue</Label>
+                <Input type="text" value={profile.address?.street || ''} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Code postal</Label>
+                <Input type="text" value={profile.address?.postal_code || ''} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Ville</Label>
+                <Input type="text" value={profile.address?.city || ''} readOnly />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Pays de naissance</Label>
+                <Input type="text" value={profile.birth_country || ''} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Nationalité</Label>
+                <Input type="text" value={profile.nationality || ''} readOnly />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Informations professionnelles</CardTitle>
+            <CardDescription>Consulter vos informations professionnelles.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2">
+              <Label>Statut professionnel</Label>
+              <Input 
+                type="text" 
+                value={
+                  profile.employment_status === 'salaried_aft' ? 'Salarié AFTrad' :
+                  profile.employment_status === 'salaried_aftcom' ? 'Salarié AFTCOM' :
+                  profile.employment_status === 'salaried_planet' ? 'Salarié PLANET' :
+                  profile.employment_status === 'permanent_interpreter' ? 'Interprète permanent' :
+                  'Auto-entrepreneur'
+                } 
+                readOnly 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Tarif (15 minutes)</Label>
+                <Input type="text" value={`${profile.tarif_15min} €`} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Tarif (5 minutes)</Label>
+                <Input type="text" value={`${profile.tarif_5min} €`} readOnly />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Tarif d'interprétation téléphonique (€/min)</Label>
+              <Input
+                type="text"
+                value={profile.phone_interpretation_rate ? `${profile.phone_interpretation_rate} €` : ''}
+                readOnly
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Numéro SIRET</Label>
+                <Input type="text" value={profile.siret_number || ''} readOnly />
+              </div>
+              <div className="grid gap-2">
+                <Label>Numéro de TVA</Label>
+                <Input type="text" value={profile.vat_number || ''} readOnly />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Langues</CardTitle>
+            <CardDescription>Vos paires de langues.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {profile.languages.map((lang, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Badge variant="secondary">{lang.source}</Badge>
+                  <span>→</span>
+                  <Badge variant="secondary">{lang.target}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Photo de profil</CardTitle>
+            <CardDescription>Gérer votre photo de profil.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="flex items-center space-x-4">
+              <Avatar>
+                {profile.profile_picture_url ? (
+                  <AvatarImage src={profile.profile_picture_url} alt="Photo de profil" />
+                ) : (
+                  <AvatarFallback>{profile.first_name[0]}{profile.last_name[0]}</AvatarFallback>
+                )}
+              </Avatar>
+              <div className="space-y-2">
+                <Button variant="secondary" onClick={() => document.getElementById('profile-picture-input')?.click()}>
+                  Télécharger une nouvelle photo
+                </Button>
+                <Input
+                  id="profile-picture-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onProfilePictureUpload}
+                />
+                {profile.profile_picture_url && (
+                  <Button variant="destructive" onClick={onProfilePictureDelete}>
+                    Supprimer la photo
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </ScrollArea>
   );
 };
