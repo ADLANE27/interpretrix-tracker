@@ -1,17 +1,12 @@
 
 {
-  "short_name": "Interpretrix",
-  "name": "Interpretrix",
+  "short_name": "AFTraduction",
+  "name": "AFTraduction",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "icon.svg",
       "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "lovable-uploads/8277f799-8748-4846-add4-f1f81f7576d3.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "type": "image/svg+xml"
     }
   ],
   "start_url": ".",
