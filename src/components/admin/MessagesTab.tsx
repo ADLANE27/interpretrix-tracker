@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus } from "lucide-react";
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -33,6 +33,7 @@ interface Message {
   created_at: string;
   channel_id: string;
   sender_id: string;
+  parent_message_id?: string | null;
   sender?: {
     id: string;
     name: string;
@@ -77,6 +78,8 @@ export const MessagesTab = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -280,16 +283,23 @@ export const MessagesTab = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const messageData: any = {
+        content: newMessage,
+        channel_id: selectedChannel.id,
+        sender_id: user.id,
+      };
+
+      if (replyTo) {
+        messageData.parent_message_id = replyTo.id;
+      }
+
       const { error } = await supabase
         .from("chat_messages")
-        .insert([{ 
-          content: newMessage,
-          channel_id: selectedChannel.id,
-          sender_id: user.id
-        }]);
+        .insert([messageData]);
 
       if (error) throw error;
       setNewMessage("");
+      setReplyTo(null);
       setShowMentions(false);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -503,6 +513,36 @@ export const MessagesTab = () => {
     }
   };
 
+  const toggleThread = (messageId: string) => {
+    setExpandedThreads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleReply = (message: Message) => {
+    setReplyTo(message);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
+    const threadId = message.parent_message_id || message.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
+    }
+    acc[threadId].push(message);
+    return acc;
+  }, {});
+
+  const rootMessages = messages.filter(message => !message.parent_message_id);
+
   return (
     <div className="flex h-[calc(100vh-200px)] gap-4">
       <div className="w-64 flex flex-col border-r pr-4">
@@ -578,42 +618,113 @@ export const MessagesTab = () => {
         {selectedChannel ? (
           <>
             <div className="flex-1 overflow-y-auto mb-4 space-y-4">
-              {messages.map((message) => (
-                <Card key={message.id} className="p-4 group relative">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        {message.sender?.avatarUrl && (
-                          <AvatarImage src={message.sender.avatarUrl} />
+              {rootMessages.map((message) => (
+                <React.Fragment key={message.id}>
+                  <Card className="p-4 group relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          {message.sender?.avatarUrl && (
+                            <AvatarImage src={message.sender.avatarUrl} />
+                          )}
+                          <AvatarFallback>
+                            {message.sender?.name.substring(0, 2) || '??'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{message.sender?.name || 'Unknown User'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(message.created_at), "PPpp", { locale: fr })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleReply(message)}
+                          className="h-8 w-8"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        {message.sender?.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteMessage(message.id, message.sender_id)}
+                            className="h-8 w-8"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
-                        <AvatarFallback>
-                          {message.sender?.name.substring(0, 2) || '??'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{message.sender?.name || 'Unknown User'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(message.created_at), "PPpp", { locale: fr })}
-                        </p>
                       </div>
                     </div>
-                    {message.sender?.id && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMessage(message.id, message.sender_id)}
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <div className="ml-10">{message.content}</div>
+                    
+                    {messageThreads[message.id]?.length > 1 && (
+                      <div className="ml-10 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleThread(message.id)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          {expandedThreads.has(message.id) ? (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mr-1" />
+                          )}
+                          {messageThreads[message.id].length - 1} réponses
+                        </Button>
+                        
+                        {expandedThreads.has(message.id) && (
+                          <div className="space-y-2 mt-2">
+                            {messageThreads[message.id]
+                              .filter(reply => reply.id !== message.id)
+                              .map(reply => (
+                                <Card key={reply.id} className="p-3 bg-gray-50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Avatar className="h-6 w-6">
+                                      {reply.sender?.avatarUrl && (
+                                        <AvatarImage src={reply.sender.avatarUrl} />
+                                      )}
+                                      <AvatarFallback>
+                                        {reply.sender?.name.substring(0, 2) || '??'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{reply.sender?.name}</span>
+                                    <span className="text-xs text-gray-500">
+                                      {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                                    </span>
+                                  </div>
+                                  <p className="ml-8 text-sm">{reply.content}</p>
+                                </Card>
+                              ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                  {renderMessageContent(message.content)}
-                </Card>
+                  </Card>
+                </React.Fragment>
               ))}
               <div ref={messagesEndRef} />
             </div>
             <div className="relative">
+              {replyTo && (
+                <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-gray-50 rounded-t-lg border-t border-x">
+                  <span className="text-sm text-gray-600">
+                    Réponse à {replyTo.sender?.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReplyTo(null)}
+                    className="h-6 px-2 text-xs"
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              )}
               <form onSubmit={sendMessage} className="flex gap-2">
                 <div className="flex-1 flex items-center gap-2 bg-background rounded-lg border">
                   <Input
