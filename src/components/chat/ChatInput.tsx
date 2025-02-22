@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -91,6 +90,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   onEmojiSelect={handleEmojiSelect}
                   theme="light"
                   locale="fr"
+                  previewPosition="none"
+                  skinTonePosition="none"
+                  categories={[
+                    'frequent',
+                    'people',
+                    'nature',
+                    'foods',
+                    'activity',
+                    'places',
+                    'objects',
+                    'symbols',
+                    'flags'
+                  ]}
                 />
               </PopoverContent>
             </Popover>
