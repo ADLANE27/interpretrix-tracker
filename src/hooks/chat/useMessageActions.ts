@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
+import type { Json } from '@/integrations/supabase/types';
 
 const sanitizeFilename = (filename: string): string => {
   // Remove special characters and replace spaces with underscores
@@ -67,13 +68,21 @@ export const useMessageActions = (
         attachments.map(file => uploadAttachment(file))
       );
 
+      // Convert attachments to plain objects to match Json type
+      const attachmentsForDb = uploadedAttachments.map(att => ({
+        url: att.url,
+        filename: att.filename,
+        type: att.type,
+        size: att.size
+      })) as Json[];
+
       const newMessage = {
         channel_id: channelId,
         sender_id: currentUserId,
         content: content.trim(),
         parent_message_id: parentMessageId,
-        attachments: uploadedAttachments as unknown as Json[], // Type assertion to match Supabase's expected type
-        reactions: {} as Json // Type assertion for reactions
+        attachments: attachmentsForDb,
+        reactions: {} as Json
       };
 
       const { data, error } = await supabase

@@ -1,4 +1,6 @@
 
+import type { Json } from '@/integrations/supabase/types';
+
 export interface Message {
   id: string;
   content: string;
@@ -62,4 +64,3 @@ export interface MessageListProps {
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
 }
-
