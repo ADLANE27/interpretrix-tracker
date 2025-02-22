@@ -3,6 +3,8 @@ import React from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2 } from 'lucide-react';
+import { Avatar } from "@/components/ui/avatar";
+import { format } from 'date-fns';
 
 interface MessageListProps {
   messages: Message[];
@@ -21,25 +23,54 @@ export const MessageList: React.FC<MessageListProps> = ({
   replyTo,
   setReplyTo,
 }) => {
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {messages.map((message) => (
         <div
           key={message.id}
-          className={`flex ${
-            message.sender.id === currentUserId ? 'justify-end' : 'justify-start'
+          className={`flex gap-3 ${
+            message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
           }`}
         >
-          <div className="max-w-[70%]">
-            <div className="flex items-start gap-2 group">
-              {message.sender.id !== currentUserId && (
-                <div className="font-medium text-sm">{message.sender.name}:</div>
-              )}
-              <div className="text-sm">{message.content}</div>
+          <Avatar className="h-8 w-8 shrink-0">
+            {message.sender.avatarUrl ? (
+              <img src={message.sender.avatarUrl} alt={message.sender.name} />
+            ) : (
+              <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium">
+                {getInitials(message.sender.name)}
+              </div>
+            )}
+          </Avatar>
+          <div className={`flex-1 max-w-[70%] space-y-1 ${
+            message.sender.id === currentUserId ? 'items-end' : 'items-start'
+          }`}>
+            <div className={`flex items-center gap-2 text-sm ${
+              message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+            }`}>
+              <span className="font-medium">{message.sender.name}</span>
+              <span className="text-gray-500 text-xs">
+                {format(message.timestamp, 'HH:mm')}
+              </span>
+            </div>
+            <div className={`group relative ${
+              message.sender.id === currentUserId 
+                ? 'bg-purple-50 text-purple-900' 
+                : 'bg-gray-50 text-gray-900'
+            } rounded-lg px-4 py-2`}>
+              <div className="text-sm break-words">{message.content}</div>
               {message.sender.id === currentUserId && (
                 <button
                   onClick={() => onDeleteMessage(message.id)}
-                  className="p-1 rounded-md hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute -right-8 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Delete message"
                 >
                   <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -47,7 +78,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               )}
             </div>
             {message.attachments && message.attachments.map((attachment, index) => (
-              <div key={index} className="mt-2 relative group">
+              <div key={index} className="relative group">
                 <MessageAttachment
                   url={attachment.url}
                   filename={attachment.filename}
