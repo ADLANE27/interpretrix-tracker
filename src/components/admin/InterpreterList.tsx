@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import {
@@ -111,11 +110,12 @@ export const InterpreterList = ({
     }
   };
 
-  const formatLanguagePairs = (languages: string[]): LanguagePair[] => {
-    return languages.map(lang => {
+  const formatLanguagePairs = (languages: string[]): LanguagePair[] & string[] => {
+    const pairs = languages.map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
       return { source, target };
     });
+    return pairs as LanguagePair[] & string[];
   };
 
   return (

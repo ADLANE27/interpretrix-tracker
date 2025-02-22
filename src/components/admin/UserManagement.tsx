@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +32,7 @@ interface UserData {
   tarif_15min: number;
   tarif_5min: number;
   employment_status: EmploymentStatus;
-  languages?: string[];
+  languages: string[]; // Changed from optional to required
   status?: string;
 }
 
@@ -78,7 +79,7 @@ export const UserManagement = () => {
                 first_name: data.first_name || "",
                 last_name: data.last_name || "",
                 active: userRole.active || false,
-                languages: profile?.languages || [],
+                languages: profile?.languages || [], // Ensure languages is always an array
                 tarif_15min: 0,
                 tarif_5min: 0,
                 employment_status: 'salaried_aft' as EmploymentStatus
@@ -92,6 +93,7 @@ export const UserManagement = () => {
               first_name: data.first_name || "",
               last_name: data.last_name || "",
               active: userRole.active || false,
+              languages: [], // Add empty array for non-interpreters
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
@@ -105,6 +107,7 @@ export const UserManagement = () => {
               first_name: "",
               last_name: "",
               active: userRole.active || false,
+              languages: [], // Add empty array for error cases
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
