@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { LanguageSelector, LanguagePair } from "@/components/interpreter/LanguageSelector";
 
 interface Address {
@@ -84,15 +87,15 @@ export const InterpreterProfileForm = ({
     tarif_5min: initialData?.tarif_5min || 0,
     employment_status: initialData?.employment_status || "salaried_aft",
     languages: languages,
-    address: initialData?.address,
-    phone_number: initialData?.phone_number,
-    birth_country: initialData?.birth_country,
-    nationality: initialData?.nationality,
-    phone_interpretation_rate: initialData?.phone_interpretation_rate,
-    siret_number: initialData?.siret_number,
-    vat_number: initialData?.vat_number,
-    specializations: initialData?.specializations,
-    landline_phone: initialData?.landline_phone,
+    address: initialData?.address || { street: "", postal_code: "", city: "" },
+    phone_number: initialData?.phone_number || "",
+    birth_country: initialData?.birth_country || "",
+    nationality: initialData?.nationality || "",
+    phone_interpretation_rate: initialData?.phone_interpretation_rate || 0,
+    siret_number: initialData?.siret_number || "",
+    vat_number: initialData?.vat_number || "",
+    specializations: initialData?.specializations || [],
+    landline_phone: initialData?.landline_phone || "",
     password: "",
   };
 
@@ -109,7 +112,7 @@ export const InterpreterProfileForm = ({
     const submissionData: InterpreterFormData = {
       ...data,
       password: password || undefined,
-      languages: languages // Use the languages from state
+      languages: languages
     };
 
     await onSubmit(submissionData);
@@ -117,162 +120,344 @@ export const InterpreterProfileForm = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="interpreter@example.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-2xl">Informations personnelles</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="first_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prénom</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <FormField
-          control={form.control}
-          name="first_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Prénom</FormLabel>
-              <FormControl>
-                <Input placeholder="Jean" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="last_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nom</FormLabel>
-              <FormControl>
-                <Input placeholder="Dupont" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="employment_status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Statut professionnel</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un statut" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                  <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                  <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                  <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                  <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="space-y-2">
-          <Label>Langues</Label>
-          <LanguageSelector
-            languages={languages}
-            onChange={setLanguages}
-            isEditing={true}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="tarif_15min"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tarif (15 minutes)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    step="0.01"
-                    placeholder="0.00"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="tarif_5min"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tarif (5 minutes)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0" 
-                    step="0.01"
-                    placeholder="0.00"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {!initialData && (
-          <>
-            <div className="space-y-2">
-              <Label>Mot de passe (optionnel)</Label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setPasswordError("");
-                }}
-                placeholder="Laissez vide pour générer automatiquement"
+              <FormField
+                control={form.control}
+                name="last_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            {password && (
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone mobile</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="landline_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone fixe</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="address.street"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Rue</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="address.postal_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Code postal</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="address.city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ville</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="birth_country"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pays de naissance</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nationalité</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-2xl">Informations professionnelles</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="employment_status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Statut professionnel</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez un statut" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                      <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                      <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tarif_15min"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tarif (15 minutes)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tarif_5min"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tarif (5 minutes)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="phone_interpretation_rate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tarif d'interprétation téléphonique (€/min)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="siret_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numéro SIRET</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="vat_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numéro de TVA</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-2xl">Langues</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <LanguageSelector
+                languages={languages}
+                onChange={setLanguages}
+                isEditing={true}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {!initialData && (
+          <Card className="border-0 shadow-none">
+            <CardHeader>
+              <CardTitle className="text-2xl">Mot de passe</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Confirmer le mot de passe</Label>
+                <Label>Mot de passe (optionnel)</Label>
                 <Input
                   type="password"
-                  value={confirmPassword}
+                  value={password}
                   onChange={(e) => {
-                    setConfirmPassword(e.target.value);
+                    setPassword(e.target.value);
                     setPasswordError("");
                   }}
+                  placeholder="Laissez vide pour générer automatiquement"
                 />
-                {passwordError && (
-                  <p className="text-sm font-medium text-destructive">{passwordError}</p>
-                )}
               </div>
-            )}
-          </>
+
+              {password && (
+                <div className="space-y-2">
+                  <Label>Confirmer le mot de passe</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setPasswordError("");
+                    }}
+                  />
+                  {passwordError && (
+                    <p className="text-sm font-medium text-destructive">{passwordError}</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         <Button 
@@ -291,7 +476,7 @@ export const InterpreterProfileForm = ({
             form.handleSubmit(handleSubmit)(e);
           }}
         >
-          {isSubmitting ? "Création en cours..." : initialData ? "Mettre à jour le profil" : "Créer l'interprète"}
+          {isSubmitting ? "Enregistrement..." : initialData ? "Mettre à jour le profil" : "Créer l'interprète"}
         </Button>
       </form>
     </Form>
