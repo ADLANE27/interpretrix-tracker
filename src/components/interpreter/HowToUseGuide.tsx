@@ -1,13 +1,12 @@
-import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Info, CheckCircle, AlertCircle, ArrowRight, BookOpen } from "lucide-react";
+import { CheckCircle, AlertCircle, ArrowRight, Info } from "lucide-react";
 
 export interface HowToUseGuideProps {
   open: boolean;
@@ -17,16 +16,6 @@ export interface HowToUseGuideProps {
 export const HowToUseGuide = ({ open, onOpenChange }: HowToUseGuideProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon"
-          className="flex-1 sm:flex-none"
-          title="Guide d'utilisation"
-        >
-          <BookOpen className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Guide d'utilisation - Espace Interprète</DialogTitle>
