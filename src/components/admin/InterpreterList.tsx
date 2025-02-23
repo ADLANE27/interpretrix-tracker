@@ -248,7 +248,7 @@ export const InterpreterList = ({
             <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet interprète ?</AlertDialogTitle>
             <AlertDialogDescription>
               Cette action est irréversible. L'interprète sera définitivement supprimé du système.
-            </DialogDescription>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
