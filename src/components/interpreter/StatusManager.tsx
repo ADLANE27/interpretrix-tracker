@@ -29,6 +29,29 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);
   };
 
+  const statusConfig = {
+    available: {
+      color: "bg-interpreter-available hover:bg-interpreter-available/90",
+      label: "Disponible",
+      icon: Clock
+    },
+    busy: {
+      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
+      label: "En appel",
+      icon: Phone
+    },
+    pause: {
+      color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
+      label: "En pause",
+      icon: Coffee
+    },
+    unavailable: {
+      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
+      label: "Indisponible",
+      icon: X
+    }
+  };
+
   const handleStatusChange = async (newStatus: Status) => {
     if (status === newStatus) return; // Prevent unnecessary updates
     
@@ -62,7 +85,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       setStatus(newStatus);
       toast({
         title: "Statut mis à jour",
-        description: `Votre statut est maintenant ${newStatus}`,
+        description: `Votre statut est maintenant "${statusConfig[newStatus].label}"`,
       });
     } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
@@ -73,29 +96,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const statusConfig = {
-    available: {
-      color: "bg-interpreter-available hover:bg-interpreter-available/90",
-      label: "Disponible",
-      icon: Clock
-    },
-    busy: {
-      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
-      label: "En appel",
-      icon: Phone
-    },
-    pause: {
-      color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
-      label: "En pause",
-      icon: Coffee
-    },
-    unavailable: {
-      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
-      label: "Indisponible",
-      icon: X
     }
   };
 
