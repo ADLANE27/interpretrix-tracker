@@ -98,6 +98,7 @@ export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: Ch
             onReactToMessage={reactToMessage}
             replyTo={replyTo}
             setReplyTo={setReplyTo}
+            channelId={channelId}
           />
         )}
       </div>
@@ -116,3 +117,5 @@ export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: Ch
     </div>
   );
 };
+
+export default Chat;
