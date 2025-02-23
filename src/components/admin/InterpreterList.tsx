@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,41 +105,66 @@ export const InterpreterList = ({
   const [selectedInterpreter, setSelectedInterpreter] = useState<InterpreterData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [interpreters, setInterpreters] = useState<InterpreterData[]>(initialInterpreters);
+  const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     setInterpreters(initialInterpreters);
   }, [initialInterpreters]);
 
   useEffect(() => {
-    // Set up real-time subscription for interpreter status updates
-    console.log("[InterpreterList] Setting up real-time subscription");
-    const channel = supabase
-      .channel('interpreter-status-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-        },
-        (payload) => {
-          console.log("[InterpreterList] Received status update:", payload);
-          const updatedInterpreter = payload.new as any;
-          
-          setInterpreters(current => current.map(interpreter => 
-            interpreter.id === updatedInterpreter.id
-              ? { ...interpreter, status: updatedInterpreter.status }
-              : interpreter
-          ));
-        }
-      )
-      .subscribe(status => {
-        console.log("[InterpreterList] Subscription status:", status);
-      });
+    console.log("[InterpreterList] Setting up visibility change handler and real-time subscription");
+    
+    const setupRealtimeSubscription = () => {
+      if (channel) {
+        console.log("[InterpreterList] Removing existing channel");
+        supabase.removeChannel(channel);
+      }
+
+      console.log("[InterpreterList] Creating new real-time subscription");
+      const newChannel = supabase
+        .channel('interpreter-status-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'interpreter_profiles',
+          },
+          (payload) => {
+            console.log("[InterpreterList] Received status update:", payload);
+            const updatedInterpreter = payload.new as any;
+            
+            setInterpreters(current => current.map(interpreter => 
+              interpreter.id === updatedInterpreter.id
+                ? { ...interpreter, status: updatedInterpreter.status }
+                : interpreter
+            ));
+          }
+        )
+        .subscribe(status => {
+          console.log("[InterpreterList] Subscription status:", status);
+        });
+
+      setChannel(newChannel);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[InterpreterList] Tab became visible, refreshing subscription");
+        setupRealtimeSubscription();
+      }
+    };
+
+    setupRealtimeSubscription();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      console.log("[InterpreterList] Cleaning up subscription");
-      supabase.removeChannel(channel);
+      console.log("[InterpreterList] Cleaning up subscription and event listener");
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
