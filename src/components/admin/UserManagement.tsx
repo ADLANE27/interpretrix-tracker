@@ -49,10 +49,10 @@ export const UserManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const setupRealtimeSubscription = () => {
+  useEffect(() => {
     console.log("[UserManagement] Setting up real-time subscription");
-    const channel = supabase
-      .channel('user-status-changes')
+    
+    const channel = supabase.channel('interpreter-status-changes')
       .on(
         'postgres_changes',
         {
@@ -61,29 +61,29 @@ export const UserManagement = () => {
           table: 'interpreter_profiles',
         },
         (payload) => {
-          console.log("[UserManagement] Received interpreter update:", payload);
-          const updatedInterpreter = payload.new;
+          console.log("[UserManagement] Received status update:", payload);
+          const updatedProfile = payload.new as any;
           
           queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
             if (!oldData) return oldData;
             
             return oldData.map(user => 
-              user.id === updatedInterpreter.id
-                ? { ...user, status: updatedInterpreter.status }
+              user.id === updatedProfile.id
+                ? { ...user, status: updatedProfile.status }
                 : user
             );
           });
         }
       )
-      .subscribe(async (status) => {
+      .subscribe((status) => {
         console.log("[UserManagement] Subscription status:", status);
-        if (status === 'SUBSCRIBED') {
-          await queryClient.invalidateQueries({ queryKey: ['users'] });
-        }
       });
 
-    return channel;
-  };
+    return () => {
+      console.log("[UserManagement] Cleaning up subscription");
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
@@ -160,18 +160,8 @@ export const UserManagement = () => {
 
       return allUsers as UserData[];
     },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-  });
-
-  useState(() => {
-    const channel = setupRealtimeSubscription();
-    return () => {
-      console.log("[UserManagement] Cleaning up subscription");
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
-    };
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];

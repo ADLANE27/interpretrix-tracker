@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,41 +89,6 @@ export const InterpreterList = ({
   const [selectedInterpreter, setSelectedInterpreter] = useState<InterpreterData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [interpreters, setInterpreters] = useState<InterpreterData[]>(initialInterpreters);
-
-  // Set up real-time status updates for all interpreters
-  useEffect(() => {
-    console.log("[InterpreterList] Setting up real-time subscriptions for interpreters");
-    
-    const channel = supabase.channel('interpreter-status-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-        },
-        (payload) => {
-          console.log("[InterpreterList] Received status update:", payload);
-          const updatedProfile = payload.new as any;
-          
-          setInterpreters(currentInterpreters => 
-            currentInterpreters.map(interpreter => 
-              interpreter.id === updatedProfile.id
-                ? { ...interpreter, status: updatedProfile.status }
-                : interpreter
-            )
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log("[InterpreterList] Subscription status:", status);
-      });
-
-    return () => {
-      console.log("[InterpreterList] Cleaning up subscription");
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   // Update local state when props change
   useEffect(() => {
