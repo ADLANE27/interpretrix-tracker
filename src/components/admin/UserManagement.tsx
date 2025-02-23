@@ -30,10 +30,10 @@ interface UserData {
   last_name: string;
   active: boolean;
   role: "admin" | "interpreter";
-  tarif_15min: number;
-  tarif_5min: number;
-  employment_status: EmploymentStatus;
-  languages: string[];
+  tarif_15min?: number;
+  tarif_5min?: number;
+  employment_status?: EmploymentStatus;
+  languages?: string[];
   status?: InterpreterStatus;
 }
 
@@ -133,12 +133,7 @@ export const UserManagement = () => {
               role: userRole.role,
               first_name: data.first_name || "",
               last_name: data.last_name || "",
-              active: userRole.active || false,
-              languages: [],
-              status: 'unavailable',
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft'
+              active: userRole.active || false
             };
           } catch (error) {
             console.error('Error fetching user info:', error);
@@ -148,12 +143,7 @@ export const UserManagement = () => {
               role: userRole.role,
               first_name: "",
               last_name: "",
-              active: userRole.active || false,
-              languages: [],
-              status: 'unavailable',
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft'
+              active: userRole.active || false
             };
           }
         })
