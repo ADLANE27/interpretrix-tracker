@@ -28,14 +28,23 @@ export const useUnreadMentions = () => {
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
 
   const fetchUnreadMentions = async () => {
+    console.log('[Mentions Debug] Fetching unread mentions...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.log('[Mentions Debug] No authenticated user found');
         setUnreadMentions([]);
+        setUnreadDirectMessages(0);
         setTotalUnreadCount(0);
         return;
       }
+
+      console.log('[Mentions Debug] Fetching mentions for user:', user.id);
+      
+      // Clear existing state before fetching new data
+      setUnreadMentions([]);
+      setUnreadDirectMessages(0);
+      setTotalUnreadCount(0);
 
       // Fetch unread mentions
       const { data: mentionsData, error: mentionsError } = await supabase
@@ -58,6 +67,8 @@ export const useUnreadMentions = () => {
         console.error('[Mentions Debug] Error fetching unread mentions:', mentionsError);
         return;
       }
+
+      console.log('[Mentions Debug] Raw mentions data:', mentionsData);
 
       // Fetch unread direct messages count
       const { data: directChannels, error: channelsError } = await supabase
@@ -101,23 +112,27 @@ export const useUnreadMentions = () => {
 
       // Process mentions with sender names
       const mentionsWithNames = await Promise.all(
-        (mentionsData as UnreadMentionResponse[] || []).map(async (mention) => {
-          const { data: senderData } = await supabase
-            .rpc('get_message_sender_details', {
-              sender_id: mention.chat_messages.sender_id
-            });
+        (mentionsData as UnreadMentionResponse[] || [])
+          .filter(mention => mention.chat_messages) // Only include mentions with existing messages
+          .map(async (mention) => {
+            const { data: senderData } = await supabase
+              .rpc('get_message_sender_details', {
+                sender_id: mention.chat_messages.sender_id
+              });
 
-          return {
-            mention_id: mention.id,
-            message_id: mention.message_id,
-            channel_id: mention.channel_id,
-            message_content: mention.chat_messages.content,
-            mentioning_user_name: senderData?.[0]?.name || 'Unknown User',
-            created_at: new Date(mention.created_at)
-          };
-        })
+            return {
+              mention_id: mention.id,
+              message_id: mention.message_id,
+              channel_id: mention.channel_id,
+              message_content: mention.chat_messages.content,
+              mentioning_user_name: senderData?.[0]?.name || 'Unknown User',
+              created_at: new Date(mention.created_at)
+            };
+          })
       );
 
+      console.log('[Mentions Debug] Processed mentions:', mentionsWithNames);
+      
       setUnreadMentions(mentionsWithNames);
       setUnreadDirectMessages(unreadDMCount);
       setTotalUnreadCount(mentionsWithNames.length + unreadDMCount);
@@ -184,8 +199,10 @@ export const useUnreadMentions = () => {
   };
 
   useEffect(() => {
+    // Initial fetch
     fetchUnreadMentions();
 
+    // Auth subscription
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUnreadMentions([]);
@@ -196,9 +213,8 @@ export const useUnreadMentions = () => {
       }
     });
 
-    // Subscribe to mentions changes
-    const mentionsChannel = supabase.channel('mentions-changes');
-    mentionsChannel
+    // Create a single channel for all subscriptions
+    const channel = supabase.channel('mentions-and-messages')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
@@ -207,11 +223,6 @@ export const useUnreadMentions = () => {
           fetchUnreadMentions();
         }
       )
-      .subscribe();
-
-    // Subscribe to messages changes in direct channels
-    const messagesChannel = supabase.channel('direct-messages-changes');
-    messagesChannel
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
@@ -220,11 +231,6 @@ export const useUnreadMentions = () => {
           fetchUnreadMentions();
         }
       )
-      .subscribe();
-
-    // Subscribe to channel_members changes for last_read_at updates
-    const membershipChannel = supabase.channel('membership-changes');
-    membershipChannel
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'channel_members' },
@@ -239,9 +245,7 @@ export const useUnreadMentions = () => {
     return () => {
       console.log('[Mentions Debug] Cleaning up subscriptions');
       authSubscription.unsubscribe();
-      supabase.removeChannel(mentionsChannel);
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(membershipChannel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
