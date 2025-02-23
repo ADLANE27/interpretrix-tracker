@@ -43,10 +43,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       // Update database first
       const { data, error } = await supabase
         .from('interpreter_profiles')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString() 
-        })
+        .update({ status: newStatus })
         .eq('id', user.id)
         .select();
 

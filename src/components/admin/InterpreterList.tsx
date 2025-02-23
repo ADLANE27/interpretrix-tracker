@@ -90,6 +90,42 @@ export const InterpreterList = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [interpreters, setInterpreters] = useState<InterpreterData[]>(initialInterpreters);
 
+  // Subscribe to real-time updates
+  useEffect(() => {
+    console.log("[InterpreterList] Setting up real-time subscription");
+    
+    const channel = supabase
+      .channel('interpreter-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        (payload: any) => {
+          console.log("[InterpreterList] Received update:", payload);
+          const updatedProfile = payload.new;
+          
+          setInterpreters(currentInterpreters => 
+            currentInterpreters.map(interpreter => 
+              interpreter.id === updatedProfile.id
+                ? { ...interpreter, ...updatedProfile }
+                : interpreter
+            )
+          );
+        }
+      )
+      .subscribe((status) => {
+        console.log("[InterpreterList] Subscription status:", status);
+      });
+
+    return () => {
+      console.log("[InterpreterList] Cleaning up subscription");
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Update local state when props change
   useEffect(() => {
     setInterpreters(initialInterpreters);
