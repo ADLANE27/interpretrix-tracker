@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +33,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { InterpreterProfileForm, type InterpreterFormData } from "./forms/InterpreterProfileForm";
-import { convertStringsToLanguagePairs, type LanguagePair } from "@/types/languages";
+import { convertStringsToLanguagePairs } from "@/types/languages";
 
 interface InterpreterData {
   id: string;
@@ -41,7 +42,6 @@ interface InterpreterData {
   last_name: string;
   active: boolean;
   languages: string[];
-  status?: "available" | "unavailable" | "pause" | "busy";
   phone_number?: string | null;
   tarif_5min: number;
   tarif_15min: number;
@@ -55,25 +55,6 @@ interface InterpreterListProps {
   onResetPassword: (userId: string) => void;
   onUpdateInterpreter: (userId: string, data: InterpreterFormData) => Promise<void>;
 }
-
-const statusConfig = {
-  available: {
-    label: "Disponible",
-    classes: "bg-green-100 text-green-800"
-  },
-  busy: {
-    label: "En appel",
-    classes: "bg-yellow-100 text-yellow-800"
-  },
-  pause: {
-    label: "En pause",
-    classes: "bg-blue-100 text-blue-800"
-  },
-  unavailable: {
-    label: "Indisponible",
-    classes: "bg-red-100 text-red-800"
-  }
-};
 
 export const InterpreterList = ({ 
   interpreters: initialInterpreters, 
@@ -163,17 +144,6 @@ export const InterpreterList = ({
     }
   };
 
-  const getStatusDisplay = (interpreter: InterpreterData) => {
-    const status = interpreter.status || 'unavailable';
-    const config = statusConfig[status];
-    
-    return (
-      <Badge className={config.classes}>
-        {config.label}
-      </Badge>
-    );
-  };
-
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -203,7 +173,6 @@ export const InterpreterList = ({
                       <TableHead>Nom</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Langues</TableHead>
-                      <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -226,9 +195,6 @@ export const InterpreterList = ({
                               </Badge>
                             ))}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusDisplay(interpreter)}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -282,7 +248,7 @@ export const InterpreterList = ({
             <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet interprète ?</AlertDialogTitle>
             <AlertDialogDescription>
               Cette action est irréversible. L'interprète sera définitivement supprimé du système.
-            </AlertDialogDescription>
+            </DialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
