@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -173,6 +174,7 @@ export const InterpreterChat = ({
           onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
+          channelId={channelId}
         />
       </div>
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -216,12 +215,26 @@ export const useUnreadMentions = () => {
       )
       .subscribe();
 
+      // Subscribe to channel_members changes for last_read_at updates
+      const membershipChannel = supabase.channel('membership-changes');
+      membershipChannel
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'channel_members' },
+          () => {
+            console.log('[Messages Debug] Channel membership updated');
+            fetchUnreadMentions();
+          }
+        )
+        .subscribe();
+
     // Cleanup function
     return () => {
       console.log('[Mentions Debug] Cleaning up subscriptions');
       authSubscription.unsubscribe();
       supabase.removeChannel(mentionsChannel);
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(membershipChannel);
     };
   }, []);
 

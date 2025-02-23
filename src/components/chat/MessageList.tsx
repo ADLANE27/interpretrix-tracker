@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -7,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
+import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 
 interface MessageListProps {
   messages: Message[];
@@ -15,6 +15,7 @@ interface MessageListProps {
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
   replyTo?: Message | null;
   setReplyTo?: (message: Message | null) => void;
+  channelId: string;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -24,8 +25,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   onReactToMessage,
   replyTo,
   setReplyTo,
+  channelId,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const { observeMessage } = useMessageVisibility(channelId);
 
   const getInitials = (name: string) => {
     return name
@@ -70,7 +73,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  // Group messages by thread
   const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
     const threadId = message.parent_message_id || message.id;
     if (!acc[threadId]) {
@@ -80,13 +82,16 @@ export const MessageList: React.FC<MessageListProps> = ({
     return acc;
   }, {});
 
-  // Get root messages (messages without parent)
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
   const renderMessage = (message: Message, isThreadReply = false) => (
-    <div className={`flex gap-3 ${
-      message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-    } ${isThreadReply ? 'ml-8 mt-2' : ''}`}>
+    <div 
+      ref={(el) => observeMessage(el)}
+      data-message-id={message.id}
+      className={`flex gap-3 ${
+        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+      } ${isThreadReply ? 'ml-8 mt-2' : ''}`}
+    >
       <Avatar className="h-8 w-8 shrink-0">
         {message.sender.avatarUrl ? (
           <img src={message.sender.avatarUrl} alt={message.sender.name} />
@@ -159,7 +164,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="space-y-6">
-      {rootMessages.map((message, index) => (
+      {messages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
             <div className="flex justify-center my-4">
@@ -170,7 +175,6 @@ export const MessageList: React.FC<MessageListProps> = ({
           )}
           {renderMessage(message)}
           
-          {/* Thread replies */}
           {messageThreads[message.id]?.length > 1 && (
             <div className="ml-12 mt-2">
               <Button
