@@ -141,9 +141,11 @@ export const MissionManagement = () => {
           schema: 'public',
           table: 'interpreter_profiles'
         },
-        () => {
-          console.log('[MissionManagement] Interpreter status changed, refreshing available interpreters...');
+        (payload) => {
+          console.log('[MissionManagement] Interpreter profile changed:', payload);
+          // If we're currently creating a mission, refresh the interpreter list
           if (sourceLanguage && targetLanguage) {
+            console.log('[MissionManagement] Refreshing available interpreters due to status change');
             findAvailableInterpreters(sourceLanguage, targetLanguage);
           }
         }
@@ -181,9 +183,10 @@ export const MissionManagement = () => {
     if (!sourceLang || !targetLang) return;
     
     try {
-      console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang });
+      console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang, missionType });
       
-      const query = supabase
+      // First get ALL interpreters with matching languages
+      const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select(`
           id,
@@ -196,19 +199,12 @@ export const MissionManagement = () => {
         `)
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
 
-      // Only filter by status for immediate missions
-      if (missionType === 'immediate') {
-        query.eq('status', 'available');
-      }
-
-      const { data: interpreters, error } = await query;
-
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
         throw error;
       }
 
-      console.log('[MissionManagement] Found interpreters:', interpreters);
+      console.log('[MissionManagement] Found interpreters before filtering:', interpreters);
       
       if (!interpreters || interpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
@@ -220,13 +216,21 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Filter out duplicates based on interpreter ID and sort by rate
-      const uniqueInterpreters = interpreters
+      // Filter interpreters based on mission type and status
+      let filteredInterpreters = interpreters;
+      if (missionType === 'immediate') {
+        filteredInterpreters = interpreters.filter(interpreter => interpreter.status === 'available');
+        console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters);
+      }
+
+      // Filter out duplicates and sort by rate
+      const uniqueInterpreters = filteredInterpreters
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
         )
-        .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0)); // Sort by rate, lowest first
+        .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0));
 
+      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters);
       setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
     } catch (error) {
