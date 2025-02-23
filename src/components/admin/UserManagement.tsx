@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -459,7 +458,6 @@ export const UserManagement = () => {
       <div className="space-y-6 overflow-x-hidden">
         <AdminList
           admins={adminUsers}
-          onToggleStatus={toggleUserStatus}
           onDeleteUser={handleDeleteUser}
           onResetPassword={(userId) => {
             setSelectedUserId(userId);
