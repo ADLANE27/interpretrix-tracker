@@ -37,6 +37,19 @@ interface UserData {
   status?: InterpreterStatus;
 }
 
+interface InterpreterData {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  active: boolean;
+  languages: string[];
+  status: InterpreterStatus;
+  tarif_5min: number;
+  tarif_15min: number;
+  employment_status: EmploymentStatus;
+}
+
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
@@ -155,8 +168,25 @@ export const UserManagement = () => {
     refetchOnWindowFocus: false,
   });
 
-  const adminUsers = users?.filter(user => user.role === "admin") || [];
-  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
+  const adminUsers = users?.filter(user => user.role === "admin").map(admin => ({
+    id: admin.id,
+    email: admin.email,
+    first_name: admin.first_name,
+    last_name: admin.last_name,
+  })) || [];
+
+  const interpreterUsers = users?.filter(user => user.role === "interpreter").map(interpreter => ({
+    id: interpreter.id,
+    email: interpreter.email,
+    first_name: interpreter.first_name,
+    last_name: interpreter.last_name,
+    active: interpreter.active,
+    languages: interpreter.languages || [],
+    status: interpreter.status || 'unavailable',
+    tarif_5min: interpreter.tarif_5min || 0,
+    tarif_15min: interpreter.tarif_15min || 0,
+    employment_status: interpreter.employment_status || 'salaried_aft'
+  })) || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
