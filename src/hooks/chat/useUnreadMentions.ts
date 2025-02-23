@@ -24,6 +24,7 @@ interface UnreadMentionResponse {
 
 export const useUnreadMentions = () => {
   const [unreadMentions, setUnreadMentions] = useState<UnreadMention[]>([]);
+  const [unreadDirectMessages, setUnreadDirectMessages] = useState<number>(0);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
 
   const fetchUnreadMentions = async () => {
@@ -36,15 +37,14 @@ export const useUnreadMentions = () => {
         return;
       }
 
-      console.log('[Mentions Debug] Fetching unread mentions for user:', user.id);
-      
-      const { data, error } = await supabase
+      // Fetch unread mentions
+      const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
           id,
           message_id,
           channel_id,
-          chat_messages:chat_messages (
+          chat_messages (
             content,
             sender_id
           ),
@@ -54,22 +54,54 @@ export const useUnreadMentions = () => {
         .eq('status', 'unread')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('[Mentions Debug] Error fetching unread mentions:', error);
+      if (mentionsError) {
+        console.error('[Mentions Debug] Error fetching unread mentions:', mentionsError);
         return;
       }
 
-      console.log('[Mentions Debug] Unread mentions data:', data);
+      // Fetch unread direct messages count
+      const { data: directChannels, error: channelsError } = await supabase
+        .from('chat_channels')
+        .select('id')
+        .eq('channel_type', 'direct');
 
-      if (!data) {
-        setUnreadMentions([]);
-        setTotalUnreadCount(0);
+      if (channelsError) {
+        console.error('[DM Debug] Error fetching direct channels:', channelsError);
         return;
       }
 
-      // Get sender names for each mention
+      const channelIds = directChannels.map(channel => channel.id);
+      
+      // Get the last read timestamp for each channel
+      const { data: memberData } = await supabase
+        .from('channel_members')
+        .select('channel_id, last_read_at')
+        .eq('user_id', user.id)
+        .in('channel_id', channelIds);
+
+      const lastReadMap = new Map(
+        memberData?.map(member => [member.channel_id, member.last_read_at]) || []
+      );
+
+      // Count unread messages in direct channels
+      let unreadDMCount = 0;
+      for (const channelId of channelIds) {
+        const lastRead = lastReadMap.get(channelId);
+        if (!lastRead) continue;
+
+        const { count } = await supabase
+          .from('chat_messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('channel_id', channelId)
+          .gt('created_at', lastRead)
+          .neq('sender_id', user.id);
+
+        if (count) unreadDMCount += count;
+      }
+
+      // Process mentions with sender names
       const mentionsWithNames = await Promise.all(
-        (data as UnreadMentionResponse[]).map(async (mention) => {
+        (mentionsData as UnreadMentionResponse[] || []).map(async (mention) => {
           const { data: senderData } = await supabase
             .rpc('get_message_sender_details', {
               sender_id: mention.chat_messages.sender_id
@@ -87,10 +119,12 @@ export const useUnreadMentions = () => {
       );
 
       setUnreadMentions(mentionsWithNames);
-      setTotalUnreadCount(mentionsWithNames.length);
+      setUnreadDirectMessages(unreadDMCount);
+      setTotalUnreadCount(mentionsWithNames.length + unreadDMCount);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
       setUnreadMentions([]);
+      setUnreadDirectMessages(0);
       setTotalUnreadCount(0);
     }
   };
@@ -146,20 +180,18 @@ export const useUnreadMentions = () => {
   useEffect(() => {
     fetchUnreadMentions();
 
-    // Subscribe to auth changes
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUnreadMentions([]);
+        setUnreadDirectMessages(0);
         setTotalUnreadCount(0);
       } else if (event === 'SIGNED_IN') {
         fetchUnreadMentions();
       }
     });
 
-    // Create a single channel instance
-    const mentionsChannel = supabase.channel('mentions-changes');
-
     // Subscribe to mentions changes
+    const mentionsChannel = supabase.channel('mentions-changes');
     mentionsChannel
       .on(
         'postgres_changes',
@@ -171,17 +203,32 @@ export const useUnreadMentions = () => {
       )
       .subscribe();
 
+    // Subscribe to messages changes in direct channels
+    const messagesChannel = supabase.channel('direct-messages-changes');
+    messagesChannel
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        () => {
+          console.log('[Messages Debug] New message received');
+          fetchUnreadMentions();
+        }
+      )
+      .subscribe();
+
     // Cleanup function
     return () => {
       console.log('[Mentions Debug] Cleaning up subscriptions');
       authSubscription.unsubscribe();
       supabase.removeChannel(mentionsChannel);
+      supabase.removeChannel(messagesChannel);
     };
   }, []);
 
   return { 
     unreadMentions, 
-    totalUnreadCount, 
+    totalUnreadCount,
+    unreadDirectMessages,
     markMentionAsRead,
     deleteMention,
     refreshMentions: fetchUnreadMentions 

@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { HowToUseGuide } from "./HowToUseGuide";
 import { Mission } from "@/types/mission";
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 
 interface SidebarProps {
   activeTab: string;
@@ -23,6 +24,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
+  const { totalUnreadCount } = useUnreadMentions();
 
   const handleLogout = async () => {
     try {
@@ -91,7 +93,12 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       icon: Calendar,
       badge: pendingMissionsCount > 0 ? pendingMissionsCount : undefined
     },
-    { id: "messages", label: "Messages", icon: MessageCircle },
+    { 
+      id: "messages", 
+      label: "Messages", 
+      icon: MessageCircle,
+      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined
+    },
     { id: "profile", label: "Profil", icon: Headset },
     { id: "calendar", label: "Calendrier", icon: Calendar },
     { id: "guide", label: "Guide", icon: BookOpen, onClick: () => setIsGuideOpen(true) },
