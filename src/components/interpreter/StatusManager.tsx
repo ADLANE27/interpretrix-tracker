@@ -18,31 +18,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Fetch initial status when component mounts
-  useEffect(() => {
-    const fetchCurrentStatus = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data, error } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-        if (data?.status && isValidStatus(data.status)) {
-          setStatus(data.status as Status);
-        }
-      } catch (error) {
-        console.error('[StatusManager] Error fetching status:', error);
-      }
-    };
-
-    fetchCurrentStatus();
-  }, []);
-
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
@@ -55,15 +30,19 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   };
 
   const handleStatusChange = async (newStatus: Status) => {
+    if (status === newStatus) return; // Prevent unnecessary updates
+    
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // First call the parent's onStatusChange if provided
       if (onStatusChange) {
         await onStatusChange(newStatus);
       }
 
+      // Then update the database
       const { error } = await supabase
         .from('interpreter_profiles')
         .update({ status: newStatus })
