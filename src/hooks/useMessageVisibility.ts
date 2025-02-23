@@ -1,11 +1,11 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 
 export const useMessageVisibility = (channelId: string) => {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const handleMessageVisible = async (messageId: string) => {
+  const markChannelMentionsAsRead = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -17,7 +17,44 @@ export const useMessageVisibility = (channelId: string) => {
         .eq('channel_id', channelId)
         .eq('user_id', user.id);
 
-      // Mark mentions as read
+      // Mark all unread mentions in this channel as read
+      const { data: mentions, error: mentionsError } = await supabase
+        .from('message_mentions')
+        .select('id')
+        .eq('channel_id', channelId)
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (mentionsError) {
+        console.error('[MessageVisibility] Error fetching unread mentions:', mentionsError);
+        return;
+      }
+
+      if (mentions && mentions.length > 0) {
+        const { error: updateError } = await supabase
+          .from('message_mentions')
+          .update({ status: 'read' })
+          .eq('channel_id', channelId)
+          .eq('mentioned_user_id', user.id)
+          .eq('status', 'unread');
+
+        if (updateError) {
+          console.error('[MessageVisibility] Error marking mentions as read:', updateError);
+        } else {
+          console.log('[MessageVisibility] Marked all mentions as read in channel:', channelId);
+        }
+      }
+    } catch (error) {
+      console.error('[MessageVisibility] Error in markChannelMentionsAsRead:', error);
+    }
+  }, [channelId]);
+
+  const handleMessageVisible = async (messageId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Mark individual message mention as read
       await supabase
         .from('message_mentions')
         .update({ status: 'read' })
@@ -33,6 +70,9 @@ export const useMessageVisibility = (channelId: string) => {
 
   useEffect(() => {
     if (!channelId) return;
+
+    // Mark all mentions as read when entering the channel
+    markChannelMentionsAsRead();
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -53,7 +93,7 @@ export const useMessageVisibility = (channelId: string) => {
         observerRef.current.disconnect();
       }
     };
-  }, [channelId]);
+  }, [channelId, markChannelMentionsAsRead]);
 
   const observeMessage = (element: HTMLElement | null) => {
     if (element && observerRef.current) {

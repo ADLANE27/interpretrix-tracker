@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -120,6 +121,12 @@ export const useUnreadMentions = () => {
       setUnreadMentions(mentionsWithNames);
       setUnreadDirectMessages(unreadDMCount);
       setTotalUnreadCount(mentionsWithNames.length + unreadDMCount);
+
+      console.log('[Mentions Debug] Updated counts:', {
+        mentions: mentionsWithNames.length,
+        dms: unreadDMCount,
+        total: mentionsWithNames.length + unreadDMCount
+      });
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
       setUnreadMentions([]);
@@ -215,18 +222,18 @@ export const useUnreadMentions = () => {
       )
       .subscribe();
 
-      // Subscribe to channel_members changes for last_read_at updates
-      const membershipChannel = supabase.channel('membership-changes');
-      membershipChannel
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-          () => {
-            console.log('[Messages Debug] Channel membership updated');
-            fetchUnreadMentions();
-          }
-        )
-        .subscribe();
+    // Subscribe to channel_members changes for last_read_at updates
+    const membershipChannel = supabase.channel('membership-changes');
+    membershipChannel
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'channel_members' },
+        () => {
+          console.log('[Messages Debug] Channel membership updated');
+          fetchUnreadMentions();
+        }
+      )
+      .subscribe();
 
     // Cleanup function
     return () => {
