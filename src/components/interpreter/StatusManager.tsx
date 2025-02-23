@@ -37,29 +37,41 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // First call the parent's onStatusChange if provided
+      console.log('[StatusManager] Attempting status update for user:', user.id);
+      console.log('[StatusManager] New status:', newStatus);
+
+      // Update database first
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', user.id)
+        .select();
+
+      if (error) {
+        console.error('[StatusManager] Database error:', error);
+        throw error;
+      }
+
+      console.log('[StatusManager] Update successful:', data);
+
+      // Then call the parent's onStatusChange if provided
       if (onStatusChange) {
         await onStatusChange(newStatus);
       }
-
-      // Then update the database
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({ status: newStatus })
-        .eq('id', user.id);
-
-      if (error) throw error;
 
       setStatus(newStatus);
       toast({
         title: "Statut mis à jour",
         description: `Votre statut est maintenant ${newStatus}`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
+        description: error?.message || "Impossible de mettre à jour votre statut",
         variant: "destructive",
       });
     } finally {
