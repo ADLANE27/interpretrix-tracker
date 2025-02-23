@@ -28,17 +28,15 @@ interface AdminData {
   email: string;
   first_name: string;
   last_name: string;
-  active: boolean;
 }
 
 interface AdminListProps {
   admins: AdminData[];
-  onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onResetPassword: (userId: string) => void;
 }
 
-export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPassword }: AdminListProps) => {
+export const AdminList = ({ admins, onDeleteUser, onResetPassword }: AdminListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
