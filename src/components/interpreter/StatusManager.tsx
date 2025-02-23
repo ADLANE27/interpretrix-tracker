@@ -18,37 +18,66 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Fetch initial status when component mounts
+  useEffect(() => {
+    const fetchCurrentStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        if (data?.status && isValidStatus(data.status)) {
+          setStatus(data.status as Status);
+        }
+      } catch (error) {
+        console.error('[StatusManager] Error fetching status:', error);
+      }
+    };
+
+    fetchCurrentStatus();
+  }, []);
+
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
       setStatus(currentStatus);
     }
   }, [currentStatus]);
 
+  const isValidStatus = (status: string): status is Status => {
+    return ['available', 'unavailable', 'pause', 'busy'].includes(status);
+  };
+
   const handleStatusChange = async (newStatus: Status) => {
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       if (onStatusChange) {
         await onStatusChange(newStatus);
-        setStatus(newStatus);
-      } else {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        const { error } = await supabase
-          .from('interpreter_profiles')
-          .update({ status: newStatus })
-          .eq('id', user.id);
-
-        if (error) throw error;
-
-        setStatus(newStatus);
-        toast({
-          title: "Statut mis à jour",
-          description: `Votre statut est maintenant ${newStatus}`,
-        });
       }
+
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({ status: newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setStatus(newStatus);
+      toast({
+        title: "Statut mis à jour",
+        description: `Votre statut est maintenant ${newStatus}`,
+      });
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('[StatusManager] Error updating status:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour votre statut",

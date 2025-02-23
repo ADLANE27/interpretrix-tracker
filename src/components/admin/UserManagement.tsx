@@ -53,16 +53,17 @@ export const UserManagement = () => {
   useEffect(() => {
     console.log("[UserManagement] Setting up real-time subscription");
     
-    const channel = supabase.channel('interpreter-status-changes')
+    // Subscribe to interpreter_profiles changes
+    const profilesChannel = supabase.channel('interpreter-profiles-changes')
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'interpreter_profiles',
+          table: 'interpreter_profiles'
         },
         (payload) => {
-          console.log("[UserManagement] Received status update:", payload);
+          console.log("[UserManagement] Received profile update:", payload);
           const updatedProfile = payload.new as any;
           
           queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
@@ -70,19 +71,19 @@ export const UserManagement = () => {
             
             return oldData.map(user => 
               user.id === updatedProfile.id
-                ? { ...user, status: updatedProfile.status }
+                ? { ...user, ...updatedProfile }
                 : user
             );
           });
         }
       )
       .subscribe((status) => {
-        console.log("[UserManagement] Subscription status:", status);
+        console.log("[UserManagement] Profile subscription status:", status);
       });
 
     return () => {
       console.log("[UserManagement] Cleaning up subscription");
-      supabase.removeChannel(channel);
+      supabase.removeChannel(profilesChannel);
     };
   }, [queryClient]);
 
