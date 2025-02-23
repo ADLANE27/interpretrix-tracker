@@ -21,6 +21,7 @@ import { InterpreterList } from "./InterpreterList";
 import { convertLanguagePairsToStrings } from "@/types/languages";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
 interface UserData {
   id: string;
@@ -33,7 +34,7 @@ interface UserData {
   tarif_5min: number;
   employment_status: EmploymentStatus;
   languages: string[];
-  status?: string;
+  status?: InterpreterStatus;
 }
 
 export const UserManagement = () => {
@@ -68,7 +69,7 @@ export const UserManagement = () => {
             if (userRole.role === 'interpreter') {
               const { data: profile } = await supabase
                 .from('interpreter_profiles')
-                .select('languages')
+                .select('languages, status')
                 .eq('id', userRole.user_id)
                 .maybeSingle();
 
@@ -80,6 +81,7 @@ export const UserManagement = () => {
                 last_name: data.last_name || "",
                 active: userRole.active || false,
                 languages: profile?.languages || [],
+                status: (profile?.status || 'unavailable') as InterpreterStatus,
                 tarif_15min: 0,
                 tarif_5min: 0,
                 employment_status: 'salaried_aft' as EmploymentStatus
@@ -94,6 +96,7 @@ export const UserManagement = () => {
               last_name: data.last_name || "",
               active: userRole.active || false,
               languages: [],
+              status: 'unavailable' as InterpreterStatus,
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
@@ -108,6 +111,7 @@ export const UserManagement = () => {
               last_name: "",
               active: userRole.active || false,
               languages: [],
+              status: 'unavailable' as InterpreterStatus,
               tarif_15min: 0,
               tarif_5min: 0,
               employment_status: 'salaried_aft' as EmploymentStatus
