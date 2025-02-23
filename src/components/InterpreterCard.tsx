@@ -266,6 +266,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     };
   }, [interpreter.id]);
 
+  useEffect(() => {
+    setCurrentStatus(interpreter.status);
+  }, [interpreter.status]);
+
   if (!isInterpreter) {
     return null;
   }
