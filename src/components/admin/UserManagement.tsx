@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
@@ -47,10 +47,48 @@ export const UserManagement = () => {
   const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const setupRealtimeSubscription = () => {
+    console.log("[UserManagement] Setting up real-time subscription");
+    const channel = supabase
+      .channel('user-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+        },
+        (payload) => {
+          console.log("[UserManagement] Received interpreter update:", payload);
+          const updatedInterpreter = payload.new;
+          
+          queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
+            if (!oldData) return oldData;
+            
+            return oldData.map(user => 
+              user.id === updatedInterpreter.id
+                ? { ...user, status: updatedInterpreter.status }
+                : user
+            );
+          });
+        }
+      )
+      .subscribe(async (status) => {
+        console.log("[UserManagement] Subscription status:", status);
+        if (status === 'SUBSCRIBED') {
+          await queryClient.invalidateQueries({ queryKey: ['users'] });
+        }
+      });
+
+    return channel;
+  };
 
   const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
+      console.log("[UserManagement] Fetching users data");
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
@@ -69,7 +107,7 @@ export const UserManagement = () => {
             if (userRole.role === 'interpreter') {
               const { data: profile } = await supabase
                 .from('interpreter_profiles')
-                .select('languages, status')
+                .select('languages, status, tarif_5min, tarif_15min, employment_status')
                 .eq('id', userRole.user_id)
                 .maybeSingle();
 
@@ -81,10 +119,10 @@ export const UserManagement = () => {
                 last_name: data.last_name || "",
                 active: userRole.active || false,
                 languages: profile?.languages || [],
-                status: (profile?.status || 'unavailable') as InterpreterStatus,
-                tarif_15min: 0,
-                tarif_5min: 0,
-                employment_status: 'salaried_aft' as EmploymentStatus
+                status: profile?.status || 'unavailable',
+                tarif_15min: profile?.tarif_15min || 0,
+                tarif_5min: profile?.tarif_5min || 0,
+                employment_status: profile?.employment_status || 'salaried_aft'
               };
             }
 
@@ -96,10 +134,10 @@ export const UserManagement = () => {
               last_name: data.last_name || "",
               active: userRole.active || false,
               languages: [],
-              status: 'unavailable' as InterpreterStatus,
+              status: 'unavailable',
               tarif_15min: 0,
               tarif_5min: 0,
-              employment_status: 'salaried_aft' as EmploymentStatus
+              employment_status: 'salaried_aft'
             };
           } catch (error) {
             console.error('Error fetching user info:', error);
@@ -111,10 +149,10 @@ export const UserManagement = () => {
               last_name: "",
               active: userRole.active || false,
               languages: [],
-              status: 'unavailable' as InterpreterStatus,
+              status: 'unavailable',
               tarif_15min: 0,
               tarif_5min: 0,
-              employment_status: 'salaried_aft' as EmploymentStatus
+              employment_status: 'salaried_aft'
             };
           }
         })
@@ -122,6 +160,18 @@ export const UserManagement = () => {
 
       return allUsers as UserData[];
     },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
+
+  useState(() => {
+    const channel = setupRealtimeSubscription();
+    return () => {
+      console.log("[UserManagement] Cleaning up subscription");
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
   });
 
   const adminUsers = users?.filter(user => user.role === "admin") || [];
@@ -217,7 +267,6 @@ export const UserManagement = () => {
 
       if (profileError) {
         console.error("Error deleting interpreter profile:", profileError);
-        // Don't throw here as the profile might not exist
       }
 
       const { error } = await supabase.functions.invoke('delete-user', {
