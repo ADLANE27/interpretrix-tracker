@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
+import { InterpreterProfileForm, type InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { convertStringsToLanguagePairs, type LanguagePair } from "@/types/languages";
 
 interface InterpreterData {
