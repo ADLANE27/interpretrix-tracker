@@ -16,6 +16,7 @@ import { parseISO, formatISO } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { Filter } from "lucide-react";
 import { Mission } from "@/types/mission";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
@@ -91,35 +92,21 @@ export const MissionManagement = () => {
     }
   };
 
-  useEffect(() => {
-    fetchMissions();
-    const cleanup = setupRealtimeSubscription();
-    
-    const fetchCreators = async () => {
-      const { data, error } = await supabase
-        .from('mission_creators')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching creators:', error);
-        return;
-      }
+  const handleSelectAllInterpreters = () => {
+    if (selectedInterpreters.length === availableInterpreters.length) {
+      setSelectedInterpreters([]);
+    } else {
+      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
+    }
+  };
 
-      setCreators(data || []);
-    };
-
-    fetchCreators();
+  const setupRealtimeSubscription = (currentSourceLang: string, currentTargetLang: string, currentMissionType: 'immediate' | 'scheduled') => {
+    console.log('[MissionManagement] Setting up realtime subscription with:', {
+      sourceLanguage: currentSourceLang,
+      targetLanguage: currentTargetLang,
+      missionType: currentMissionType
+    });
     
-    // Cleanup function
-    return () => {
-      cleanup();
-    };
-  }, []);
-
-  const setupRealtimeSubscription = () => {
-    console.log('[MissionManagement] Setting up realtime subscription');
-    
-    // Create a single channel for all subscriptions
     const channel = supabase
       .channel('admin-missions')
       .on(
@@ -143,10 +130,13 @@ export const MissionManagement = () => {
         },
         (payload) => {
           console.log('[MissionManagement] Interpreter profile changed:', payload);
-          // If we're currently creating a mission, refresh the interpreter list
-          if (sourceLanguage && targetLanguage) {
-            console.log('[MissionManagement] Refreshing available interpreters due to status change');
-            findAvailableInterpreters(sourceLanguage, targetLanguage);
+          if (currentSourceLang && currentTargetLang) {
+            console.log('[MissionManagement] Current mission parameters:', {
+              sourceLanguage: currentSourceLang,
+              targetLanguage: currentTargetLang,
+              missionType: currentMissionType
+            });
+            findAvailableInterpreters(currentSourceLang, currentTargetLang);
           }
         }
       )
@@ -154,36 +144,55 @@ export const MissionManagement = () => {
         console.log('[MissionManagement] Subscription status:', status);
       });
 
-    // Return cleanup function
-    return () => {
-      console.log('[MissionManagement] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
+    return channel;
   };
 
+  // Effect to handle realtime subscription updates
+  useEffect(() => {
+    let channel: RealtimeChannel | null = null;
+    
+    if (sourceLanguage && targetLanguage) {
+      channel = setupRealtimeSubscription(sourceLanguage, targetLanguage, missionType);
+    }
+    
+    return () => {
+      if (channel) {
+        console.log('[MissionManagement] Cleaning up realtime subscription');
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [sourceLanguage, targetLanguage, missionType]); // Re-subscribe when these values change
+
+  // Initial setup effect
   useEffect(() => {
     fetchMissions();
-    const cleanup = setupRealtimeSubscription();
     
-    // Cleanup function
-    return () => {
-      cleanup();
-    };
-  }, []); // Only run once on mount
+    const fetchCreators = async () => {
+      const { data, error } = await supabase
+        .from('mission_creators')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching creators:', error);
+        return;
+      }
 
-  const handleSelectAllInterpreters = () => {
-    if (selectedInterpreters.length === availableInterpreters.length) {
-      setSelectedInterpreters([]);
-    } else {
-      setSelectedInterpreters(availableInterpreters.map(interpreter => interpreter.id));
-    }
-  };
+      setCreators(data || []);
+    };
+
+    fetchCreators();
+  }, []); // Only run once on mount
 
   const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
     if (!sourceLang || !targetLang) return;
     
     try {
-      console.log('[MissionManagement] Finding interpreters for languages:', { sourceLang, targetLang, missionType });
+      console.log('[MissionManagement] Finding interpreters for languages:', { 
+        sourceLang, 
+        targetLang, 
+        missionType,
+        timestamp: new Date().toISOString() 
+      });
       
       // First get ALL interpreters with matching languages
       const { data: interpreters, error } = await supabase
@@ -204,7 +213,10 @@ export const MissionManagement = () => {
         throw error;
       }
 
-      console.log('[MissionManagement] Found interpreters before filtering:', interpreters);
+      console.log('[MissionManagement] Found interpreters before filtering:', interpreters?.map(i => ({
+        name: `${i.first_name} ${i.last_name}`,
+        status: i.status
+      })));
       
       if (!interpreters || interpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
@@ -220,7 +232,10 @@ export const MissionManagement = () => {
       let filteredInterpreters = interpreters;
       if (missionType === 'immediate') {
         filteredInterpreters = interpreters.filter(interpreter => interpreter.status === 'available');
-        console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters);
+        console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters.map(i => ({
+          name: `${i.first_name} ${i.last_name}`,
+          status: i.status
+        })));
       }
 
       // Filter out duplicates and sort by rate
@@ -230,7 +245,11 @@ export const MissionManagement = () => {
         )
         .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0));
 
-      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters);
+      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters.map(i => ({
+        name: `${i.first_name} ${i.last_name}`,
+        status: i.status
+      })));
+      
       setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
     } catch (error) {
