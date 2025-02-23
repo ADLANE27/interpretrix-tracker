@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,24 +31,11 @@ interface UserData {
   last_name: string;
   active: boolean;
   role: "admin" | "interpreter";
-  tarif_15min?: number;
-  tarif_5min?: number;
-  employment_status?: EmploymentStatus;
-  languages?: string[];
-  status?: InterpreterStatus;
-}
-
-interface InterpreterData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  active: boolean;
-  languages: string[];
-  status: InterpreterStatus;
-  tarif_5min: number;
   tarif_15min: number;
+  tarif_5min: number;
   employment_status: EmploymentStatus;
+  languages: string[];
+  status?: InterpreterStatus;
 }
 
 export const UserManagement = () => {
@@ -146,7 +134,12 @@ export const UserManagement = () => {
               role: userRole.role,
               first_name: data.first_name || "",
               last_name: data.last_name || "",
-              active: userRole.active || false
+              active: userRole.active || false,
+              languages: [],
+              status: 'unavailable',
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft'
             };
           } catch (error) {
             console.error('Error fetching user info:', error);
@@ -156,7 +149,12 @@ export const UserManagement = () => {
               role: userRole.role,
               first_name: "",
               last_name: "",
-              active: userRole.active || false
+              active: userRole.active || false,
+              languages: [],
+              status: 'unavailable',
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft'
             };
           }
         })
@@ -168,25 +166,8 @@ export const UserManagement = () => {
     refetchOnWindowFocus: false,
   });
 
-  const adminUsers = users?.filter(user => user.role === "admin").map(admin => ({
-    id: admin.id,
-    email: admin.email,
-    first_name: admin.first_name,
-    last_name: admin.last_name,
-  })) || [];
-
-  const interpreterUsers = users?.filter(user => user.role === "interpreter").map(interpreter => ({
-    id: interpreter.id,
-    email: interpreter.email,
-    first_name: interpreter.first_name,
-    last_name: interpreter.last_name,
-    active: interpreter.active,
-    languages: interpreter.languages || [],
-    status: interpreter.status || 'unavailable',
-    tarif_5min: interpreter.tarif_5min || 0,
-    tarif_15min: interpreter.tarif_15min || 0,
-    employment_status: interpreter.employment_status || 'salaried_aft'
-  })) || [];
+  const adminUsers = users?.filter(user => user.role === "admin") || [];
+  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
@@ -478,6 +459,7 @@ export const UserManagement = () => {
       <div className="space-y-6 overflow-x-hidden">
         <AdminList
           admins={adminUsers}
+          onToggleStatus={toggleUserStatus}
           onDeleteUser={handleDeleteUser}
           onResetPassword={(userId) => {
             setSelectedUserId(userId);

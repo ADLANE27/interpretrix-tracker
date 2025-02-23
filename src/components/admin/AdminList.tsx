@@ -28,15 +28,17 @@ interface AdminData {
   email: string;
   first_name: string;
   last_name: string;
+  active: boolean;
 }
 
 interface AdminListProps {
   admins: AdminData[];
+  onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onResetPassword: (userId: string) => void;
 }
 
-export const AdminList = ({ admins, onDeleteUser, onResetPassword }: AdminListProps) => {
+export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPassword }: AdminListProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,6 +78,7 @@ export const AdminList = ({ admins, onDeleteUser, onResetPassword }: AdminListPr
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -87,7 +90,24 @@ export const AdminList = ({ admins, onDeleteUser, onResetPassword }: AdminListPr
                     </TableCell>
                     <TableCell>{admin.email}</TableCell>
                     <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          admin.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {admin.active ? "Actif" : "Inactif"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => onToggleStatus(admin.id, admin.active)}
+                        >
+                          {admin.active ? "Désactiver" : "Activer"}
+                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
