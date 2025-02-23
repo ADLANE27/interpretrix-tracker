@@ -13,8 +13,12 @@ export const useMissionSubscription = (
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Create audio element for notifications
+    audioRef.current = new Audio('/notification-sound.mp3'); // You'll need to add this sound file
+    
     console.log('[useMissionSubscription] Setting up subscription');
     let isSubscribed = true;
     
@@ -49,25 +53,33 @@ export const useMissionSubscription = (
 
               const mission = payload.new as Mission;
 
-              // Only show toast for missions that this interpreter can potentially accept
-              const isAvailableForMission = mission.assigned_interpreter_id === null;
+              // Only show notification for missions that this interpreter can potentially accept
+              const isAvailableForMission = mission.assigned_interpreter_id === null &&
+                mission.notified_interpreters?.includes(currentUserId || '');
               
               if (!isAvailableForMission) {
                 console.log('[useMissionSubscription] Mission not available for current interpreter');
                 return;
               }
 
+              // Play notification sound
+              try {
+                audioRef.current?.play().catch(e => console.error('Error playing notification:', e));
+              } catch (error) {
+                console.error('Error playing notification sound:', error);
+              }
+
               const isImmediate = mission.mission_type === 'immediate';
               
-              if (!isMobile) {
-                console.log('[useMissionSubscription] Showing toast for new mission');
-                toast({
-                  title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                  description: `${mission.source_language} → ${mission.target_language} - ${mission.estimated_duration} minutes`,
-                  variant: isImmediate ? "destructive" : "default",
-                  duration: 10000,
-                });
-              }
+              // Show toast notification on both mobile and desktop
+              toast({
+                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
+                description: `${mission.source_language} → ${mission.target_language}
+                            ${mission.client_name ? `\nClient: ${mission.client_name}` : ''}
+                            \nDurée: ${mission.estimated_duration} minutes`,
+                variant: isImmediate ? "destructive" : "default",
+                duration: isImmediate ? 20000 : 10000, // Longer duration for immediate missions
+              });
               
               onMissionUpdate();
             }

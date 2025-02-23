@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HowToUseGuide } from "./HowToUseGuide";
+import { Mission } from "@/types/mission";
 
 interface SidebarProps {
   activeTab: string;
@@ -20,6 +22,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -39,8 +42,55 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
+  useEffect(() => {
+    const fetchPendingMissions = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: missions, error } = await supabase
+          .from('interpretation_missions')
+          .select('*')
+          .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`)
+          .eq('status', 'awaiting_acceptance');
+
+        if (error) throw error;
+        setPendingMissionsCount(missions?.length || 0);
+      } catch (error) {
+        console.error('[Sidebar] Error fetching pending missions:', error);
+      }
+    };
+
+    fetchPendingMissions();
+
+    // Set up real-time subscription for mission updates
+    const channel = supabase
+      .channel('pending-missions')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpretation_missions'
+        },
+        () => {
+          fetchPendingMissions();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const tabs = [
-    { id: "missions", label: "Missions", icon: Calendar },
+    { 
+      id: "missions", 
+      label: "Missions", 
+      icon: Calendar,
+      badge: pendingMissionsCount > 0 ? pendingMissionsCount : undefined
+    },
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "profile", label: "Profil", icon: Headset },
     { id: "calendar", label: "Calendrier", icon: Calendar },
@@ -100,7 +150,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
               key={tab.id}
               variant={activeTab === tab.id ? "default" : "ghost"}
               className={cn(
-                "w-full justify-start gap-2",
+                "w-full justify-start gap-2 relative",
                 "transition-all duration-200 font-medium",
                 activeTab === tab.id && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               )}
@@ -108,6 +158,14 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             >
               <Icon className="w-4 h-4" />
               {tab.label}
+              {tab.badge && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute right-2 animate-pulse"
+                >
+                  {tab.badge}
+                </Badge>
+              )}
             </Button>
           );
         })}
