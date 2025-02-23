@@ -78,7 +78,6 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -90,24 +89,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
                     </TableCell>
                     <TableCell>{admin.email}</TableCell>
                     <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-sm ${
-                          admin.active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {admin.active ? "Actif" : "Inactif"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => onToggleStatus(admin.id, admin.active)}
-                        >
-                          {admin.active ? "Désactiver" : "Activer"}
-                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
