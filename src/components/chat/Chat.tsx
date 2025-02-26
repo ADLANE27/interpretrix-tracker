@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -81,7 +80,12 @@ export const Chat = ({ channelId, filters, onFiltersChange, onClearFilters }: Ch
       <div className="border-b p-4">
         <div className="flex items-center justify-between">
           <SearchFilter filters={filters} onFiltersChange={onFiltersChange} onClearFilters={onClearFilters} />
-          <ChannelMembersPopover channelId={channelId} />
+          <ChannelMembersPopover 
+            channelId={channelId} 
+            channelName="aftraduction" 
+            channelType="group"
+            userRole="admin"
+          />
         </div>
       </div>
 

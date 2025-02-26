@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -150,7 +149,12 @@ export const InterpreterChat = ({
             />
           </div>
           <div className="flex items-center gap-2">
-            <ChannelMembersPopover channelId={channelId} />
+            <ChannelMembersPopover 
+              channelId={channelId}
+              channelName="aftraduction" 
+              channelType="group"
+              userRole="interpreter"
+            />
           </div>
         </div>
       </div>
