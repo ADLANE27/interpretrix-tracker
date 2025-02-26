@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
@@ -23,19 +23,30 @@ import { convertLanguagePairsToStrings } from "@/types/languages";
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
-interface UserData {
+interface AdminUser {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   active: boolean;
-  role: "admin" | "interpreter";
-  tarif_15min?: number;
-  tarif_5min?: number;
-  employment_status?: EmploymentStatus;
-  languages?: string[];
-  status?: InterpreterStatus;
+  role: "admin";
 }
+
+interface InterpreterUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  active: boolean;
+  role: "interpreter";
+  tarif_15min: number;
+  tarif_5min: number;
+  employment_status: EmploymentStatus;
+  languages: string[];
+  status: InterpreterStatus;
+}
+
+type UserData = AdminUser | InterpreterUser;
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -47,7 +58,6 @@ export const UserManagement = () => {
   const [passwordError, setPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
@@ -65,66 +75,63 @@ export const UserManagement = () => {
 
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
-          try {
-            if (userRole.role === 'interpreter') {
-              const { data: profile, error: profileError } = await supabase
-                .from('interpreter_profiles')
-                .select('*')
-                .eq('id', userRole.user_id)
-                .single();
+          if (userRole.role === 'interpreter') {
+            const { data: profile, error: profileError } = await supabase
+              .from('interpreter_profiles')
+              .select('*')
+              .eq('id', userRole.user_id)
+              .single();
 
-              if (profileError) {
-                console.error('Error fetching interpreter profile:', profileError);
-                throw profileError;
-              }
-
-              return {
-                id: userRole.user_id,
-                email: profile.email,
-                role: userRole.role,
-                first_name: profile.first_name,
-                last_name: profile.last_name,
-                active: userRole.active,
-                languages: profile.languages || [],
-                status: profile.status || 'unavailable',
-                tarif_15min: profile.tarif_15min || 0,
-                tarif_5min: profile.tarif_5min || 0,
-                employment_status: profile.employment_status
-              };
-            } else {
-              const { data: adminProfile, error: adminError } = await supabase
-                .from('admin_profiles')
-                .select('email, first_name, last_name')
-                .eq('id', userRole.user_id)
-                .single();
-
-              if (adminError) {
-                console.error('Error fetching admin profile:', adminError);
-                return null;
-              }
-
-              return {
-                id: userRole.user_id,
-                email: adminProfile.email,
-                role: userRole.role,
-                first_name: adminProfile.first_name || '',
-                last_name: adminProfile.last_name || '',
-                active: userRole.active
-              };
+            if (profileError) {
+              console.error('Error fetching interpreter profile:', profileError);
+              return null;
             }
-          } catch (error) {
-            console.error('Error processing user:', error);
-            return null;
+
+            return {
+              id: userRole.user_id,
+              email: profile.email,
+              role: 'interpreter' as const,
+              first_name: profile.first_name,
+              last_name: profile.last_name,
+              active: userRole.active,
+              languages: profile.languages || [],
+              status: profile.status || 'unavailable',
+              tarif_15min: profile.tarif_15min || 0,
+              tarif_5min: profile.tarif_5min || 0,
+              employment_status: profile.employment_status
+            };
+          } else {
+            const { data: adminProfile, error: adminError } = await supabase
+              .from('admin_profiles')
+              .select('*')
+              .eq('id', userRole.user_id)
+              .single();
+
+            if (adminError) {
+              console.error('Error fetching admin profile:', adminError);
+              return null;
+            }
+
+            return {
+              id: userRole.user_id,
+              email: adminProfile.email,
+              role: 'admin' as const,
+              first_name: adminProfile.first_name || '',
+              last_name: adminProfile.last_name || '',
+              active: userRole.active
+            };
           }
         })
       );
 
-      return allUsers.filter((user): user is UserData => user !== null);
+      const validUsers = allUsers.filter((user): user is UserData => user !== null);
+      console.log("[UserManagement] Found users:", validUsers);
+      return validUsers;
     }
   });
 
-  const adminUsers = users.filter(user => user.role === "admin");
-  const interpreterUsers = users.filter(user => user.role === "interpreter");
+  const adminUsers = users.filter((user): user is AdminUser => user.role === "admin");
+  const interpreterUsers = users.filter((user): user is InterpreterUser => user.role === "interpreter");
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
