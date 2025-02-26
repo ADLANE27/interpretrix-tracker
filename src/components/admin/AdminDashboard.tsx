@@ -284,13 +284,20 @@ export const AdminDashboard = () => {
         <div className="flex-1 min-h-0 relative">
           <TabsContent value="interpreters" className="absolute inset-0 overflow-auto">
             <div className="min-h-full p-4 sm:p-6 space-y-6">
+              {/* Status Filter - Always visible */}
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold">Statut</h2>
+                <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
+              </div>
+
+              {/* Other Filters - Collapsible */}
               <Collapsible
                 open={isFiltersOpen}
                 onOpenChange={setIsFiltersOpen}
                 className="space-y-2"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Filtres</h2>
+                  <h2 className="text-lg font-semibold">Filtres avancés</h2>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-9 p-0">
                       {isFiltersOpen ? (
@@ -408,8 +415,6 @@ export const AdminDashboard = () => {
                       Supprimer tous les filtres
                     </Button>
                   </div>
-
-                  <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
                 </CollapsibleContent>
               </Collapsible>
 
