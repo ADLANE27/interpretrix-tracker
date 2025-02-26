@@ -40,7 +40,7 @@ export const InterpreterLoginForm = () => {
         .select('active')
         .eq('user_id', signInData.user.id)
         .eq('role', 'interpreter')
-        .single();
+        .maybeSingle();
 
       console.log("Résultat vérification rôle:", { roleData, roleError });
 
@@ -66,7 +66,7 @@ export const InterpreterLoginForm = () => {
         .from('interpreter_profiles')
         .select('*')
         .eq('id', signInData.user.id)
-        .single();
+        .maybeSingle();
 
       console.log("Résultat vérification profil:", { interpreterData, interpreterError });
 
