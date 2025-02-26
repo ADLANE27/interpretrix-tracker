@@ -2,14 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { Message } from "@/types/messaging";
-import { SearchFilter } from "@/components/chat/SearchFilter";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InterpreterChatProps {
   channelId: string;
