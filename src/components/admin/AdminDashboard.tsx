@@ -60,7 +60,7 @@ export const AdminDashboard = () => {
   const tabs = [
     { id: "interpreters", label: "Interprètes" },
     { id: "missions", label: "Missions" },
-    { id: "reservations", label: "Réservations" },  // Moved here
+    { id: "reservations", label: "Réservations" },
     { id: "calendar", label: "Calendrier" },
     { id: "messages", label: "Messages" },
     { id: "users", label: "Utilisateurs" },
@@ -229,21 +229,25 @@ export const AdminDashboard = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full">
-        {/* Fixed header */}
-        <div className="flex justify-between items-center sticky top-0 bg-background z-10 py-4 px-6 border-b">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
+        <div className="flex justify-between items-center sticky top-0 bg-background/95 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b shadow-sm">
           {isMobile ? (
-            <div className="flex items-center gap-4 w-full">
+            <div className="flex items-center gap-3 w-full">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="outline" size="icon" className="touch-target">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[240px]">
-                  <div className="flex flex-col gap-2 mt-6">
+                <SheetContent side="left" className="w-[280px] sm:w-[320px]">
+                  <div className="flex flex-col gap-1.5 mt-6">
                     {tabs.map(tab => (
-                      <Button variant={activeTab === tab.id ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange(tab.id)}>
+                      <Button
+                        key={tab.id}
+                        variant={activeTab === tab.id ? "default" : "ghost"}
+                        className="justify-start h-11"
+                        onClick={() => handleTabChange(tab.id)}
+                      >
                         {tab.label}
                       </Button>
                     ))}
@@ -251,167 +255,189 @@ export const AdminDashboard = () => {
                 </SheetContent>
               </Sheet>
               <div className="flex-1 text-lg font-semibold">
-                {activeTab === "interpreters" && "Interprètes"}
-                {activeTab === "missions" && "Missions"}
-                {activeTab === "calendar" && "Calendrier"}
-                {activeTab === "messages" && "Messages"}
-                {activeTab === "users" && "Utilisateurs"}
-                {activeTab === "reservations" && "Réservations"}
-                {activeTab === "guide" && "Guide d'utilisation"}
+                {tabs.find(tab => tab.id === activeTab)?.label}
               </div>
             </div>
           ) : (
             <div className="flex gap-4 items-center">
-              <TabsList>
+              <TabsList className="bg-muted/50">
                 {tabs.map(tab => (
-                  <TabsTrigger key={tab.id} value={tab.id}>{tab.label}</TabsTrigger>
+                  <TabsTrigger key={tab.id} value={tab.id} className="px-4">
+                    {tab.label}
+                  </TabsTrigger>
                 ))}
               </TabsList>
             </div>
           )}
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
+          <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0">
             <LogOut className="h-4 w-4" />
             {!isMobile && "Se déconnecter"}
           </Button>
         </div>
 
-        {/* Scrollable content area */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <TabsContent value="interpreters" className="h-full overflow-auto px-6">
-            <div className="space-y-6 py-6">
-              {/* Filters section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sticky top-0 bg-background z-10 pb-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name-search">Nom</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input id="name-search" placeholder="Rechercher par nom..." className="pl-10" value={nameFilter} onChange={e => setNameFilter(e.target.value)} />
+        <div className="flex-1 min-h-0 relative">
+          <TabsContent value="interpreters" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6 space-y-6">
+              <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name-search">Nom</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="name-search"
+                        placeholder="Rechercher par nom..."
+                        className="pl-9"
+                        value={nameFilter}
+                        onChange={e => setNameFilter(e.target.value)}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="source-language">Langue source</Label>
-                  <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
-                    <SelectTrigger id="source-language">
-                      <SelectValue placeholder="Sélectionner une langue source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes les langues</SelectItem>
-                      {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="target-language">Langue cible</Label>
-                  <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
-                    <SelectTrigger id="target-language">
-                      <SelectValue placeholder="Sélectionner une langue cible" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes les langues</SelectItem>
-                      {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
-                          {lang}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone-search">Numéro de téléphone</Label>
-                  <Input id="phone-search" placeholder="Rechercher par téléphone..." value={phoneFilter} onChange={e => setPhoneFilter(e.target.value)} />
-                </div>
-
-                <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
-
-                <div className="space-y-2">
-                  <Label htmlFor="employment-status">Statut professionnel</Label>
-                  <Select value={employmentStatusFilter} onValueChange={setEmploymentStatusFilter}>
-                    <SelectTrigger id="employment-status">
-                      <SelectValue placeholder="Tous les statuts" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                      <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                      <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="rate-sort">Trier par tarif</Label>
-                  <div className="flex gap-2 items-start">
-                    <Select value={rateSort} onValueChange={setRateSort}>
-                      <SelectTrigger id="rate-sort">
-                        <SelectValue placeholder="Trier par tarif" />
+                  <div className="space-y-2">
+                    <Label htmlFor="source-language">Langue source</Label>
+                    <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
+                      <SelectTrigger id="source-language">
+                        <SelectValue placeholder="Sélectionner une langue source" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">Pas de tri</SelectItem>
-                        <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
+                        <SelectItem value="all">Toutes les langues</SelectItem>
+                        {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={resetAllFilters} className="gap-2 whitespace-nowrap">
-                      <X className="h-4 w-4" />
-                      Supprimer tous les filtres
-                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="target-language">Langue cible</Label>
+                    <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
+                      <SelectTrigger id="target-language">
+                        <SelectValue placeholder="Sélectionner une langue cible" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes les langues</SelectItem>
+                        {sortedLanguages.map(lang => <SelectItem key={lang} value={lang}>
+                            {lang}
+                          </SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone-search">Numéro de téléphone</Label>
+                    <Input id="phone-search" placeholder="Rechercher par téléphone..." value={phoneFilter} onChange={e => setPhoneFilter(e.target.value)} />
+                  </div>
+
+                  <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
+
+                  <div className="space-y-2">
+                    <Label htmlFor="employment-status">Statut professionnel</Label>
+                    <Select value={employmentStatusFilter} onValueChange={setEmploymentStatusFilter}>
+                      <SelectTrigger id="employment-status">
+                        <SelectValue placeholder="Tous les statuts" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
+                        <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                        <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                        <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                        <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                        <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 lg:col-span-3">
+                    <Label htmlFor="rate-sort">Trier par tarif</Label>
+                    <div className="flex gap-2 items-start">
+                      <Select value={rateSort} onValueChange={setRateSort}>
+                        <SelectTrigger id="rate-sort">
+                          <SelectValue placeholder="Trier par tarif" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Pas de tri</SelectItem>
+                          <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={resetAllFilters}
+                    className="gap-2"
+                  >
+                    <X className="h-4 w-4" />
+                    Supprimer tous les filtres
+                  </Button>
+                </div>
+
+                <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
               </div>
 
-              <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
-
-              {/* Interpreter cards grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {filteredInterpreters.map(interpreter => (
-                  <InterpreterCard key={interpreter.id} interpreter={{
-                    id: interpreter.id,
-                    name: `${interpreter.first_name} ${interpreter.last_name}`,
-                    status: interpreter.status || "unavailable",
-                    employment_status: interpreter.employment_status,
-                    languages: interpreter.languages,
-                    tarif_15min: interpreter.tarif_15min,
-                    tarif_5min: interpreter.tarif_5min,
-                    phone_number: interpreter.phone_number,
-                    next_mission_start: interpreter.next_mission_start,
-                    next_mission_duration: interpreter.next_mission_duration
-                  }} />
+                  <InterpreterCard
+                    key={interpreter.id}
+                    interpreter={{
+                      id: interpreter.id,
+                      name: `${interpreter.first_name} ${interpreter.last_name}`,
+                      status: interpreter.status || "unavailable",
+                      employment_status: interpreter.employment_status,
+                      languages: interpreter.languages,
+                      tarif_15min: interpreter.tarif_15min,
+                      tarif_5min: interpreter.tarif_5min,
+                      phone_number: interpreter.phone_number,
+                      next_mission_start: interpreter.next_mission_start,
+                      next_mission_duration: interpreter.next_mission_duration
+                    }}
+                  />
                 ))}
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="missions" className="h-full overflow-auto px-6">
-            <MissionManagement />
+          <TabsContent value="missions" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <MissionManagement />
+            </div>
           </TabsContent>
 
-          <TabsContent value="calendar" className="h-full overflow-auto px-6">
-            <AdminMissionsCalendar />
+          <TabsContent value="calendar" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <AdminMissionsCalendar />
+            </div>
           </TabsContent>
 
-          <TabsContent value="messages" className="h-full overflow-auto px-6">
-            <MessagesTab />
+          <TabsContent value="messages" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <MessagesTab />
+            </div>
           </TabsContent>
 
-          <TabsContent value="users" className="h-full overflow-auto px-6">
-            <UserManagement />
+          <TabsContent value="users" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <UserManagement />
+            </div>
           </TabsContent>
 
-          <TabsContent value="reservations" className="h-full overflow-auto px-6">
-            <ReservationsTab />
+          <TabsContent value="reservations" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <ReservationsTab />
+            </div>
           </TabsContent>
 
-          <TabsContent value="guide" className="h-full overflow-auto px-6">
-            <AdminGuideContent />
+          <TabsContent value="guide" className="absolute inset-0 overflow-auto">
+            <div className="min-h-full p-4 sm:p-6">
+              <AdminGuideContent />
+            </div>
           </TabsContent>
         </div>
 
-        {/* Fixed footer */}
-        <footer className="py-4 text-center text-sm text-gray-500 border-t px-6 bg-background">
+        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
           © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
       </Tabs>
