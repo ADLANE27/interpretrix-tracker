@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +48,23 @@ export const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log("Current user:", user);
+
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role, active')
+        .eq('user_id', user?.id)
+        .single();
+
+      console.log("User role:", userRole);
+    };
+
+    checkAdminAccess();
+  }, []);
 
   useEffect(() => {
     console.log("[UserManagement] Setting up real-time subscription");
@@ -133,11 +149,14 @@ export const UserManagement = () => {
               };
             } else {
               // Pour les administrateurs
+              console.log("Fetching admin profile for user:", userRole.user_id);
               const { data: adminProfile, error: adminError } = await supabase
                 .from('admin_profiles')
                 .select('email, first_name, last_name')
                 .eq('id', userRole.user_id)
                 .single();
+
+              console.log("Admin profile result:", { data: adminProfile, error: adminError });
 
               if (adminError) {
                 console.error('Error fetching admin profile:', adminError);
@@ -148,7 +167,7 @@ export const UserManagement = () => {
                 throw adminError;
               }
 
-              return {
+              const adminUser = {
                 id: userRole.user_id,
                 email: adminProfile.email,
                 role: userRole.role,
@@ -161,6 +180,9 @@ export const UserManagement = () => {
                 tarif_5min: 0,
                 employment_status: 'salaried_aft'
               };
+
+              console.log("Processed admin user:", adminUser);
+              return adminUser;
             }
           } catch (error) {
             console.error('Error processing user:', error);
@@ -172,6 +194,8 @@ export const UserManagement = () => {
 
       const validUsers = allUsers.filter(user => user !== null) as UserData[];
       console.log("[UserManagement] Final processed users:", validUsers);
+      const adminUsers = validUsers.filter(user => user.role === 'admin');
+      console.log("[UserManagement] Admin users:", adminUsers);
       return validUsers;
     },
     staleTime: Infinity,
