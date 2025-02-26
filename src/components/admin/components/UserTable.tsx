@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { UserData } from "../types/user-management";
-import { InterpreterProfileForm } from "../forms/InterpreterProfileForm";
+import { InterpreterProfile } from "@/components/interpreter/InterpreterProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
@@ -53,10 +53,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
       });
 
       // Transformer l'adresse en format attendu
-      const address = interpreterData.address ? {
-        street: String(interpreterData.address.street || ''),
-        postal_code: String(interpreterData.address.postal_code || ''),
-        city: String(interpreterData.address.city || '')
+      const address = interpreterData.address && typeof interpreterData.address === 'object' ? {
+        street: String((interpreterData.address as any).street || ''),
+        postal_code: String((interpreterData.address as any).postal_code || ''),
+        city: String((interpreterData.address as any).city || '')
       } : null;
 
       // Assurez-vous que le status correspond au type attendu
@@ -150,49 +150,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           </DialogHeader>
           <ScrollArea className="max-h-[85vh] px-1">
             {selectedUser && (
-              <InterpreterProfileForm
-                isEditing={true}
-                initialData={selectedUser}
-                onSubmit={async (data) => {
+              <InterpreterProfile
+                profile={selectedUser as Profile}
+                onProfileUpdate={async () => {
                   try {
-                    setIsSubmitting(true);
-                    
-                    const addressJson = data.address ? {
-                      street: data.address.street,
-                      postal_code: data.address.postal_code,
-                      city: data.address.city
-                    } : null;
-
-                    const { error } = await supabase
-                      .from('interpreter_profiles')
-                      .update({
-                        first_name: data.first_name,
-                        last_name: data.last_name,
-                        phone_number: data.phone_number,
-                        address: addressJson,
-                        birth_country: data.birth_country,
-                        nationality: data.nationality,
-                        employment_status: data.employment_status,
-                        languages: data.languages.map(lang => `${lang.source} → ${lang.target}`),
-                        phone_interpretation_rate: data.phone_interpretation_rate,
-                        tarif_15min: data.tarif_15min,
-                        tarif_5min: data.tarif_5min,
-                        siret_number: data.siret_number,
-                        vat_number: data.vat_number,
-                        specializations: data.specializations,
-                        landline_phone: data.landline_phone,
-                      })
-                      .eq('id', selectedUser.id);
-
-                    if (error) throw error;
-
-                    toast({
-                      title: "Succès",
-                      description: "Le profil de l'interprète a été mis à jour",
-                    });
-
-                    setIsEditingInterpreter(false);
-                    // Recharger les données de l'utilisateur sans rafraîchir la page
                     const { data: updatedUser } = await supabase
                       .from('interpreter_profiles')
                       .select('*')
@@ -200,24 +161,105 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                       .single();
 
                     if (updatedUser) {
-                      const updatedUsers = users.map(u => 
-                        u.id === selectedUser.id ? { ...u, ...updatedUser } : u
-                      );
-                      // Mettre à jour la liste des utilisateurs localement
-                      if (onDelete) onDelete(selectedUser.id); // Cette fonction devrait aussi rafraîchir la liste
+                      // Rafraîchir la liste des utilisateurs
+                      if (onDelete) onDelete(selectedUser.id);
+                      setIsEditingInterpreter(false);
                     }
-                  } catch (error: any) {
-                    console.error('Error updating interpreter:', error);
+                  } catch (error) {
+                    console.error('Error refreshing interpreter data:', error);
                     toast({
                       title: "Erreur",
-                      description: "Impossible de mettre à jour le profil de l'interprète",
+                      description: "Impossible de rafraîchir les données de l'interprète",
                       variant: "destructive",
                     });
-                  } finally {
-                    setIsSubmitting(false);
                   }
                 }}
-                isSubmitting={isSubmitting}
+                onProfilePictureUpload={async (event) => {
+                  try {
+                    const file = event.target.files?.[0];
+                    if (!file || !selectedUser) return;
+
+                    const fileExt = file.name.split('.').pop();
+                    const filePath = `${selectedUser.id}/${Math.random()}.${fileExt}`;
+
+                    const { error: uploadError } = await supabase.storage
+                      .from('profile-pictures')
+                      .upload(filePath, file);
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('profile-pictures')
+                      .getPublicUrl(filePath);
+
+                    const { error: updateError } = await supabase
+                      .from('interpreter_profiles')
+                      .update({ profile_picture_url: publicUrl })
+                      .eq('id', selectedUser.id);
+
+                    if (updateError) throw updateError;
+
+                    // Rafraîchir les données
+                    const { data: updatedUser } = await supabase
+                      .from('interpreter_profiles')
+                      .select('*')
+                      .eq('id', selectedUser.id)
+                      .single();
+
+                    if (updatedUser) {
+                      // Mettre à jour la liste des utilisateurs
+                      if (onDelete) onDelete(selectedUser.id);
+                    }
+
+                    toast({
+                      title: "Succès",
+                      description: "Photo de profil mise à jour"
+                    });
+                  } catch (error) {
+                    console.error('Error uploading profile picture:', error);
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible de mettre à jour la photo de profil",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+                onProfilePictureDelete={async () => {
+                  try {
+                    if (!selectedUser) return;
+
+                    const { error: updateError } = await supabase
+                      .from('interpreter_profiles')
+                      .update({ profile_picture_url: null })
+                      .eq('id', selectedUser.id);
+
+                    if (updateError) throw updateError;
+
+                    // Rafraîchir les données
+                    const { data: updatedUser } = await supabase
+                      .from('interpreter_profiles')
+                      .select('*')
+                      .eq('id', selectedUser.id)
+                      .single();
+
+                    if (updatedUser) {
+                      // Mettre à jour la liste des utilisateurs
+                      if (onDelete) onDelete(selectedUser.id);
+                    }
+
+                    toast({
+                      title: "Succès",
+                      description: "Photo de profil supprimée"
+                    });
+                  } catch (error) {
+                    console.error('Error deleting profile picture:', error);
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible de supprimer la photo de profil",
+                      variant: "destructive"
+                    });
+                  }
+                }}
               />
             )}
           </ScrollArea>
