@@ -49,40 +49,64 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // Récupérer les administrateurs
-      const { data: adminProfiles, error: adminError } = await supabase
+      // Get admin users
+      const { data: adminData, error: adminError } = await supabase
         .from('admin_profiles')
-        .select('id, email, first_name, last_name')
-        .eq('user_roles.role', 'admin');
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles (
+            role
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error('Error fetching admins:', adminError);
+        throw adminError;
+      }
 
-      // Récupérer les interprètes
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
+      // Get interpreter users
+      const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
-        .select('id, email, first_name, last_name')
-        .eq('user_roles.role', 'interpreter');
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles (
+            role
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      if (interpreterError) throw interpreterError;
+      if (interpreterError) {
+        console.error('Error fetching interpreters:', interpreterError);
+        throw interpreterError;
+      }
 
-      // Formater les administrateurs
-      const admins = (adminProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
+      // Format admin data
+      const admins = (adminData || []).map(admin => ({
+        id: admin.id,
+        email: admin.email,
+        first_name: admin.first_name || '',
+        last_name: admin.last_name || '',
         role: 'admin'
       }));
 
-      // Formater les interprètes
-      const interpreters = (interpreterProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
+      // Format interpreter data
+      const interpreters = (interpreterData || []).map(interpreter => ({
+        id: interpreter.id,
+        email: interpreter.email,
+        first_name: interpreter.first_name || '',
+        last_name: interpreter.last_name || '',
         role: 'interpreter'
       }));
 
+      // Combine and return all users
+      console.log('Total users found:', admins.length + interpreters.length);
       return [...admins, ...interpreters];
     }
   });
