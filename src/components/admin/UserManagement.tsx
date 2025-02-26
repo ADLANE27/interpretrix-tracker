@@ -173,6 +173,11 @@ export const UserManagement = () => {
       setIsSubmitting(true);
       console.log("Creating admin user:", formData.email);
 
+      const { data: { session }} = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No authentication token available");
+      }
+
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: formData.email,
@@ -181,6 +186,9 @@ export const UserManagement = () => {
           role: "admin",
           password: formData.password,
         },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
       });
 
       if (error) {
@@ -211,6 +219,11 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
+      const { data: { session }} = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No authentication token available");
+      }
+
       const languageStrings = convertLanguagePairsToStrings(formData.languages);
       const addressJson = formData.address ? {
         street: formData.address.street,
@@ -238,6 +251,9 @@ export const UserManagement = () => {
           tarif_15min: formData.tarif_15min,
           tarif_5min: formData.tarif_5min,
         },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
       });
 
       if (error) throw error;

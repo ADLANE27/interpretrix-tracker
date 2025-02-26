@@ -31,29 +31,9 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Verify the JWT token and check admin status
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: caller }, error: verifyError } = await supabaseClient.auth.getUser(token)
-    
-    if (verifyError || !caller) {
-      throw new Error('Invalid authentication token')
-    }
-
-    // Check if the caller is an admin
-    const { data: adminRole } = await supabaseClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', caller.id)
-      .eq('role', 'admin')
-      .single()
-
-    if (!adminRole) {
-      throw new Error('Unauthorized - Only administrators can create users')
-    }
-
     // Get request data
     const { email, first_name, last_name, role, password, ...additionalData } = await req.json()
-    console.log(`Admin ${caller.email} creating new user with role ${role}: ${email}`)
+    console.log(`Creating new user with role ${role}: ${email}`)
 
     // Create user in auth with provided or random password
     const { data: authData, error: createError } = await supabaseClient.auth.admin.createUser({
