@@ -64,36 +64,43 @@ export const UserManagement = () => {
     queryFn: async () => {
       console.log("Fetching user roles");
       
-      // Récupérer les admins
-      const { data: adminRoles, error: adminRolesError } = await supabase
-        .from("user_roles")
+      // Récupérer les admins avec leurs données utilisateur
+      const { data: adminData, error: adminError } = await supabase
+        .from('user_roles')
         .select(`
           user_id,
           active,
-          users:user_id (
-            email,
-            raw_user_meta_data->first_name,
-            raw_user_meta_data->last_name
-          )
+          role
         `)
         .eq('role', 'admin');
 
-      if (adminRolesError) {
-        console.error("Error fetching admin roles:", adminRolesError);
-        throw adminRolesError;
+      if (adminError) {
+        console.error("Error fetching admin roles:", adminError);
+        throw adminError;
       }
 
-      console.log("Admin roles:", adminRoles);
+      console.log("Admin roles found:", adminData);
 
-      // Mapper les admins
-      const admins = adminRoles.map(role => ({
-        id: role.user_id,
-        email: role.users.email,
-        role: 'admin' as const,
-        first_name: role.users.first_name || '',
-        last_name: role.users.last_name || '',
-        active: role.active
-      }));
+      // Récupérer les informations des utilisateurs admin depuis auth.users
+      const admins = await Promise.all(
+        adminData.map(async (role) => {
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(role.user_id);
+          
+          if (userError) {
+            console.error("Error fetching user data:", userError);
+            return null;
+          }
+
+          return {
+            id: role.user_id,
+            email: userData.user.email || '',
+            role: 'admin' as const,
+            first_name: userData.user.user_metadata?.first_name || '',
+            last_name: userData.user.user_metadata?.last_name || '',
+            active: role.active
+          };
+        })
+      );
 
       // Récupérer les interprètes
       const { data: interpreterRoles } = await supabase
