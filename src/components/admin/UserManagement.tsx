@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Trash2, Key } from "lucide-react";
+import { Search, Trash2, Key, UserPlus } from "lucide-react";
 
 interface User {
   id: string;
@@ -42,43 +42,44 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
+      // D'abord, récupérer la liste des user_roles pour identifier tous les administrateurs
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('active', true);
+
+      if (rolesError) throw rolesError;
+
+      // Créer un ensemble des IDs d'administrateurs
+      const adminIds = new Set(
+        userRoles
+          ?.filter(role => role.role === 'admin')
+          .map(role => role.user_id)
+      );
+
       // Fetch administrators
       const { data: admins, error: adminError } = await supabase
         .from('admin_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name
-        `);
+        .select('id, email, first_name, last_name');
 
-      if (adminError) {
-        console.error('Error fetching admin profiles:', adminError);
-        throw adminError;
-      }
+      if (adminError) throw adminError;
 
       // Fetch interpreters
       const { data: interpreters, error: interpError } = await supabase
         .from('interpreter_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name
-        `);
+        .select('id, email, first_name, last_name');
 
-      if (interpError) {
-        console.error('Error fetching interpreter profiles:', interpError);
-        throw interpError;
-      }
+      if (interpError) throw interpError;
 
       // Format admin results
-      const formattedAdmins = (admins || []).map(admin => ({
-        id: admin.id,
-        email: admin.email,
-        name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
-        role: 'admin' as const
-      }));
+      const formattedAdmins = (admins || [])
+        .filter(admin => adminIds.has(admin.id))
+        .map(admin => ({
+          id: admin.id,
+          email: admin.email,
+          name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
+          role: 'admin' as const
+        }));
 
       // Format interpreter results
       const formattedInterpreters = (interpreters || []).map(interpreter => ({
@@ -88,7 +89,6 @@ export const UserManagement = () => {
         role: 'interpreter' as const
       }));
 
-      // Combine both results
       return [...formattedAdmins, ...formattedInterpreters];
     }
   });
@@ -164,14 +164,26 @@ export const UserManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher un utilisateur..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-8"
-        />
+      <div className="flex justify-between items-center">
+        <div className="relative w-[300px]">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un utilisateur..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => window.location.href = "/admin/create-admin"}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Créer un administrateur
+          </Button>
+          <Button onClick={() => window.location.href = "/admin/create-interpreter"}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Créer un interprète
+          </Button>
+        </div>
       </div>
 
       <Table>
