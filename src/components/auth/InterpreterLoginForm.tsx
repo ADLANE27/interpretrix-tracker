@@ -21,47 +21,42 @@ export const InterpreterLoginForm = () => {
     console.log("Tentative de connexion interprète avec:", email);
 
     try {
-      // First attempt to sign in
+      // Connexion de l'utilisateur
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (signInError) {
-        console.error("Erreur de connexion:", signInError);
         throw signInError;
+      }
+
+      if (!signInData.user) {
+        throw new Error("Aucun utilisateur trouvé");
       }
 
       console.log("Connexion réussie, vérification du rôle interprète...");
 
-      // Vérifier directement le rôle et le statut actif
+      // Vérification du rôle et du statut actif avec le nouveau système RLS
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('active')
+        .select('*')
         .eq('user_id', signInData.user.id)
         .eq('role', 'interpreter')
+        .eq('active', true)
         .maybeSingle();
 
       console.log("Résultat vérification rôle:", { roleData, roleError });
 
       if (roleError) {
-        console.error("Erreur lors de la vérification du rôle:", roleError);
-        throw new Error("Erreur lors de la vérification de vos droits d'accès.");
+        throw new Error("Erreur lors de la vérification des droits d'accès.");
       }
 
       if (!roleData) {
-        console.error("Aucun rôle interprète trouvé");
         throw new Error("Cette interface est réservée aux interprètes.");
       }
 
-      if (!roleData.active) {
-        console.error("Rôle interprète inactif");
-        throw new Error("Votre compte interprète est actuellement inactif.");
-      }
-
-      console.log("Vérification du profil interprète...");
-
-      // Check if interpreter profile exists
+      // Vérification du profil interprète
       const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('*')
@@ -71,13 +66,9 @@ export const InterpreterLoginForm = () => {
       console.log("Résultat vérification profil:", { interpreterData, interpreterError });
 
       if (interpreterError || !interpreterData) {
-        console.error("Erreur ou profil non trouvé:", { interpreterError, interpreterData });
         throw new Error("Profil d'interprète introuvable.");
       }
 
-      console.log("Profil interprète confirmé, redirection...");
-
-      // If all checks pass, show success and navigate
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté en tant qu'interprète",
