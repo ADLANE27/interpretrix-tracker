@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, User, Languages, Trash2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, addHours } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { PrivateReservation } from "@/types/privateReservation";
@@ -26,6 +27,7 @@ const EditReservationDialog = ({ reservation, onReservationUpdated }: {
   const [sourceLanguage, setSourceLanguage] = useState(reservation.source_language);
   const [targetLanguage, setTargetLanguage] = useState(reservation.target_language);
   const [commentary, setCommentary] = useState(reservation.commentary || '');
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
