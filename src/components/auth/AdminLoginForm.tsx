@@ -39,32 +39,23 @@ export const AdminLoginForm = () => {
       console.log("Connexion réussie, données utilisateur:", signInData.user);
       console.log("Vérification du rôle admin...");
 
-      // Verify admin role directly from database with more detailed error handling
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role, active')
-        .eq('user_id', signInData.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+      // Verify admin role using RLS and the is_admin() function
+      const { data: isAdmin, error: roleError } = await supabase
+        .rpc('is_admin');
 
-      console.log("Résultat vérification rôle:", { roleData, roleError });
+      console.log("Résultat vérification rôle:", { isAdmin, roleError });
 
       if (roleError) {
         console.error("Erreur lors de la vérification du rôle:", roleError);
         throw new Error(`Erreur lors de la vérification du rôle: ${roleError.message}`);
       }
 
-      if (!roleData) {
-        console.error("Aucun rôle admin trouvé pour cet utilisateur");
+      if (!isAdmin) {
+        console.error("L'utilisateur n'est pas administrateur");
         throw new Error("Vous n'avez pas les droits d'administrateur nécessaires.");
       }
 
-      if (!roleData.active) {
-        console.error("Rôle admin trouvé mais inactif");
-        throw new Error("Votre compte administrateur est actuellement inactif.");
-      }
-
-      console.log("Rôle admin confirmé et actif, redirection...");
+      console.log("Rôle admin confirmé, redirection...");
 
       // If all checks pass, show success and navigate
       toast({
