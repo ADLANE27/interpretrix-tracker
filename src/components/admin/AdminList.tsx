@@ -55,7 +55,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
   });
 
   return (
-    <Card className="mt-6">
+    <Card>
       <CardHeader>
         <div className="flex items-center gap-2">
           <UserCog className="h-6 w-6" />

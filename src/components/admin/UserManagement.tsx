@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,16 +63,11 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      console.log("[UserManagement] Fetching users data");
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("*")
-        .order('created_at', { ascending: false });
+        .select("*");
 
-      if (rolesError) {
-        console.error("Error fetching user roles:", rolesError);
-        throw rolesError;
-      }
+      if (rolesError) throw rolesError;
 
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
@@ -82,10 +78,7 @@ export const UserManagement = () => {
               .eq('id', userRole.user_id)
               .single();
 
-            if (profileError) {
-              console.error('Error fetching interpreter profile:', profileError);
-              return null;
-            }
+            if (profileError) return null;
 
             return {
               id: userRole.user_id,
@@ -101,32 +94,27 @@ export const UserManagement = () => {
               employment_status: profile.employment_status
             };
           } else {
-            const { data: adminProfile, error: adminError } = await supabase
+            const { data: profile, error: adminError } = await supabase
               .from('admin_profiles')
               .select('*')
               .eq('id', userRole.user_id)
               .single();
 
-            if (adminError) {
-              console.error('Error fetching admin profile:', adminError);
-              return null;
-            }
+            if (adminError) return null;
 
             return {
               id: userRole.user_id,
-              email: adminProfile.email,
+              email: profile.email,
               role: 'admin' as const,
-              first_name: adminProfile.first_name || '',
-              last_name: adminProfile.last_name || '',
+              first_name: profile.first_name,
+              last_name: profile.last_name,
               active: userRole.active
             };
           }
         })
       );
 
-      const validUsers = allUsers.filter((user): user is UserData => user !== null);
-      console.log("[UserManagement] Found users:", validUsers);
-      return validUsers;
+      return allUsers.filter((user): user is UserData => user !== null);
     }
   });
 
@@ -211,10 +199,7 @@ export const UserManagement = () => {
         .delete()
         .eq('user_id', userId);
 
-      if (roleError) {
-        console.error("Error deleting user roles:", roleError);
-        throw roleError;
-      }
+      if (roleError) throw roleError;
 
       const { error: profileError } = await supabase
         .from('interpreter_profiles')
