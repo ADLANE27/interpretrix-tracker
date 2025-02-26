@@ -19,6 +19,7 @@ import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 import { convertLanguagePairsToStrings } from "@/types/languages";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
@@ -93,7 +94,7 @@ export const UserManagement = () => {
       
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("*");
+        .select("user_id, role, active");
 
       if (rolesError) {
         console.error("Error fetching user roles:", rolesError);
@@ -114,6 +115,7 @@ export const UserManagement = () => {
 
             if (interpreterError) {
               console.error("Error fetching interpreter profile:", interpreterError);
+              throw interpreterError;
             }
 
             // If interpreter profile exists, use that data
@@ -173,12 +175,21 @@ export const UserManagement = () => {
     refetchOnWindowFocus: false,
   });
 
-  // Add error handling UI
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <LoadingSpinner size="lg" text="Chargement des utilisateurs..." />
+      </div>
+    );
+  }
+
   if (error) {
     console.error("[UserManagement] Query error:", error);
     return (
       <div className="p-4 text-red-600">
-        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page.
+        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page. 
+        <br />
+        Détail: {error instanceof Error ? error.message : "Erreur inconnue"}
       </div>
     );
   }

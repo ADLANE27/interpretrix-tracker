@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -14,8 +15,13 @@ const Admin = () => {
     const checkAuth = async () => {
       try {
         // Get current session
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: sessionError } = await supabase.auth.getUser();
         
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw sessionError;
+        }
+
         if (!user) {
           console.log('No user found, redirecting to login');
           if (mounted) {
@@ -29,8 +35,13 @@ const Admin = () => {
           user_id: user.id
         });
 
-        if (adminCheckError || !isAdmin) {
-          console.log('User is not an admin or error occurred, redirecting to login');
+        if (adminCheckError) {
+          console.error('Admin check error:', adminCheckError);
+          throw adminCheckError;
+        }
+
+        if (!isAdmin) {
+          console.log('User is not an admin, redirecting to login');
           await supabase.auth.signOut();
           if (mounted) {
             navigate('/admin/login');
@@ -71,7 +82,7 @@ const Admin = () => {
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <LoadingSpinner size="lg" text="Chargement..." />
       </div>
     );
   }
