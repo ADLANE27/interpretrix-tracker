@@ -32,7 +32,6 @@ interface UserData {
   email: string;
   first_name: string;
   last_name: string;
-  active: boolean;
   role: string;
 }
 
@@ -59,7 +58,6 @@ export const UserManagement = () => {
           first_name,
           last_name,
           user_roles!inner (
-            active,
             role
           )
         `);
@@ -75,7 +73,6 @@ export const UserManagement = () => {
           first_name,
           last_name,
           user_roles!inner (
-            active,
             role
           )
         `);
@@ -88,8 +85,7 @@ export const UserManagement = () => {
         email: profile.email,
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
-        active: profile.user_roles[0]?.active ?? true,
-        role: profile.user_roles[0]?.role || 'admin'
+        role: profile.user_roles[0].role
       }));
 
       // Formater les interprètes
@@ -98,8 +94,7 @@ export const UserManagement = () => {
         email: profile.email,
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
-        active: profile.user_roles[0]?.active ?? true,
-        role: profile.user_roles[0]?.role || 'interpreter'
+        role: profile.user_roles[0].role
       }));
 
       return [...admins, ...interpreters];
@@ -287,14 +282,13 @@ export const UserManagement = () => {
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Statut</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filteredUsers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground">
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
                 Aucun utilisateur trouvé
               </TableCell>
             </TableRow>
@@ -307,17 +301,6 @@ export const UserManagement = () => {
                 <TableCell>{user.email}</TableCell>
                 <TableCell className="capitalize">
                   {user.role}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-sm ${
-                      user.active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {user.active ? "Actif" : "Inactif"}
-                  </span>
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
