@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils"; // Add this import for the cn utility
 
 interface CalendarMission {
   mission_id: string;
@@ -25,6 +27,7 @@ interface CalendarMission {
   interpreter_last_name: string;
   interpreter_status: string;
   profile_picture_url: string | null;
+  mission_type: string; // Add this property to the interface
 }
 
 type ViewMode = 'month' | 'week' | 'day';
