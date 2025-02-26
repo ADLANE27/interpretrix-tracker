@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -65,91 +64,78 @@ export const UserManagement = () => {
     queryFn: async () => {
       console.log("Fetching users data");
       
-      // Récupérer les admins
-      const { data: adminRoles, error: adminError } = await supabase
-        .from('user_roles')
+      // Récupérer les admins depuis admin_profiles et user_roles
+      const { data: adminProfiles, error: adminError } = await supabase
+        .from('admin_profiles')
         .select(`
-          user_id,
-          active,
-          role
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles!inner (
+            active,
+            role
+          )
         `)
-        .eq('role', 'admin');
+        .eq('user_roles.role', 'admin');
 
       if (adminError) {
-        console.error("Error fetching admin roles:", adminError);
+        console.error("Error fetching admin profiles:", adminError);
         throw adminError;
       }
 
       // Récupérer les interprètes
-      const { data: interpreterRoles, error: interpreterError } = await supabase
-        .from('user_roles')
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
         .select(`
-          user_id,
-          active,
-          role
+          id,
+          email,
+          first_name,
+          last_name,
+          languages,
+          tarif_15min,
+          tarif_5min,
+          employment_status,
+          status,
+          user_roles!inner (
+            active,
+            role
+          )
         `)
-        .eq('role', 'interpreter');
+        .eq('user_roles.role', 'interpreter');
 
       if (interpreterError) {
-        console.error("Error fetching interpreter roles:", interpreterError);
+        console.error("Error fetching interpreter profiles:", interpreterError);
         throw interpreterError;
       }
 
-      // Récupérer les informations des admins
-      const admins = await Promise.all(
-        adminRoles.map(async (role) => {
-          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(role.user_id);
-          
-          if (userError || !userData?.user) {
-            console.error("Error fetching admin data:", userError);
-            return null;
-          }
+      const admins: AdminUser[] = adminProfiles.map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        active: profile.user_roles[0].active,
+        role: 'admin'
+      }));
 
-          return {
-            id: role.user_id,
-            email: userData.user.email || '',
-            role: 'admin' as const,
-            first_name: userData.user.user_metadata?.first_name || '',
-            last_name: userData.user.user_metadata?.last_name || '',
-            active: role.active
-          };
-        })
-      );
+      const interpreters: InterpreterUser[] = interpreterProfiles.map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        active: profile.user_roles[0].active,
+        role: 'interpreter',
+        languages: profile.languages || [],
+        status: profile.status || 'unavailable',
+        tarif_15min: profile.tarif_15min || 0,
+        tarif_5min: profile.tarif_5min || 0,
+        employment_status: profile.employment_status
+      }));
 
-      // Récupérer les informations des interprètes
-      const interpreters = await Promise.all(
-        (interpreterRoles || []).map(async (role) => {
-          const { data: profile, error: profileError } = await supabase
-            .from('interpreter_profiles')
-            .select('*')
-            .eq('id', role.user_id)
-            .single();
+      console.log("Admins:", admins);
+      console.log("Interpreters:", interpreters);
 
-          if (profileError || !profile) return null;
-
-          return {
-            id: role.user_id,
-            email: profile.email,
-            role: 'interpreter' as const,
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            active: role.active,
-            languages: profile.languages || [],
-            status: profile.status || 'unavailable',
-            tarif_15min: profile.tarif_15min || 0,
-            tarif_5min: profile.tarif_5min || 0,
-            employment_status: profile.employment_status
-          };
-        })
-      );
-
-      const validAdmins = admins.filter((admin): admin is AdminUser => admin !== null);
-      const validInterpreters = interpreters.filter((interpreter): interpreter is InterpreterUser => interpreter !== null);
-
-      const allUsers: UserData[] = [...validAdmins, ...validInterpreters];
-      console.log("All users:", allUsers);
-      
-      return allUsers;
+      return [...admins, ...interpreters];
     }
   });
 
