@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -9,6 +8,8 @@ import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -27,6 +28,20 @@ export const InterpreterChat = ({
   onFiltersChange, 
   onClearFilters 
 }: InterpreterChatProps) => {
+  const { data: channel } = useQuery({
+    queryKey: ['channel', channelId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('chat_channels')
+        .select('*')
+        .eq('id', channelId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -138,21 +153,15 @@ export const InterpreterChat = ({
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full pt-12 sm:pt-0">
-      <div className="border-b pb-3 px-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="w-full overflow-x-auto hide-scrollbar">
-            <SearchFilter 
-              filters={filters} 
-              onFiltersChange={onFiltersChange} 
-              onClearFilters={onClearFilters}
-              chatMembers={chatMembers}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <ChannelMembersPopover channelId={channelId} />
-          </div>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <ChannelMembersPopover 
+          channelId={channelId} 
+          channelName={channel?.name || ''} 
+          channelType={channel?.channel_type || 'group'} 
+          userRole="interpreter"
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 relative">
