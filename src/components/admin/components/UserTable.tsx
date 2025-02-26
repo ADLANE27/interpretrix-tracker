@@ -21,6 +21,7 @@ import { useState } from "react";
 import { UserData } from "../types/user-management";
 import { InterpreterProfileForm } from "../forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface UserTableProps {
   users: UserData[];
@@ -31,10 +32,39 @@ interface UserTableProps {
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleEditInterpreter = (user: UserData) => {
-    setSelectedUser(user);
-    setIsEditingInterpreter(true);
+  const handleEditInterpreter = async (user: UserData) => {
+    try {
+      // Charger les données complètes de l'interprète
+      const { data: interpreterData, error } = await supabase
+        .from('interpreter_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      // Convertir les langues du format string au format LanguagePair
+      const languages = (interpreterData.languages || []).map((lang: string) => {
+        const [source, target] = lang.split('→').map(l => l.trim());
+        return { source, target };
+      });
+
+      setSelectedUser({
+        ...user,
+        ...interpreterData,
+        languages
+      });
+      setIsEditingInterpreter(true);
+    } catch (error) {
+      console.error('Error fetching interpreter data:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les données de l'interprète",
+        variant: "destructive",
+      });
+    }
   };
 
   if (users.length === 0) {
@@ -106,14 +136,11 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
             {selectedUser && (
               <InterpreterProfileForm
                 isEditing={true}
-                initialData={{
-                  email: selectedUser.email || "",
-                  first_name: selectedUser.first_name,
-                  last_name: selectedUser.last_name,
-                  active: selectedUser.active,
-                }}
+                initialData={selectedUser}
                 onSubmit={async (data) => {
                   try {
+                    setIsSubmitting(true);
+                    
                     const addressJson = data.address ? {
                       street: data.address.street,
                       postal_code: data.address.postal_code,
@@ -143,14 +170,38 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
                     if (error) throw error;
 
+                    toast({
+                      title: "Succès",
+                      description: "Le profil de l'interprète a été mis à jour",
+                    });
+
                     setIsEditingInterpreter(false);
-                    window.location.reload(); // Refresh to see the changes
+                    // Recharger les données de l'utilisateur sans rafraîchir la page
+                    const { data: updatedUser } = await supabase
+                      .from('interpreter_profiles')
+                      .select('*')
+                      .eq('id', selectedUser.id)
+                      .single();
+
+                    if (updatedUser) {
+                      const updatedUsers = users.map(u => 
+                        u.id === selectedUser.id ? { ...u, ...updatedUser } : u
+                      );
+                      // Mettre à jour la liste des utilisateurs localement
+                      if (onDelete) onDelete(selectedUser.id); // Cette fonction devrait aussi rafraîchir la liste
+                    }
                   } catch (error: any) {
                     console.error('Error updating interpreter:', error);
-                    throw error;
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible de mettre à jour le profil de l'interprète",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsSubmitting(false);
                   }
                 }}
-                isSubmitting={false}
+                isSubmitting={isSubmitting}
               />
             )}
           </ScrollArea>
