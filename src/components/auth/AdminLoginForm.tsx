@@ -28,16 +28,14 @@ export const AdminLoginForm = () => {
 
       if (signInError) throw signInError;
 
-      // After successful sign in, check if user has admin role in user_roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role, active')
-        .eq('user_id', signInData.user.id)
-        .eq('role', 'admin')
-        .eq('active', true)
-        .single();
+      // Call the is-admin edge function to verify admin status
+      const { data, error: adminCheckError } = await supabase.functions.invoke('is-admin', {
+        body: { user_id: signInData.user.id }
+      });
 
-      if (roleError || !roleData) {
+      if (adminCheckError) throw adminCheckError;
+
+      if (!data?.is_admin) {
         // If not admin, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
@@ -52,6 +50,9 @@ export const AdminLoginForm = () => {
       navigate("/admin");
     } catch (error: any) {
       console.error("Login error:", error);
+      
+      // Ensure we're signed out in case of any error
+      await supabase.auth.signOut();
       
       toast({
         title: "Erreur de connexion",

@@ -27,23 +27,30 @@ serve(async (req) => {
     }
 
     // Get user from the token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
     
     if (userError || !user) {
       throw new Error('Invalid token')
     }
 
+    console.log('Checking admin status for user:', user.id);
+
     // Check if user is admin
     const { data, error } = await supabase
       .from('user_roles')
-      .select('role')
+      .select('*')
       .eq('user_id', user.id)
       .eq('role', 'admin')
       .eq('active', true)
-      .single()
+      .maybeSingle();
+
+    console.log('Admin check result:', { data, error });
 
     if (error) {
-      throw error
+      console.error('Error checking admin status:', error);
+      throw error;
     }
 
     return new Response(
