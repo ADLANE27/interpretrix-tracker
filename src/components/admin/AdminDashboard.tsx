@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -280,10 +279,6 @@ export const AdminDashboard = () => {
         <div className="flex-1 min-h-0 overflow-hidden">
           <TabsContent value="interpreters" className="h-full overflow-auto px-6">
             <div className="space-y-6 py-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-6">Liste des interprètes</h2>
-              </div>
-
               {/* Filters section */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sticky top-0 bg-background z-10 pb-4">
                 <div className="space-y-2">
