@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,99 +51,69 @@ export const UserManagement = () => {
     queryKey: ["users"],
     queryFn: async () => {
       try {
-        // First, get all user_roles to ensure we have access
-        const { data: userRoles, error: userRolesError } = await supabase
+        // Get all user roles first
+        const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select('*');
 
-        if (userRolesError) {
-          console.error('Error fetching user roles:', userRolesError);
-          throw userRolesError;
+        if (rolesError) {
+          console.error('Error fetching user roles:', rolesError);
+          throw rolesError;
         }
 
-        console.log('User roles fetched:', userRoles);
-
-        // Get admin users with their roles
+        // Get admin users
         const { data: adminData, error: adminError } = await supabase
           .from('admin_profiles')
-          .select(`
-            id,
-            email,
-            first_name,
-            last_name,
-            created_at,
-            user_roles (
-              role,
-              active
-            )
-          `);
+          .select('*');
 
         if (adminError) {
           console.error('Error fetching admins:', adminError);
           throw adminError;
         }
 
-        console.log('Admin data fetched:', adminData);
-
-        // Get interpreter users with their roles
+        // Get interpreter users
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
-          .select(`
-            id,
-            email,
-            first_name,
-            last_name,
-            created_at,
-            user_roles (
-              role,
-              active
-            )
-          `);
+          .select('*');
 
         if (interpreterError) {
           console.error('Error fetching interpreters:', interpreterError);
           throw interpreterError;
         }
 
-        console.log('Interpreter data fetched:', interpreterData);
+        // Map user roles to a lookup object
+        const roleMap = (userRoles || []).reduce((acc: Record<string, { role: string, active: boolean }>, role) => {
+          acc[role.user_id] = { role: role.role, active: role.active };
+          return acc;
+        }, {});
 
         // Format admin data
-        const admins = (adminData || []).map((admin: any) => {
-          const userData = {
-            id: admin.id,
-            email: admin.email,
-            first_name: admin.first_name || '',
-            last_name: admin.last_name || '',
-            role: 'admin',
-            created_at: admin.created_at,
-            active: admin.user_roles?.[0]?.active ?? false
-          };
-          console.log('Formatted admin:', userData);
-          return userData;
-        });
+        const admins = (adminData || []).map(admin => ({
+          id: admin.id,
+          email: admin.email,
+          first_name: admin.first_name || '',
+          last_name: admin.last_name || '',
+          role: 'admin',
+          created_at: admin.created_at,
+          active: roleMap[admin.id]?.active ?? false
+        }));
 
         // Format interpreter data
-        const interpreters = (interpreterData || []).map((interpreter: any) => {
-          const userData = {
-            id: interpreter.id,
-            email: interpreter.email,
-            first_name: interpreter.first_name || '',
-            last_name: interpreter.last_name || '',
-            role: 'interpreter',
-            created_at: interpreter.created_at,
-            active: interpreter.user_roles?.[0]?.active ?? false
-          };
-          console.log('Formatted interpreter:', userData);
-          return userData;
-        });
+        const interpreters = (interpreterData || []).map(interpreter => ({
+          id: interpreter.id,
+          email: interpreter.email,
+          first_name: interpreter.first_name || '',
+          last_name: interpreter.last_name || '',
+          role: 'interpreter',
+          created_at: interpreter.created_at,
+          active: roleMap[interpreter.id]?.active ?? false
+        }));
 
         // Sort all users by creation date
-        const allUsers = [...admins, ...interpreters].sort((a, b) => 
+        return [...admins, ...interpreters].sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
-        console.log('Total users found:', allUsers.length);
-        return allUsers;
       } catch (error) {
         console.error('Error fetching users:', error);
         throw error;
