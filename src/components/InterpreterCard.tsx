@@ -1,12 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from '@supabase/supabase-js';
+import type { PrivateReservation } from "@/types/privateReservation";
 
 interface Mission {
   scheduled_start_time: string;
@@ -16,6 +17,7 @@ interface Mission {
   target_language: string;
   mission_type: 'immediate' | 'scheduled';
   status: string;
+  is_private_reservation?: boolean;
 }
 
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
@@ -118,31 +120,44 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   };
 
   const fetchMissions = async () => {
-    const { data, error } = await supabase
-      .from('interpretation_missions')
-      .select('*')
-      .eq('assigned_interpreter_id', interpreter.id)
-      .or('status.eq.accepted,status.eq.in_progress')
-      .eq('mission_type', 'scheduled')
-      .gte('scheduled_end_time', new Date().toISOString())
-      .order('scheduled_start_time', { ascending: true });
+    try {
+      const { data: regularMissions, error: regularError } = await supabase
+        .from('interpretation_missions')
+        .select('*')
+        .eq('assigned_interpreter_id', interpreter.id)
+        .or('status.eq.accepted,status.eq.in_progress')
+        .eq('mission_type', 'scheduled')
+        .gte('scheduled_end_time', new Date().toISOString());
 
-    if (error) {
+      if (regularError) throw regularError;
+
+      const { data: privateReservations, error: privateError } = await supabase
+        .from('private_reservations')
+        .select('*')
+        .eq('interpreter_id', interpreter.id)
+        .eq('status', 'scheduled')
+        .gte('end_time', new Date().toISOString());
+
+      if (privateError) throw privateError;
+
+      const transformedPrivateReservations: Mission[] = (privateReservations || []).map(res => ({
+        scheduled_start_time: res.start_time,
+        scheduled_end_time: res.end_time,
+        estimated_duration: res.duration_minutes,
+        source_language: res.source_language,
+        target_language: res.target_language,
+        mission_type: 'scheduled',
+        status: res.status,
+        is_private_reservation: true
+      }));
+
+      const allMissions = [...(regularMissions || []), ...transformedPrivateReservations]
+        .sort((a, b) => new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime());
+
+      setMissions(allMissions);
+    } catch (error) {
       console.error('[InterpreterCard] Error fetching missions:', error);
-      return;
     }
-
-    const typedMissions = (data || []).map(mission => ({
-      scheduled_start_time: mission.scheduled_start_time,
-      scheduled_end_time: mission.scheduled_end_time,
-      estimated_duration: mission.estimated_duration,
-      source_language: mission.source_language,
-      target_language: mission.target_language,
-      mission_type: mission.mission_type as 'immediate' | 'scheduled',
-      status: mission.status
-    }));
-
-    setMissions(typedMissions);
   };
 
   const fetchCurrentStatus = async () => {
@@ -195,74 +210,41 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
-    fetchTarifs();
-  }, [interpreter.id]);
+    console.log('[InterpreterCard] Setting up real-time subscriptions');
+    const channels: RealtimeChannel[] = [];
 
-  useEffect(() => {
-    console.log('[InterpreterCard] Initial tariffs:', {
-      tarif_5min: {
-        value: interpreter.tarif_5min,
-        type: typeof interpreter.tarif_5min,
-        isValid: typeof interpreter.tarif_5min === 'number' && interpreter.tarif_5min > 0
-      },
-      tarif_15min: {
-        value: interpreter.tarif_15min,
-        type: typeof interpreter.tarif_15min,
-        isValid: typeof interpreter.tarif_15min === 'number' && interpreter.tarif_15min > 0
-      },
-      interpreter_id: interpreter.id
-    });
-
-    const statusChannel = supabase.channel(`interpreter-status-${interpreter.id}`, {
-      config: {
-        broadcast: { self: true },
-        presence: { key: interpreter.id },
-      },
-    });
-
-    const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`, {
-      config: {
-        broadcast: { self: true },
-        presence: { key: interpreter.id },
-      },
-    });
-
-    statusChannel
+    const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`)
       .on('postgres_changes' as any, {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${interpreter.id}`,
-      }, (payload: RealtimeInterpreterProfilePayload) => {
-        console.log('[InterpreterCard] Status update received:', payload);
-        if (payload.new && typeof payload.new.status === 'string' && isValidStatus(payload.new.status)) {
-          setCurrentStatus(payload.new.status);
-        }
-      })
-      .subscribe((status) => {
-        console.log('[InterpreterCard] Status subscription status:', status);
-      });
-
-    missionChannel
-      .on('postgres_changes' as any, {
-        event: 'UPDATE',
+        event: '*',
         schema: 'public',
         table: 'interpretation_missions',
         filter: `assigned_interpreter_id=eq.${interpreter.id}`,
-      }, (payload: RealtimePostgresUpdatePayload) => {
-        console.log('[InterpreterCard] Mission update received:', payload);
+      }, () => {
+        console.log('[InterpreterCard] Mission update received');
         fetchMissions();
       })
-      .subscribe((status) => {
-        console.log('[InterpreterCard] Mission subscription status:', status);
-      });
+      .subscribe();
+    channels.push(missionChannel);
+
+    const reservationChannel = supabase.channel(`interpreter-reservations-${interpreter.id}`)
+      .on('postgres_changes' as any, {
+        event: '*',
+        schema: 'public',
+        table: 'private_reservations',
+        filter: `interpreter_id=eq.${interpreter.id}`,
+      }, () => {
+        console.log('[InterpreterCard] Private reservation update received');
+        fetchMissions();
+      })
+      .subscribe();
+    channels.push(reservationChannel);
 
     fetchMissions();
-    fetchCurrentStatus();
 
     return () => {
-      supabase.removeChannel(statusChannel);
-      supabase.removeChannel(missionChannel);
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
     };
   }, [interpreter.id]);
 
@@ -390,6 +372,12 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             </div>
 
             <div className="space-y-2">
+              {nextMission.is_private_reservation && (
+                <Badge variant="secondary" className="mb-2 flex items-center gap-1">
+                  <LockIcon className="w-3 h-3" />
+                  Réservation privée
+                </Badge>
+              )}
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
@@ -417,6 +405,12 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="mt-4 space-y-4">
                 {additionalMissions.map((mission, index) => (
                   <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
+                    {mission.is_private_reservation && (
+                      <Badge variant="secondary" className="mb-2 flex items-center gap-1">
+                        <LockIcon className="w-3 h-3" />
+                        Réservation privée
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">

@@ -16,4 +16,5 @@ export interface Mission {
   creator_first_name?: string;
   creator_last_name?: string;
   notified_interpreters?: string[];
+  is_private_reservation?: boolean;
 }
