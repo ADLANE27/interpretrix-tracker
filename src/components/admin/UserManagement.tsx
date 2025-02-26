@@ -61,51 +61,80 @@ export const UserManagement = () => {
   const { data: users, refetch, isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      console.log("[UserManagement] Fetching users data");
-      
-      const { data: interpreterProfiles, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select('*');
-
-      if (interpreterError) throw interpreterError;
-
-      const { data: adminRoles, error: adminError } = await supabase
-        .from('user_roles')
-        .select('user_id, active')
-        .eq('role', 'admin');
-
-      if (adminError) throw adminError;
-
-      const interpreterUsers: InterpreterData[] = (interpreterProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email || '',
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
-        active: true,
-        languages: profile.languages || [],
-        status: (profile.status || 'unavailable') as InterpreterStatus,
-        tarif_15min: profile.tarif_15min || 0,
-        tarif_5min: profile.tarif_5min || 0,
-        employment_status: profile.employment_status
-      }));
-
-      const adminUsers: AdminData[] = await Promise.all(adminRoles.map(async (role) => {
-        const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
-        if (authError) throw authError;
+      try {
+        console.log("[UserManagement] Starting to fetch users data");
         
-        return {
-          id: role.user_id,
-          email: user?.email || '',
-          first_name: user?.user_metadata?.first_name || '',
-          last_name: user?.user_metadata?.last_name || '',
-          active: role.active || false
-        };
-      }));
+        const { data: interpreterProfiles, error: interpreterError } = await supabase
+          .from('interpreter_profiles')
+          .select('*');
 
-      return {
-        interpreters: interpreterUsers,
-        admins: adminUsers
-      };
+        if (interpreterError) {
+          console.error('[UserManagement] Interpreter profiles fetch error:', interpreterError);
+          throw interpreterError;
+        }
+
+        console.log('[UserManagement] Fetched interpreter profiles:', interpreterProfiles);
+
+        const { data: adminRoles, error: adminError } = await supabase
+          .from('user_roles')
+          .select('user_id, active')
+          .eq('role', 'admin');
+
+        if (adminError) {
+          console.error('[UserManagement] Admin roles fetch error:', adminError);
+          throw adminError;
+        }
+
+        console.log('[UserManagement] Fetched admin roles:', adminRoles);
+
+        const interpreterUsers: InterpreterData[] = (interpreterProfiles || []).map(profile => ({
+          id: profile.id,
+          email: profile.email || '',
+          first_name: profile.first_name || '',
+          last_name: profile.last_name || '',
+          active: true,
+          languages: profile.languages || [],
+          status: (profile.status || 'unavailable') as InterpreterStatus,
+          tarif_15min: profile.tarif_15min || 0,
+          tarif_5min: profile.tarif_5min || 0,
+          employment_status: profile.employment_status
+        }));
+
+        console.log('[UserManagement] Processed interpreter users:', interpreterUsers);
+
+        const adminUsers: AdminData[] = await Promise.all(
+          adminRoles.map(async (role) => {
+            try {
+              const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
+              if (authError) {
+                console.error('[UserManagement] Auth error for user:', role.user_id, authError);
+                throw authError;
+              }
+              
+              return {
+                id: role.user_id,
+                email: user?.email || '',
+                first_name: user?.user_metadata?.first_name || '',
+                last_name: user?.user_metadata?.last_name || '',
+                active: role.active || false
+              };
+            } catch (err) {
+              console.error(`[UserManagement] Error processing admin ${role.user_id}:`, err);
+              throw err;
+            }
+          })
+        );
+
+        console.log('[UserManagement] Processed admin users:', adminUsers);
+
+        return {
+          interpreters: interpreterUsers,
+          admins: adminUsers
+        };
+      } catch (err) {
+        console.error('[UserManagement] Error in query function:', err);
+        throw err;
+      }
     },
     retry: 3,
     staleTime: Infinity,
@@ -396,12 +425,18 @@ export const UserManagement = () => {
   }
 
   if (error) {
-    console.error("[UserManagement] Query error:", error);
+    console.error("[UserManagement] Query error details:", error);
+    let errorMessage = "Erreur inconnue";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = JSON.stringify(error);
+    }
+    
     return (
       <div className="p-4 text-red-600">
-        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page. 
-        <br />
-        Détail: {error instanceof Error ? error.message : "Erreur inconnue"}
+        <p className="font-bold">Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page.</p>
+        <p className="mt-2">Détail: {errorMessage}</p>
       </div>
     );
   }
