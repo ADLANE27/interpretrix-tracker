@@ -6,11 +6,18 @@ import { Mission } from "@/types/mission";
 import { MissionCard } from "./mission/MissionCard";
 import { useMissionSubscription } from "./mission/useMissionSubscription";
 import { useMissionManagement } from "./mission/useMissionManagement";
+import { format, addHours } from "date-fns";
+import { fr } from 'date-fns/locale';
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const adjustForFrenchTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
+  };
 
   const fetchMissions = async () => {
     try {
@@ -35,7 +42,14 @@ export const MissionsTab = () => {
         throw missionsError;
       }
 
-      setMissions(missionsData as Mission[]);
+      // Adjust the times for French timezone before setting the missions
+      const adjustedMissions = (missionsData as Mission[]).map(mission => ({
+        ...mission,
+        scheduled_start_time: mission.scheduled_start_time ? adjustForFrenchTime(mission.scheduled_start_time).toISOString() : null,
+        scheduled_end_time: mission.scheduled_end_time ? adjustForFrenchTime(mission.scheduled_end_time).toISOString() : null
+      }));
+
+      setMissions(adjustedMissions);
       
     } catch (error) {
       console.error('[MissionsTab] Error fetching missions:', error);
