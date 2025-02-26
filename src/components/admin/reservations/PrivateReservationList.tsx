@@ -26,7 +26,6 @@ const EditReservationDialog = ({ reservation, onReservationUpdated }: {
   const [sourceLanguage, setSourceLanguage] = useState(reservation.source_language);
   const [targetLanguage, setTargetLanguage] = useState(reservation.target_language);
   const [commentary, setCommentary] = useState(reservation.commentary || '');
-  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,6 +168,11 @@ export const PrivateReservationList = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  const adjustForFrenchTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return addHours(date, -1);
+  };
+
   const fetchReservations = async () => {
     try {
       const { data, error } = await supabase
@@ -184,7 +188,14 @@ export const PrivateReservationList = () => {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      setReservations(data as any);
+      
+      const adjustedReservations = (data as any).map((reservation: PrivateReservation) => ({
+        ...reservation,
+        start_time: reservation.start_time,
+        end_time: reservation.end_time
+      }));
+      
+      setReservations(adjustedReservations);
     } catch (error) {
       console.error('[PrivateReservationList] Error:', error);
       toast({
@@ -283,103 +294,108 @@ export const PrivateReservationList = () => {
           <p className="text-sm text-gray-500">Aucune réservation trouvée</p>
         </Card>
       ) : (
-        reservations.map((reservation) => (
-          <Card key={reservation.id} className="p-4 space-y-3">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm font-medium">
-                    {format(new Date(reservation.start_time), "d MMMM yyyy, HH:mm", { locale: fr })}
-                    {" - "}
-                    {format(new Date(reservation.end_time), "HH:mm", { locale: fr })}
-                  </span>
-                  <Badge variant="secondary">
-                    {reservation.duration_minutes} min
-                  </Badge>
-                  <Badge 
-                    variant={
-                      reservation.status === 'scheduled' ? 'default' :
-                      reservation.status === 'completed' ? 'secondary' :
-                      'destructive'
-                    }
-                  >
-                    {reservation.status === 'scheduled' ? 'Programmée' :
-                     reservation.status === 'completed' ? 'Terminée' :
-                     'Annulée'}
-                  </Badge>
-                </div>
+        reservations.map((reservation) => {
+          const startTime = adjustForFrenchTime(reservation.start_time);
+          const endTime = adjustForFrenchTime(reservation.end_time);
 
-                <div className="flex items-center gap-2">
-                  <Languages className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">
-                    {reservation.source_language} → {reservation.target_language}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm font-medium">
-                    {(reservation as any).interpreter.first_name} {(reservation as any).interpreter.last_name}
-                  </span>
-                </div>
-
-                {reservation.commentary && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {reservation.commentary}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <EditReservationDialog
-                  reservation={reservation}
-                  onReservationUpdated={fetchReservations}
-                />
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Supprimer
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer la réservation</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir supprimer cette réservation ? Cette action est irréversible.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(reservation.id)}>
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                {reservation.status === 'scheduled' && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange(reservation.id, 'completed')}
+          return (
+            <Card key={reservation.id} className="p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium">
+                      {format(startTime, "d MMMM yyyy, HH:mm", { locale: fr })}
+                      {" - "}
+                      {format(endTime, "HH:mm", { locale: fr })}
+                    </span>
+                    <Badge variant="secondary">
+                      {reservation.duration_minutes} min
+                    </Badge>
+                    <Badge 
+                      variant={
+                        reservation.status === 'scheduled' ? 'default' :
+                        reservation.status === 'completed' ? 'secondary' :
+                        'destructive'
+                      }
                     >
-                      Marquer comme terminée
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange(reservation.id, 'cancelled')}
-                    >
-                      Annuler
-                    </Button>
+                      {reservation.status === 'scheduled' ? 'Programmée' :
+                       reservation.status === 'completed' ? 'Terminée' :
+                       'Annulée'}
+                    </Badge>
                   </div>
-                )}
+
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-4 w-4 text-green-500" />
+                    <span className="text-sm">
+                      {reservation.source_language} → {reservation.target_language}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium">
+                      {(reservation as any).interpreter.first_name} {(reservation as any).interpreter.last_name}
+                    </span>
+                  </div>
+
+                  {reservation.commentary && (
+                    <p className="text-sm text-gray-500 mt-2">
+                      {reservation.commentary}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <EditReservationDialog
+                    reservation={reservation}
+                    onReservationUpdated={fetchReservations}
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer la réservation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Êtes-vous sûr de vouloir supprimer cette réservation ? Cette action est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleDelete(reservation.id)}>
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  {reservation.status === 'scheduled' && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStatusChange(reservation.id, 'completed')}
+                      >
+                        Marquer comme terminée
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStatusChange(reservation.id, 'cancelled')}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-        ))
+            </Card>
+          );
+        })
       )}
     </div>
   );
