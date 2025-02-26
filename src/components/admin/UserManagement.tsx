@@ -136,17 +136,18 @@ export const UserManagement = () => {
               } satisfies UserData;
             }
 
-            // If not an interpreter, get admin data from auth.users
-            const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(
-              userRole.user_id
-            );
+            // For admin users, we can't use auth.admin - use metadata from user_metadata instead
+            const { data: authUser, error: authError } = await supabase.auth
+              .getUser(userRole.user_id);
 
             if (authError) {
               console.error("Error fetching auth user:", authError);
               throw authError;
             }
 
+            const user = authUser?.user;
             console.log("[UserManagement] Found admin user:", user);
+            
             return {
               id: userRole.user_id,
               email: user?.email || "",
