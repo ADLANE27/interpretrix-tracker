@@ -172,32 +172,16 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Create the user in auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password || Math.random().toString(36).slice(-8),
-        email_confirm: true,
-        user_metadata: {
+      const { error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
+          role: "admin",
         },
       });
 
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error("No user data returned");
-      }
-
-      // Create admin role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: "admin",
-        });
-
-      if (roleError) throw roleError;
+      if (error) throw error;
 
       toast({
         title: "Administrateur créé",
@@ -222,33 +206,6 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      // Create the user in auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password || Math.random().toString(36).slice(-8),
-        email_confirm: true,
-        user_metadata: {
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-        },
-      });
-
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error("No user data returned");
-      }
-
-      // Create interpreter role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: "interpreter",
-        });
-
-      if (roleError) throw roleError;
-
       const languageStrings = convertLanguagePairsToStrings(formData.languages);
       const addressJson = formData.address ? {
         street: formData.address.street,
@@ -256,14 +213,12 @@ export const UserManagement = () => {
         city: formData.address.city,
       } : null;
 
-      // Create interpreter profile
-      const { error: profileError } = await supabase
-        .from('interpreter_profiles')
-        .insert({
-          id: authData.user.id,
+      const { error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
-          email: formData.email,
+          role: "interpreter",
           employment_status: formData.employment_status,
           languages: languageStrings,
           address: addressJson,
@@ -277,10 +232,10 @@ export const UserManagement = () => {
           landline_phone: formData.landline_phone,
           tarif_15min: formData.tarif_15min,
           tarif_5min: formData.tarif_5min,
-          password_changed: false,
-        });
+        },
+      });
 
-      if (profileError) throw profileError;
+      if (error) throw error;
 
       toast({
         title: "Interprète créé",
