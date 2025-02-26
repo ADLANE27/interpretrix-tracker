@@ -1,7 +1,9 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
+import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
@@ -155,7 +157,7 @@ export const InterpreterChat = ({
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
-          channelType={channel?.channel_type || 'group'} 
+          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
           userRole="interpreter"
         />
       </div>
@@ -197,3 +199,4 @@ export const InterpreterChat = ({
     </div>
   );
 };
+

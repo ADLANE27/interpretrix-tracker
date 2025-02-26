@@ -1,13 +1,14 @@
+
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
 import { ChannelMembersPopover } from "./ChannelMembersPopover";
-import { useUserRole } from "@/hooks/use-user-role";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useChat } from "@/hooks/useChat";
 import { toast } from "@/hooks/use-toast";
 
 interface ChatProps {
@@ -31,7 +32,15 @@ const Chat = ({ channelId }: ChatProps) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(channel?.name || '');
-  const userRole = useUserRole();
+
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    deleteMessage,
+    currentUserId,
+    reactToMessage
+  } = useChat(channelId);
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -63,7 +72,7 @@ const Chat = ({ channelId }: ChatProps) => {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
-          {channel?.channel_type === 'group' && userRole === 'admin' && isEditing ? (
+          {channel?.channel_type === 'group' && isEditing ? (
             <>
               <Input
                 value={newName}
@@ -87,7 +96,7 @@ const Chat = ({ channelId }: ChatProps) => {
           ) : (
             <>
               <h2 className="text-lg font-semibold">{channel?.name}</h2>
-              {channel?.channel_type === 'group' && userRole === 'admin' && (
+              {channel?.channel_type === 'group' && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -105,13 +114,32 @@ const Chat = ({ channelId }: ChatProps) => {
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
-          channelType={channel?.channel_type || 'group'} 
-          userRole={userRole || 'interpreter'}
+          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+          userRole="admin"
         />
       </div>
       
-      <MessageList channelId={channelId} />
-      <ChatInput channelId={channelId} />
+      <div className="flex-1 overflow-y-auto">
+        <MessageList
+          messages={messages}
+          currentUserId={currentUserId}
+          onDeleteMessage={deleteMessage}
+          onReactToMessage={reactToMessage}
+          channelId={channelId}
+        />
+      </div>
+      
+      <ChatInput
+        message=""
+        setMessage={() => {}}
+        onSendMessage={() => {}}
+        handleFileChange={() => {}}
+        attachments={[]}
+        handleRemoveAttachment={() => {}}
+        inputRef={React.createRef()}
+        replyTo={null}
+        setReplyTo={() => {}}
+      />
     </div>
   );
 };
