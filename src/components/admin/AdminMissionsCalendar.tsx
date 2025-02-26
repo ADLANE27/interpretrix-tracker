@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -88,7 +87,6 @@ export const AdminMissionsCalendar = () => {
     };
   }, []);
 
-  // Get missions based on view mode
   const getVisibleMissions = () => {
     if (!selectedDate) return [];
 
@@ -114,12 +112,10 @@ export const AdminMissionsCalendar = () => {
     }
   };
 
-  // Get all dates that have missions
   const datesWithMissions = missions
     .map((mission) => startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone)))
     .filter((date): date is Date => date !== null);
 
-  // Get missions to display based on view mode
   const visibleMissions = getVisibleMissions();
 
   return (
@@ -178,9 +174,16 @@ export const AdminMissionsCalendar = () => {
               visibleMissions.map((mission) => {
                 const startTime = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
                 const endTime = toZonedTime(new Date(mission.scheduled_end_time), userTimeZone);
+                const isPrivate = mission.mission_type === 'private';
 
                 return (
-                  <Card key={mission.mission_id} className="p-4 space-y-3">
+                  <Card 
+                    key={mission.mission_id} 
+                    className={cn(
+                      "p-4 space-y-3",
+                      isPrivate && "border-dashed border-2"
+                    )}
+                  >
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
@@ -190,9 +193,14 @@ export const AdminMissionsCalendar = () => {
                             {" - "}
                             {formatInTimeZone(endTime, userTimeZone, "HH:mm")}
                           </span>
-                          <Badge variant="secondary">
+                          <Badge variant={isPrivate ? "outline" : "secondary"}>
                             {mission.estimated_duration} min
                           </Badge>
+                          {isPrivate && (
+                            <Badge variant="default">
+                              Réservation privée
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">

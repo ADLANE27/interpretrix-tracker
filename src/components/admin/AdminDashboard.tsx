@@ -20,6 +20,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { AdminMissionsCalendar } from "./AdminMissionsCalendar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ReservationsTab } from "./reservations/ReservationsTab";
 
 interface Interpreter {
   id: string;
@@ -55,6 +56,16 @@ export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("interpreters");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
+
+  const tabs = [
+    { id: "interpreters", label: "Interprètes" },
+    { id: "missions", label: "Missions" },
+    { id: "calendar", label: "Calendrier" },
+    { id: "messages", label: "Messages" },
+    { id: "users", label: "Utilisateurs" },
+    { id: "reservations", label: "Réservations" },
+    { id: "guide", label: "Guide" },
+  ];
 
   const fetchInterpreters = async () => {
     try {
@@ -230,24 +241,11 @@ export const AdminDashboard = () => {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[240px]">
                   <div className="flex flex-col gap-2 mt-6">
-                    <Button variant={activeTab === "interpreters" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("interpreters")}>
-                      Interprètes
-                    </Button>
-                    <Button variant={activeTab === "missions" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("missions")}>
-                      Missions
-                    </Button>
-                    <Button variant={activeTab === "calendar" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("calendar")}>
-                      Calendrier
-                    </Button>
-                    <Button variant={activeTab === "messages" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("messages")}>
-                      Messages
-                    </Button>
-                    <Button variant={activeTab === "users" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("users")}>
-                      Utilisateurs
-                    </Button>
-                    <Button variant={activeTab === "guide" ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange("guide")}>
-                      Guide d'utilisation
-                    </Button>
+                    {tabs.map(tab => (
+                      <Button variant={activeTab === tab.id ? "default" : "ghost"} className="justify-start" onClick={() => handleTabChange(tab.id)}>
+                        {tab.label}
+                      </Button>
+                    ))}
                   </div>
                 </SheetContent>
               </Sheet>
@@ -257,18 +255,16 @@ export const AdminDashboard = () => {
                 {activeTab === "calendar" && "Calendrier"}
                 {activeTab === "messages" && "Messages"}
                 {activeTab === "users" && "Utilisateurs"}
+                {activeTab === "reservations" && "Réservations"}
                 {activeTab === "guide" && "Guide d'utilisation"}
               </div>
             </div>
           ) : (
             <div className="flex gap-4 items-center">
               <TabsList>
-                <TabsTrigger value="interpreters">Interprètes</TabsTrigger>
-                <TabsTrigger value="missions">Missions</TabsTrigger>
-                <TabsTrigger value="calendar">Calendrier</TabsTrigger>
-                <TabsTrigger value="messages">Messages</TabsTrigger>
-                <TabsTrigger value="users">Utilisateurs</TabsTrigger>
-                <TabsTrigger value="guide">Guide d'utilisation</TabsTrigger>
+                {tabs.map(tab => (
+                  <TabsTrigger key={tab.id} value={tab.id}>{tab.label}</TabsTrigger>
+                ))}
               </TabsList>
             </div>
           )}
@@ -403,6 +399,10 @@ export const AdminDashboard = () => {
 
           <TabsContent value="users">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="reservations">
+            <ReservationsTab />
           </TabsContent>
 
           <TabsContent value="guide">
