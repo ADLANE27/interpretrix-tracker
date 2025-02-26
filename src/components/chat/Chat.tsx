@@ -13,9 +13,10 @@ import { toast } from "@/hooks/use-toast";
 
 interface ChatProps {
   channelId: string;
+  userRole?: 'admin' | 'interpreter';
 }
 
-const Chat = ({ channelId }: ChatProps) => {
+const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
     queryFn: async () => {
@@ -72,7 +73,7 @@ const Chat = ({ channelId }: ChatProps) => {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
-          {channel?.channel_type === 'group' && isEditing ? (
+          {channel?.channel_type === 'group' && userRole === 'admin' && isEditing ? (
             <>
               <Input
                 value={newName}
@@ -96,7 +97,7 @@ const Chat = ({ channelId }: ChatProps) => {
           ) : (
             <>
               <h2 className="text-lg font-semibold">{channel?.name}</h2>
-              {channel?.channel_type === 'group' && (
+              {channel?.channel_type === 'group' && userRole === 'admin' && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -115,7 +116,7 @@ const Chat = ({ channelId }: ChatProps) => {
           channelId={channelId} 
           channelName={channel?.name || ''} 
           channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-          userRole="admin"
+          userRole={userRole}
         />
       </div>
       
