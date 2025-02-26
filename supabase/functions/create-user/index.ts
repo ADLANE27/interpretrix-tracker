@@ -31,32 +31,34 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Verify the JWT token
+    // Verify the JWT token and check admin status
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    const { data: { user: caller }, error: verifyError } = await supabaseClient.auth.getUser(token)
     
-    if (authError || !user) {
-      throw new Error('Invalid token')
+    if (verifyError || !caller) {
+      throw new Error('Invalid authentication token')
     }
 
-    // Check if the user is an admin
-    const { data: roleData, error: roleError } = await supabaseClient
+    // Check if the caller is an admin
+    const { data: adminRole } = await supabaseClient
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', caller.id)
+      .eq('role', 'admin')
       .single()
 
-    if (roleError || !roleData || roleData.role !== 'admin') {
-      throw new Error('User is not an admin')
+    if (!adminRole) {
+      throw new Error('Unauthorized - Only administrators can create users')
     }
 
-    const { email, first_name, last_name, role, ...additionalData } = await req.json()
-    console.log(`Admin ${user.email} creating new user with role ${role}: ${email}`)
+    // Get request data
+    const { email, first_name, last_name, role, password, ...additionalData } = await req.json()
+    console.log(`Admin ${caller.email} creating new user with role ${role}: ${email}`)
 
-    // Create user in auth
+    // Create user in auth with provided or random password
     const { data: authData, error: createError } = await supabaseClient.auth.admin.createUser({
       email,
-      password: Math.random().toString(36).slice(-8), // Random password
+      password: password || Math.random().toString(36).slice(-8),
       email_confirm: true,
       user_metadata: {
         first_name,
@@ -64,17 +66,23 @@ serve(async (req) => {
       },
     })
 
-    if (createError) throw createError
+    if (createError) {
+      console.error('Error creating auth user:', createError)
+      throw createError
+    }
 
     // Create user role
-    const { error: newRoleError } = await supabaseClient
+    const { error: roleError } = await supabaseClient
       .from('user_roles')
       .insert({
         user_id: authData.user.id,
         role,
       })
 
-    if (newRoleError) throw newRoleError
+    if (roleError) {
+      console.error('Error creating user role:', roleError)
+      throw roleError
+    }
 
     // If interpreter, create profile
     if (role === 'interpreter') {
@@ -89,20 +97,39 @@ serve(async (req) => {
           password_changed: false,
         })
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error('Error creating interpreter profile:', profileError)
+        throw profileError
+      }
+    }
+
+    // Don't forget to send a welcome email with the generated password if no password was provided
+    if (!password) {
+      // Here you would typically integrate with your email service
+      console.log('TODO: Send welcome email with generated password to:', email)
     }
 
     return new Response(
-      JSON.stringify({ id: authData.user.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        id: authData.user.id,
+        message: 'User created successfully'
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     )
 
   } catch (error) {
-    console.error('Error creating user:', error)
+    console.error('Error in create-user function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'An error occurred while creating the user'
+      }),
       { 
-        status: 400,
+        status: error.status || 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )

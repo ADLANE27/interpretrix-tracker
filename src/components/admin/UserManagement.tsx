@@ -171,17 +171,22 @@ export const UserManagement = () => {
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
       setIsSubmitting(true);
+      console.log("Creating admin user:", formData.email);
 
-      const { error } = await supabase.functions.invoke('create-user', {
+      const { data, error } = await supabase.functions.invoke('create-user', {
         body: {
           email: formData.email,
           first_name: formData.first_name,
           last_name: formData.last_name,
           role: "admin",
+          password: formData.password,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
 
       toast({
         title: "Administrateur créé",
