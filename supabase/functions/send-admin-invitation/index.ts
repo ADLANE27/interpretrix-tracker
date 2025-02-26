@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       throw roleError;
     }
 
-    // Créer le profil admin
+    // Create admin profile
     const { error: profileError } = await supabase
       .from('admin_profiles')
       .insert({
