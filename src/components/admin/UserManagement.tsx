@@ -86,7 +86,7 @@ export const UserManagement = () => {
     };
   }, [queryClient]);
 
-  const { data: users = [], refetch } = useQuery({
+  const { data: users = [], refetch, isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
@@ -100,18 +100,25 @@ export const UserManagement = () => {
         throw rolesError;
       }
 
+      console.log("[UserManagement] Fetched user roles:", userRoles);
+
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
             // Get interpreter profile data if it exists
-            const { data: interpreterProfile } = await supabase
+            const { data: interpreterProfile, error: interpreterError } = await supabase
               .from('interpreter_profiles')
               .select('*')
               .eq('id', userRole.user_id)
               .maybeSingle();
 
+            if (interpreterError) {
+              console.error("Error fetching interpreter profile:", interpreterError);
+            }
+
             // If interpreter profile exists, use that data
             if (interpreterProfile) {
+              console.log("[UserManagement] Found interpreter profile:", interpreterProfile);
               return {
                 id: userRole.user_id,
                 email: interpreterProfile.email,
@@ -128,12 +135,16 @@ export const UserManagement = () => {
             }
 
             // If not an interpreter, get admin data from auth.users
-            const { data: { user }, error } = await supabase.auth.admin.getUserById(
+            const { data: { user }, error: authError } = await supabase.auth.admin.getUserById(
               userRole.user_id
             );
 
-            if (error) throw error;
+            if (authError) {
+              console.error("Error fetching auth user:", authError);
+              throw authError;
+            }
 
+            console.log("[UserManagement] Found admin user:", user);
             return {
               id: userRole.user_id,
               email: user?.email || "",
@@ -154,11 +165,23 @@ export const UserManagement = () => {
         })
       );
 
+      console.log("[UserManagement] Final users data:", allUsers);
       return allUsers;
     },
+    retry: 3,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
+
+  // Add error handling UI
+  if (error) {
+    console.error("[UserManagement] Query error:", error);
+    return (
+      <div className="p-4 text-red-600">
+        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page.
+      </div>
+    );
+  }
 
   const adminUsers = users.filter(user => user.role === "admin");
   const interpreterUsers = users.filter(user => user.role === "interpreter");
@@ -489,26 +512,32 @@ export const UserManagement = () => {
       </div>
 
       <div className="space-y-6 overflow-x-hidden">
-        <AdminList
-          admins={adminUsers}
-          onToggleStatus={toggleUserStatus}
-          onDeleteUser={handleDeleteUser}
-          onResetPassword={(userId) => {
-            setSelectedUserId(userId);
-            setIsResetPasswordOpen(true);
-          }}
-        />
+        {isLoading ? (
+          <div className="text-center py-4">Chargement des utilisateurs...</div>
+        ) : (
+          <>
+            <AdminList
+              admins={adminUsers}
+              onToggleStatus={toggleUserStatus}
+              onDeleteUser={handleDeleteUser}
+              onResetPassword={(userId) => {
+                setSelectedUserId(userId);
+                setIsResetPasswordOpen(true);
+              }}
+            />
 
-        <InterpreterList
-          interpreters={interpreterUsers}
-          onToggleStatus={toggleUserStatus}
-          onDeleteUser={handleDeleteUser}
-          onResetPassword={(userId) => {
-            setSelectedUserId(userId);
-            setIsResetPasswordOpen(true);
-          }}
-          onUpdateInterpreter={handleUpdateInterpreter}
-        />
+            <InterpreterList
+              interpreters={interpreterUsers}
+              onToggleStatus={toggleUserStatus}
+              onDeleteUser={handleDeleteUser}
+              onResetPassword={(userId) => {
+                setSelectedUserId(userId);
+                setIsResetPasswordOpen(true);
+              }}
+              onUpdateInterpreter={handleUpdateInterpreter}
+            />
+          </>
+        )}
       </div>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
