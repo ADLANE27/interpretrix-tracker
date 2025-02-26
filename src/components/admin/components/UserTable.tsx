@@ -52,6 +52,13 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         return { source, target };
       });
 
+      // Transformer l'adresse en format attendu
+      const address = interpreterData.address ? {
+        street: String(interpreterData.address.street || ''),
+        postal_code: String(interpreterData.address.postal_code || ''),
+        city: String(interpreterData.address.city || '')
+      } : null;
+
       // Assurez-vous que le status correspond au type attendu
       const status = interpreterData.status as Profile['status'] || 'available';
 
@@ -61,6 +68,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         ...interpreterData,
         languages,
         status,
+        address,
       };
 
       setSelectedUser(userData);
