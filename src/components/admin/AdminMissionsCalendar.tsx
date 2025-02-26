@@ -1,13 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfDay, startOfWeek, endOfWeek, addHours } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock, User, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -36,8 +34,12 @@ export const AdminMissionsCalendar = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [missions, setMissions] = useState<CalendarMission[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { toast } = useToast();
+
+  const adjustForFrenchTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
+  };
 
   const fetchMissions = async () => {
     try {
@@ -51,16 +53,8 @@ export const AdminMissionsCalendar = () => {
       
       const localizedMissions = data.map(mission => ({
         ...mission,
-        scheduled_start_time: formatInTimeZone(
-          new Date(mission.scheduled_start_time),
-          userTimeZone,
-          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
-        ),
-        scheduled_end_time: formatInTimeZone(
-          new Date(mission.scheduled_end_time),
-          userTimeZone,
-          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
-        )
+        scheduled_start_time: mission.scheduled_start_time,
+        scheduled_end_time: mission.scheduled_end_time
       }));
       
       console.log('[AdminMissionsCalendar] Fetched missions:', localizedMissions);
@@ -112,21 +106,21 @@ export const AdminMissionsCalendar = () => {
         const weekStart = startOfWeek(selectedDate, { locale: fr });
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
-          const missionDate = new Date(mission.scheduled_start_time);
+          const missionDate = adjustForFrenchTime(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
       }
       case 'day':
       default: // month
         return missions.filter(mission => {
-          const missionDate = new Date(mission.scheduled_start_time);
+          const missionDate = adjustForFrenchTime(mission.scheduled_start_time);
           return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
         });
     }
   };
 
   const datesWithMissions = missions
-    .map((mission) => startOfDay(new Date(mission.scheduled_start_time)))
+    .map((mission) => startOfDay(adjustForFrenchTime(mission.scheduled_start_time)))
     .filter((date): date is Date => date !== null);
 
   const visibleMissions = getVisibleMissions();
@@ -185,8 +179,8 @@ export const AdminMissionsCalendar = () => {
               </p>
             ) : (
               visibleMissions.map((mission) => {
-                const startTime = new Date(mission.scheduled_start_time);
-                const endTime = new Date(mission.scheduled_end_time);
+                const startTime = adjustForFrenchTime(mission.scheduled_start_time);
+                const endTime = adjustForFrenchTime(mission.scheduled_end_time);
                 const isPrivate = mission.mission_type === 'private';
 
                 return (
@@ -202,9 +196,9 @@ export const AdminMissionsCalendar = () => {
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-blue-500" />
                           <span className="text-sm font-medium">
-                            {formatInTimeZone(startTime, userTimeZone, "HH:mm")}
+                            {format(startTime, "HH:mm", { locale: fr })}
                             {" - "}
-                            {formatInTimeZone(endTime, userTimeZone, "HH:mm")}
+                            {format(endTime, "HH:mm", { locale: fr })}
                           </span>
                           <Badge variant={isPrivate ? "outline" : "secondary"}>
                             {mission.estimated_duration} min
