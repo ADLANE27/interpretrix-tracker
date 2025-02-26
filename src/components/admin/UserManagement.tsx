@@ -100,6 +100,7 @@ export const UserManagement = () => {
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
+            // Pour les administrateurs, récupérer les données depuis auth.users via la fonction
             const { data, error } = await supabase.functions.invoke('get-user-info', {
               body: { userId: userRole.user_id }
             });
@@ -109,16 +110,16 @@ export const UserManagement = () => {
             if (userRole.role === 'interpreter') {
               const { data: profile } = await supabase
                 .from('interpreter_profiles')
-                .select('languages, status, tarif_5min, tarif_15min, employment_status')
+                .select('languages, status, tarif_5min, tarif_15min, employment_status, first_name, last_name, email')
                 .eq('id', userRole.user_id)
                 .maybeSingle();
 
               return {
                 id: userRole.user_id,
-                email: data.email || "",
+                email: profile?.email || data.email || "",
                 role: userRole.role,
-                first_name: data.first_name || "",
-                last_name: data.last_name || "",
+                first_name: profile?.first_name || data.first_name || "",
+                last_name: profile?.last_name || data.last_name || "",
                 active: userRole.active || false,
                 languages: profile?.languages || [],
                 status: profile?.status || 'unavailable',
@@ -128,6 +129,7 @@ export const UserManagement = () => {
               };
             }
 
+            // Pour les administrateurs
             return {
               id: userRole.user_id,
               email: data.email || "",
@@ -160,6 +162,7 @@ export const UserManagement = () => {
         })
       );
 
+      console.log("[UserManagement] Users fetched:", allUsers);
       return allUsers as UserData[];
     },
     staleTime: Infinity,
