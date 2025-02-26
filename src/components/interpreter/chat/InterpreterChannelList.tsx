@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -256,17 +255,7 @@ export const InterpreterChannelList = ({
                         {unreadMentions[channel.id]}
                       </Badge>
                     )}
-                    {channel.channel_type === 'group' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingChannel({ id: channel.id, name: channel.display_name });
-                        }}
-                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
-                      >
-                        <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
-                      </button>
-                    )}
+                    
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
