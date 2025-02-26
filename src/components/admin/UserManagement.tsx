@@ -36,6 +36,19 @@ interface UserData {
   role: "admin" | "interpreter";
 }
 
+interface DbUserRole {
+  active: boolean;
+  role: "admin" | "interpreter";
+}
+
+interface DbProfile {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_roles: DbUserRole[];
+}
+
 interface UserListProps {
   users: UserData[];
   onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
@@ -204,7 +217,7 @@ export const UserManagement = () => {
             role
           )
         `)
-        .eq('user_roles.role', 'admin');
+        .eq('user_roles.role', 'admin') as { data: DbProfile[] | null, error: any };
 
       if (adminError) throw adminError;
 
@@ -220,53 +233,27 @@ export const UserManagement = () => {
             role
           )
         `)
-        .eq('user_roles.role', 'interpreter');
+        .eq('user_roles.role', 'interpreter') as { data: DbProfile[] | null, error: any };
 
       if (interpreterError) throw interpreterError;
 
-      const admins: UserData[] = (adminProfiles || []).map(profile => {
-        if (!profile.user_roles || profile.user_roles.length === 0) {
-          return {
-            id: profile.id,
-            email: profile.email,
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            active: false,
-            role: 'admin' as const
-          };
-        }
+      const admins: UserData[] = (adminProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        active: profile.user_roles[0]?.active ?? false,
+        role: 'admin'
+      }));
 
-        return {
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          active: profile.user_roles[0].active,
-          role: 'admin' as const
-        };
-      });
-
-      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => {
-        if (!profile.user_roles || profile.user_roles.length === 0) {
-          return {
-            id: profile.id,
-            email: profile.email,
-            first_name: profile.first_name,
-            last_name: profile.last_name,
-            active: false,
-            role: 'interpreter' as const
-          };
-        }
-
-        return {
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          active: profile.user_roles[0].active,
-          role: 'interpreter' as const
-        };
-      });
+      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        active: profile.user_roles[0]?.active ?? false,
+        role: 'interpreter'
+      }));
 
       return [...admins, ...interpreters];
     }
