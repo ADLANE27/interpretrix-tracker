@@ -37,7 +37,7 @@ serve(async (req) => {
 
     console.log('Checking if user exists:', email)
 
-    // First, check if the user already exists as admin
+    // First, check if the user exists in auth.users
     const { data: { users }, error: listError } = await supabaseClient.auth.admin.listUsers({
       filters: {
         email: email
@@ -49,21 +49,24 @@ serve(async (req) => {
       throw listError
     }
 
-    const existingUserId = users?.[0]?.id
+    // Only check for admin role if we found a user
+    if (users && users.length > 0) {
+      console.log('Found existing user, checking for admin role')
+      const existingUserId = users[0].id
 
-    if (existingUserId) {
       const { data: existingRoles, error: rolesError } = await supabaseClient
         .from('user_roles')
         .select('role')
         .eq('user_id', existingUserId)
         .eq('role', 'admin')
+        .single()
 
-      if (rolesError) {
+      if (rolesError && rolesError.code !== 'PGRST116') {  // Ignore "no rows returned" error
         console.error('Error checking existing roles:', rolesError)
         throw rolesError
       }
 
-      if (existingRoles && existingRoles.length > 0) {
+      if (existingRoles) {
         console.log('User already exists as admin')
         throw new Error('Un administrateur avec cette adresse email existe déjà')
       }
