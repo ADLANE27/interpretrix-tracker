@@ -93,50 +93,65 @@ export const UserManagement = () => {
       console.log("[UserManagement] Fetching users data");
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("*");
+        .select("*")
+        .order('created_at', { ascending: false });
 
       if (rolesError) throw rolesError;
+
+      console.log("[UserManagement] User roles fetched:", userRoles);
 
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
             // Pour les administrateurs, récupérer les données depuis auth.users via la fonction
-            const { data, error } = await supabase.functions.invoke('get-user-info', {
+            const { data: userInfo, error } = await supabase.functions.invoke('get-user-info', {
               body: { userId: userRole.user_id }
             });
             
-            if (error) throw error;
+            if (error) {
+              console.error('Error fetching user info:', error);
+              throw error;
+            }
+
+            console.log(`[UserManagement] User info for ${userRole.user_id}:`, userInfo);
 
             if (userRole.role === 'interpreter') {
-              const { data: profile } = await supabase
+              const { data: profile, error: profileError } = await supabase
                 .from('interpreter_profiles')
-                .select('languages, status, tarif_5min, tarif_15min, employment_status, first_name, last_name, email')
+                .select('*')
                 .eq('id', userRole.user_id)
-                .maybeSingle();
+                .single();
+
+              if (profileError) {
+                console.error('Error fetching interpreter profile:', profileError);
+                throw profileError;
+              }
+
+              console.log(`[UserManagement] Interpreter profile for ${userRole.user_id}:`, profile);
 
               return {
                 id: userRole.user_id,
-                email: profile?.email || data.email || "",
+                email: profile.email,
                 role: userRole.role,
-                first_name: profile?.first_name || data.first_name || "",
-                last_name: profile?.last_name || data.last_name || "",
-                active: userRole.active || false,
-                languages: profile?.languages || [],
-                status: profile?.status || 'unavailable',
-                tarif_15min: profile?.tarif_15min || 0,
-                tarif_5min: profile?.tarif_5min || 0,
-                employment_status: profile?.employment_status || 'salaried_aft'
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                active: userRole.active,
+                languages: profile.languages || [],
+                status: profile.status || 'unavailable',
+                tarif_15min: profile.tarif_15min || 0,
+                tarif_5min: profile.tarif_5min || 0,
+                employment_status: profile.employment_status
               };
             }
 
             // Pour les administrateurs
             return {
               id: userRole.user_id,
-              email: data.email || "",
+              email: userInfo.email,
               role: userRole.role,
-              first_name: data.first_name || "",
-              last_name: data.last_name || "",
-              active: userRole.active || false,
+              first_name: userInfo.user_metadata?.first_name || userInfo.first_name || "",
+              last_name: userInfo.user_metadata?.last_name || userInfo.last_name || "",
+              active: userRole.active,
               languages: [],
               status: 'unavailable',
               tarif_15min: 0,
@@ -144,26 +159,15 @@ export const UserManagement = () => {
               employment_status: 'salaried_aft'
             };
           } catch (error) {
-            console.error('Error fetching user info:', error);
-            return {
-              id: userRole.user_id,
-              email: "",
-              role: userRole.role,
-              first_name: "",
-              last_name: "",
-              active: userRole.active || false,
-              languages: [],
-              status: 'unavailable',
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft'
-            };
+            console.error('Error processing user:', error);
+            return null;
           }
         })
       );
 
-      console.log("[UserManagement] Users fetched:", allUsers);
-      return allUsers as UserData[];
+      const validUsers = allUsers.filter(user => user !== null) as UserData[];
+      console.log("[UserManagement] Final processed users:", validUsers);
+      return validUsers;
     },
     staleTime: Infinity,
     refetchOnWindowFocus: false,

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { UserCog, Search, Trash2, Key, Edit } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,7 +119,10 @@ export const InterpreterList = ({
         lang.toLowerCase().includes(searchTerm)
       )
     );
-  }) : [];
+  }) : interpreters;
+
+  console.log("[InterpreterList] All interpreters:", interpreters);
+  console.log("[InterpreterList] Filtered interpreters:", filteredInterpreters);
 
   const handleEdit = (interpreter: InterpreterData) => {
     setSelectedInterpreter(interpreter);
@@ -164,81 +166,73 @@ export const InterpreterList = ({
             />
           </div>
 
-          {searchQuery && (
-            <>
-              {filteredInterpreters.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Langues</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInterpreters.map((interpreter) => (
-                      <TableRow key={interpreter.id}>
-                        <TableCell>
-                          {interpreter.first_name} {interpreter.last_name}
-                        </TableCell>
-                        <TableCell>{interpreter.email}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {interpreter.languages?.map((lang, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="bg-blue-100 text-blue-800"
-                              >
-                                {lang}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              onClick={() => onToggleStatus(interpreter.id, interpreter.active)}
-                            >
-                              {interpreter.active ? "Désactiver" : "Activer"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => handleEdit(interpreter)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => onResetPassword(interpreter.id)}
-                            >
-                              <Key className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              onClick={() => {
-                                setUserToDelete(interpreter.id);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-center text-muted-foreground">Aucun interprète trouvé</p>
-              )}
-            </>
-          )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Langues</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredInterpreters.map((interpreter) => (
+                <TableRow key={interpreter.id}>
+                  <TableCell>
+                    {interpreter.first_name} {interpreter.last_name}
+                  </TableCell>
+                  <TableCell>{interpreter.email}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {interpreter.languages?.map((lang, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="bg-blue-100 text-blue-800"
+                        >
+                          {lang}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => onToggleStatus(interpreter.id, interpreter.active)}
+                      >
+                        {interpreter.active ? "Désactiver" : "Activer"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(interpreter)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onResetPassword(interpreter.id)}
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => {
+                          setUserToDelete(interpreter.id);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
 
