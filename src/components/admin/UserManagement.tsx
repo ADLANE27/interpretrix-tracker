@@ -27,6 +27,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  role: 'admin' | 'interpreter';
 }
 
 export const UserManagement = () => {
@@ -44,23 +45,51 @@ export const UserManagement = () => {
       // Fetch administrators
       const { data: admins, error: adminError } = await supabase
         .from('admin_profiles')
-        .select('id, email, first_name, last_name');
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name
+        `);
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error('Error fetching admin profiles:', adminError);
+        throw adminError;
+      }
 
       // Fetch interpreters
       const { data: interpreters, error: interpError } = await supabase
         .from('interpreter_profiles')
-        .select('id, email, first_name, last_name');
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name
+        `);
 
-      if (interpError) throw interpError;
+      if (interpError) {
+        console.error('Error fetching interpreter profiles:', interpError);
+        throw interpError;
+      }
 
-      // Combine and format results
-      return [...(admins || []), ...(interpreters || [])].map(user => ({
-        id: user.id,
-        email: user.email,
-        name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+      // Format admin results
+      const formattedAdmins = (admins || []).map(admin => ({
+        id: admin.id,
+        email: admin.email,
+        name: `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
+        role: 'admin' as const
       }));
+
+      // Format interpreter results
+      const formattedInterpreters = (interpreters || []).map(interpreter => ({
+        id: interpreter.id,
+        email: interpreter.email,
+        name: `${interpreter.first_name || ''} ${interpreter.last_name || ''}`.trim(),
+        role: 'interpreter' as const
+      }));
+
+      // Combine both results
+      return [...formattedAdmins, ...formattedInterpreters];
     }
   });
 
@@ -150,13 +179,14 @@ export const UserManagement = () => {
           <TableRow>
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filteredUsers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-center text-muted-foreground">
+              <TableCell colSpan={4} className="text-center text-muted-foreground">
                 Aucun utilisateur trouvé
               </TableCell>
             </TableRow>
@@ -165,6 +195,7 @@ export const UserManagement = () => {
               <TableRow key={user.id}>
                 <TableCell>{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
+                <TableCell>{user.role === 'admin' ? 'Administrateur' : 'Interprète'}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button
