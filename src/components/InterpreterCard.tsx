@@ -20,6 +20,24 @@ interface Mission {
   is_private_reservation?: boolean;
 }
 
+interface DatabaseMission {
+  scheduled_start_time: string;
+  scheduled_end_time: string | null;
+  estimated_duration: number;
+  source_language: string;
+  target_language: string;
+  mission_type: string;
+  status: string;
+  assigned_interpreter_id: string;
+  id: string;
+  created_at: string;
+  updated_at: string;
+  notified_interpreters: string[];
+  assignment_time: string | null;
+  client_name: string | null;
+  created_by: string | null;
+}
+
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
 interface InterpreterCardProps {
@@ -121,6 +139,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const fetchMissions = async () => {
     try {
+      // Fetch regular scheduled missions
       const { data: regularMissions, error: regularError } = await supabase
         .from('interpretation_missions')
         .select('*')
@@ -131,6 +150,19 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       if (regularError) throw regularError;
 
+      // Transform regular missions to match Mission interface
+      const transformedRegularMissions: Mission[] = (regularMissions || []).map((mission: DatabaseMission) => ({
+        scheduled_start_time: mission.scheduled_start_time,
+        scheduled_end_time: mission.scheduled_end_time,
+        estimated_duration: mission.estimated_duration,
+        source_language: mission.source_language,
+        target_language: mission.target_language,
+        mission_type: mission.mission_type as 'immediate' | 'scheduled',
+        status: mission.status,
+        is_private_reservation: false
+      }));
+
+      // Fetch private reservations
       const { data: privateReservations, error: privateError } = await supabase
         .from('private_reservations')
         .select('*')
@@ -140,21 +172,24 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       if (privateError) throw privateError;
 
+      // Transform private reservations to match Mission interface
       const transformedPrivateReservations: Mission[] = (privateReservations || []).map(res => ({
         scheduled_start_time: res.start_time,
         scheduled_end_time: res.end_time,
         estimated_duration: res.duration_minutes,
         source_language: res.source_language,
         target_language: res.target_language,
-        mission_type: 'scheduled',
+        mission_type: 'scheduled' as const,
         status: res.status,
         is_private_reservation: true
       }));
 
-      const allMissions = [...(regularMissions || []), ...transformedPrivateReservations]
+      // Combine and sort all missions by start time
+      const allMissions = [...transformedRegularMissions, ...transformedPrivateReservations]
         .sort((a, b) => new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime());
 
       setMissions(allMissions);
+
     } catch (error) {
       console.error('[InterpreterCard] Error fetching missions:', error);
     }
