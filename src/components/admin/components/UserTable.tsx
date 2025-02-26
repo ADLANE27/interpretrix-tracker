@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { UserData } from "../types/user-management";
 import { InterpreterProfileForm } from "../forms/InterpreterProfileForm";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserTableProps {
   users: UserData[];
@@ -98,10 +99,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       <Dialog open={isEditingInterpreter} onOpenChange={setIsEditingInterpreter}>
         <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
+          </DialogHeader>
           <ScrollArea className="max-h-[85vh] px-1">
-            <DialogHeader>
-              <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
-            </DialogHeader>
             {selectedUser && (
               <InterpreterProfileForm
                 isEditing={true}
@@ -146,7 +147,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                 isSubmitting={false}
               />
             )}
-          </DialogContent>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
