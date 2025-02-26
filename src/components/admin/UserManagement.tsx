@@ -27,18 +27,6 @@ import { Search, Trash2, Key, UserCog } from "lucide-react";
 import { AdminCreationForm } from "./forms/AdminCreationForm";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 
-interface UserRole {
-  role: 'admin' | 'interpreter';
-}
-
-interface ProfileData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  user_roles: UserRole[];
-}
-
 interface UserData {
   id: string;
   email: string;
@@ -64,49 +52,35 @@ export const UserManagement = () => {
       // Récupérer les administrateurs
       const { data: adminProfiles, error: adminError } = await supabase
         .from('admin_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles!inner (
-            role
-          )
-        `);
+        .select('id, email, first_name, last_name')
+        .eq('user_roles.role', 'admin');
 
       if (adminError) throw adminError;
 
       // Récupérer les interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles!inner (
-            role
-          )
-        `);
+        .select('id, email, first_name, last_name')
+        .eq('user_roles.role', 'interpreter');
 
       if (interpreterError) throw interpreterError;
 
       // Formater les administrateurs
-      const admins = (adminProfiles || []).map((profile: ProfileData) => ({
+      const admins = (adminProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
-        role: profile.user_roles[0].role
+        role: 'admin'
       }));
 
       // Formater les interprètes
-      const interpreters = (interpreterProfiles || []).map((profile: ProfileData) => ({
+      const interpreters = (interpreterProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
-        role: profile.user_roles[0].role
+        role: 'interpreter'
       }));
 
       return [...admins, ...interpreters];
