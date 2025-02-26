@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,12 +41,15 @@ interface DbUserRole {
   role: "admin" | "interpreter";
 }
 
-interface DbProfile {
+interface ProfileWithRoles {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
-  user_roles: DbUserRole[];
+  user_roles: {
+    active: boolean;
+    role: "admin" | "interpreter";
+  }[];
 }
 
 interface UserListProps {
@@ -217,7 +219,8 @@ export const UserManagement = () => {
             active,
             role
           )
-        `);
+        `)
+        .returns<ProfileWithRoles[]>();
 
       if (adminError) {
         console.error('Error fetching admin profiles:', adminError);
@@ -235,7 +238,8 @@ export const UserManagement = () => {
             active,
             role
           )
-        `);
+        `)
+        .returns<ProfileWithRoles[]>();
 
       if (interpreterError) {
         console.error('Error fetching interpreter profiles:', interpreterError);
