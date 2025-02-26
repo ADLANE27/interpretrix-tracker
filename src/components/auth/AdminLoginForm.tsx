@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,36 +9,26 @@ import { useNavigate } from "react-router-dom";
 export const AdminLoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
     try {
-      // First attempt login
-      const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (loginError) throw loginError;
+      if (error) throw error;
 
-      if (!authData.user) {
-        throw new Error("No user data returned after login");
-      }
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
 
-      // Check if user is admin using RPC function
-      const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
-        user_id: authData.user.id
-      });
-
-      if (adminCheckError) throw adminCheckError;
-
-      if (!isAdmin) {
-        // If not admin, sign out and show error
+      if (roles?.role !== 'admin') {
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
       }
@@ -51,17 +40,11 @@ export const AdminLoginForm = () => {
       
       navigate("/admin");
     } catch (error: any) {
-      console.error("Login error:", error);
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
-      
-      // Ensure we're signed out if there was an error
-      await supabase.auth.signOut();
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -86,7 +69,6 @@ export const AdminLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={isLoading}
             className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
             placeholder="admin@example.com"
           />
@@ -101,17 +83,15 @@ export const AdminLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={isLoading}
             className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
             placeholder="••••••••"
           />
         </div>
         <Button 
           type="submit" 
-          disabled={isLoading}
           className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] hover:from-[#2A2F3C] hover:to-[#504E53] rounded-lg shadow-md hover:shadow-lg"
         >
-          {isLoading ? "Connexion..." : "Se connecter"}
+          Se connecter
         </Button>
       </form>
     </Card>

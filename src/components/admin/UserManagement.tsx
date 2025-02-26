@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,30 +20,22 @@ import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
 import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 import { convertLanguagePairsToStrings } from "@/types/languages";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
-interface AdminData {
+interface UserData {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   active: boolean;
-}
-
-interface InterpreterData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  active: boolean;
-  languages: string[];
-  status: InterpreterStatus;
+  role: "admin" | "interpreter";
   tarif_15min: number;
   tarif_5min: number;
   employment_status: EmploymentStatus;
+  languages: string[];
+  status?: InterpreterStatus;
 }
 
 export const UserManagement = () => {
@@ -58,125 +50,138 @@ export const UserManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users, refetch, isLoading, error } = useQuery({
+  useEffect(() => {
+    console.log("[UserManagement] Setting up real-time subscription");
+    
+    // Subscribe to interpreter_profiles changes
+    const profilesChannel = supabase.channel('interpreter-profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles'
+        },
+        (payload) => {
+          console.log("[UserManagement] Received profile update:", payload);
+          const updatedProfile = payload.new as any;
+          
+          queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
+            if (!oldData) return oldData;
+            
+            return oldData.map(user => 
+              user.id === updatedProfile.id
+                ? { ...user, ...updatedProfile }
+                : user
+            );
+          });
+        }
+      )
+      .subscribe((status) => {
+        console.log("[UserManagement] Profile subscription status:", status);
+      });
+
+    return () => {
+      console.log("[UserManagement] Cleaning up subscription");
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [queryClient]);
+
+  const { data: users, refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      try {
-        const { data: { session }} = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("No authenticated session found");
-        }
+      console.log("[UserManagement] Fetching users data");
+      const { data: userRoles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("*");
 
-        // First verify admin status
-        const { data: isAdmin } = await supabase.rpc('check_is_admin');
-        if (!isAdmin) {
-          throw new Error("User does not have admin privileges");
-        }
+      if (rolesError) throw rolesError;
 
-        // Fetch interpreter profiles
-        const { data: interpreterProfiles, error: interpreterError } = await supabase
-          .from('interpreter_profiles')
-          .select('*');
+      const allUsers = await Promise.all(
+        userRoles.map(async (userRole) => {
+          try {
+            const { data, error } = await supabase.functions.invoke('get-user-info', {
+              body: { userId: userRole.user_id }
+            });
+            
+            if (error) throw error;
 
-        if (interpreterError) {
-          console.error('[UserManagement] Interpreter profiles fetch error:', interpreterError);
-          throw interpreterError;
-        }
+            if (userRole.role === 'interpreter') {
+              const { data: profile } = await supabase
+                .from('interpreter_profiles')
+                .select('languages, status, tarif_5min, tarif_15min, employment_status')
+                .eq('id', userRole.user_id)
+                .maybeSingle();
 
-        // Fetch admin roles
-        const { data: adminRoles, error: adminError } = await supabase
-          .from('user_roles')
-          .select('user_id, active')
-          .eq('role', 'admin');
-
-        if (adminError) {
-          console.error('[UserManagement] Admin roles fetch error:', adminError);
-          throw adminError;
-        }
-
-        // Process interpreter data
-        const interpreterUsers: InterpreterData[] = (interpreterProfiles || []).map(profile => ({
-          id: profile.id,
-          email: profile.email || '',
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          active: true,
-          languages: Array.isArray(profile.languages) ? profile.languages : [],
-          status: (profile.status || 'unavailable') as InterpreterStatus,
-          tarif_15min: profile.tarif_15min || 0,
-          tarif_5min: profile.tarif_5min || 0,
-          employment_status: profile.employment_status
-        }));
-
-        // Process admin data
-        const adminUsers: AdminData[] = await Promise.all(
-          (adminRoles || []).map(async (role) => {
-            try {
-              const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
-              if (authError) throw authError;
-              
               return {
-                id: role.user_id,
-                email: user?.email || '',
-                first_name: user?.user_metadata?.first_name || '',
-                last_name: user?.user_metadata?.last_name || '',
-                active: role.active || false
-              };
-            } catch (err) {
-              console.error(`[UserManagement] Error processing admin ${role.user_id}:`, err);
-              return {
-                id: role.user_id,
-                email: 'Error loading user',
-                first_name: '',
-                last_name: '',
-                active: false
+                id: userRole.user_id,
+                email: data.email || "",
+                role: userRole.role,
+                first_name: data.first_name || "",
+                last_name: data.last_name || "",
+                active: userRole.active || false,
+                languages: profile?.languages || [],
+                status: profile?.status || 'unavailable',
+                tarif_15min: profile?.tarif_15min || 0,
+                tarif_5min: profile?.tarif_5min || 0,
+                employment_status: profile?.employment_status || 'salaried_aft'
               };
             }
-          })
-        );
 
-        return {
-          interpreters: interpreterUsers,
-          admins: adminUsers.filter(admin => admin.email !== 'Error loading user')
-        };
-      } catch (err) {
-        console.error('[UserManagement] Error in query function:', err);
-        throw err;
-      }
+            return {
+              id: userRole.user_id,
+              email: data.email || "",
+              role: userRole.role,
+              first_name: data.first_name || "",
+              last_name: data.last_name || "",
+              active: userRole.active || false,
+              languages: [],
+              status: 'unavailable',
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft'
+            };
+          } catch (error) {
+            console.error('Error fetching user info:', error);
+            return {
+              id: userRole.user_id,
+              email: "",
+              role: userRole.role,
+              first_name: "",
+              last_name: "",
+              active: userRole.active || false,
+              languages: [],
+              status: 'unavailable',
+              tarif_15min: 0,
+              tarif_5min: 0,
+              employment_status: 'salaried_aft'
+            };
+          }
+        })
+      );
+
+      return allUsers as UserData[];
     },
-    retry: 1, // Only retry once since we're dealing with auth
-    staleTime: 30000, // Cache for 30 seconds
-    refetchOnWindowFocus: true,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   });
+
+  const adminUsers = users?.filter(user => user.role === "admin") || [];
+  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
       setIsSubmitting(true);
-      console.log("Creating admin user:", formData.email);
 
-      const { data: { session }} = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("No authentication token available");
-      }
-
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          email: formData.email,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          role: "admin",
-          password: formData.password,
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
+      const { error } = await supabase.functions.invoke('send-admin-invitation', {
+        body: formData,
       });
 
       if (error) throw error;
 
       toast({
-        title: "Administrateur créé",
-        description: "Le compte administrateur a été créé avec succès",
+        title: "Invitation envoyée",
+        description: "Un email d'invitation a été envoyé à l'administrateur",
       });
 
       setIsAddAdminOpen(false);
@@ -197,57 +202,37 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      const { data: { session }} = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error("No authentication token available");
-      }
-
       const languageStrings = convertLanguagePairsToStrings(formData.languages);
+
       const addressJson = formData.address ? {
         street: formData.address.street,
         postal_code: formData.address.postal_code,
         city: formData.address.city,
       } : null;
 
-      const { error } = await supabase.functions.invoke('create-user', {
+      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
         body: {
-          email: formData.email,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
+          ...formData,
           role: "interpreter",
-          employment_status: formData.employment_status,
           languages: languageStrings,
           address: addressJson,
-          phone_number: formData.phone_number,
-          birth_country: formData.birth_country,
-          nationality: formData.nationality,
-          phone_interpretation_rate: formData.phone_interpretation_rate,
-          siret_number: formData.siret_number,
-          vat_number: formData.vat_number,
-          specializations: formData.specializations,
-          landline_phone: formData.landline_phone,
-          tarif_15min: formData.tarif_15min,
-          tarif_5min: formData.tarif_5min,
         },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        }
       });
 
       if (error) throw error;
 
       toast({
-        title: "Interprète créé",
-        description: "Le compte interprète a été créé avec succès",
+        title: "Invitation envoyée",
+        description: "Un email d'invitation a été envoyé à l'utilisateur",
       });
 
       setIsAddUserOpen(false);
       refetch();
     } catch (error: any) {
-      console.error("Error adding interpreter:", error);
+      console.error("Error adding user:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter l'interprète: " + error.message,
+        description: "Impossible d'ajouter l'utilisateur: " + error.message,
         variant: "destructive",
       });
     } finally {
@@ -262,7 +247,10 @@ export const UserManagement = () => {
         .delete()
         .eq('user_id', userId);
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error("Error deleting user roles:", roleError);
+        throw roleError;
+      }
 
       const { error: profileError } = await supabase
         .from('interpreter_profiles')
@@ -338,7 +326,7 @@ export const UserManagement = () => {
     }
   };
 
-  const handleToggleStatus = async (userId: string, currentActive: boolean) => {
+  const toggleUserStatus = async (userId: string, currentActive: boolean) => {
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -418,34 +406,6 @@ export const UserManagement = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <LoadingSpinner size="lg" text="Chargement des utilisateurs..." />
-      </div>
-    );
-  }
-
-  if (error) {
-    console.error("[UserManagement] Query error details:", error);
-    let errorMessage = "Erreur inconnue";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null) {
-      errorMessage = JSON.stringify(error);
-    }
-    
-    return (
-      <div className="p-4 text-red-600">
-        <p className="font-bold">Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page.</p>
-        <p className="mt-2">Détail: {errorMessage}</p>
-      </div>
-    );
-  }
-
-  const adminUsers = users?.admins || [];
-  const interpreterUsers = users?.interpreters || [];
-
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
@@ -499,16 +459,22 @@ export const UserManagement = () => {
       <div className="space-y-6 overflow-x-hidden">
         <AdminList
           admins={adminUsers}
-          onToggleStatus={handleToggleStatus}
+          onToggleStatus={toggleUserStatus}
           onDeleteUser={handleDeleteUser}
-          onResetPassword={handleResetPassword}
+          onResetPassword={(userId) => {
+            setSelectedUserId(userId);
+            setIsResetPasswordOpen(true);
+          }}
         />
 
         <InterpreterList
           interpreters={interpreterUsers}
-          onToggleStatus={handleToggleStatus}
+          onToggleStatus={toggleUserStatus}
           onDeleteUser={handleDeleteUser}
-          onResetPassword={handleResetPassword}
+          onResetPassword={(userId) => {
+            setSelectedUserId(userId);
+            setIsResetPasswordOpen(true);
+          }}
           onUpdateInterpreter={handleUpdateInterpreter}
         />
       </div>
