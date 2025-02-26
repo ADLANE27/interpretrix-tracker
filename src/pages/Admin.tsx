@@ -1,63 +1,80 @@
 
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
-import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
 const Admin = () => {
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
+        // Get current session
         const { data: { user } } = await supabase.auth.getUser();
+        
         if (!user) {
           console.log('No user found, redirecting to login');
-          navigate('/admin/login');
+          if (mounted) {
+            navigate('/admin/login');
+          }
           return;
         }
 
-        // Check if user is admin using our RPC function
+        // Verify admin status
         const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
           user_id: user.id
         });
 
-        if (adminCheckError) {
-          console.error('Admin check error:', adminCheckError);
-          throw adminCheckError;
+        if (adminCheckError || !isAdmin) {
+          console.log('User is not an admin or error occurred, redirecting to login');
+          await supabase.auth.signOut();
+          if (mounted) {
+            navigate('/admin/login');
+          }
+          return;
         }
 
-        if (!isAdmin) {
-          console.log('User is not an admin, redirecting to login');
-          await supabase.auth.signOut();
-          navigate('/admin/login');
-          return;
+        if (mounted) {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        navigate('/admin/login');
+        if (mounted) {
+          navigate('/admin/login');
+        }
       }
     };
 
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session?.user || event === 'SIGNED_OUT') {
-        navigate('/admin/login');
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        if (mounted) {
+          navigate('/admin/login');
+        }
+      } else if (session) {
+        // Recheck admin status on auth state change
+        checkAuth();
       }
     });
 
-    // Initial auth check
-    checkAuth();
-
-    // Cleanup subscription on unmount
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-background transition-colors duration-300">
