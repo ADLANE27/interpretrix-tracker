@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -169,7 +168,6 @@ export const PrivateReservationList = () => {
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const fetchReservations = async () => {
     try {
@@ -186,23 +184,7 @@ export const PrivateReservationList = () => {
         .order('start_time', { ascending: true });
 
       if (error) throw error;
-      
-      // Localize the dates to user's timezone
-      const localizedData = (data as any).map((reservation: any) => ({
-        ...reservation,
-        start_time: formatInTimeZone(
-          new Date(reservation.start_time),
-          userTimeZone,
-          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
-        ),
-        end_time: formatInTimeZone(
-          new Date(reservation.end_time),
-          userTimeZone,
-          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
-        )
-      }));
-      
-      setReservations(localizedData);
+      setReservations(data as any);
     } catch (error) {
       console.error('[PrivateReservationList] Error:', error);
       toast({
@@ -308,11 +290,9 @@ export const PrivateReservationList = () => {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-500" />
                   <span className="text-sm font-medium">
-                    {format(new Date(reservation.start_time), "d MMMM yyyy", { locale: fr })}
-                    {", "}
-                    {formatInTimeZone(new Date(reservation.start_time), userTimeZone, "HH:mm")}
+                    {format(new Date(reservation.start_time), "d MMMM yyyy, HH:mm", { locale: fr })}
                     {" - "}
-                    {formatInTimeZone(new Date(reservation.end_time), userTimeZone, "HH:mm")}
+                    {format(new Date(reservation.end_time), "HH:mm", { locale: fr })}
                   </span>
                   <Badge variant="secondary">
                     {reservation.duration_minutes} min
