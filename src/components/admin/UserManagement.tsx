@@ -33,6 +33,8 @@ interface UserData {
   first_name: string;
   last_name: string;
   role: string;
+  created_at: string;
+  active: boolean;
 }
 
 export const UserManagement = () => {
@@ -46,68 +48,85 @@ export const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const { data: users = [], refetch } = useQuery({
+  const { data: users = [], refetch, isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // Get admin users
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles (
-            role
-          )
-        `)
-        .order('created_at', { ascending: false });
+      try {
+        // Get admin users
+        const { data: adminData, error: adminError } = await supabase
+          .from('admin_profiles')
+          .select(`
+            id,
+            email,
+            first_name,
+            last_name,
+            created_at,
+            user_roles!inner (
+              role,
+              active
+            )
+          `)
+          .order('created_at', { ascending: false });
 
-      if (adminError) {
-        console.error('Error fetching admins:', adminError);
-        throw adminError;
+        if (adminError) {
+          console.error('Error fetching admins:', adminError);
+          throw adminError;
+        }
+
+        // Get interpreter users
+        const { data: interpreterData, error: interpreterError } = await supabase
+          .from('interpreter_profiles')
+          .select(`
+            id,
+            email,
+            first_name,
+            last_name,
+            created_at,
+            user_roles!inner (
+              role,
+              active
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (interpreterError) {
+          console.error('Error fetching interpreters:', interpreterError);
+          throw interpreterError;
+        }
+
+        // Format admin data
+        const admins = (adminData || []).map(admin => ({
+          id: admin.id,
+          email: admin.email,
+          first_name: admin.first_name || '',
+          last_name: admin.last_name || '',
+          role: 'admin',
+          created_at: admin.created_at,
+          active: admin.user_roles[0]?.active ?? false
+        }));
+
+        // Format interpreter data
+        const interpreters = (interpreterData || []).map(interpreter => ({
+          id: interpreter.id,
+          email: interpreter.email,
+          first_name: interpreter.first_name || '',
+          last_name: interpreter.last_name || '',
+          role: 'interpreter',
+          created_at: interpreter.created_at,
+          active: interpreter.user_roles[0]?.active ?? false
+        }));
+
+        // Sort all users by creation date
+        const allUsers = [...admins, ...interpreters].sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        console.log('Total users found:', allUsers.length);
+        return allUsers;
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        throw error;
       }
-
-      // Get interpreter users
-      const { data: interpreterData, error: interpreterError } = await supabase
-        .from('interpreter_profiles')
-        .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles (
-            role
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (interpreterError) {
-        console.error('Error fetching interpreters:', interpreterError);
-        throw interpreterError;
-      }
-
-      // Format admin data
-      const admins = (adminData || []).map(admin => ({
-        id: admin.id,
-        email: admin.email,
-        first_name: admin.first_name || '',
-        last_name: admin.last_name || '',
-        role: 'admin'
-      }));
-
-      // Format interpreter data
-      const interpreters = (interpreterData || []).map(interpreter => ({
-        id: interpreter.id,
-        email: interpreter.email,
-        first_name: interpreter.first_name || '',
-        last_name: interpreter.last_name || '',
-        role: 'interpreter'
-      }));
-
-      // Combine and return all users
-      console.log('Total users found:', admins.length + interpreters.length);
-      return [...admins, ...interpreters];
     }
   });
 
@@ -286,58 +305,74 @@ export const UserManagement = () => {
         />
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredUsers.length === 0 ? (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={4} className="text-center text-muted-foreground">
-                Aucun utilisateur trouvé
-              </TableCell>
+              <TableHead>Nom</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
-          ) : (
-            filteredUsers.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  {user.first_name} {user.last_name}
-                </TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell className="capitalize">
-                  {user.role}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        setSelectedUserId(user.id);
-                        setIsResetPasswordOpen(true);
-                      }}
-                    >
-                      <Key className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8">
+                  Chargement des utilisateurs...
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  Aucun utilisateur trouvé
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">
+                    {user.first_name} {user.last_name}
+                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell className="capitalize">
+                    {user.role === 'admin' ? 'Administrateur' : 'Interprète'}
+                  </TableCell>
+                  <TableCell>
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      user.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {user.active ? 'Actif' : 'Inactif'}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedUserId(user.id);
+                          setIsResetPasswordOpen(true);
+                        }}
+                      >
+                        <Key className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => handleDeleteUser(user.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
