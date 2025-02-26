@@ -44,7 +44,9 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAdmins = admins.filter((admin) => {
-    const searchTerm = searchQuery.toLowerCase();
+    const searchTerm = searchQuery.toLowerCase().trim();
+    if (!searchTerm) return false; // Ne rien afficher si la recherche est vide
+
     return (
       admin.first_name?.toLowerCase().includes(searchTerm) ||
       admin.last_name?.toLowerCase().includes(searchTerm) ||
