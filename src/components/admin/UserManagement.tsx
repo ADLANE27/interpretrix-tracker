@@ -22,6 +22,7 @@ import { convertLanguagePairsToStrings } from "@/types/languages";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
+type UserRole = "admin" | "interpreter";
 
 interface UserData {
   id: string;
@@ -29,12 +30,12 @@ interface UserData {
   first_name: string;
   last_name: string;
   active: boolean;
-  role: "admin" | "interpreter";
+  role: UserRole;
+  languages: string[];
+  status: InterpreterStatus;
   tarif_15min: number;
   tarif_5min: number;
   employment_status: EmploymentStatus;
-  languages: string[];
-  status?: InterpreterStatus;
 }
 
 export const UserManagement = () => {
@@ -52,7 +53,6 @@ export const UserManagement = () => {
   useEffect(() => {
     console.log("[UserManagement] Setting up real-time subscription");
     
-    // Subscribe to interpreter_profiles changes
     const profilesChannel = supabase.channel('interpreter-profiles-changes')
       .on(
         'postgres_changes',
@@ -91,7 +91,6 @@ export const UserManagement = () => {
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
       
-      // Get all user roles first
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
@@ -101,7 +100,6 @@ export const UserManagement = () => {
         throw rolesError;
       }
 
-      // Get data for all users
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
@@ -117,16 +115,16 @@ export const UserManagement = () => {
               return {
                 id: userRole.user_id,
                 email: interpreterProfile.email,
-                role: userRole.role,
+                role: userRole.role as UserRole,
                 first_name: interpreterProfile.first_name,
                 last_name: interpreterProfile.last_name,
                 active: userRole.active || false,
                 languages: interpreterProfile.languages || [],
-                status: interpreterProfile.status || 'unavailable',
+                status: (interpreterProfile.status || 'unavailable') as InterpreterStatus,
                 tarif_15min: interpreterProfile.tarif_15min || 0,
                 tarif_5min: interpreterProfile.tarif_5min || 0,
-                employment_status: interpreterProfile.employment_status || 'salaried_aft'
-              };
+                employment_status: interpreterProfile.employment_status as EmploymentStatus
+              } satisfies UserData;
             }
 
             // If not an interpreter, get admin data from auth.users
@@ -139,19 +137,18 @@ export const UserManagement = () => {
             return {
               id: userRole.user_id,
               email: user?.email || "",
-              role: userRole.role,
+              role: userRole.role as UserRole,
               first_name: user?.user_metadata?.first_name || "",
               last_name: user?.user_metadata?.last_name || "",
               active: userRole.active || false,
               languages: [],
-              status: 'unavailable',
+              status: 'unavailable' as InterpreterStatus,
               tarif_15min: 0,
               tarif_5min: 0,
-              employment_status: 'salaried_aft'
-            };
+              employment_status: 'salaried_aft' as EmploymentStatus
+            } satisfies UserData;
           } catch (error) {
             console.error('Error fetching user info:', error);
-            // Instead of returning a placeholder, throw the error
             throw error;
           }
         })
@@ -163,8 +160,8 @@ export const UserManagement = () => {
     refetchOnWindowFocus: false,
   });
 
-  const adminUsers = users.filter(user => user.role === "admin") || [];
-  const interpreterUsers = users.filter(user => user.role === "interpreter") || [];
+  const adminUsers = users.filter(user => user.role === "admin");
+  const interpreterUsers = users.filter(user => user.role === "interpreter");
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
