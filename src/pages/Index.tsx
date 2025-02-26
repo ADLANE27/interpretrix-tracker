@@ -24,9 +24,13 @@ const Index = () => {
           return;
         }
 
-        // Get user's active role using our new RPC function
+        // Get user's roles from the user_roles table
         const { data: role, error: roleError } = await supabase
-          .rpc('get_user_active_role');
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('active', true)
+          .single();
 
         if (roleError) {
           console.error("Error fetching user role:", roleError);
@@ -41,7 +45,7 @@ const Index = () => {
           return;
         }
 
-        setUserRole(role);
+        setUserRole(role?.role || null);
       } catch (error) {
         console.error("Auth check error:", error);
         toast({

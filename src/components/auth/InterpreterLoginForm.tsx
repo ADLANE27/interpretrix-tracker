@@ -29,9 +29,14 @@ export const InterpreterLoginForm = () => {
       if (signInError) throw signInError;
 
       // Check if user has interpreter role and is active
-      const { data: userRole } = await supabase.rpc('get_user_role');
+      const { data, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('role', 'interpreter')
+        .eq('active', true)
+        .single();
       
-      if (userRole !== 'interpreter') {
+      if (roleError || !data) {
         // If not interpreter, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");

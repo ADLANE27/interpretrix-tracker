@@ -790,6 +790,10 @@ export type Database = {
         }
         Returns: string
       }
+      get_user_active_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       handle_mission_acceptance: {
         Args: {
           p_mission_id: string
