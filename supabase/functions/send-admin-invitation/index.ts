@@ -5,12 +5,20 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
+  console.log('Received request:', req.method)
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    console.log('Handling CORS preflight request')
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders
+    })
   }
 
   try {
@@ -19,39 +27,54 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    console.log('Parsing request body...')
     const { email, first_name, last_name, password } = await req.json()
+    
+    console.log('Validating input...')
+    if (!email || !first_name || !last_name) {
+      throw new Error('Email, first name, and last name are required')
+    }
 
     console.log('Checking if user exists:', email)
 
-    // First, check if the user already exists
-    const { data: existingUsers, error: searchError } = await supabaseClient
-      .from('user_roles')
-      .select('user_id, role')
-      .eq('role', 'admin')
-      .eq('user_id', (
-        await supabaseClient.auth.admin.listUsers({
-          filters: {
-            email: email
-          }
-        })
-      ).data.users[0]?.id || '')
+    // First, check if the user already exists as admin
+    const { data: { users }, error: listError } = await supabaseClient.auth.admin.listUsers({
+      filters: {
+        email: email
+      }
+    })
 
-    if (searchError) {
-      console.error('Error searching for existing user:', searchError)
-      throw searchError
+    if (listError) {
+      console.error('Error listing users:', listError)
+      throw listError
     }
 
-    if (existingUsers && existingUsers.length > 0) {
-      console.log('User already exists as admin')
-      throw new Error('Un administrateur avec cette adresse email existe déjà')
+    const existingUserId = users?.[0]?.id
+
+    if (existingUserId) {
+      const { data: existingRoles, error: rolesError } = await supabaseClient
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', existingUserId)
+        .eq('role', 'admin')
+
+      if (rolesError) {
+        console.error('Error checking existing roles:', rolesError)
+        throw rolesError
+      }
+
+      if (existingRoles && existingRoles.length > 0) {
+        console.log('User already exists as admin')
+        throw new Error('Un administrateur avec cette adresse email existe déjà')
+      }
     }
 
-    // Create the user with provided password or generate a random one
+    // Generate password if not provided
     const generatedPassword = password || Math.random().toString(36).slice(-8)
 
     console.log('Creating admin user:', { email, first_name, last_name })
 
-    // Create the user with email confirmation disabled (since we're creating an admin)
+    // Create the user with email confirmation disabled
     const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
       email,
       password: generatedPassword,
@@ -94,7 +117,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         message: 'Administrateur créé avec succès',
-        userId: user.id 
+        userId: user.id,
+        password: generatedPassword // Include password in response if it was generated
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
