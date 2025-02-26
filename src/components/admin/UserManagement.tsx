@@ -63,58 +63,85 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      const { data: userRoles, error: rolesError } = await supabase
+      console.log("Fetching user roles");
+      
+      // Récupérer d'abord tous les admins
+      const { data: adminRoles, error: adminRolesError } = await supabase
         .from("user_roles")
-        .select("*");
+        .select("*")
+        .eq('role', 'admin');
 
-      if (rolesError) throw rolesError;
+      if (adminRolesError) {
+        console.error("Error fetching admin roles:", adminRolesError);
+        throw adminRolesError;
+      }
 
-      const allUsers = await Promise.all(
-        userRoles.map(async (userRole) => {
-          if (userRole.role === 'interpreter') {
-            const { data: profile, error: profileError } = await supabase
-              .from('interpreter_profiles')
-              .select('*')
-              .eq('id', userRole.user_id)
-              .single();
+      console.log("Admin roles:", adminRoles);
 
-            if (profileError) return null;
+      // Récupérer les profils d'admin
+      const admins = await Promise.all(
+        adminRoles.map(async (role) => {
+          const { data: profile, error: profileError } = await supabase
+            .from('admin_profiles')
+            .select('*')
+            .eq('id', role.user_id)
+            .single();
 
-            return {
-              id: userRole.user_id,
-              email: profile.email,
-              role: 'interpreter' as const,
-              first_name: profile.first_name,
-              last_name: profile.last_name,
-              active: userRole.active,
-              languages: profile.languages || [],
-              status: profile.status || 'unavailable',
-              tarif_15min: profile.tarif_15min || 0,
-              tarif_5min: profile.tarif_5min || 0,
-              employment_status: profile.employment_status
-            };
-          } else {
-            const { data: profile, error: adminError } = await supabase
-              .from('admin_profiles')
-              .select('*')
-              .eq('id', userRole.user_id)
-              .single();
-
-            if (adminError) return null;
-
-            return {
-              id: userRole.user_id,
-              email: profile.email,
-              role: 'admin' as const,
-              first_name: profile.first_name,
-              last_name: profile.last_name,
-              active: userRole.active
-            };
+          if (profileError) {
+            console.error('Error fetching admin profile:', profileError);
+            return null;
           }
+
+          console.log("Admin profile found:", profile);
+
+          return {
+            id: role.user_id,
+            email: profile.email,
+            role: 'admin' as const,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: role.active
+          };
         })
       );
 
-      return allUsers.filter((user): user is UserData => user !== null);
+      // Récupérer les interprètes
+      const { data: interpreterRoles } = await supabase
+        .from("user_roles")
+        .select("*")
+        .eq('role', 'interpreter');
+
+      const interpreters = await Promise.all(
+        (interpreterRoles || []).map(async (role) => {
+          const { data: profile, error: profileError } = await supabase
+            .from('interpreter_profiles')
+            .select('*')
+            .eq('id', role.user_id)
+            .single();
+
+          if (profileError) return null;
+
+          return {
+            id: role.user_id,
+            email: profile.email,
+            role: 'interpreter' as const,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: role.active,
+            languages: profile.languages || [],
+            status: profile.status || 'unavailable',
+            tarif_15min: profile.tarif_15min || 0,
+            tarif_5min: profile.tarif_5min || 0,
+            employment_status: profile.employment_status
+          };
+        })
+      );
+
+      // Combiner les deux listes et filtrer les null
+      const allUsers = [...admins, ...interpreters].filter((user): user is UserData => user !== null);
+      console.log("All users:", allUsers);
+      
+      return allUsers;
     }
   });
 
