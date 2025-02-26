@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
-import { format } from "date-fns";
+import { format, addHours } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,7 +101,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -138,63 +137,58 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     }
   };
 
-const fetchMissions = async () => {
-  try {
-    // Fetch regular scheduled missions
-    const { data: regularMissions, error: regularError } = await supabase
-      .from('interpretation_missions')
-      .select('*')
-      .eq('assigned_interpreter_id', interpreter.id)
-      .or('status.eq.accepted,status.eq.in_progress')
-      .eq('mission_type', 'scheduled')
-      .gte('scheduled_end_time', new Date().toISOString());
+  const fetchMissions = async () => {
+    try {
+      const { data: regularMissions, error: regularError } = await supabase
+        .from('interpretation_missions')
+        .select('*')
+        .eq('assigned_interpreter_id', interpreter.id)
+        .or('status.eq.accepted,status.eq.in_progress')
+        .eq('mission_type', 'scheduled')
+        .gte('scheduled_end_time', new Date().toISOString());
 
-    if (regularError) throw regularError;
+      if (regularError) throw regularError;
 
-    // Transform regular missions to match Mission interface
-    const transformedRegularMissions: Mission[] = (regularMissions || []).map((mission: DatabaseMission) => ({
-      scheduled_start_time: mission.scheduled_start_time,
-      scheduled_end_time: mission.scheduled_end_time,
-      estimated_duration: mission.estimated_duration,
-      source_language: mission.source_language,
-      target_language: mission.target_language,
-      mission_type: mission.mission_type as 'immediate' | 'scheduled',
-      status: mission.status,
-      is_private_reservation: false
-    }));
+      const transformedRegularMissions: Mission[] = (regularMissions || []).map((mission: DatabaseMission) => ({
+        scheduled_start_time: mission.scheduled_start_time,
+        scheduled_end_time: mission.scheduled_end_time,
+        estimated_duration: mission.estimated_duration,
+        source_language: mission.source_language,
+        target_language: mission.target_language,
+        mission_type: mission.mission_type as 'immediate' | 'scheduled',
+        status: mission.status,
+        is_private_reservation: false
+      }));
 
-    // Fetch private reservations
-    const { data: privateReservations, error: privateError } = await supabase
-      .from('private_reservations')
-      .select('*')
-      .eq('interpreter_id', interpreter.id)
-      .eq('status', 'scheduled')
-      .gte('end_time', new Date().toISOString());
+      const { data: privateReservations, error: privateError } = await supabase
+        .from('private_reservations')
+        .select('*')
+        .eq('interpreter_id', interpreter.id)
+        .eq('status', 'scheduled')
+        .gte('end_time', new Date().toISOString());
 
-    if (privateError) throw privateError;
+      if (privateError) throw privateError;
 
-    // Transform private reservations to match Mission interface
-    const transformedPrivateReservations: Mission[] = (privateReservations || []).map(res => ({
-      scheduled_start_time: res.start_time,
-      scheduled_end_time: res.end_time,
-      estimated_duration: res.duration_minutes,
-      source_language: res.source_language,
-      target_language: res.target_language,
-      mission_type: 'scheduled' as const,
-      status: res.status,
-      is_private_reservation: true
-    }));
+      const transformedPrivateReservations: Mission[] = (privateReservations || []).map(res => ({
+        scheduled_start_time: res.start_time,
+        scheduled_end_time: res.end_time,
+        estimated_duration: res.duration_minutes,
+        source_language: res.source_language,
+        target_language: res.target_language,
+        mission_type: 'scheduled' as const,
+        status: res.status,
+        is_private_reservation: true
+      }));
 
-    // Combine and sort all missions by start time
-    const allMissions = [...transformedRegularMissions, ...transformedPrivateReservations]
-      .sort((a, b) => new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime());
+      const allMissions = [...transformedRegularMissions, ...transformedPrivateReservations]
+        .sort((a, b) => new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime());
 
-    setMissions(allMissions);
+      setMissions(allMissions);
 
-  } catch (error) {
-    console.error('[InterpreterCard] Error fetching missions:', error);
-  }
-};
+    } catch (error) {
+      console.error('[InterpreterCard] Error fetching missions:', error);
+    }
+  };
 
   const fetchCurrentStatus = async () => {
     try {
@@ -313,6 +307,11 @@ const fetchMissions = async () => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
+  const adjustForFrenchTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
+  };
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -411,9 +410,9 @@ const fetchMissions = async () => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
-                  {format(new Date(nextMission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                  {format(adjustForFrenchTime(nextMission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
                   {nextMission.scheduled_end_time && (
-                    <> - {format(new Date(nextMission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                    <> - {format(adjustForFrenchTime(nextMission.scheduled_end_time), "HH:mm", { locale: fr })}</>
                   )}
                 </span>
               </div>
@@ -438,9 +437,9 @@ const fetchMissions = async () => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">
-                        {format(new Date(mission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                        {format(adjustForFrenchTime(mission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
                         {mission.scheduled_end_time && (
-                          <> - {format(new Date(mission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                          <> - {format(adjustForFrenchTime(mission.scheduled_end_time), "HH:mm", { locale: fr })}</>
                         )}
                       </span>
                     </div>
