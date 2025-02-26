@@ -1,5 +1,7 @@
 
-export interface UserData {
+import { Profile } from "@/types/profile";
+
+export interface UserData extends Partial<Profile> {
   id: string;
   email: string | null;
   first_name: string;
