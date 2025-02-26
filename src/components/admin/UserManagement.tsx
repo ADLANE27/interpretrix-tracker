@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -208,10 +209,15 @@ export const UserManagement = () => {
       const { data: adminProfiles, error: adminError } = await supabase
         .from('admin_profiles')
         .select(`
-          *,
-          user_role:user_roles(*)
-        `)
-        .returns<(DbProfile & { user_role: DbUserRole[] })[]>();
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles!inner (
+            active,
+            role
+          )
+        `);
 
       if (adminError) {
         console.error('Error fetching admin profiles:', adminError);
@@ -221,10 +227,15 @@ export const UserManagement = () => {
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select(`
-          *,
-          user_role:user_roles(*)
-        `)
-        .returns<(DbProfile & { user_role: DbUserRole[] })[]>();
+          id,
+          email,
+          first_name,
+          last_name,
+          user_roles!inner (
+            active,
+            role
+          )
+        `);
 
       if (interpreterError) {
         console.error('Error fetching interpreter profiles:', interpreterError);
@@ -234,25 +245,23 @@ export const UserManagement = () => {
       console.log('Raw admin profiles:', adminProfiles);
       console.log('Raw interpreter profiles:', interpreterProfiles);
 
-      const admins: UserData[] = (adminProfiles || [])
-        .map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          active: profile.user_role?.[0]?.active ?? true,
-          role: 'admin' as const
-        }));
+      const admins: UserData[] = (adminProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        active: profile.user_roles[0]?.active ?? true,
+        role: 'admin' as const
+      }));
 
-      const interpreters: UserData[] = (interpreterProfiles || [])
-        .map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name || '',
-          last_name: profile.last_name || '',
-          active: profile.user_role?.[0]?.active ?? true,
-          role: 'interpreter' as const
-        }));
+      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        active: profile.user_roles[0]?.active ?? true,
+        role: 'interpreter' as const
+      }));
 
       const allUsers = [...admins, ...interpreters];
       console.log('Final all users:', allUsers);
