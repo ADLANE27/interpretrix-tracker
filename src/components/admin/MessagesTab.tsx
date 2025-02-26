@@ -1,6 +1,4 @@
-
-import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -84,6 +82,7 @@ export const MessagesTab = () => {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [showChannelList, setShowChannelList] = useState(true);
+  const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -548,6 +547,31 @@ export const MessagesTab = () => {
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const handleRename = async (channelId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_channels')
+        .update({ name: newName.trim() })
+        .eq('id', channelId);
+
+      if (error) throw error;
+
+      setEditingChannel(null);
+      
+      toast({
+        title: "Success",
+        description: "Channel renamed successfully"
+      });
+    } catch (error) {
+      console.error('Error renaming channel:', error);
+      toast({
+        title: "Error",
+        description: "Failed to rename channel",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
@@ -600,9 +624,40 @@ export const MessagesTab = () => {
                   if (isMobile) setShowChannelList(false);
                 }}
               >
-                <span className="truncate text-sm font-medium">{channel.display_name}</span>
+                <span className="truncate text-sm font-medium">
+                  {editingChannel?.id === channel.id ? (
+                    <Input
+                      value={editingChannel.name}
+                      onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') {
+                          handleRename(channel.id, editingChannel.name);
+                        } else if (e.key === 'Escape') {
+                          setEditingChannel(null);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8"
+                      autoFocus
+                    />
+                  ) : (
+                    channel.display_name
+                  )}
+                </span>
                 {selectedChannel?.id === channel.id && (
                   <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingChannel({ id: channel.id, name: channel.display_name });
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
