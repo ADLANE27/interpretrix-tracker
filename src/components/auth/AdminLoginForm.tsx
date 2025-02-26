@@ -21,19 +21,23 @@ export const AdminLoginForm = () => {
 
     try {
       // First attempt to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (signInError) throw signInError;
 
-      // After successful sign in, check if user is an admin
-      const { data: isAdmin, error: roleCheckError } = await supabase.rpc('is_admin');
-      
-      if (roleCheckError) throw roleCheckError;
+      // After successful sign in, check if user has admin role in user_roles
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, active')
+        .eq('user_id', signInData.user.id)
+        .eq('role', 'admin')
+        .eq('active', true)
+        .single();
 
-      if (!isAdmin) {
+      if (roleError || !roleData) {
         // If not admin, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
@@ -54,7 +58,7 @@ export const AdminLoginForm = () => {
         description: error.message,
         variant: "destructive",
       });
-      
+    } finally {
       setIsLoading(false);
     }
   };
