@@ -212,12 +212,11 @@ export const UserManagement = () => {
           email,
           first_name,
           last_name,
-          user_roles!inner (
+          user_roles (
             active,
             role
           )
-        `)
-        .eq('user_roles.role', 'admin') as { data: DbProfile[] | null, error: any };
+        `) as { data: DbProfile[] | null, error: any };
 
       if (adminError) throw adminError;
 
@@ -228,34 +227,42 @@ export const UserManagement = () => {
           email,
           first_name,
           last_name,
-          user_roles!inner (
+          user_roles (
             active,
             role
           )
-        `)
-        .eq('user_roles.role', 'interpreter') as { data: DbProfile[] | null, error: any };
+        `) as { data: DbProfile[] | null, error: any };
 
       if (interpreterError) throw interpreterError;
 
-      const admins: UserData[] = (adminProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        active: profile.user_roles[0]?.active ?? false,
-        role: 'admin'
-      }));
+      console.log('Admin profiles:', adminProfiles);
+      console.log('Interpreter profiles:', interpreterProfiles);
 
-      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        active: profile.user_roles[0]?.active ?? false,
-        role: 'interpreter'
-      }));
+      const admins: UserData[] = (adminProfiles || [])
+        .filter(profile => profile.user_roles?.some(role => role.role === 'admin'))
+        .map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          active: profile.user_roles?.find(r => r.role === 'admin')?.active ?? false,
+          role: 'admin'
+        }));
 
-      return [...admins, ...interpreters];
+      const interpreters: UserData[] = (interpreterProfiles || [])
+        .filter(profile => profile.user_roles?.some(role => role.role === 'interpreter'))
+        .map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          active: profile.user_roles?.find(r => r.role === 'interpreter')?.active ?? false,
+          role: 'interpreter'
+        }));
+
+      const allUsers = [...admins, ...interpreters];
+      console.log('All users:', allUsers);
+      return allUsers;
     }
   });
 
