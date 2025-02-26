@@ -1,9 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Bell, Trash2 } from "lucide-react";
+import { MessageCircle, Bell, Trash2, Settings, Pencil } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 interface Channel {
   id: string;
@@ -44,6 +46,7 @@ export const InterpreterChannelList = ({
     channelId: null,
     channelName: ''
   });
+  const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
   const { toast } = useToast();
 
   const isValidChannelType = (type: string): type is 'direct' | 'group' => {
@@ -75,6 +78,32 @@ export const InterpreterChannelList = ({
         title: "Error",
         description: "Failed to fetch channels",
         variant: "destructive",
+      });
+    }
+  };
+
+  const handleRename = async (channelId: string, newName: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_channels')
+        .update({ name: newName.trim() })
+        .eq('id', channelId);
+
+      if (error) throw error;
+
+      setEditingChannel(null);
+      await fetchChannels();
+      
+      toast({
+        title: "Success",
+        description: "Channel renamed successfully"
+      });
+    } catch (error) {
+      console.error('[InterpreterChat] Error renaming channel:', error);
+      toast({
+        title: "Error",
+        description: "Failed to rename channel",
+        variant: "destructive"
       });
     }
   };
@@ -198,7 +227,25 @@ export const InterpreterChannelList = ({
               >
                 <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
                 <div className="flex items-center justify-between flex-1 min-w-0">
-                  <span className="font-medium truncate">{channel.display_name}</span>
+                  {editingChannel?.id === channel.id ? (
+                    <Input
+                      value={editingChannel.name}
+                      onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') {
+                          handleRename(channel.id, editingChannel.name);
+                        } else if (e.key === 'Escape') {
+                          setEditingChannel(null);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-8"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="font-medium truncate">{channel.display_name}</span>
+                  )}
                   <div className="flex items-center gap-2">
                     {unreadMentions[channel.id] > 0 && (
                       <Badge 
@@ -209,6 +256,26 @@ export const InterpreterChannelList = ({
                         {unreadMentions[channel.id]}
                       </Badge>
                     )}
+                    {channel.channel_type === 'group' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingChannel({ id: channel.id, name: channel.display_name });
+                        }}
+                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                      >
+                        <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log("Settings clicked for channel:", channel.id);
+                      }}
+                      className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
+                    >
+                      <Settings className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                    </button>
                     {channel.channel_type === 'direct' && (
                       <button
                         onClick={(e) => {
