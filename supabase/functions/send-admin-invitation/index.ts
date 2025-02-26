@@ -1,176 +1,99 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from '@supabase/supabase-js';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+interface AdminData {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { email, first_name, last_name, password } = await req.json()
+    const adminData: AdminData = await req.json();
+    console.log('Creating admin with data:', adminData);
 
-    console.log('Checking if user exists:', email)
-
-    // First, check if the user already exists
-    const { data: existingUsers, error: searchError } = await supabaseClient
-      .from('user_roles')
-      .select('user_id, role')
-      .eq('role', 'admin')
-      .eq('user_id', (
-        await supabaseClient.auth.admin.listUsers({
-          filters: {
-            email: email
-          }
-        })
-      ).data.users[0]?.id || '')
-
-    if (searchError) {
-      console.error('Error searching for existing user:', searchError)
-      throw searchError
-    }
-
-    if (existingUsers && existingUsers.length > 0) {
-      console.log('User already exists as admin')
-      throw new Error('Un administrateur avec cette adresse email existe déjà')
-    }
-
-    // Create the user with provided password or generate a random one
-    const generatedPassword = password || Math.random().toString(36).slice(-8)
-
-    console.log('Creating admin user:', { email, first_name, last_name })
-
-    // Create the user
-    const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
-      email,
-      password: generatedPassword,
+    // 1. Créer l'utilisateur avec le mot de passe fourni ou généré
+    const password = adminData.password || Math.random().toString(36).slice(-12);
+    
+    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
+      email: adminData.email,
+      password: password,
       email_confirm: true,
       user_metadata: {
-        first_name,
-        last_name,
+        first_name: adminData.first_name,
+        last_name: adminData.last_name,
       },
-    })
+    });
 
-    if (createUserError) {
-      console.error('Error creating user:', createUserError)
-      // Check if it's a duplicate email error
-      if (createUserError.message.includes('already been registered')) {
-        // Get the existing user
-        const { data: { users } } = await supabaseClient.auth.admin.listUsers({
-          filters: {
-            email: email
-          }
-        })
-        
-        if (users && users.length > 0) {
-          const existingUser = users[0]
-          console.log('User exists, adding admin role:', existingUser.id)
-          
-          // Add admin role to existing user
-          const { error: roleError } = await supabaseClient
-            .from('user_roles')
-            .insert({
-              user_id: existingUser.id,
-              role: 'admin',
-              active: true
-            })
-
-          if (roleError) {
-            console.error('Error adding admin role to existing user:', roleError)
-            throw new Error('Impossible d\'attribuer le rôle administrateur à cet utilisateur')
-          }
-
-          return new Response(
-            JSON.stringify({ 
-              message: 'Rôle administrateur ajouté avec succès à l\'utilisateur existant',
-              userId: existingUser.id 
-            }),
-            {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200,
-            },
-          )
-        }
-      }
-      throw createUserError
+    if (createError) {
+      console.error('Error creating user:', createError);
+      throw createError;
     }
 
-    if (!user) {
-      throw new Error('Aucun utilisateur créé')
-    }
+    console.log('User created successfully:', authData);
 
-    console.log('User created successfully:', user.id)
-
-    // Create user role as admin
-    const { error: roleError } = await supabaseClient
+    // 2. Ajouter le rôle d'administrateur
+    const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
-        user_id: user.id,
+        user_id: authData.user.id,
         role: 'admin',
-        active: true
-      })
+        active: true,
+      });
 
     if (roleError) {
-      console.error('Error creating user role:', roleError)
-      // If we fail to create the role, delete the user
-      await supabaseClient.auth.admin.deleteUser(user.id)
-      throw roleError
+      console.error('Error setting admin role:', roleError);
+      // En cas d'erreur, nettoyer l'utilisateur créé
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw roleError;
     }
 
-    console.log('Admin role assigned successfully')
+    // 3. Envoyer l'email avec les informations de connexion
+    const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+      body: {
+        email: adminData.email,
+        password: password,
+        role: 'admin',
+        first_name: adminData.first_name,
+      },
+    });
 
-    // Send welcome email with credentials
-    try {
-      const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
-        body: {
-          email,
-          password: generatedPassword,
-          first_name,
-        },
-      })
-
-      if (emailError) {
-        console.error('Error sending welcome email:', emailError)
-        // Don't throw here, as the user is already created
-        // Just log the error and continue
-      }
-    } catch (emailError) {
-      console.error('Error invoking send-welcome-email function:', emailError)
-      // Continue despite email error
+    if (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Ne pas bloquer la création si l'email échoue
     }
 
     return new Response(
       JSON.stringify({ 
-        message: 'Administrateur créé avec succès',
-        userId: user.id 
+        message: 'Admin created successfully',
+        user: authData.user 
       }),
-      {
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
-    )
+    );
+
   } catch (error) {
-    console.error('Error in send-admin-invitation:', error)
+    console.error('Error in send-admin-invitation:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.details || 'No additional details available'
+        error: error.message 
       }),
-      {
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       },
-    )
+    );
   }
-})
+});

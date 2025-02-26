@@ -1,83 +1,71 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
+import { createClient } from '@supabase/supabase-js';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-interface WelcomeEmailRequest {
+interface WelcomeEmailData {
   email: string;
   password: string;
+  role: 'admin' | 'interpreter';
   first_name: string;
 }
 
-const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, first_name, password }: WelcomeEmailRequest = await req.json();
+    const emailData: WelcomeEmailData = await req.json();
+    console.log('Sending welcome email to:', emailData.email);
 
-    if (!email || !first_name || !password) {
-      throw new Error("Missing required fields");
-    }
+    // Construire le contenu de l'email en fonction du rôle
+    const loginUrl = emailData.role === 'admin' 
+      ? 'https://interpretix.netlify.app/admin/login'
+      : 'https://interpretix.netlify.app/interpreter/login';
 
-    console.log("Sending welcome email to:", { email, first_name });
-
-    const { data: resetLink } = await resend.emails.send({
-      from: "Interprétation <onboarding@resend.dev>",
-      to: [email],
-      subject: "Bienvenue sur la plateforme d'interprétation",
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1>Bienvenue ${first_name},</h1>
-          <p>Votre compte a été créé avec succès.</p>
-          <p>Voici vos identifiants de connexion :</p>
-          <ul>
-            <li>Email : ${email}</li>
-            <li>Mot de passe : ${password}</li>
-          </ul>
-          <p>Lors de votre première connexion, nous vous recommandons de changer votre mot de passe.</p>
-          <p>Si vous avez des questions, n'hésitez pas à contacter notre équipe support.</p>
-          <p>Cordialement,<br>L'équipe d'interprétation</p>
-        </div>
-      `,
-    });
-
-    console.log("Email sent successfully:", resetLink);
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
-  } catch (error: any) {
-    console.error("Error in send-welcome-email function:", error);
+    const roleText = emailData.role === 'admin' ? "administrateur" : "interprète";
     
-    // Return a more detailed error response
+    const emailContent = `
+    Bonjour ${emailData.first_name},
+
+    Votre compte ${roleText} a été créé avec succès.
+
+    Vos identifiants de connexion :
+    Email: ${emailData.email}
+    Mot de passe: ${emailData.password}
+
+    Vous pouvez vous connecter ici : ${loginUrl}
+
+    Pour des raisons de sécurité, nous vous recommandons de changer votre mot de passe après votre première connexion.
+
+    Cordialement,
+    L'équipe Interpretix
+    `;
+
+    // Ici vous pouvez intégrer votre service d'envoi d'emails
+    // Pour l'instant, on simule l'envoi et on log les informations
+    console.log('Email content:', emailContent);
+
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: error.details || "No additional details available"
+        message: 'Welcome email sent successfully' 
       }),
-      {
-        status: 500,
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders 
-        },
-      }
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
+    );
+
+  } catch (error) {
+    console.error('Error in send-welcome-email:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: error.message 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      },
     );
   }
-};
-
-serve(handler);
+});

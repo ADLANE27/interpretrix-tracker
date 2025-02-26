@@ -1,146 +1,145 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+import { createClient } from '@supabase/supabase-js';
+import { corsHeaders } from '../_shared/cors.ts';
+
+interface InterpreterData {
+  email: string;
+  first_name: string;
+  last_name: string;
+  password?: string;
+  employment_status: string;
+  languages: string[];
+  phone_number?: string;
+  birth_country?: string;
+  nationality?: string;
+  address?: {
+    street: string;
+    postal_code: string;
+    city: string;
+  };
+  phone_interpretation_rate?: number;
+  siret_number?: string;
+  vat_number?: string;
+  specializations?: string[];
+  landline_phone?: string;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const {
-      email,
-      first_name,
-      last_name,
-      role,
-      employment_status,
-      languages,
-      phone_number,
-      landline_phone,
-      address,
-      birth_country,
-      nationality,
-      tarif_15min,
-      password,
-    } = await req.json()
+    const interpreterData: InterpreterData = await req.json();
+    console.log('Creating interpreter with data:', interpreterData);
 
-    console.log('Creating interpreter:', { 
-      email, 
-      first_name, 
-      last_name, 
-      role,
-      employment_status,
-      languages: languages?.length 
-    })
-
-    // Generate a random password if not provided
-    const generatedPassword = password || Math.random().toString(36).slice(-8)
-
-    // Create the user
-    const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
-      email,
-      password: generatedPassword,
+    // 1. Créer l'utilisateur avec le mot de passe fourni ou généré
+    const password = interpreterData.password || Math.random().toString(36).slice(-12);
+    
+    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
+      email: interpreterData.email,
+      password: password,
       email_confirm: true,
       user_metadata: {
-        first_name,
-        last_name,
+        first_name: interpreterData.first_name,
+        last_name: interpreterData.last_name,
       },
-    })
+    });
 
-    if (createUserError) {
-      console.error('Error creating user:', createUserError)
-      throw createUserError
+    if (createError) {
+      console.error('Error creating user:', createError);
+      throw createError;
     }
 
-    if (!user) {
-      throw new Error('No user returned after creation')
-    }
+    console.log('User created successfully:', authData);
 
-    console.log('User created successfully:', user.id)
-
-    // Create user role
-    const { error: roleError } = await supabaseClient
+    // 2. Ajouter le rôle d'interprète
+    const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
-        user_id: user.id,
-        role,
-      })
+        user_id: authData.user.id,
+        role: 'interpreter',
+        active: true,
+      });
 
     if (roleError) {
-      console.error('Error creating user role:', roleError)
-      throw roleError
+      console.error('Error setting interpreter role:', roleError);
+      // En cas d'erreur, nettoyer l'utilisateur créé
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw roleError;
     }
 
-    console.log('User role created successfully')
-
-    // Create interpreter profile
-    const { error: profileError } = await supabaseClient
+    // 3. Créer le profil d'interprète
+    const { error: profileError } = await supabase
       .from('interpreter_profiles')
       .insert({
-        id: user.id,
-        first_name,
-        last_name,
-        email,
-        employment_status,
-        languages: languages || [],
-        phone_number,
-        landline_phone,
-        address,
-        birth_country,
-        nationality,
-        tarif_15min: tarif_15min || 0,
+        id: authData.user.id,
+        first_name: interpreterData.first_name,
+        last_name: interpreterData.last_name,
+        email: interpreterData.email,
+        employment_status: interpreterData.employment_status,
+        languages: interpreterData.languages,
+        phone_number: interpreterData.phone_number,
+        birth_country: interpreterData.birth_country,
+        nationality: interpreterData.nationality,
+        address: interpreterData.address,
+        phone_interpretation_rate: interpreterData.phone_interpretation_rate,
+        siret_number: interpreterData.siret_number,
+        vat_number: interpreterData.vat_number,
+        specializations: interpreterData.specializations,
+        landline_phone: interpreterData.landline_phone,
         password_changed: false,
-      })
+        status: 'available',
+      });
 
     if (profileError) {
-      console.error('Error creating interpreter profile:', profileError)
-      throw profileError
+      console.error('Error creating interpreter profile:', profileError);
+      // En cas d'erreur, nettoyer l'utilisateur et son rôle
+      await supabase.from('user_roles').delete().eq('user_id', authData.user.id);
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw profileError;
     }
 
-    console.log('Interpreter profile created successfully')
-
-    // Send welcome email with credentials
-    const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+    // 4. Envoyer l'email avec les informations de connexion
+    const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
       body: {
-        email,
-        password: generatedPassword,
-        first_name,
+        email: interpreterData.email,
+        password: password,
+        role: 'interpreter',
+        first_name: interpreterData.first_name,
       },
-    })
+    });
 
     if (emailError) {
-      console.error('Error sending welcome email:', emailError)
-      // Don't throw here as the user is already created
-      // Just log the error and continue
+      console.error('Error sending welcome email:', emailError);
+      // Ne pas bloquer la création si l'email échoue
     }
 
     return new Response(
       JSON.stringify({ 
         message: 'Interpreter created successfully',
-        userId: user.id 
+        user: authData.user 
       }),
-      {
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       },
-    )
+    );
+
   } catch (error) {
-    console.error('Error in send-invitation-email:', error)
+    console.error('Error in send-invitation-email:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
+      JSON.stringify({ 
+        error: error.message 
+      }),
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       },
-    )
+    );
   }
-})
+});
