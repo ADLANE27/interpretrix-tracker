@@ -259,10 +259,14 @@ export const AdminDashboard = () => {
               </div>
             </div>
           ) : (
-            <div className="flex gap-4 items-center">
-              <TabsList className="bg-muted/50">
+            <div className="flex gap-4 items-center flex-1">
+              <TabsList className="bg-muted/50 flex-1 gap-1">
                 {tabs.map(tab => (
-                  <TabsTrigger key={tab.id} value={tab.id} className="px-4">
+                  <TabsTrigger 
+                    key={tab.id} 
+                    value={tab.id} 
+                    className="flex-1 px-6"
+                  >
                     {tab.label}
                   </TabsTrigger>
                 ))}
