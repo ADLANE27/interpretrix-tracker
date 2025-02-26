@@ -37,6 +37,18 @@ interface UserData {
   active: boolean;
 }
 
+interface ProfileData {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  created_at: string;
+  user_roles: Array<{
+    role: string;
+    active: boolean;
+  }>;
+}
+
 export const UserManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -95,7 +107,7 @@ export const UserManagement = () => {
         }
 
         // Format admin data
-        const admins = (adminData || []).map(admin => ({
+        const admins = (adminData || []).map((admin: ProfileData) => ({
           id: admin.id,
           email: admin.email,
           first_name: admin.first_name || '',
@@ -106,7 +118,7 @@ export const UserManagement = () => {
         }));
 
         // Format interpreter data
-        const interpreters = (interpreterData || []).map(interpreter => ({
+        const interpreters = (interpreterData || []).map((interpreter: ProfileData) => ({
           id: interpreter.id,
           email: interpreter.email,
           first_name: interpreter.first_name || '',
