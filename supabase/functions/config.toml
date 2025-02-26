@@ -1,0 +1,12 @@
+
+# project_id must be the first line for the deployment to work
+project_id = "bblpiatmtnlhnbavhkau"
+
+[functions.is-admin]
+verify_jwt = true
+
+[functions.get-user-info]
+verify_jwt = true
+
+[functions.reset-user-password]
+verify_jwt = true

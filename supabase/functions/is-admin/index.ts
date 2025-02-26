@@ -8,49 +8,49 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const { user_id, new_password } = await req.json()
-
-    // Validate input
-    if (!user_id || !new_password) {
-      throw new Error('Missing required fields')
-    }
-
+    // Create Supabase client
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Update password
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
-      user_id,
-      { password: new_password }
-    )
-
-    if (updateError) {
-      throw updateError
+    // Get the JWT token from the request headers
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
     }
 
-    // If user is an interpreter, update password_changed flag
-    const { data: roleData } = await supabase
+    // Get user from the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+    
+    if (userError || !user) {
+      throw new Error('Invalid token')
+    }
+
+    // Check if user is admin
+    const { data, error } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user_id)
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .eq('active', true)
       .single()
 
-    if (roleData?.role === 'interpreter') {
-      await supabase
-        .from('interpreter_profiles')
-        .update({ password_changed: true })
-        .eq('id', user_id)
+    if (error) {
+      throw error
     }
 
     return new Response(
-      JSON.stringify({ message: 'Password updated successfully' }),
+      JSON.stringify({ 
+        is_admin: !!data,
+        user_id: user.id
+      }),
       { 
         headers: { 
           ...corsHeaders,
@@ -59,11 +59,11 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error in reset-user-password function:', error)
+    console.error('Error in is-admin function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
-        status: 400,
+        status: 401,
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json'
