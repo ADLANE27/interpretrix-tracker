@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { UserCog, Search, Trash2, Key } from "lucide-react";
 import {
@@ -87,52 +88,60 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAdmins.map((admin) => (
-                <TableRow key={admin.id}>
-                  <TableCell>
-                    {admin.first_name} {admin.last_name}
-                  </TableCell>
-                  <TableCell>{admin.email}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-sm ${
-                        admin.active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {admin.active ? "Actif" : "Inactif"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => onToggleStatus(admin.id, admin.active)}
-                      >
-                        {admin.active ? "Désactiver" : "Activer"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => onResetPassword(admin.id)}
-                      >
-                        <Key className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => {
-                          setUserToDelete(admin.id);
-                          setIsDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {filteredAdmins.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    Aucun administrateur trouvé
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredAdmins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell>
+                      {admin.first_name} {admin.last_name}
+                    </TableCell>
+                    <TableCell>{admin.email}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          admin.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {admin.active ? "Actif" : "Inactif"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => onToggleStatus(admin.id, admin.active)}
+                        >
+                          {admin.active ? "Désactiver" : "Activer"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => onResetPassword(admin.id)}
+                        >
+                          <Key className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => {
+                            setUserToDelete(admin.id);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
