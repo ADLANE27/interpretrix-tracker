@@ -29,12 +29,21 @@ export const useUserManagement = () => {
           throw new Error("Unauthorized: Only administrators can access this page");
         }
 
+        // Get user roles mapping
         const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select('*');
 
         if (rolesError) throw rolesError;
 
+        // Get admin profiles
+        const { data: adminProfiles, error: adminError } = await supabase
+          .from('admin_profiles')
+          .select('*');
+
+        if (adminError) throw adminError;
+
+        // Get interpreter profiles
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
@@ -46,29 +55,15 @@ export const useUserManagement = () => {
           return acc;
         }, {});
 
-        const adminUserIds = userRoles
-          ?.filter(role => role.role === 'admin')
-          .map(role => role.user_id) || [];
-
-        // Use the admin.listUsers endpoint only if we are admin
-        const { data: adminData, error: adminError } = await supabase.auth.admin.listUsers();
-        
-        if (adminError) {
-          console.error('Error fetching admin users:', adminError);
-          throw new Error("Failed to fetch administrator data");
-        }
-
-        const admins = (adminData?.users || [])
-          .filter(user => adminUserIds.includes(user.id))
-          .map(user => ({
-            id: user.id,
-            email: user.email,
-            first_name: user.user_metadata?.first_name || '',
-            last_name: user.user_metadata?.last_name || '',
-            role: 'admin',
-            created_at: user.created_at,
-            active: roleMap[user.id]?.active ?? false
-          }));
+        const admins = (adminProfiles || []).map(admin => ({
+          id: admin.id,
+          email: admin.email,
+          first_name: admin.first_name,
+          last_name: admin.last_name,
+          role: 'admin',
+          created_at: admin.created_at,
+          active: roleMap[admin.id]?.active ?? false
+        }));
 
         const interpreters = (interpreterData || []).map(interpreter => ({
           id: interpreter.id,
