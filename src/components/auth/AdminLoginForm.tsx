@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,34 +6,40 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 export const AdminLoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // First attempt to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (signInError) throw signInError;
 
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+      // After successful sign in, check if user is an admin
+      const { data: isAdmin, error: roleCheckError } = await supabase.rpc('is_admin');
+      
+      if (roleCheckError) throw roleCheckError;
 
-      if (roles?.role !== 'admin') {
+      if (!isAdmin) {
+        // If not admin, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
       }
 
+      // If all checks pass, show success and navigate
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté en tant qu'administrateur",
@@ -40,11 +47,15 @@ export const AdminLoginForm = () => {
       
       navigate("/admin");
     } catch (error: any) {
+      console.error("Login error:", error);
+      
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
+      
+      setIsLoading(false);
     }
   };
 
@@ -71,6 +82,7 @@ export const AdminLoginForm = () => {
             required
             className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
             placeholder="admin@example.com"
+            disabled={isLoading}
           />
         </div>
         <div className="space-y-2">
@@ -85,13 +97,22 @@ export const AdminLoginForm = () => {
             required
             className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
             placeholder="••••••••"
+            disabled={isLoading}
           />
         </div>
         <Button 
           type="submit" 
           className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] hover:from-[#2A2F3C] hover:to-[#504E53] rounded-lg shadow-md hover:shadow-lg"
+          disabled={isLoading}
         >
-          Se connecter
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <LoadingSpinner size="sm" className="mr-2" />
+              <span>Connexion en cours...</span>
+            </div>
+          ) : (
+            "Se connecter"
+          )}
         </Button>
       </form>
     </Card>
