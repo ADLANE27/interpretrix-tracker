@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,18 +34,6 @@ interface UserData {
   role: string;
   created_at: string;
   active: boolean;
-}
-
-interface ProfileData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  created_at: string;
-  user_roles: Array<{
-    role: string;
-    active: boolean;
-  }>;
 }
 
 export const UserManagement = () => {
@@ -107,7 +94,7 @@ export const UserManagement = () => {
         }
 
         // Format admin data
-        const admins = (adminData || []).map((admin: ProfileData) => ({
+        const admins = (adminData || []).map((admin: any) => ({
           id: admin.id,
           email: admin.email,
           first_name: admin.first_name || '',
@@ -118,7 +105,7 @@ export const UserManagement = () => {
         }));
 
         // Format interpreter data
-        const interpreters = (interpreterData || []).map((interpreter: ProfileData) => ({
+        const interpreters = (interpreterData || []).map((interpreter: any) => ({
           id: interpreter.id,
           email: interpreter.email,
           first_name: interpreter.first_name || '',
