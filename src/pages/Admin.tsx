@@ -21,14 +21,17 @@ const Admin = () => {
           return;
         }
 
-        // Check if user has admin role
-        const { data: roles } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
+        // Check if user is admin using our RPC function
+        const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
+          user_id: user.id
+        });
 
-        if (roles?.role !== 'admin') {
+        if (adminCheckError) {
+          console.error('Admin check error:', adminCheckError);
+          throw adminCheckError;
+        }
+
+        if (!isAdmin) {
           console.log('User is not an admin, redirecting to login');
           await supabase.auth.signOut();
           navigate('/admin/login');
