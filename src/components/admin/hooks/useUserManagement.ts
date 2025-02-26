@@ -19,6 +19,16 @@ export const useUserManagement = () => {
     queryKey: ["users"],
     queryFn: async () => {
       try {
+        // Check if current user is admin
+        const { data: roleCheck, error: roleError } = await supabase
+          .rpc('is_admin');
+
+        if (roleError) throw roleError;
+
+        if (!roleCheck) {
+          throw new Error("Unauthorized: Only administrators can access this page");
+        }
+
         const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select('*');
@@ -40,9 +50,13 @@ export const useUserManagement = () => {
           ?.filter(role => role.role === 'admin')
           .map(role => role.user_id) || [];
 
+        // Use the admin.listUsers endpoint only if we are admin
         const { data: adminData, error: adminError } = await supabase.auth.admin.listUsers();
         
-        if (adminError) throw adminError;
+        if (adminError) {
+          console.error('Error fetching admin users:', adminError);
+          throw new Error("Failed to fetch administrator data");
+        }
 
         const admins = (adminData?.users || [])
           .filter(user => adminUserIds.includes(user.id))
