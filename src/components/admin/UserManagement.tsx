@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,34 @@ interface InterpreterUser {
 
 type UserData = AdminUser | InterpreterUser;
 
+// Types pour les données Supabase
+interface AdminProfileWithRole {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  user_roles: {
+    active: boolean;
+    role: "admin";
+  }[];
+}
+
+interface InterpreterProfileWithRole {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  languages: string[];
+  tarif_15min: number;
+  tarif_5min: number;
+  employment_status: EmploymentStatus;
+  status: string;
+  user_roles: {
+    active: boolean;
+    role: "interpreter";
+  }[];
+}
+
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
@@ -77,7 +106,7 @@ export const UserManagement = () => {
             role
           )
         `)
-        .eq('user_roles.role', 'admin');
+        .eq('user_roles.role', 'admin') as { data: AdminProfileWithRole[] | null, error: any };
 
       if (adminError) {
         console.error("Error fetching admin profiles:", adminError);
@@ -102,14 +131,14 @@ export const UserManagement = () => {
             role
           )
         `)
-        .eq('user_roles.role', 'interpreter');
+        .eq('user_roles.role', 'interpreter') as { data: InterpreterProfileWithRole[] | null, error: any };
 
       if (interpreterError) {
         console.error("Error fetching interpreter profiles:", interpreterError);
         throw interpreterError;
       }
 
-      const admins: AdminUser[] = adminProfiles.map(profile => ({
+      const admins: AdminUser[] = (adminProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name,
@@ -118,7 +147,7 @@ export const UserManagement = () => {
         role: 'admin'
       }));
 
-      const interpreters: InterpreterUser[] = interpreterProfiles.map(profile => ({
+      const interpreters: InterpreterUser[] = (interpreterProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name,
@@ -126,7 +155,7 @@ export const UserManagement = () => {
         active: profile.user_roles[0].active,
         role: 'interpreter',
         languages: profile.languages || [],
-        status: profile.status || 'unavailable',
+        status: (profile.status || 'unavailable') as InterpreterStatus,
         tarif_15min: profile.tarif_15min || 0,
         tarif_5min: profile.tarif_5min || 0,
         employment_status: profile.employment_status
