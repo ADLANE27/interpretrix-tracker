@@ -407,12 +407,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             </div>
 
             <div className="space-y-2">
-              {nextMission.is_private_reservation && (
-                <Badge variant="secondary" className="mb-2 flex items-center gap-1">
-                  <LockIcon className="w-3 h-3" />
-                  Réservation privée
-                </Badge>
-              )}
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
@@ -440,12 +434,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="mt-4 space-y-4">
                 {additionalMissions.map((mission, index) => (
                   <div key={index} className="p-3 bg-gray-50 rounded-md space-y-2">
-                    {mission.is_private_reservation && (
-                      <Badge variant="secondary" className="mb-2 flex items-center gap-1">
-                        <LockIcon className="w-3 h-3" />
-                        Réservation privée
-                      </Badge>
-                    )}
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">

@@ -1,17 +1,33 @@
 
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, Clock, CheckSquare, XSquare } from "lucide-react";
+import { Calendar, Clock, CheckSquare, XSquare, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Mission } from "@/types/mission";
+import { EditMissionDialog } from "@/components/admin/mission/EditMissionDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MissionCardProps {
   mission: Mission;
   currentUserId: string | null;
   isProcessing: boolean;
   onMissionResponse: (missionId: string, accept: boolean) => Promise<void>;
+  onDelete?: (missionId: string) => Promise<void>;
+  showAdminControls?: boolean;
 }
 
 const getMissionStatusDisplay = (status: string, assignedInterpreterId: string | null, currentUserId: string | null) => {
@@ -32,12 +48,46 @@ const getMissionStatusDisplay = (status: string, assignedInterpreterId: string |
   }
 };
 
-export const MissionCard = ({ mission, currentUserId, isProcessing, onMissionResponse }: MissionCardProps) => {
+export const MissionCard = ({ 
+  mission, 
+  currentUserId, 
+  isProcessing, 
+  onMissionResponse,
+  onDelete,
+  showAdminControls = false 
+}: MissionCardProps) => {
   const statusDisplay = getMissionStatusDisplay(
     mission.status, 
     mission.assigned_interpreter_id,
     currentUserId
   );
+  const { toast } = useToast();
+
+  const handleDelete = async () => {
+    try {
+      const { error } = await supabase
+        .from('interpretation_missions')
+        .delete()
+        .eq('id', mission.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Mission supprimée",
+        description: "La mission a été supprimée avec succès"
+      });
+
+      if (onDelete) {
+        await onDelete(mission.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue lors de la suppression",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <Card className="p-4">
@@ -85,26 +135,56 @@ export const MissionCard = ({ mission, currentUserId, isProcessing, onMissionRes
             </Badge>
           </div>
         </div>
-        {mission.status === 'awaiting_acceptance' && !isProcessing && (
-          <div className="flex justify-center gap-2">
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={() => onMissionResponse(mission.id, true)}
-            >
-              <CheckSquare className="h-4 w-4" />
-              Accepter
-            </Button>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2"
-              onClick={() => onMissionResponse(mission.id, false)}
-            >
-              <XSquare className="h-4 w-4" />
-              Décliner
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end gap-2">
+          {showAdminControls && (
+            <>
+              <EditMissionDialog 
+                mission={mission} 
+                onMissionUpdated={() => onDelete?.(mission.id)}
+              />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer la mission</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Êtes-vous sûr de vouloir supprimer cette mission ? Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Supprimer</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          )}
+          {mission.status === 'awaiting_acceptance' && !isProcessing && (
+            <>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => onMissionResponse(mission.id, true)}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Accepter
+              </Button>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => onMissionResponse(mission.id, false)}
+              >
+                <XSquare className="h-4 w-4" />
+                Décliner
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </Card>
   );
