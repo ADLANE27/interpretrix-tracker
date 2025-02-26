@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
-import { format } from "date-fns";
+import { format, formatInTimeZone } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,6 +101,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -152,8 +153,16 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       // Transform regular missions to match Mission interface
       const transformedRegularMissions: Mission[] = (regularMissions || []).map((mission: DatabaseMission) => ({
-        scheduled_start_time: mission.scheduled_start_time,
-        scheduled_end_time: mission.scheduled_end_time,
+        scheduled_start_time: formatInTimeZone(
+          new Date(mission.scheduled_start_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        ),
+        scheduled_end_time: mission.scheduled_end_time ? formatInTimeZone(
+          new Date(mission.scheduled_end_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        ) : null,
         estimated_duration: mission.estimated_duration,
         source_language: mission.source_language,
         target_language: mission.target_language,
@@ -174,8 +183,16 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       // Transform private reservations to match Mission interface
       const transformedPrivateReservations: Mission[] = (privateReservations || []).map(res => ({
-        scheduled_start_time: res.start_time,
-        scheduled_end_time: res.end_time,
+        scheduled_start_time: formatInTimeZone(
+          new Date(res.start_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        ),
+        scheduled_end_time: formatInTimeZone(
+          new Date(res.end_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        ),
         estimated_duration: res.duration_minutes,
         source_language: res.source_language,
         target_language: res.target_language,
