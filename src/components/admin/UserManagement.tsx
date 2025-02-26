@@ -208,15 +208,10 @@ export const UserManagement = () => {
       const { data: adminProfiles, error: adminError } = await supabase
         .from('admin_profiles')
         .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles (
-            active,
-            role
-          )
-        `).order('created_at', { ascending: false }) as { data: DbProfile[] | null, error: any };
+          *,
+          user_role:user_roles(*)
+        `)
+        .returns<(DbProfile & { user_role: DbUserRole[] })[]>();
 
       if (adminError) {
         console.error('Error fetching admin profiles:', adminError);
@@ -226,15 +221,10 @@ export const UserManagement = () => {
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select(`
-          id,
-          email,
-          first_name,
-          last_name,
-          user_roles (
-            active,
-            role
-          )
-        `).order('created_at', { ascending: false }) as { data: DbProfile[] | null, error: any };
+          *,
+          user_role:user_roles(*)
+        `)
+        .returns<(DbProfile & { user_role: DbUserRole[] })[]>();
 
       if (interpreterError) {
         console.error('Error fetching interpreter profiles:', interpreterError);
@@ -245,40 +235,24 @@ export const UserManagement = () => {
       console.log('Raw interpreter profiles:', interpreterProfiles);
 
       const admins: UserData[] = (adminProfiles || [])
-        .filter(profile => {
-          console.log('Processing admin profile:', profile);
-          return profile.user_roles && profile.user_roles.length > 0;
-        })
-        .map(profile => {
-          const userData = {
-            id: profile.id,
-            email: profile.email,
-            first_name: profile.first_name || '',
-            last_name: profile.last_name || '',
-            active: profile.user_roles[0]?.active ?? true,
-            role: 'admin' as const
-          };
-          console.log('Mapped admin data:', userData);
-          return userData;
-        });
+        .map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name || '',
+          last_name: profile.last_name || '',
+          active: profile.user_role?.[0]?.active ?? true,
+          role: 'admin' as const
+        }));
 
       const interpreters: UserData[] = (interpreterProfiles || [])
-        .filter(profile => {
-          console.log('Processing interpreter profile:', profile);
-          return profile.user_roles && profile.user_roles.length > 0;
-        })
-        .map(profile => {
-          const userData = {
-            id: profile.id,
-            email: profile.email,
-            first_name: profile.first_name || '',
-            last_name: profile.last_name || '',
-            active: profile.user_roles[0]?.active ?? true,
-            role: 'interpreter' as const
-          };
-          console.log('Mapped interpreter data:', userData);
-          return userData;
-        });
+        .map(profile => ({
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name || '',
+          last_name: profile.last_name || '',
+          active: profile.user_role?.[0]?.active ?? true,
+          role: 'interpreter' as const
+        }));
 
       const allUsers = [...admins, ...interpreters];
       console.log('Final all users:', allUsers);
@@ -289,7 +263,8 @@ export const UserManagement = () => {
 
       return allUsers;
     },
-    retry: 1
+    retry: 1,
+    refetchOnWindowFocus: false
   });
 
   const handleAddAdmin = async (data: AdminFormData) => {
