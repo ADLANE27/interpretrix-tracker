@@ -30,10 +30,10 @@ interface UserData {
   last_name: string;
   active: boolean;
   role: "admin" | "interpreter";
-  tarif_15min: number;
-  tarif_5min: number;
-  employment_status: EmploymentStatus;
-  languages: string[];
+  tarif_15min?: number;
+  tarif_5min?: number;
+  employment_status?: EmploymentStatus;
+  languages?: string[];
   status?: InterpreterStatus;
 }
 
@@ -49,61 +49,7 @@ export const UserManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log("Current user:", user);
-
-      const { data: userRole } = await supabase
-        .from('user_roles')
-        .select('role, active')
-        .eq('user_id', user?.id)
-        .single();
-
-      console.log("User role:", userRole);
-    };
-
-    checkAdminAccess();
-  }, []);
-
-  useEffect(() => {
-    console.log("[UserManagement] Setting up real-time subscription");
-    
-    // Subscribe to interpreter_profiles changes
-    const profilesChannel = supabase.channel('interpreter-profiles-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        (payload) => {
-          console.log("[UserManagement] Received profile update:", payload);
-          const updatedProfile = payload.new as any;
-          
-          queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
-            if (!oldData) return oldData;
-            
-            return oldData.map(user => 
-              user.id === updatedProfile.id
-                ? { ...user, ...updatedProfile }
-                : user
-            );
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log("[UserManagement] Profile subscription status:", status);
-      });
-
-    return () => {
-      console.log("[UserManagement] Cleaning up subscription");
-      supabase.removeChannel(profilesChannel);
-    };
-  }, [queryClient]);
-
-  const { data: users, refetch } = useQuery({
+  const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
@@ -116,8 +62,6 @@ export const UserManagement = () => {
         console.error("Error fetching user roles:", rolesError);
         throw rolesError;
       }
-
-      console.log("User roles fetched:", userRoles);
 
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
@@ -148,62 +92,39 @@ export const UserManagement = () => {
                 employment_status: profile.employment_status
               };
             } else {
-              // Pour les administrateurs
-              console.log("Fetching admin profile for user:", userRole.user_id);
               const { data: adminProfile, error: adminError } = await supabase
                 .from('admin_profiles')
                 .select('email, first_name, last_name')
                 .eq('id', userRole.user_id)
                 .single();
 
-              console.log("Admin profile result:", { data: adminProfile, error: adminError });
-
               if (adminError) {
                 console.error('Error fetching admin profile:', adminError);
-                if (adminError.code === 'PGRST116') {
-                  // Si le profil n'existe pas, on retourne null pour le filtrer plus tard
-                  return null;
-                }
-                throw adminError;
+                return null;
               }
 
-              const adminUser = {
+              return {
                 id: userRole.user_id,
                 email: adminProfile.email,
                 role: userRole.role,
                 first_name: adminProfile.first_name || '',
                 last_name: adminProfile.last_name || '',
-                active: userRole.active,
-                languages: [],
-                status: 'unavailable',
-                tarif_15min: 0,
-                tarif_5min: 0,
-                employment_status: 'salaried_aft'
+                active: userRole.active
               };
-
-              console.log("Processed admin user:", adminUser);
-              return adminUser;
             }
           } catch (error) {
             console.error('Error processing user:', error);
-            console.error('User role:', userRole);
             return null;
           }
         })
       );
 
-      const validUsers = allUsers.filter(user => user !== null) as UserData[];
-      console.log("[UserManagement] Final processed users:", validUsers);
-      const adminUsers = validUsers.filter(user => user.role === 'admin');
-      console.log("[UserManagement] Admin users:", adminUsers);
-      return validUsers;
-    },
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
+      return allUsers.filter((user): user is UserData => user !== null);
+    }
   });
 
-  const adminUsers = users?.filter(user => user.role === "admin") || [];
-  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
+  const adminUsers = users.filter(user => user.role === "admin");
+  const interpreterUsers = users.filter(user => user.role === "interpreter");
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
