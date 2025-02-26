@@ -86,53 +86,62 @@ export const UserManagement = () => {
     };
   }, [queryClient]);
 
-  const { data: users, refetch } = useQuery({
+  const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
+      
+      // Get all user roles first
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*");
 
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.error("Error fetching user roles:", rolesError);
+        throw rolesError;
+      }
 
+      // Get data for all users
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
-            const { data, error } = await supabase.functions.invoke('get-user-info', {
-              body: { userId: userRole.user_id }
-            });
-            
-            if (error) throw error;
+            // Get interpreter profile data if it exists
+            const { data: interpreterProfile } = await supabase
+              .from('interpreter_profiles')
+              .select('*')
+              .eq('id', userRole.user_id)
+              .maybeSingle();
 
-            if (userRole.role === 'interpreter') {
-              const { data: profile } = await supabase
-                .from('interpreter_profiles')
-                .select('languages, status, tarif_5min, tarif_15min, employment_status')
-                .eq('id', userRole.user_id)
-                .maybeSingle();
-
+            // If interpreter profile exists, use that data
+            if (interpreterProfile) {
               return {
                 id: userRole.user_id,
-                email: data.email || "",
+                email: interpreterProfile.email,
                 role: userRole.role,
-                first_name: data.first_name || "",
-                last_name: data.last_name || "",
+                first_name: interpreterProfile.first_name,
+                last_name: interpreterProfile.last_name,
                 active: userRole.active || false,
-                languages: profile?.languages || [],
-                status: profile?.status || 'unavailable',
-                tarif_15min: profile?.tarif_15min || 0,
-                tarif_5min: profile?.tarif_5min || 0,
-                employment_status: profile?.employment_status || 'salaried_aft'
+                languages: interpreterProfile.languages || [],
+                status: interpreterProfile.status || 'unavailable',
+                tarif_15min: interpreterProfile.tarif_15min || 0,
+                tarif_5min: interpreterProfile.tarif_5min || 0,
+                employment_status: interpreterProfile.employment_status || 'salaried_aft'
               };
             }
 
+            // If not an interpreter, get admin data from auth.users
+            const { data: { user }, error } = await supabase.auth.admin.getUserById(
+              userRole.user_id
+            );
+
+            if (error) throw error;
+
             return {
               id: userRole.user_id,
-              email: data.email || "",
+              email: user?.email || "",
               role: userRole.role,
-              first_name: data.first_name || "",
-              last_name: data.last_name || "",
+              first_name: user?.user_metadata?.first_name || "",
+              last_name: user?.user_metadata?.last_name || "",
               active: userRole.active || false,
               languages: [],
               status: 'unavailable',
@@ -142,31 +151,20 @@ export const UserManagement = () => {
             };
           } catch (error) {
             console.error('Error fetching user info:', error);
-            return {
-              id: userRole.user_id,
-              email: "",
-              role: userRole.role,
-              first_name: "",
-              last_name: "",
-              active: userRole.active || false,
-              languages: [],
-              status: 'unavailable',
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft'
-            };
+            // Instead of returning a placeholder, throw the error
+            throw error;
           }
         })
       );
 
-      return allUsers as UserData[];
+      return allUsers;
     },
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
 
-  const adminUsers = users?.filter(user => user.role === "admin") || [];
-  const interpreterUsers = users?.filter(user => user.role === "interpreter") || [];
+  const adminUsers = users.filter(user => user.role === "admin") || [];
+  const interpreterUsers = users.filter(user => user.role === "interpreter") || [];
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
