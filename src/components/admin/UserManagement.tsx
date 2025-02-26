@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +28,7 @@ import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 
 interface UserData {
   id: string;
-  email: string;
+  email: string | null;
   first_name: string;
   last_name: string;
   role: string;
@@ -124,14 +123,6 @@ export const UserManagement = () => {
 
         if (rolesError) throw rolesError;
 
-        // Get all admin users from user_roles
-        const adminRoles = userRoles?.filter(role => role.role === 'admin') || [];
-        
-        // Get admin user details from auth.users
-        const { data: adminUsers, error: adminError } = await supabase.auth.admin.listUsers();
-        
-        if (adminError) throw adminError;
-
         // Get interpreter users
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
@@ -145,21 +136,28 @@ export const UserManagement = () => {
           return acc;
         }, {});
 
-        // Format admin data by matching auth users with admin roles
-        const admins = adminRoles.map(role => {
-          const authUser = adminUsers?.users.find(user => user.id === role.user_id);
-          if (!authUser) return null;
-          
-          return {
-            id: authUser.id,
-            email: authUser.email || '',
-            first_name: authUser.user_metadata?.first_name || '',
-            last_name: authUser.user_metadata?.last_name || '',
+        // Get admin users from auth.users based on user_roles
+        const adminUserIds = userRoles
+          ?.filter(role => role.role === 'admin')
+          .map(role => role.user_id) || [];
+
+        // Get admin user details from auth.users
+        const { data: adminData, error: adminError } = await supabase.auth.admin.listUsers();
+        
+        if (adminError) throw adminError;
+
+        // Filter and format admin data
+        const admins = adminData?.users
+          .filter(user => adminUserIds.includes(user.id))
+          .map(user => ({
+            id: user.id,
+            email: user.email,
+            first_name: user.user_metadata?.first_name || '',
+            last_name: user.user_metadata?.last_name || '',
             role: 'admin',
-            created_at: authUser.created_at,
-            active: roleMap[authUser.id]?.active ?? false
-          };
-        }).filter((admin): admin is UserData => admin !== null);
+            created_at: user.created_at,
+            active: roleMap[user.id]?.active ?? false
+          })) || [];
 
         // Format interpreter data
         const interpreters = (interpreterData || []).map(interpreter => ({
