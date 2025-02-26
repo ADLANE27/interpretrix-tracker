@@ -66,30 +66,43 @@ export const UserManagement = () => {
         .select('*')
         .eq('role', 'admin');
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error("Error fetching admin roles:", adminError);
+        throw adminError;
+      }
 
-      // Pour chaque admin, récupérer ses informations
+      console.log("Found admin roles:", adminRoles);
+
+      // Pour chaque admin, récupérer ses informations depuis auth.users
       const admins = await Promise.all(
         adminRoles.map(async (role) => {
-          const { data } = await supabase.auth.admin.getUserById(role.user_id);
-          if (!data?.user) return null;
+          const { data: authData } = await supabase.auth.admin.getUserById(role.user_id);
+          
+          console.log("Auth data for user:", role.user_id, authData);
 
-          return {
+          if (!authData?.user) return null;
+
+          const adminUser: AdminUser = {
             id: role.user_id,
-            email: data.user.email || '',
-            first_name: data.user.user_metadata?.first_name || '',
-            last_name: data.user.user_metadata?.last_name || '',
-            role: 'admin' as const,
+            email: authData.user.email || '',
+            first_name: authData.user.user_metadata?.first_name || '',
+            last_name: authData.user.user_metadata?.last_name || '',
+            role: 'admin',
             active: role.active
           };
+
+          console.log("Created admin user object:", adminUser);
+          return adminUser;
         })
       );
 
       const validAdmins = admins.filter((admin): admin is AdminUser => admin !== null);
-      console.log("Admins trouvés:", validAdmins);
+      console.log("Final valid admins:", validAdmins);
 
       return validAdmins;
-    }
+    },
+    staleTime: 0, // Désactive le cache pour toujours avoir des données fraîches
+    refetchOnWindowFocus: true // Recharge les données quand la fenêtre reprend le focus
   });
 
   const handleAddAdmin = async (formData: AdminFormData) => {
