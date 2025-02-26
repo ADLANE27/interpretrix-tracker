@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,23 +97,9 @@ export const UserManagement = () => {
 
       if (rolesError) throw rolesError;
 
-      console.log("[UserManagement] User roles fetched:", userRoles);
-
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
           try {
-            // Pour les administrateurs, récupérer les données depuis auth.users via la fonction
-            const { data: userInfo, error } = await supabase.functions.invoke('get-user-info', {
-              body: { userId: userRole.user_id }
-            });
-            
-            if (error) {
-              console.error('Error fetching user info:', error);
-              throw error;
-            }
-
-            console.log(`[UserManagement] User info for ${userRole.user_id}:`, userInfo);
-
             if (userRole.role === 'interpreter') {
               const { data: profile, error: profileError } = await supabase
                 .from('interpreter_profiles')
@@ -126,8 +111,6 @@ export const UserManagement = () => {
                 console.error('Error fetching interpreter profile:', profileError);
                 throw profileError;
               }
-
-              console.log(`[UserManagement] Interpreter profile for ${userRole.user_id}:`, profile);
 
               return {
                 id: userRole.user_id,
@@ -142,24 +125,33 @@ export const UserManagement = () => {
                 tarif_5min: profile.tarif_5min || 0,
                 employment_status: profile.employment_status
               };
-            }
+            } else {
+              // Pour les administrateurs
+              const { data: userInfo, error } = await supabase.auth.admin.getUserById(
+                userRole.user_id
+              );
 
-            // Pour les administrateurs
-            return {
-              id: userRole.user_id,
-              email: userInfo.email,
-              role: userRole.role,
-              first_name: userInfo.user_metadata?.first_name || userInfo.first_name || "",
-              last_name: userInfo.user_metadata?.last_name || userInfo.last_name || "",
-              active: userRole.active,
-              languages: [],
-              status: 'unavailable',
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft'
-            };
+              if (error) throw error;
+
+              const metadata = userInfo.user.user_metadata || {};
+              
+              return {
+                id: userRole.user_id,
+                email: userInfo.user.email || "",
+                role: userRole.role,
+                first_name: metadata.first_name || "",
+                last_name: metadata.last_name || "",
+                active: userRole.active,
+                languages: [],
+                status: 'unavailable',
+                tarif_15min: 0,
+                tarif_5min: 0,
+                employment_status: 'salaried_aft'
+              };
+            }
           } catch (error) {
             console.error('Error processing user:', error);
+            console.error('User role:', userRole);
             return null;
           }
         })
