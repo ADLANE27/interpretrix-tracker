@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -193,7 +192,6 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // Récupérer les admins depuis admin_profiles et user_roles
       const { data: adminProfiles, error: adminError } = await supabase
         .from('admin_profiles')
         .select(`
@@ -210,7 +208,6 @@ export const UserManagement = () => {
 
       if (adminError) throw adminError;
 
-      // Récupérer les interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select(`
@@ -227,27 +224,123 @@ export const UserManagement = () => {
 
       if (interpreterError) throw interpreterError;
 
-      const admins: UserData[] = (adminProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        active: profile.user_roles[0].active,
-        role: 'admin'
-      }));
+      const admins: UserData[] = (adminProfiles || []).map(profile => {
+        if (!profile.user_roles || profile.user_roles.length === 0) {
+          return {
+            id: profile.id,
+            email: profile.email,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: false,
+            role: 'admin' as const
+          };
+        }
 
-      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.email,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        active: profile.user_roles[0].active,
-        role: 'interpreter'
-      }));
+        return {
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          active: profile.user_roles[0].active,
+          role: 'admin' as const
+        };
+      });
+
+      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => {
+        if (!profile.user_roles || profile.user_roles.length === 0) {
+          return {
+            id: profile.id,
+            email: profile.email,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: false,
+            role: 'interpreter' as const
+          };
+        }
+
+        return {
+          id: profile.id,
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          active: profile.user_roles[0].active,
+          role: 'interpreter' as const
+        };
+      });
 
       return [...admins, ...interpreters];
     }
   });
+
+  const handleAddAdmin = async (data: AdminFormData) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.functions.invoke('send-admin-invitation', {
+        body: { 
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          password: data.password
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Administrateur ajouté",
+        description: "Un email d'invitation a été envoyé à l'administrateur",
+      });
+
+      setIsAddAdminOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error adding admin:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'administrateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddUser = async (data: InterpreterFormData) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.functions.invoke('send-invitation-email', {
+        body: { 
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          password: data.password,
+          employment_status: data.employment_status,
+          languages: convertLanguagePairsToStrings(data.languages),
+          tarif_15min: data.tarif_15min,
+          tarif_5min: data.tarif_5min,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Interprète ajouté",
+        description: "Un email d'invitation a été envoyé à l'interprète",
+      });
+
+      setIsAddUserOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error adding interpreter:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'interprète: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleResetPassword = async () => {
     try {
