@@ -114,13 +114,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                 }}
                 onSubmit={async (data) => {
                   try {
+                    const addressJson = data.address ? {
+                      street: data.address.street,
+                      postal_code: data.address.postal_code,
+                      city: data.address.city
+                    } : null;
+
                     const { error } = await supabase
                       .from('interpreter_profiles')
                       .update({
                         first_name: data.first_name,
                         last_name: data.last_name,
                         phone_number: data.phone_number,
-                        address: data.address,
+                        address: addressJson,
                         birth_country: data.birth_country,
                         nationality: data.nationality,
                         employment_status: data.employment_status,
