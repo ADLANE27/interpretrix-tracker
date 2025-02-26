@@ -201,13 +201,6 @@ export type Database = {
             foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
             columns: ["assigned_interpreter_id"]
             isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
-            columns: ["assigned_interpreter_id"]
-            isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -260,13 +253,6 @@ export type Database = {
             foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
             columns: ["interpreter_id"]
             isOneToOne: true
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "interpreter_connection_status_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: true
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -302,13 +288,6 @@ export type Database = {
           target_language?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "interpreter_languages_interpreter_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
           {
             foreignKeyName: "interpreter_languages_interpreter_id_fkey"
             columns: ["interpreter_id"]
@@ -460,6 +439,66 @@ export type Database = {
           },
         ]
       }
+      private_reservations: {
+        Row: {
+          commentary: string | null
+          created_at: string
+          created_by: string
+          duration_minutes: number
+          end_time: string
+          id: string
+          interpreter_id: string
+          source_language: string
+          start_time: string
+          status: Database["public"]["Enums"]["private_reservation_status"]
+          target_language: string
+          updated_at: string
+        }
+        Insert: {
+          commentary?: string | null
+          created_at?: string
+          created_by: string
+          duration_minutes: number
+          end_time: string
+          id?: string
+          interpreter_id: string
+          source_language: string
+          start_time: string
+          status?: Database["public"]["Enums"]["private_reservation_status"]
+          target_language: string
+          updated_at?: string
+        }
+        Update: {
+          commentary?: string | null
+          created_at?: string
+          created_by?: string
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          interpreter_id?: string
+          source_language?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["private_reservation_status"]
+          target_language?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "private_reservations_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "private_reservations_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "interpreters_with_next_mission"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       secrets: {
         Row: {
           created_at: string
@@ -527,6 +566,7 @@ export type Database = {
           interpreter_last_name: string | null
           interpreter_status: string | null
           mission_id: string | null
+          mission_type: string | null
           profile_picture_url: string | null
           scheduled_end_time: string | null
           scheduled_start_time: string | null
@@ -534,15 +574,7 @@ export type Database = {
           status: string | null
           target_language: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "interpreter_profiles_id_fkey"
-            columns: ["interpreter_id"]
-            isOneToOne: true
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       interpreters_with_next_mission: {
         Row: {
@@ -618,13 +650,6 @@ export type Database = {
             foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
             columns: ["assigned_interpreter_id"]
             isOneToOne: false
-            referencedRelation: "calendar_missions"
-            referencedColumns: ["interpreter_id"]
-          },
-          {
-            foreignKeyName: "interpretation_missions_assigned_interpreter_id_fkey"
-            columns: ["assigned_interpreter_id"]
-            isOneToOne: false
             referencedRelation: "interpreter_profiles"
             referencedColumns: ["id"]
           },
@@ -651,6 +676,15 @@ export type Database = {
           data: string
         }
         Returns: string
+      }
+      check_interpreter_availability: {
+        Args: {
+          p_interpreter_id: string
+          p_start_time: string
+          p_end_time: string
+          p_exclude_reservation_id?: string
+        }
+        Returns: boolean
       }
       get_available_channel_users: {
         Args: {
@@ -942,6 +976,7 @@ export type Database = {
         | "financial"
         | "diplomatic"
       notification_subscription_status: "active" | "unsubscribed" | "blocked"
+      private_reservation_status: "scheduled" | "completed" | "cancelled"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }
