@@ -28,12 +28,15 @@ export const AdminLoginForm = () => {
 
       if (signInError) throw signInError;
 
-      // After successful sign in, check if user is an admin
-      const { data: isAdmin, error: roleCheckError } = await supabase.rpc('is_admin');
+      // After successful sign in, check if user is an admin using the database function
+      const { data, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('role', 'admin')
+        .eq('active', true)
+        .single();
       
-      if (roleCheckError) throw roleCheckError;
-
-      if (!isAdmin) {
+      if (roleError || !data) {
         // If not admin, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
