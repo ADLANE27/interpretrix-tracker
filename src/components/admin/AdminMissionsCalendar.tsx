@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
+import { format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock, User, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils"; // Add this import for the cn utility
+import { cn } from "@/lib/utils";
 
 interface CalendarMission {
   mission_id: string;
@@ -27,7 +27,7 @@ interface CalendarMission {
   interpreter_last_name: string;
   interpreter_status: string;
   profile_picture_url: string | null;
-  mission_type: string; // Add this property to the interface
+  mission_type: string;
 }
 
 type ViewMode = 'month' | 'week' | 'day';
@@ -49,8 +49,22 @@ export const AdminMissionsCalendar = () => {
 
       if (error) throw error;
       
-      console.log('[AdminMissionsCalendar] Fetched missions:', data);
-      setMissions(data);
+      const localizedMissions = data.map(mission => ({
+        ...mission,
+        scheduled_start_time: formatInTimeZone(
+          new Date(mission.scheduled_start_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        ),
+        scheduled_end_time: formatInTimeZone(
+          new Date(mission.scheduled_end_time),
+          userTimeZone,
+          "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+        )
+      }));
+      
+      console.log('[AdminMissionsCalendar] Fetched missions:', localizedMissions);
+      setMissions(localizedMissions);
     } catch (error) {
       console.error('[AdminMissionsCalendar] Error fetching missions:', error);
       toast({
@@ -98,25 +112,21 @@ export const AdminMissionsCalendar = () => {
         const weekStart = startOfWeek(selectedDate, { locale: fr });
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
-          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+          const missionDate = new Date(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
       }
       case 'day':
-        return missions.filter(mission => {
-          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
-          return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
-        });
       default: // month
         return missions.filter(mission => {
-          const missionDate = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
+          const missionDate = new Date(mission.scheduled_start_time);
           return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
         });
     }
   };
 
   const datesWithMissions = missions
-    .map((mission) => startOfDay(toZonedTime(new Date(mission.scheduled_start_time), userTimeZone)))
+    .map((mission) => startOfDay(new Date(mission.scheduled_start_time)))
     .filter((date): date is Date => date !== null);
 
   const visibleMissions = getVisibleMissions();
@@ -175,8 +185,8 @@ export const AdminMissionsCalendar = () => {
               </p>
             ) : (
               visibleMissions.map((mission) => {
-                const startTime = toZonedTime(new Date(mission.scheduled_start_time), userTimeZone);
-                const endTime = toZonedTime(new Date(mission.scheduled_end_time), userTimeZone);
+                const startTime = new Date(mission.scheduled_start_time);
+                const endTime = new Date(mission.scheduled_end_time);
                 const isPrivate = mission.mission_type === 'private';
 
                 return (
