@@ -124,11 +124,12 @@ export const UserManagement = () => {
 
         if (rolesError) throw rolesError;
 
-        // Get admin users
-        const { data: adminData, error: adminError } = await supabase
-          .from('admin_profiles')
-          .select('*');
-
+        // Get all admin users from user_roles
+        const adminRoles = userRoles?.filter(role => role.role === 'admin') || [];
+        
+        // Get admin user details from auth.users
+        const { data: adminUsers, error: adminError } = await supabase.auth.admin.listUsers();
+        
         if (adminError) throw adminError;
 
         // Get interpreter users
@@ -144,16 +145,21 @@ export const UserManagement = () => {
           return acc;
         }, {});
 
-        // Format admin data
-        const admins = (adminData || []).map(admin => ({
-          id: admin.id,
-          email: admin.email,
-          first_name: admin.first_name || '',
-          last_name: admin.last_name || '',
-          role: 'admin',
-          created_at: admin.created_at,
-          active: roleMap[admin.id]?.active ?? false
-        }));
+        // Format admin data by matching auth users with admin roles
+        const admins = adminRoles.map(role => {
+          const authUser = adminUsers?.users.find(user => user.id === role.user_id);
+          if (!authUser) return null;
+          
+          return {
+            id: authUser.id,
+            email: authUser.email || '',
+            first_name: authUser.user_metadata?.first_name || '',
+            last_name: authUser.user_metadata?.last_name || '',
+            role: 'admin',
+            created_at: authUser.created_at,
+            active: roleMap[authUser.id]?.active ?? false
+          };
+        }).filter((admin): admin is UserData => admin !== null);
 
         // Format interpreter data
         const interpreters = (interpreterData || []).map(interpreter => ({
