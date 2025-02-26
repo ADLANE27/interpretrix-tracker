@@ -62,8 +62,18 @@ export const UserManagement = () => {
     queryKey: ["users"],
     queryFn: async () => {
       try {
-        console.log("[UserManagement] Starting to fetch users data");
-        
+        const { data: { session }} = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("No authenticated session found");
+        }
+
+        // First verify admin status
+        const { data: isAdmin } = await supabase.rpc('check_is_admin');
+        if (!isAdmin) {
+          throw new Error("User does not have admin privileges");
+        }
+
+        // Fetch interpreter profiles
         const { data: interpreterProfiles, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
@@ -73,8 +83,7 @@ export const UserManagement = () => {
           throw interpreterError;
         }
 
-        console.log('[UserManagement] Fetched interpreter profiles:', interpreterProfiles);
-
+        // Fetch admin roles
         const { data: adminRoles, error: adminError } = await supabase
           .from('user_roles')
           .select('user_id, active')
@@ -85,31 +94,26 @@ export const UserManagement = () => {
           throw adminError;
         }
 
-        console.log('[UserManagement] Fetched admin roles:', adminRoles);
-
+        // Process interpreter data
         const interpreterUsers: InterpreterData[] = (interpreterProfiles || []).map(profile => ({
           id: profile.id,
           email: profile.email || '',
           first_name: profile.first_name || '',
           last_name: profile.last_name || '',
           active: true,
-          languages: profile.languages || [],
+          languages: Array.isArray(profile.languages) ? profile.languages : [],
           status: (profile.status || 'unavailable') as InterpreterStatus,
           tarif_15min: profile.tarif_15min || 0,
           tarif_5min: profile.tarif_5min || 0,
           employment_status: profile.employment_status
         }));
 
-        console.log('[UserManagement] Processed interpreter users:', interpreterUsers);
-
+        // Process admin data
         const adminUsers: AdminData[] = await Promise.all(
-          adminRoles.map(async (role) => {
+          (adminRoles || []).map(async (role) => {
             try {
               const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
-              if (authError) {
-                console.error('[UserManagement] Auth error for user:', role.user_id, authError);
-                throw authError;
-              }
+              if (authError) throw authError;
               
               return {
                 id: role.user_id,
@@ -120,25 +124,29 @@ export const UserManagement = () => {
               };
             } catch (err) {
               console.error(`[UserManagement] Error processing admin ${role.user_id}:`, err);
-              throw err;
+              return {
+                id: role.user_id,
+                email: 'Error loading user',
+                first_name: '',
+                last_name: '',
+                active: false
+              };
             }
           })
         );
 
-        console.log('[UserManagement] Processed admin users:', adminUsers);
-
         return {
           interpreters: interpreterUsers,
-          admins: adminUsers
+          admins: adminUsers.filter(admin => admin.email !== 'Error loading user')
         };
       } catch (err) {
         console.error('[UserManagement] Error in query function:', err);
         throw err;
       }
     },
-    retry: 3,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
+    retry: 1, // Only retry once since we're dealing with auth
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   const handleAddAdmin = async (formData: AdminFormData) => {
@@ -164,10 +172,7 @@ export const UserManagement = () => {
         }
       });
 
-      if (error) {
-        console.error("Edge function error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Administrateur créé",
@@ -257,10 +262,7 @@ export const UserManagement = () => {
         .delete()
         .eq('user_id', userId);
 
-      if (roleError) {
-        console.error("Error deleting user roles:", roleError);
-        throw roleError;
-      }
+      if (roleError) throw roleError;
 
       const { error: profileError } = await supabase
         .from('interpreter_profiles')
