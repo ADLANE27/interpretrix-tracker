@@ -126,21 +126,24 @@ export const UserManagement = () => {
                 employment_status: profile.employment_status
               };
             } else {
-              // Pour les administrateurs
-              const { data: userInfo, error } = await supabase.auth.admin.getUserById(
-                userRole.user_id
-              );
+              // Pour les administrateurs, utiliser la nouvelle table admin_profiles
+              const { data: adminProfile, error: adminError } = await supabase
+                .from('admin_profiles')
+                .select('*')
+                .eq('id', userRole.user_id)
+                .single();
 
-              if (error) throw error;
+              if (adminError) {
+                console.error('Error fetching admin profile:', adminError);
+                throw adminError;
+              }
 
-              const metadata = userInfo.user.user_metadata || {};
-              
               return {
                 id: userRole.user_id,
-                email: userInfo.user.email || "",
+                email: adminProfile.email,
                 role: userRole.role,
-                first_name: metadata.first_name || "",
-                last_name: metadata.last_name || "",
+                first_name: adminProfile.first_name,
+                last_name: adminProfile.last_name,
                 active: userRole.active,
                 languages: [],
                 status: 'unavailable',
