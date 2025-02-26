@@ -45,7 +45,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
 
   const filteredAdmins = admins.filter((admin) => {
     const searchTerm = searchQuery.toLowerCase().trim();
-    if (!searchTerm) return false; // Ne rien afficher si la recherche est vide
+    if (searchTerm === '') return false; // Ne rien afficher si la recherche est vide
 
     return (
       admin.first_name?.toLowerCase().includes(searchTerm) ||
@@ -53,6 +53,8 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
       admin.email?.toLowerCase().includes(searchTerm)
     );
   });
+
+  console.log('Recherche:', searchQuery, 'Résultats:', filteredAdmins); // Pour déboguer
 
   return (
     <Card className="mt-6">
