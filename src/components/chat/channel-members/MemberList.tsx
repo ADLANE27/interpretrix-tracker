@@ -1,6 +1,9 @@
 
 import { UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Member {
   user_id: string;
@@ -12,12 +15,71 @@ interface Member {
 }
 
 interface MemberListProps {
-  members: Member[];
-  onRemoveMember: (member: Member) => void;
+  channelId: string;
+  channelType: 'group' | 'direct';
+  userRole: 'admin' | 'interpreter';
 }
 
-export const MemberList = ({ members, onRemoveMember }: MemberListProps) => {
-  if (!members.length) return null;
+export const MemberList = ({ channelId, channelType, userRole }: MemberListProps) => {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_channel_members', {
+          channel_id: channelId
+        });
+
+        if (error) throw error;
+        setMembers(data || []);
+      } catch (error) {
+        console.error('Error fetching members:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les membres",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, [channelId]);
+
+  const handleRemoveMember = async (member: Member) => {
+    try {
+      const { error } = await supabase
+        .from('channel_members')
+        .delete()
+        .eq('channel_id', channelId)
+        .eq('user_id', member.user_id);
+
+      if (error) throw error;
+
+      setMembers(prev => prev.filter(m => m.user_id !== member.user_id));
+      toast({
+        title: "Succès",
+        description: "Membre retiré du canal"
+      });
+    } catch (error) {
+      console.error('Error removing member:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de retirer le membre",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center text-muted-foreground">Chargement...</div>;
+  }
+
+  if (!members.length) {
+    return <div className="text-center text-muted-foreground">Aucun membre</div>;
+  }
 
   return (
     <div>
@@ -36,13 +98,15 @@ export const MemberList = ({ members, onRemoveMember }: MemberListProps) => {
                 {member.email} ({member.role})
               </p>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onRemoveMember(member)}
-            >
-              <UserMinus className="h-4 w-4" />
-            </Button>
+            {userRole === 'admin' && channelType === 'group' && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleRemoveMember(member)}
+              >
+                <UserMinus className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ))}
       </div>
