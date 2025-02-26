@@ -21,7 +21,7 @@ export const InterpreterLoginForm = () => {
 
     try {
       // First attempt to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -29,17 +29,30 @@ export const InterpreterLoginForm = () => {
       if (signInError) throw signInError;
 
       // Check if user has interpreter role and is active
-      const { data, error: roleError } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
+        .eq('user_id', signInData.user.id)
         .eq('role', 'interpreter')
         .eq('active', true)
         .single();
-      
-      if (roleError || !data) {
+
+      if (roleError || !roleData) {
         // If not interpreter, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
+      }
+
+      // Check if interpreter profile exists and password has been changed
+      const { data: interpreterData, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
+        .select('password_changed')
+        .eq('id', signInData.user.id)
+        .single();
+
+      if (interpreterError || !interpreterData) {
+        await supabase.auth.signOut();
+        throw new Error("Profil d'interprète introuvable.");
       }
 
       // If all checks pass, show success and navigate
@@ -51,13 +64,13 @@ export const InterpreterLoginForm = () => {
       navigate("/interpreter");
     } catch (error: any) {
       console.error("Login error:", error);
-      
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
-      
+      await supabase.auth.signOut();
+    } finally {
       setIsLoading(false);
     }
   };

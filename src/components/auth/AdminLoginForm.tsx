@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +20,7 @@ export const AdminLoginForm = () => {
 
     try {
       // First attempt to sign in
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -29,9 +28,7 @@ export const AdminLoginForm = () => {
       if (signInError) throw signInError;
 
       // Call the is-admin edge function to verify admin status
-      const { data, error: adminCheckError } = await supabase.functions.invoke('is-admin', {
-        body: { user_id: signInData.user.id }
-      });
+      const { data, error: adminCheckError } = await supabase.functions.invoke('is-admin');
 
       if (adminCheckError) throw adminCheckError;
 
@@ -50,15 +47,12 @@ export const AdminLoginForm = () => {
       navigate("/admin");
     } catch (error: any) {
       console.error("Login error:", error);
-      
-      // Ensure we're signed out in case of any error
-      await supabase.auth.signOut();
-      
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
+      await supabase.auth.signOut();
     } finally {
       setIsLoading(false);
     }
