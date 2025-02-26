@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,11 +48,23 @@ export const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const { data: users = [], refetch, isLoading } = useQuery({
+  const { data: users = [], refetch, isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       try {
-        // Get admin users
+        // First, get all user_roles to ensure we have access
+        const { data: userRoles, error: userRolesError } = await supabase
+          .from('user_roles')
+          .select('*');
+
+        if (userRolesError) {
+          console.error('Error fetching user roles:', userRolesError);
+          throw userRolesError;
+        }
+
+        console.log('User roles fetched:', userRoles);
+
+        // Get admin users with their roles
         const { data: adminData, error: adminError } = await supabase
           .from('admin_profiles')
           .select(`
@@ -60,19 +73,20 @@ export const UserManagement = () => {
             first_name,
             last_name,
             created_at,
-            user_roles!inner (
+            user_roles (
               role,
               active
             )
-          `)
-          .order('created_at', { ascending: false });
+          `);
 
         if (adminError) {
           console.error('Error fetching admins:', adminError);
           throw adminError;
         }
 
-        // Get interpreter users
+        console.log('Admin data fetched:', adminData);
+
+        // Get interpreter users with their roles
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select(`
@@ -81,39 +95,48 @@ export const UserManagement = () => {
             first_name,
             last_name,
             created_at,
-            user_roles!inner (
+            user_roles (
               role,
               active
             )
-          `)
-          .order('created_at', { ascending: false });
+          `);
 
         if (interpreterError) {
           console.error('Error fetching interpreters:', interpreterError);
           throw interpreterError;
         }
 
+        console.log('Interpreter data fetched:', interpreterData);
+
         // Format admin data
-        const admins = (adminData || []).map((admin: any) => ({
-          id: admin.id,
-          email: admin.email,
-          first_name: admin.first_name || '',
-          last_name: admin.last_name || '',
-          role: 'admin',
-          created_at: admin.created_at,
-          active: admin.user_roles[0]?.active ?? false
-        }));
+        const admins = (adminData || []).map((admin: any) => {
+          const userData = {
+            id: admin.id,
+            email: admin.email,
+            first_name: admin.first_name || '',
+            last_name: admin.last_name || '',
+            role: 'admin',
+            created_at: admin.created_at,
+            active: admin.user_roles?.[0]?.active ?? false
+          };
+          console.log('Formatted admin:', userData);
+          return userData;
+        });
 
         // Format interpreter data
-        const interpreters = (interpreterData || []).map((interpreter: any) => ({
-          id: interpreter.id,
-          email: interpreter.email,
-          first_name: interpreter.first_name || '',
-          last_name: interpreter.last_name || '',
-          role: 'interpreter',
-          created_at: interpreter.created_at,
-          active: interpreter.user_roles[0]?.active ?? false
-        }));
+        const interpreters = (interpreterData || []).map((interpreter: any) => {
+          const userData = {
+            id: interpreter.id,
+            email: interpreter.email,
+            first_name: interpreter.first_name || '',
+            last_name: interpreter.last_name || '',
+            role: 'interpreter',
+            created_at: interpreter.created_at,
+            active: interpreter.user_roles?.[0]?.active ?? false
+          };
+          console.log('Formatted interpreter:', userData);
+          return userData;
+        });
 
         // Sort all users by creation date
         const allUsers = [...admins, ...interpreters].sort((a, b) => 
@@ -132,7 +155,8 @@ export const UserManagement = () => {
   const filteredUsers = users.filter(user => {
     const searchTerm = searchQuery.toLowerCase().trim();
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
-    return fullName.includes(searchTerm) || user.email.toLowerCase().includes(searchTerm);
+    const email = user.email.toLowerCase();
+    return fullName.includes(searchTerm) || email.includes(searchTerm);
   });
 
   const handleDeleteUser = async (userId: string) => {
@@ -202,6 +226,15 @@ export const UserManagement = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (error) {
+    console.error('Query error:', error);
+    return (
+      <div className="p-4 text-red-500">
+        Erreur lors du chargement des utilisateurs. Veuillez réessayer.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
