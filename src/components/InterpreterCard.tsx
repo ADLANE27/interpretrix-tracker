@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
-import { format, formatInTimeZone } from "date-fns";
+import { format } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
