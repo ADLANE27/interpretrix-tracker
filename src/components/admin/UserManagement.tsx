@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -173,15 +172,36 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      const { error } = await supabase.functions.invoke('send-admin-invitation', {
-        body: formData,
+      // Create the user in auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password || Math.random().toString(36).slice(-8),
+        email_confirm: true,
+        user_metadata: {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+        },
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error("No user data returned");
+      }
+
+      // Create admin role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: "admin",
+        });
+
+      if (roleError) throw roleError;
 
       toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'administrateur",
+        title: "Administrateur créé",
+        description: "Le compte administrateur a été créé avec succès",
       });
 
       setIsAddAdminOpen(false);
@@ -202,37 +222,78 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
-      const languageStrings = convertLanguagePairsToStrings(formData.languages);
+      // Create the user in auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password || Math.random().toString(36).slice(-8),
+        email_confirm: true,
+        user_metadata: {
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+        },
+      });
 
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error("No user data returned");
+      }
+
+      // Create interpreter role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          user_id: authData.user.id,
+          role: "interpreter",
+        });
+
+      if (roleError) throw roleError;
+
+      const languageStrings = convertLanguagePairsToStrings(formData.languages);
       const addressJson = formData.address ? {
         street: formData.address.street,
         postal_code: formData.address.postal_code,
         city: formData.address.city,
       } : null;
 
-      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
-        body: {
-          ...formData,
-          role: "interpreter",
+      // Create interpreter profile
+      const { error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .insert({
+          id: authData.user.id,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
+          employment_status: formData.employment_status,
           languages: languageStrings,
           address: addressJson,
-        },
-      });
+          phone_number: formData.phone_number,
+          birth_country: formData.birth_country,
+          nationality: formData.nationality,
+          phone_interpretation_rate: formData.phone_interpretation_rate,
+          siret_number: formData.siret_number,
+          vat_number: formData.vat_number,
+          specializations: formData.specializations,
+          landline_phone: formData.landline_phone,
+          tarif_15min: formData.tarif_15min,
+          tarif_5min: formData.tarif_5min,
+          password_changed: false,
+        });
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'utilisateur",
+        title: "Interprète créé",
+        description: "Le compte interprète a été créé avec succès",
       });
 
       setIsAddUserOpen(false);
       refetch();
     } catch (error: any) {
-      console.error("Error adding user:", error);
+      console.error("Error adding interpreter:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter l'utilisateur: " + error.message,
+        description: "Impossible d'ajouter l'interprète: " + error.message,
         variant: "destructive",
       });
     } finally {
