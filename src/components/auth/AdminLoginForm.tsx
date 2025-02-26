@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,20 +16,23 @@ export const AdminLoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // First attempt login
+      const { error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (loginError) throw loginError;
 
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+      // Check if user is admin using RPC function
+      const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
+        user_id: (await supabase.auth.getUser()).data.user?.id
+      });
 
-      if (roles?.role !== 'admin') {
+      if (adminCheckError) throw adminCheckError;
+
+      if (!isAdmin) {
+        // If not admin, sign out and show error
         await supabase.auth.signOut();
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
       }
@@ -40,6 +44,7 @@ export const AdminLoginForm = () => {
       
       navigate("/admin");
     } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Erreur de connexion",
         description: error.message,
