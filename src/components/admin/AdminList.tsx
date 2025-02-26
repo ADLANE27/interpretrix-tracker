@@ -54,10 +54,6 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
     );
   });
 
-  // Déboguer les données reçues et filtrées
-  console.log('Admins disponibles:', admins);
-  console.log('Recherche:', searchQuery, 'Résultats:', filteredAdmins);
-
   return (
     <Card className="mt-6">
       <CardHeader>
