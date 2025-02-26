@@ -51,7 +51,7 @@ serve(async (req) => {
 
     console.log('Creating admin user:', { email, first_name, last_name })
 
-    // Create the user
+    // Create the user with email confirmation disabled (since we're creating an admin)
     const { data: { user }, error: createUserError } = await supabaseClient.auth.admin.createUser({
       email,
       password: generatedPassword,
@@ -64,45 +64,6 @@ serve(async (req) => {
 
     if (createUserError) {
       console.error('Error creating user:', createUserError)
-      // Check if it's a duplicate email error
-      if (createUserError.message.includes('already been registered')) {
-        // Get the existing user
-        const { data: { users } } = await supabaseClient.auth.admin.listUsers({
-          filters: {
-            email: email
-          }
-        })
-        
-        if (users && users.length > 0) {
-          const existingUser = users[0]
-          console.log('User exists, adding admin role:', existingUser.id)
-          
-          // Add admin role to existing user
-          const { error: roleError } = await supabaseClient
-            .from('user_roles')
-            .insert({
-              user_id: existingUser.id,
-              role: 'admin',
-              active: true
-            })
-
-          if (roleError) {
-            console.error('Error adding admin role to existing user:', roleError)
-            throw new Error('Impossible d\'attribuer le rôle administrateur à cet utilisateur')
-          }
-
-          return new Response(
-            JSON.stringify({ 
-              message: 'Rôle administrateur ajouté avec succès à l\'utilisateur existant',
-              userId: existingUser.id 
-            }),
-            {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200,
-            },
-          )
-        }
-      }
       throw createUserError
     }
 
@@ -129,26 +90,6 @@ serve(async (req) => {
     }
 
     console.log('Admin role assigned successfully')
-
-    // Send welcome email with credentials
-    try {
-      const { error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
-        body: {
-          email,
-          password: generatedPassword,
-          first_name,
-        },
-      })
-
-      if (emailError) {
-        console.error('Error sending welcome email:', emailError)
-        // Don't throw here, as the user is already created
-        // Just log the error and continue
-      }
-    } catch (emailError) {
-      console.error('Error invoking send-welcome-email function:', emailError)
-      // Continue despite email error
-    }
 
     return new Response(
       JSON.stringify({ 
