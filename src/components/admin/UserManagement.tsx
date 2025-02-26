@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,12 +83,17 @@ export const UserManagement = () => {
       console.log("Admin roles found:", adminData);
 
       // Récupérer les informations des utilisateurs admin depuis auth.users
-      const admins = await Promise.all(
+      const admins: AdminUser[] = await Promise.all(
         adminData.map(async (role) => {
           const { data: userData, error: userError } = await supabase.auth.admin.getUserById(role.user_id);
           
           if (userError) {
             console.error("Error fetching user data:", userError);
+            return null;
+          }
+
+          if (!userData) {
+            console.error("No user data found for ID:", role.user_id);
             return null;
           }
 
@@ -100,7 +106,7 @@ export const UserManagement = () => {
             active: role.active
           };
         })
-      );
+      ).then(results => results.filter((user): user is AdminUser => user !== null));
 
       // Récupérer les interprètes
       const { data: interpreterRoles } = await supabase
