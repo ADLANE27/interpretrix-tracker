@@ -133,23 +133,27 @@ export const UserManagement = () => {
               };
             } else {
               // Pour les administrateurs
-              const { data: profile, error: profileError } = await supabase
-                .from('auth.users')
-                .select('email, raw_user_meta_data')
+              const { data: adminProfile, error: adminError } = await supabase
+                .from('admin_profiles')
+                .select('email, first_name, last_name')
                 .eq('id', userRole.user_id)
                 .single();
 
-              if (profileError) {
-                console.error('Error fetching admin profile:', profileError);
-                throw profileError;
+              if (adminError) {
+                console.error('Error fetching admin profile:', adminError);
+                if (adminError.code === 'PGRST116') {
+                  // Si le profil n'existe pas, on retourne null pour le filtrer plus tard
+                  return null;
+                }
+                throw adminError;
               }
 
               return {
                 id: userRole.user_id,
-                email: profile.email,
+                email: adminProfile.email,
                 role: userRole.role,
-                first_name: profile.raw_user_meta_data?.first_name || '',
-                last_name: profile.raw_user_meta_data?.last_name || '',
+                first_name: adminProfile.first_name || '',
+                last_name: adminProfile.last_name || '',
                 active: userRole.active,
                 languages: [],
                 status: 'unavailable',
