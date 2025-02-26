@@ -92,84 +92,53 @@ export const UserManagement = () => {
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
       
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role, active");
+      const { data: interpreterProfiles, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
+        .select('*');
 
-      if (rolesError) {
-        console.error("Error fetching user roles:", rolesError);
-        throw rolesError;
-      }
+      if (interpreterError) throw interpreterError;
 
-      console.log("[UserManagement] Fetched user roles:", userRoles);
+      const { data: adminRoles, error: adminError } = await supabase
+        .from('user_roles')
+        .select('user_id, active')
+        .eq('role', 'admin');
 
-      const allUsers = await Promise.all(
-        userRoles.map(async (userRole) => {
-          try {
-            // Get interpreter profile data if it exists
-            const { data: interpreterProfile, error: interpreterError } = await supabase
-              .from('interpreter_profiles')
-              .select('*')
-              .eq('id', userRole.user_id)
-              .maybeSingle();
+      if (adminError) throw adminError;
 
-            if (interpreterError) {
-              console.error("Error fetching interpreter profile:", interpreterError);
-              throw interpreterError;
-            }
+      const interpreterUsers: UserData[] = (interpreterProfiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email || '',
+        role: 'interpreter',
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        active: true,
+        languages: profile.languages || [],
+        status: (profile.status || 'unavailable') as InterpreterStatus,
+        tarif_15min: profile.tarif_15min || 0,
+        tarif_5min: profile.tarif_5min || 0,
+        employment_status: profile.employment_status as EmploymentStatus
+      }));
 
-            // If interpreter profile exists, use that data
-            if (interpreterProfile) {
-              console.log("[UserManagement] Found interpreter profile:", interpreterProfile);
-              return {
-                id: userRole.user_id,
-                email: interpreterProfile.email,
-                role: userRole.role as UserRole,
-                first_name: interpreterProfile.first_name,
-                last_name: interpreterProfile.last_name,
-                active: userRole.active || false,
-                languages: interpreterProfile.languages || [],
-                status: (interpreterProfile.status || 'unavailable') as InterpreterStatus,
-                tarif_15min: interpreterProfile.tarif_15min || 0,
-                tarif_5min: interpreterProfile.tarif_5min || 0,
-                employment_status: interpreterProfile.employment_status as EmploymentStatus
-              } satisfies UserData;
-            }
+      const adminUsers = await Promise.all(adminRoles.map(async (role) => {
+        const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
+        if (authError) throw authError;
+        
+        return {
+          id: role.user_id,
+          email: user?.email || '',
+          role: 'admin' as const,
+          first_name: user?.user_metadata?.first_name || '',
+          last_name: user?.user_metadata?.last_name || '',
+          active: role.active || false,
+          languages: [],
+          status: 'unavailable' as const,
+          tarif_15min: 0,
+          tarif_5min: 0,
+          employment_status: 'salaried_aft' as const
+        };
+      }));
 
-            // For admin users, we can't use auth.admin - use metadata from user_metadata instead
-            const { data: authUser, error: authError } = await supabase.auth
-              .getUser(userRole.user_id);
-
-            if (authError) {
-              console.error("Error fetching auth user:", authError);
-              throw authError;
-            }
-
-            const user = authUser?.user;
-            console.log("[UserManagement] Found admin user:", user);
-            
-            return {
-              id: userRole.user_id,
-              email: user?.email || "",
-              role: userRole.role as UserRole,
-              first_name: user?.user_metadata?.first_name || "",
-              last_name: user?.user_metadata?.last_name || "",
-              active: userRole.active || false,
-              languages: [],
-              status: 'unavailable' as InterpreterStatus,
-              tarif_15min: 0,
-              tarif_5min: 0,
-              employment_status: 'salaried_aft' as EmploymentStatus
-            } satisfies UserData;
-          } catch (error) {
-            console.error('Error fetching user info:', error);
-            throw error;
-          }
-        })
-      );
-
-      console.log("[UserManagement] Final users data:", allUsers);
-      return allUsers;
+      return [...interpreterUsers, ...adminUsers];
     },
     retry: 3,
     staleTime: Infinity,
