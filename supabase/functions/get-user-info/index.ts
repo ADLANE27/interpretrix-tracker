@@ -18,11 +18,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Get the JWT token from the request headers
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
 
+    // Get user from the token
     const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
@@ -34,7 +36,7 @@ serve(async (req) => {
     // Get user role
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
-      .select('role, active')
+      .select('role')
       .eq('user_id', user.id)
       .single()
 
@@ -42,8 +44,8 @@ serve(async (req) => {
       throw roleError
     }
 
-    // Get additional profile info if interpreter
-    let profile = null
+    // Get additional user info based on role
+    let additionalInfo = null
     if (roleData.role === 'interpreter') {
       const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
@@ -51,21 +53,20 @@ serve(async (req) => {
         .eq('id', user.id)
         .single()
 
-      if (!interpreterError) {
-        profile = interpreterData
+      if (interpreterError) {
+        throw interpreterError
       }
+      additionalInfo = interpreterData
     }
-
-    console.log('Raw user data:', JSON.stringify(user, null, 2))
 
     return new Response(
       JSON.stringify({
-        id: user.id,
-        email: user.email,
-        role: roleData.role,
-        active: roleData.active,
-        profile,
-        metadata: user.user_metadata
+        user: {
+          id: user.id,
+          email: user.email,
+          role: roleData.role,
+          ...additionalInfo
+        }
       }),
       { 
         headers: { 
