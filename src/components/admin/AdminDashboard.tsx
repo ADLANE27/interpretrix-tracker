@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -230,7 +231,8 @@ export const AdminDashboard = () => {
   return (
     <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full">
-        <div className="flex justify-between items-center mb-4 sticky top-0 bg-background z-10 py-4 px-6">
+        {/* Fixed header */}
+        <div className="flex justify-between items-center sticky top-0 bg-background z-10 py-4 px-6 border-b">
           {isMobile ? (
             <div className="flex items-center gap-4 w-full">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -274,14 +276,16 @@ export const AdminDashboard = () => {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6">
-          <TabsContent value="interpreters" className="h-full">
-            <div className="space-y-6 pb-16">
-              <div className="mb-4">
-                <h2 className="text-2xl font-bold">Liste des interprètes</h2>
+        {/* Scrollable content area */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <TabsContent value="interpreters" className="h-full overflow-auto px-6">
+            <div className="space-y-6 py-6">
+              <div>
+                <h2 className="text-2xl font-bold mb-6">Liste des interprètes</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Filters section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sticky top-0 bg-background z-10 pb-4">
                 <div className="space-y-2">
                   <Label htmlFor="name-search">Nom</Label>
                   <div className="relative">
@@ -366,6 +370,7 @@ export const AdminDashboard = () => {
 
               <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
 
+              {/* Interpreter cards grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredInterpreters.map(interpreter => (
                   <InterpreterCard key={interpreter.id} interpreter={{
@@ -385,32 +390,33 @@ export const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="missions">
+          <TabsContent value="missions" className="h-full overflow-auto px-6">
             <MissionManagement />
           </TabsContent>
 
-          <TabsContent value="calendar">
+          <TabsContent value="calendar" className="h-full overflow-auto px-6">
             <AdminMissionsCalendar />
           </TabsContent>
 
-          <TabsContent value="messages">
+          <TabsContent value="messages" className="h-full overflow-auto px-6">
             <MessagesTab />
           </TabsContent>
 
-          <TabsContent value="users">
+          <TabsContent value="users" className="h-full overflow-auto px-6">
             <UserManagement />
           </TabsContent>
 
-          <TabsContent value="reservations">
+          <TabsContent value="reservations" className="h-full overflow-auto px-6">
             <ReservationsTab />
           </TabsContent>
 
-          <TabsContent value="guide">
+          <TabsContent value="guide" className="h-full overflow-auto px-6">
             <AdminGuideContent />
           </TabsContent>
         </div>
 
-        <footer className="py-4 text-center text-sm text-gray-500 border-t px-6">
+        {/* Fixed footer */}
+        <footer className="py-4 text-center text-sm text-gray-500 border-t px-6 bg-background">
           © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
       </Tabs>
