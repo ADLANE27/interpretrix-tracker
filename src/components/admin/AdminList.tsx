@@ -45,16 +45,18 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
 
   const filteredAdmins = admins.filter((admin) => {
     const searchTerm = searchQuery.toLowerCase().trim();
-    if (searchTerm === '') return false; // Ne rien afficher si la recherche est vide
+    if (searchTerm === '') return false;
 
+    const fullName = `${admin.first_name} ${admin.last_name}`.toLowerCase();
     return (
-      admin.first_name?.toLowerCase().includes(searchTerm) ||
-      admin.last_name?.toLowerCase().includes(searchTerm) ||
-      admin.email?.toLowerCase().includes(searchTerm)
+      fullName.includes(searchTerm) ||
+      admin.email.toLowerCase().includes(searchTerm)
     );
   });
 
-  console.log('Recherche:', searchQuery, 'Résultats:', filteredAdmins); // Pour déboguer
+  // Déboguer les données reçues et filtrées
+  console.log('Admins disponibles:', admins);
+  console.log('Recherche:', searchQuery, 'Résultats:', filteredAdmins);
 
   return (
     <Card className="mt-6">
