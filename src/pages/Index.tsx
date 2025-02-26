@@ -24,32 +24,31 @@ const Index = () => {
           return;
         }
 
-        const { data: roles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (rolesError) {
-          console.error("Error fetching user role:", rolesError);
+        // Get user's active role using our new RPC function
+        const { data: role, error: roleError } = await supabase
+          .rpc('get_user_active_role');
+
+        if (roleError) {
+          console.error("Error fetching user role:", roleError);
           toast({
-            title: "Erreur",
-            description: "Impossible de vérifier vos permissions",
+            title: "Erreur de vérification",
+            description: "Impossible de vérifier vos permissions. Veuillez vous reconnecter.",
             variant: "destructive",
           });
+          // Sign out user if we can't verify their role
+          await supabase.auth.signOut();
           setLoading(false);
           return;
         }
 
-        setUserRole(roles?.role || null);
+        setUserRole(role);
       } catch (error) {
         console.error("Auth check error:", error);
         toast({
           title: "Erreur d'authentification",
-          description: "Veuillez vous reconnecter",
+          description: "Une erreur est survenue lors de la vérification de vos permissions",
           variant: "destructive",
         });
-        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -116,8 +115,21 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50">
       {userRole === 'admin' ? (
         <AdminDashboard />
-      ) : (
+      ) : userRole === 'interpreter' ? (
         <InterpreterDashboard />
+      ) : (
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-4">Rôle non reconnu</h2>
+            <p className="text-gray-600 mb-4">Votre compte n'a pas les permissions nécessaires.</p>
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Se déconnecter
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
