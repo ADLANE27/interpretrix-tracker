@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,20 +24,26 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
-type UserRole = "admin" | "interpreter";
 
-interface UserData {
+interface AdminData {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   active: boolean;
-  role: UserRole;
-  languages?: string[];
-  status?: InterpreterStatus;
-  tarif_15min?: number;
-  tarif_5min?: number;
-  employment_status?: EmploymentStatus;
+}
+
+interface InterpreterData {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  active: boolean;
+  languages: string[];
+  status: InterpreterStatus;
+  tarif_15min: number;
+  tarif_5min: number;
+  employment_status: EmploymentStatus;
 }
 
 export const UserManagement = () => {
@@ -51,7 +58,7 @@ export const UserManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users = [], refetch, isLoading, error } = useQuery({
+  const { data: users, refetch, isLoading, error } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
       console.log("[UserManagement] Fetching users data");
@@ -69,10 +76,9 @@ export const UserManagement = () => {
 
       if (adminError) throw adminError;
 
-      const interpreterUsers: UserData[] = (interpreterProfiles || []).map(profile => ({
+      const interpreterUsers: InterpreterData[] = (interpreterProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email || '',
-        role: 'interpreter',
         first_name: profile.first_name || '',
         last_name: profile.last_name || '',
         active: true,
@@ -80,29 +86,26 @@ export const UserManagement = () => {
         status: (profile.status || 'unavailable') as InterpreterStatus,
         tarif_15min: profile.tarif_15min || 0,
         tarif_5min: profile.tarif_5min || 0,
-        employment_status: profile.employment_status as EmploymentStatus
+        employment_status: profile.employment_status
       }));
 
-      const adminUsers = await Promise.all(adminRoles.map(async (role) => {
+      const adminUsers: AdminData[] = await Promise.all(adminRoles.map(async (role) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(role.user_id);
         if (authError) throw authError;
         
         return {
           id: role.user_id,
           email: user?.email || '',
-          role: 'admin' as const,
           first_name: user?.user_metadata?.first_name || '',
           last_name: user?.user_metadata?.last_name || '',
-          active: role.active || false,
-          languages: [],
-          status: 'unavailable' as const,
-          tarif_15min: 0,
-          tarif_5min: 0,
-          employment_status: 'salaried_aft' as const
+          active: role.active || false
         };
       }));
 
-      return [...interpreterUsers, ...adminUsers];
+      return {
+        interpreters: interpreterUsers,
+        admins: adminUsers
+      };
     },
     retry: 3,
     staleTime: Infinity,
@@ -403,8 +406,8 @@ export const UserManagement = () => {
     );
   }
 
-  const adminUsers = users.filter(user => user.role === "admin");
-  const interpreterUsers = users.filter(user => user.role === "interpreter");
+  const adminUsers = users?.admins || [];
+  const interpreterUsers = users?.interpreters || [];
 
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
