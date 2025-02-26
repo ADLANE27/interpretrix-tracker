@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Trash2, Key, UserCog } from "lucide-react";
+import { Search, Trash2, Key, UserCog, Users } from "lucide-react";
 import { AdminCreationForm } from "./forms/AdminCreationForm";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 
@@ -35,6 +35,66 @@ interface UserData {
   created_at: string;
   active: boolean;
 }
+
+const UserTable = ({ users, onDelete, onResetPassword }: { 
+  users: UserData[], 
+  onDelete: (id: string) => void,
+  onResetPassword: (id: string) => void 
+}) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>Nom</TableHead>
+        <TableHead>Email</TableHead>
+        <TableHead>Statut</TableHead>
+        <TableHead>Actions</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {users.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={4} className="text-center text-muted-foreground">
+            Aucun utilisateur trouvé
+          </TableCell>
+        </TableRow>
+      ) : (
+        users.map((user) => (
+          <TableRow key={user.id}>
+            <TableCell className="font-medium">
+              {user.first_name} {user.last_name}
+            </TableCell>
+            <TableCell>{user.email}</TableCell>
+            <TableCell>
+              <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                user.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+              }`}>
+                {user.active ? 'Actif' : 'Inactif'}
+              </span>
+            </TableCell>
+            <TableCell>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => onResetPassword(user.id)}
+                >
+                  <Key className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => onDelete(user.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))
+      )}
+    </TableBody>
+  </Table>
+);
 
 export const UserManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,30 +116,21 @@ export const UserManagement = () => {
           .from('user_roles')
           .select('*');
 
-        if (rolesError) {
-          console.error('Error fetching user roles:', rolesError);
-          throw rolesError;
-        }
+        if (rolesError) throw rolesError;
 
         // Get admin users
         const { data: adminData, error: adminError } = await supabase
           .from('admin_profiles')
           .select('*');
 
-        if (adminError) {
-          console.error('Error fetching admins:', adminError);
-          throw adminError;
-        }
+        if (adminError) throw adminError;
 
         // Get interpreter users
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
 
-        if (interpreterError) {
-          console.error('Error fetching interpreters:', interpreterError);
-          throw interpreterError;
-        }
+        if (interpreterError) throw interpreterError;
 
         // Map user roles to a lookup object
         const roleMap = (userRoles || []).reduce((acc: Record<string, { role: string, active: boolean }>, role) => {
@@ -109,11 +160,11 @@ export const UserManagement = () => {
           active: roleMap[interpreter.id]?.active ?? false
         }));
 
-        // Sort all users by creation date
-        return [...admins, ...interpreters].sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-
+        // Sort all users by creation date and return both groups
+        return {
+          admins: admins.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+          interpreters: interpreters.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        };
       } catch (error) {
         console.error('Error fetching users:', error);
         throw error;
@@ -121,12 +172,20 @@ export const UserManagement = () => {
     }
   });
 
-  const filteredUsers = users.filter(user => {
-    const searchTerm = searchQuery.toLowerCase().trim();
-    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
-    const email = user.email.toLowerCase();
-    return fullName.includes(searchTerm) || email.includes(searchTerm);
-  });
+  const filteredUsers = {
+    admins: (users.admins || []).filter(user => {
+      const searchTerm = searchQuery.toLowerCase().trim();
+      const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+      const email = user.email.toLowerCase();
+      return fullName.includes(searchTerm) || email.includes(searchTerm);
+    }),
+    interpreters: (users.interpreters || []).filter(user => {
+      const searchTerm = searchQuery.toLowerCase().trim();
+      const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+      const email = user.email.toLowerCase();
+      return fullName.includes(searchTerm) || email.includes(searchTerm);
+    })
+  };
 
   const handleDeleteUser = async (userId: string) => {
     try {
@@ -197,7 +256,6 @@ export const UserManagement = () => {
   };
 
   if (error) {
-    console.error('Query error:', error);
     return (
       <div className="p-4 text-red-500">
         Erreur lors du chargement des utilisateurs. Veuillez réessayer.
@@ -306,73 +364,36 @@ export const UserManagement = () => {
         />
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  Chargement des utilisateurs...
-                </TableCell>
-              </TableRow>
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Aucun utilisateur trouvé
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    {user.first_name} {user.last_name}
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell className="capitalize">
-                    {user.role === 'admin' ? 'Administrateur' : 'Interprète'}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      user.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {user.active ? 'Actif' : 'Inactif'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedUserId(user.id);
-                          setIsResetPasswordOpen(true);
-                        }}
-                      >
-                        <Key className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDeleteUser(user.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <div className="space-y-6">
+        <div className="rounded-md border">
+          <div className="bg-muted/50 p-4 flex items-center gap-2 border-b">
+            <UserCog className="h-5 w-5" />
+            <h3 className="font-semibold">Administrateurs</h3>
+          </div>
+          <UserTable 
+            users={filteredUsers.admins} 
+            onDelete={handleDeleteUser}
+            onResetPassword={(id) => {
+              setSelectedUserId(id);
+              setIsResetPasswordOpen(true);
+            }}
+          />
+        </div>
+
+        <div className="rounded-md border">
+          <div className="bg-muted/50 p-4 flex items-center gap-2 border-b">
+            <Users className="h-5 w-5" />
+            <h3 className="font-semibold">Interprètes</h3>
+          </div>
+          <UserTable 
+            users={filteredUsers.interpreters}
+            onDelete={handleDeleteUser}
+            onResetPassword={(id) => {
+              setSelectedUserId(id);
+              setIsResetPasswordOpen(true);
+            }}
+          />
+        </div>
       </div>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
