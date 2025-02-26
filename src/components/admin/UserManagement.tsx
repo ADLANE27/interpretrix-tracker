@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,7 +96,12 @@ export const UserManagement = () => {
         .select("*")
         .order('created_at', { ascending: false });
 
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.error("Error fetching user roles:", rolesError);
+        throw rolesError;
+      }
+
+      console.log("User roles fetched:", userRoles);
 
       const allUsers = await Promise.all(
         userRoles.map(async (userRole) => {
@@ -126,24 +132,24 @@ export const UserManagement = () => {
                 employment_status: profile.employment_status
               };
             } else {
-              // Pour les administrateurs, utiliser la nouvelle table admin_profiles
-              const { data: adminProfile, error: adminError } = await supabase
-                .from('admin_profiles')
-                .select('*')
+              // Pour les administrateurs
+              const { data: profile, error: profileError } = await supabase
+                .from('auth.users')
+                .select('email, raw_user_meta_data')
                 .eq('id', userRole.user_id)
                 .single();
 
-              if (adminError) {
-                console.error('Error fetching admin profile:', adminError);
-                throw adminError;
+              if (profileError) {
+                console.error('Error fetching admin profile:', profileError);
+                throw profileError;
               }
 
               return {
                 id: userRole.user_id,
-                email: adminProfile.email,
+                email: profile.email,
                 role: userRole.role,
-                first_name: adminProfile.first_name,
-                last_name: adminProfile.last_name,
+                first_name: profile.raw_user_meta_data?.first_name || '',
+                last_name: profile.raw_user_meta_data?.last_name || '',
                 active: userRole.active,
                 languages: [],
                 status: 'unavailable',
