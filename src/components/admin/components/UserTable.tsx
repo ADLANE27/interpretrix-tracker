@@ -22,6 +22,7 @@ import { UserData } from "../types/user-management";
 import { InterpreterProfileForm } from "../forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Profile } from "@/types/profile";
 
 interface UserTableProps {
   users: UserData[];
@@ -51,11 +52,18 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         return { source, target };
       });
 
-      setSelectedUser({
+      // Assurez-vous que le status correspond au type attendu
+      const status = interpreterData.status as Profile['status'] || 'available';
+
+      // Construire l'objet avec le bon typage
+      const userData: UserData = {
         ...user,
         ...interpreterData,
-        languages
-      });
+        languages,
+        status,
+      };
+
+      setSelectedUser(userData);
       setIsEditingInterpreter(true);
     } catch (error) {
       console.error('Error fetching interpreter data:', error);
