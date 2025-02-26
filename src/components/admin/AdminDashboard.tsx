@@ -61,10 +61,10 @@ export const AdminDashboard = () => {
   const tabs = [
     { id: "interpreters", label: "Interprètes" },
     { id: "missions", label: "Missions" },
+    { id: "reservations", label: "Réservations" },  // Moved here
     { id: "calendar", label: "Calendrier" },
     { id: "messages", label: "Messages" },
     { id: "users", label: "Utilisateurs" },
-    { id: "reservations", label: "Réservations" },
     { id: "guide", label: "Guide" },
   ];
 
