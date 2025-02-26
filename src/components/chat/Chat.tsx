@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
@@ -32,7 +32,14 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [newName, setNewName] = useState(channel?.name || '');
+  const [newName, setNewName] = useState('');
+
+  // Update newName when channel data is loaded
+  useEffect(() => {
+    if (channel?.name) {
+      setNewName(channel.name);
+    }
+  }, [channel?.name]);
 
   const {
     messages,
@@ -69,11 +76,15 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     }
   };
 
+  // Debug logging to check channel data
+  console.log('Channel data:', channel);
+  console.log('User role:', userRole);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
-          {channel?.channel_type === 'group' && userRole === 'admin' && isEditing ? (
+          {isEditing && userRole === 'admin' ? (
             <>
               <Input
                 value={newName}
@@ -88,28 +99,26 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
                 variant="ghost" 
                 onClick={() => {
                   setIsEditing(false);
-                  setNewName(channel.name);
+                  setNewName(channel?.name || '');
                 }}
               >
                 Annuler
               </Button>
             </>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold">{channel?.name}</h2>
-              {channel?.channel_type === 'group' && userRole === 'admin' && (
+              {userRole === 'admin' && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    setIsEditing(true);
-                    setNewName(channel.name);
-                  }}
+                  className="p-2 h-8 w-8"
+                  onClick={() => setIsEditing(true)}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
-            </>
+            </div>
           )}
         </div>
         <ChannelMembersPopover 
