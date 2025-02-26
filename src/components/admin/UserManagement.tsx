@@ -216,9 +216,12 @@ export const UserManagement = () => {
             active,
             role
           )
-        `) as { data: DbProfile[] | null, error: any };
+        `).order('created_at', { ascending: false }) as { data: DbProfile[] | null, error: any };
 
-      if (adminError) throw adminError;
+      if (adminError) {
+        console.error('Error fetching admin profiles:', adminError);
+        throw adminError;
+      }
 
       const { data: interpreterProfiles, error: interpreterError } = await supabase
         .from('interpreter_profiles')
@@ -231,39 +234,62 @@ export const UserManagement = () => {
             active,
             role
           )
-        `) as { data: DbProfile[] | null, error: any };
+        `).order('created_at', { ascending: false }) as { data: DbProfile[] | null, error: any };
 
-      if (interpreterError) throw interpreterError;
+      if (interpreterError) {
+        console.error('Error fetching interpreter profiles:', interpreterError);
+        throw interpreterError;
+      }
 
-      console.log('Admin profiles:', adminProfiles);
-      console.log('Interpreter profiles:', interpreterProfiles);
+      console.log('Raw admin profiles:', adminProfiles);
+      console.log('Raw interpreter profiles:', interpreterProfiles);
 
       const admins: UserData[] = (adminProfiles || [])
-        .filter(profile => profile.user_roles?.some(role => role.role === 'admin'))
-        .map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          active: profile.user_roles?.find(r => r.role === 'admin')?.active ?? false,
-          role: 'admin'
-        }));
+        .filter(profile => {
+          console.log('Processing admin profile:', profile);
+          return profile.user_roles && profile.user_roles.length > 0;
+        })
+        .map(profile => {
+          const userData = {
+            id: profile.id,
+            email: profile.email,
+            first_name: profile.first_name || '',
+            last_name: profile.last_name || '',
+            active: profile.user_roles[0]?.active ?? true,
+            role: 'admin' as const
+          };
+          console.log('Mapped admin data:', userData);
+          return userData;
+        });
 
       const interpreters: UserData[] = (interpreterProfiles || [])
-        .filter(profile => profile.user_roles?.some(role => role.role === 'interpreter'))
-        .map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          active: profile.user_roles?.find(r => r.role === 'interpreter')?.active ?? false,
-          role: 'interpreter'
-        }));
+        .filter(profile => {
+          console.log('Processing interpreter profile:', profile);
+          return profile.user_roles && profile.user_roles.length > 0;
+        })
+        .map(profile => {
+          const userData = {
+            id: profile.id,
+            email: profile.email,
+            first_name: profile.first_name || '',
+            last_name: profile.last_name || '',
+            active: profile.user_roles[0]?.active ?? true,
+            role: 'interpreter' as const
+          };
+          console.log('Mapped interpreter data:', userData);
+          return userData;
+        });
 
       const allUsers = [...admins, ...interpreters];
-      console.log('All users:', allUsers);
+      console.log('Final all users:', allUsers);
+
+      if (allUsers.length === 0) {
+        console.warn('No users found in the database');
+      }
+
       return allUsers;
-    }
+    },
+    retry: 1
   });
 
   const handleAddAdmin = async (data: AdminFormData) => {
