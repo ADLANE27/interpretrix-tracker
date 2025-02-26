@@ -31,17 +31,24 @@ export const AdminLoginForm = () => {
         throw new Error("No user data returned after login");
       }
 
-      // Check if user is admin using RPC function
-      const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
-        user_id: authData.user.id
-      });
+      // Check user role using the new policies
+      const { data: userRole, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, active')
+        .eq('user_id', authData.user.id)
+        .eq('role', 'admin')
+        .single();
 
-      if (adminCheckError) throw adminCheckError;
+      if (roleError) {
+        // If error is about no rows returned, it means user is not an admin
+        if (roleError.code === 'PGRST116') {
+          throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
+        }
+        throw roleError;
+      }
 
-      if (!isAdmin) {
-        // If not admin, sign out and show error
-        await supabase.auth.signOut();
-        throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
+      if (!userRole || !userRole.active) {
+        throw new Error("Votre compte administrateur n'est pas actif.");
       }
 
       toast({
