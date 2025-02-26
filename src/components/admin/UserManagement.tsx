@@ -32,11 +32,11 @@ interface UserData {
   last_name: string;
   active: boolean;
   role: UserRole;
-  languages: string[];
-  status: InterpreterStatus;
-  tarif_15min: number;
-  tarif_5min: number;
-  employment_status: EmploymentStatus;
+  languages?: string[];
+  status?: InterpreterStatus;
+  tarif_15min?: number;
+  tarif_5min?: number;
+  employment_status?: EmploymentStatus;
 }
 
 export const UserManagement = () => {
@@ -50,42 +50,6 @@ export const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    console.log("[UserManagement] Setting up real-time subscription");
-    
-    const profilesChannel = supabase.channel('interpreter-profiles-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles'
-        },
-        (payload) => {
-          console.log("[UserManagement] Received profile update:", payload);
-          const updatedProfile = payload.new as any;
-          
-          queryClient.setQueryData(['users'], (oldData: UserData[] | undefined) => {
-            if (!oldData) return oldData;
-            
-            return oldData.map(user => 
-              user.id === updatedProfile.id
-                ? { ...user, ...updatedProfile }
-                : user
-            );
-          });
-        }
-      )
-      .subscribe((status) => {
-        console.log("[UserManagement] Profile subscription status:", status);
-      });
-
-    return () => {
-      console.log("[UserManagement] Cleaning up subscription");
-      supabase.removeChannel(profilesChannel);
-    };
-  }, [queryClient]);
 
   const { data: users = [], refetch, isLoading, error } = useQuery({
     queryKey: ["users"],
@@ -144,28 +108,6 @@ export const UserManagement = () => {
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <LoadingSpinner size="lg" text="Chargement des utilisateurs..." />
-      </div>
-    );
-  }
-
-  if (error) {
-    console.error("[UserManagement] Query error:", error);
-    return (
-      <div className="p-4 text-red-600">
-        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page. 
-        <br />
-        Détail: {error instanceof Error ? error.message : "Erreur inconnue"}
-      </div>
-    );
-  }
-
-  const adminUsers = users.filter(user => user.role === "admin");
-  const interpreterUsers = users.filter(user => user.role === "interpreter");
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
@@ -362,7 +304,7 @@ export const UserManagement = () => {
     }
   };
 
-  const toggleUserStatus = async (userId: string, currentActive: boolean) => {
+  const handleToggleStatus = async (userId: string, currentActive: boolean) => {
     try {
       const { error } = await supabase
         .from("user_roles")
@@ -442,6 +384,28 @@ export const UserManagement = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <LoadingSpinner size="lg" text="Chargement des utilisateurs..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error("[UserManagement] Query error:", error);
+    return (
+      <div className="p-4 text-red-600">
+        Erreur lors du chargement des utilisateurs. Veuillez rafraîchir la page. 
+        <br />
+        Détail: {error instanceof Error ? error.message : "Erreur inconnue"}
+      </div>
+    );
+  }
+
+  const adminUsers = users.filter(user => user.role === "admin");
+  const interpreterUsers = users.filter(user => user.role === "interpreter");
+
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
@@ -493,32 +457,20 @@ export const UserManagement = () => {
       </div>
 
       <div className="space-y-6 overflow-x-hidden">
-        {isLoading ? (
-          <div className="text-center py-4">Chargement des utilisateurs...</div>
-        ) : (
-          <>
-            <AdminList
-              admins={adminUsers}
-              onToggleStatus={toggleUserStatus}
-              onDeleteUser={handleDeleteUser}
-              onResetPassword={(userId) => {
-                setSelectedUserId(userId);
-                setIsResetPasswordOpen(true);
-              }}
-            />
+        <AdminList
+          admins={adminUsers}
+          onToggleStatus={handleToggleStatus}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={handleResetPassword}
+        />
 
-            <InterpreterList
-              interpreters={interpreterUsers}
-              onToggleStatus={toggleUserStatus}
-              onDeleteUser={handleDeleteUser}
-              onResetPassword={(userId) => {
-                setSelectedUserId(userId);
-                setIsResetPasswordOpen(true);
-              }}
-              onUpdateInterpreter={handleUpdateInterpreter}
-            />
-          </>
-        )}
+        <InterpreterList
+          interpreters={interpreterUsers}
+          onToggleStatus={handleToggleStatus}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={handleResetPassword}
+          onUpdateInterpreter={handleUpdateInterpreter}
+        />
       </div>
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
