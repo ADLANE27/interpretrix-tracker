@@ -18,6 +18,7 @@ export const InterpreterLoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Tentative de connexion interprète avec:", email);
 
     try {
       // First attempt to sign in
@@ -26,34 +27,45 @@ export const InterpreterLoginForm = () => {
         password
       });
 
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error("Erreur de connexion:", signInError);
+        throw signInError;
+      }
+
+      console.log("Connexion réussie, vérification du rôle interprète...");
 
       // Check if user has interpreter role and is active
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, active')
         .eq('user_id', signInData.user.id)
         .eq('role', 'interpreter')
-        .eq('active', true)
-        .single();
+        .maybeSingle();
 
-      if (roleError || !roleData) {
-        // If not interpreter, sign out and show error
-        await supabase.auth.signOut();
+      console.log("Résultat vérification rôle:", { roleData, roleError });
+
+      if (roleError || !roleData || !roleData.active) {
+        console.error("Erreur ou rôle non interprète:", { roleError, roleData });
         throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
       }
 
-      // Check if interpreter profile exists and password has been changed
+      console.log("Vérification du profil interprète...");
+
+      // Check if interpreter profile exists
       const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
-        .select('password_changed')
+        .select('*')
         .eq('id', signInData.user.id)
-        .single();
+        .maybeSingle();
+
+      console.log("Résultat vérification profil:", { interpreterData, interpreterError });
 
       if (interpreterError || !interpreterData) {
-        await supabase.auth.signOut();
+        console.error("Erreur ou profil non trouvé:", { interpreterError, interpreterData });
         throw new Error("Profil d'interprète introuvable.");
       }
+
+      console.log("Profil interprète confirmé, redirection...");
 
       // If all checks pass, show success and navigate
       toast({
@@ -63,13 +75,13 @@ export const InterpreterLoginForm = () => {
       
       navigate("/interpreter");
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Erreur complète:", error);
+      await supabase.auth.signOut();
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
-      await supabase.auth.signOut();
     } finally {
       setIsLoading(false);
     }

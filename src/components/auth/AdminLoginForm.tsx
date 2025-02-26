@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,26 +18,38 @@ export const AdminLoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log("Tentative de connexion admin avec:", email);
 
     try {
       // First attempt to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (signInError) throw signInError;
+      if (signInError) {
+        console.error("Erreur de connexion:", signInError);
+        throw signInError;
+      }
 
-      // Call the is-admin edge function to verify admin status
-      const { data, error: adminCheckError } = await supabase.functions.invoke('is-admin');
+      console.log("Connexion réussie, vérification du rôle admin...");
 
-      if (adminCheckError) throw adminCheckError;
+      // Verify admin role directly from database first
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role, active')
+        .eq('user_id', signInData.user.id)
+        .eq('role', 'admin')
+        .single();
 
-      if (!data?.is_admin) {
-        // If not admin, sign out and show error
-        await supabase.auth.signOut();
+      console.log("Résultat vérification rôle:", { roleData, roleError });
+
+      if (roleError || !roleData || !roleData.active) {
+        console.error("Erreur ou rôle non admin:", { roleError, roleData });
         throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
       }
+
+      console.log("Rôle admin confirmé, redirection...");
 
       // If all checks pass, show success and navigate
       toast({
@@ -46,13 +59,13 @@ export const AdminLoginForm = () => {
       
       navigate("/admin");
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Erreur complète:", error);
+      await supabase.auth.signOut();
       toast({
         title: "Erreur de connexion",
         description: error.message,
         variant: "destructive",
       });
-      await supabase.auth.signOut();
     } finally {
       setIsLoading(false);
     }
