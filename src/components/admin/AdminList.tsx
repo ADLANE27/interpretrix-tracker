@@ -44,6 +44,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAdmins = admins.filter((admin) => {
+    if (!searchQuery) return true;
     const searchTerm = searchQuery.toLowerCase();
     return (
       admin.first_name?.toLowerCase().includes(searchTerm) ||
@@ -72,7 +73,7 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
             />
           </div>
 
-          {searchQuery && (
+          {filteredAdmins.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -131,6 +132,8 @@ export const AdminList = ({ admins, onToggleStatus, onDeleteUser, onResetPasswor
                 ))}
               </TableBody>
             </Table>
+          ) : (
+            <p className="text-center text-muted-foreground">Aucun administrateur trouvé</p>
           )}
         </div>
       </CardContent>
