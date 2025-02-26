@@ -32,24 +32,39 @@ export const AdminLoginForm = () => {
         throw signInError;
       }
 
-      console.log("Connexion réussie, vérification du rôle admin...");
+      if (!signInData.user) {
+        throw new Error("Aucun utilisateur trouvé");
+      }
 
-      // Verify admin role directly from database first
+      console.log("Connexion réussie, données utilisateur:", signInData.user);
+      console.log("Vérification du rôle admin...");
+
+      // Verify admin role directly from database with more detailed error handling
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role, active')
         .eq('user_id', signInData.user.id)
         .eq('role', 'admin')
-        .single();
+        .maybeSingle();
 
       console.log("Résultat vérification rôle:", { roleData, roleError });
 
-      if (roleError || !roleData || !roleData.active) {
-        console.error("Erreur ou rôle non admin:", { roleError, roleData });
-        throw new Error("Accès non autorisé. Cette interface est réservée aux administrateurs.");
+      if (roleError) {
+        console.error("Erreur lors de la vérification du rôle:", roleError);
+        throw new Error(`Erreur lors de la vérification du rôle: ${roleError.message}`);
       }
 
-      console.log("Rôle admin confirmé, redirection...");
+      if (!roleData) {
+        console.error("Aucun rôle admin trouvé pour cet utilisateur");
+        throw new Error("Vous n'avez pas les droits d'administrateur nécessaires.");
+      }
+
+      if (!roleData.active) {
+        console.error("Rôle admin trouvé mais inactif");
+        throw new Error("Votre compte administrateur est actuellement inactif.");
+      }
+
+      console.log("Rôle admin confirmé et actif, redirection...");
 
       // If all checks pass, show success and navigate
       toast({
