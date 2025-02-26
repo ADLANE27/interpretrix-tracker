@@ -15,67 +15,169 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, Trash2, Key, UserCog } from "lucide-react";
 import { InterpreterProfileForm, InterpreterFormData } from "./forms/InterpreterProfileForm";
 import { AdminCreationForm, AdminFormData } from "./forms/AdminCreationForm";
-import { AdminList } from "./AdminList";
-import { InterpreterList } from "./InterpreterList";
 import { convertLanguagePairsToStrings } from "@/types/languages";
 
-type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
-
-interface AdminUser {
+interface UserData {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
   active: boolean;
-  role: "admin";
+  role: "admin" | "interpreter";
 }
 
-interface InterpreterUser {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  active: boolean;
-  role: "interpreter";
-  tarif_15min: number;
-  tarif_5min: number;
-  employment_status: EmploymentStatus;
-  languages: string[];
-  status: InterpreterStatus;
+interface UserListProps {
+  users: UserData[];
+  onToggleStatus: (userId: string, currentActive: boolean) => Promise<void>;
+  onDeleteUser: (userId: string) => Promise<void>;
+  onResetPassword: (userId: string) => void;
 }
 
-type UserData = AdminUser | InterpreterUser;
+const UserList = ({ users, onToggleStatus, onDeleteUser, onResetPassword }: UserListProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
-// Types pour les données Supabase
-interface AdminProfileWithRole {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  user_roles: {
-    active: boolean;
-    role: "admin";
-  }[];
-}
+  const filteredUsers = users.filter((user) => {
+    const searchTerm = searchQuery.toLowerCase().trim();
+    if (searchTerm === '') return true;
 
-interface InterpreterProfileWithRole {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  languages: string[];
-  tarif_15min: number;
-  tarif_5min: number;
-  employment_status: EmploymentStatus;
-  status: string;
-  user_roles: {
-    active: boolean;
-    role: "interpreter";
-  }[];
-}
+    const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+    return (
+      fullName.includes(searchTerm) ||
+      user.email.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher un utilisateur..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8"
+        />
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nom</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredUsers.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
+                Aucun utilisateur trouvé
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredUsers.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  {user.first_name} {user.last_name}
+                </TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <span className="capitalize">{user.role}</span>
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={`px-2 py-1 rounded-full text-sm ${
+                      user.active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {user.active ? "Actif" : "Inactif"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => onToggleStatus(user.id, user.active)}
+                    >
+                      {user.active ? "Désactiver" : "Activer"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onResetPassword(user.id)}
+                    >
+                      <Key className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => {
+                        setUserToDelete(user.id);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Êtes-vous sûr de vouloir supprimer cet utilisateur ?</DialogTitle>
+            <DialogDescription>
+              Cette action est irréversible. L'utilisateur sera définitivement supprimé du système.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUserToDelete(null);
+                setIsDeleteDialogOpen(false);
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (userToDelete) {
+                  onDeleteUser(userToDelete);
+                  setIsDeleteDialogOpen(false);
+                }
+              }}
+            >
+              Supprimer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -91,8 +193,6 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      console.log("Fetching users data");
-      
       // Récupérer les admins depuis admin_profiles et user_roles
       const { data: adminProfiles, error: adminError } = await supabase
         .from('admin_profiles')
@@ -106,12 +206,9 @@ export const UserManagement = () => {
             role
           )
         `)
-        .eq('user_roles.role', 'admin') as { data: AdminProfileWithRole[] | null, error: any };
+        .eq('user_roles.role', 'admin');
 
-      if (adminError) {
-        console.error("Error fetching admin profiles:", adminError);
-        throw adminError;
-      }
+      if (adminError) throw adminError;
 
       // Récupérer les interprètes
       const { data: interpreterProfiles, error: interpreterError } = await supabase
@@ -121,24 +218,16 @@ export const UserManagement = () => {
           email,
           first_name,
           last_name,
-          languages,
-          tarif_15min,
-          tarif_5min,
-          employment_status,
-          status,
           user_roles!inner (
             active,
             role
           )
         `)
-        .eq('user_roles.role', 'interpreter') as { data: InterpreterProfileWithRole[] | null, error: any };
+        .eq('user_roles.role', 'interpreter');
 
-      if (interpreterError) {
-        console.error("Error fetching interpreter profiles:", interpreterError);
-        throw interpreterError;
-      }
+      if (interpreterError) throw interpreterError;
 
-      const admins: AdminUser[] = (adminProfiles || []).map(profile => ({
+      const admins: UserData[] = (adminProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name,
@@ -147,140 +236,18 @@ export const UserManagement = () => {
         role: 'admin'
       }));
 
-      const interpreters: InterpreterUser[] = (interpreterProfiles || []).map(profile => ({
+      const interpreters: UserData[] = (interpreterProfiles || []).map(profile => ({
         id: profile.id,
         email: profile.email,
         first_name: profile.first_name,
         last_name: profile.last_name,
         active: profile.user_roles[0].active,
-        role: 'interpreter',
-        languages: profile.languages || [],
-        status: (profile.status || 'unavailable') as InterpreterStatus,
-        tarif_15min: profile.tarif_15min || 0,
-        tarif_5min: profile.tarif_5min || 0,
-        employment_status: profile.employment_status
+        role: 'interpreter'
       }));
-
-      console.log("Admins:", admins);
-      console.log("Interpreters:", interpreters);
 
       return [...admins, ...interpreters];
     }
   });
-
-  const adminUsers = users.filter((user): user is AdminUser => user.role === "admin");
-  const interpreterUsers = users.filter((user): user is InterpreterUser => user.role === "interpreter");
-
-  const handleAddAdmin = async (formData: AdminFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      const { error } = await supabase.functions.invoke('send-admin-invitation', {
-        body: formData,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'administrateur",
-      });
-
-      setIsAddAdminOpen(false);
-      refetch();
-    } catch (error: any) {
-      console.error("Error adding admin:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter l'administrateur: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAddUser = async (formData: InterpreterFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      const languageStrings = convertLanguagePairsToStrings(formData.languages);
-
-      const addressJson = formData.address ? {
-        street: formData.address.street,
-        postal_code: formData.address.postal_code,
-        city: formData.address.city,
-      } : null;
-
-      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
-        body: {
-          ...formData,
-          role: "interpreter",
-          languages: languageStrings,
-          address: addressJson,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Invitation envoyée",
-        description: "Un email d'invitation a été envoyé à l'utilisateur",
-      });
-
-      setIsAddUserOpen(false);
-      refetch();
-    } catch (error: any) {
-      console.error("Error adding user:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter l'utilisateur: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    try {
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (roleError) throw roleError;
-
-      const { error: profileError } = await supabase
-        .from('interpreter_profiles')
-        .delete()
-        .eq('id', userId);
-
-      if (profileError) {
-        console.error("Error deleting interpreter profile:", profileError);
-      }
-
-      const { error } = await supabase.functions.invoke('delete-user', {
-        body: { userId },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
-      });
-
-      refetch();
-    } catch (error: any) {
-      console.error("Error deleting user:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur: " + error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleResetPassword = async () => {
     try {
@@ -350,65 +317,44 @@ export const UserManagement = () => {
     }
   };
 
-  const handleUpdateInterpreter = async (userId: string, formData: InterpreterFormData) => {
+  const handleDeleteUser = async (userId: string) => {
     try {
-      setIsSubmitting(true);
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
 
-      const languageStrings = formData.languages.map(
-        (pair) => `${pair.source} → ${pair.target}`
-      );
+      if (roleError) throw roleError;
 
-      const addressJson = formData.address ? {
-        street: formData.address.street,
-        postal_code: formData.address.postal_code,
-        city: formData.address.city,
-      } : null;
-
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          employment_status: formData.employment_status,
-          languages: languageStrings,
-          tarif_5min: formData.tarif_5min,
-          tarif_15min: formData.tarif_15min,
-          address: addressJson,
-          phone_number: formData.phone_number || null,
-          birth_country: formData.birth_country || null,
-          nationality: formData.nationality || null,
-          phone_interpretation_rate: formData.phone_interpretation_rate || null,
-          siret_number: formData.siret_number || null,
-          vat_number: formData.vat_number || null,
-          specializations: formData.specializations || [],
-          landline_phone: formData.landline_phone || null
-        })
-        .eq('id', userId);
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+      });
 
       if (error) throw error;
 
       toast({
-        title: "Profil mis à jour",
-        description: "Le profil de l'interprète a été mis à jour avec succès",
+        title: "Utilisateur supprimé",
+        description: "L'utilisateur a été supprimé avec succès",
       });
 
       refetch();
     } catch (error: any) {
-      console.error("Error updating interpreter:", error);
+      console.error("Error deleting user:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
+        description: "Impossible de supprimer l'utilisateur: " + error.message,
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
-        <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
+        <div className="flex items-center gap-2">
+          <UserCog className="h-6 w-6" />
+          <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
+        </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
             <DialogTrigger asChild>
@@ -455,28 +401,15 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      <div className="space-y-6 overflow-x-hidden">
-        <AdminList
-          admins={adminUsers}
-          onToggleStatus={toggleUserStatus}
-          onDeleteUser={handleDeleteUser}
-          onResetPassword={(userId) => {
-            setSelectedUserId(userId);
-            setIsResetPasswordOpen(true);
-          }}
-        />
-
-        <InterpreterList
-          interpreters={interpreterUsers}
-          onToggleStatus={toggleUserStatus}
-          onDeleteUser={handleDeleteUser}
-          onResetPassword={(userId) => {
-            setSelectedUserId(userId);
-            setIsResetPasswordOpen(true);
-          }}
-          onUpdateInterpreter={handleUpdateInterpreter}
-        />
-      </div>
+      <UserList
+        users={users}
+        onToggleStatus={toggleUserStatus}
+        onDeleteUser={handleDeleteUser}
+        onResetPassword={(userId) => {
+          setSelectedUserId(userId);
+          setIsResetPasswordOpen(true);
+        }}
+      />
 
       <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
         <DialogContent>
