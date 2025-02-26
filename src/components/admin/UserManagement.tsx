@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,11 @@ interface UserData {
   role: string;
   created_at: string;
   active: boolean;
+}
+
+interface UsersData {
+  admins: UserData[];
+  interpreters: UserData[];
 }
 
 const UserTable = ({ users, onDelete, onResetPassword }: { 
@@ -107,7 +113,7 @@ export const UserManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const { data: users = [], refetch, isLoading, error } = useQuery({
+  const { data: users = { admins: [], interpreters: [] }, refetch, isLoading, error } = useQuery<UsersData>({
     queryKey: ["users"],
     queryFn: async () => {
       try {
@@ -173,13 +179,13 @@ export const UserManagement = () => {
   });
 
   const filteredUsers = {
-    admins: (users.admins || []).filter(user => {
+    admins: users.admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const email = user.email.toLowerCase();
       return fullName.includes(searchTerm) || email.includes(searchTerm);
     }),
-    interpreters: (users.interpreters || []).filter(user => {
+    interpreters: users.interpreters.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const email = user.email.toLowerCase();
