@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,9 +63,9 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      console.log("Fetching admin roles");
+      console.log("Fetching users data");
       
-      // Récupérer les admins avec leurs données utilisateur
+      // Récupérer les admins
       const { data: adminRoles, error: adminError } = await supabase
         .from('user_roles')
         .select(`
@@ -79,20 +80,28 @@ export const UserManagement = () => {
         throw adminError;
       }
 
-      console.log("Admin roles found:", adminRoles);
+      // Récupérer les interprètes
+      const { data: interpreterRoles, error: interpreterError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          active,
+          role
+        `)
+        .eq('role', 'interpreter');
 
-      // Récupérer les informations des utilisateurs admin depuis auth.users
+      if (interpreterError) {
+        console.error("Error fetching interpreter roles:", interpreterError);
+        throw interpreterError;
+      }
+
+      // Récupérer les informations des admins
       const admins = await Promise.all(
         adminRoles.map(async (role) => {
           const { data: userData, error: userError } = await supabase.auth.admin.getUserById(role.user_id);
           
-          if (userError) {
-            console.error("Error fetching user data:", userError);
-            return null;
-          }
-
-          if (!userData) {
-            console.error("No user data found for ID:", role.user_id);
+          if (userError || !userData?.user) {
+            console.error("Error fetching admin data:", userError);
             return null;
           }
 
@@ -105,11 +114,42 @@ export const UserManagement = () => {
             active: role.active
           };
         })
-      ).then(results => results.filter((user): user is AdminUser => user !== null));
+      );
 
-      console.log("All users:", admins);
+      // Récupérer les informations des interprètes
+      const interpreters = await Promise.all(
+        (interpreterRoles || []).map(async (role) => {
+          const { data: profile, error: profileError } = await supabase
+            .from('interpreter_profiles')
+            .select('*')
+            .eq('id', role.user_id)
+            .single();
+
+          if (profileError || !profile) return null;
+
+          return {
+            id: role.user_id,
+            email: profile.email,
+            role: 'interpreter' as const,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: role.active,
+            languages: profile.languages || [],
+            status: profile.status || 'unavailable',
+            tarif_15min: profile.tarif_15min || 0,
+            tarif_5min: profile.tarif_5min || 0,
+            employment_status: profile.employment_status
+          };
+        })
+      );
+
+      const validAdmins = admins.filter((admin): admin is AdminUser => admin !== null);
+      const validInterpreters = interpreters.filter((interpreter): interpreter is InterpreterUser => interpreter !== null);
+
+      const allUsers: UserData[] = [...validAdmins, ...validInterpreters];
+      console.log("All users:", allUsers);
       
-      return admins;
+      return allUsers;
     }
   });
 
