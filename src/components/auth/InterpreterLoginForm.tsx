@@ -34,19 +34,29 @@ export const InterpreterLoginForm = () => {
 
       console.log("Connexion réussie, vérification du rôle interprète...");
 
-      // Check if user has interpreter role and is active
+      // Vérifier directement le rôle et le statut actif
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('role, active')
+        .select('active')
         .eq('user_id', signInData.user.id)
         .eq('role', 'interpreter')
-        .maybeSingle();
+        .single();
 
       console.log("Résultat vérification rôle:", { roleData, roleError });
 
-      if (roleError || !roleData || !roleData.active) {
-        console.error("Erreur ou rôle non interprète:", { roleError, roleData });
-        throw new Error("Accès non autorisé. Cette interface est réservée aux interprètes.");
+      if (roleError) {
+        console.error("Erreur lors de la vérification du rôle:", roleError);
+        throw new Error("Erreur lors de la vérification de vos droits d'accès.");
+      }
+
+      if (!roleData) {
+        console.error("Aucun rôle interprète trouvé");
+        throw new Error("Cette interface est réservée aux interprètes.");
+      }
+
+      if (!roleData.active) {
+        console.error("Rôle interprète inactif");
+        throw new Error("Votre compte interprète est actuellement inactif.");
       }
 
       console.log("Vérification du profil interprète...");
@@ -56,7 +66,7 @@ export const InterpreterLoginForm = () => {
         .from('interpreter_profiles')
         .select('*')
         .eq('id', signInData.user.id)
-        .maybeSingle();
+        .single();
 
       console.log("Résultat vérification profil:", { interpreterData, interpreterError });
 
