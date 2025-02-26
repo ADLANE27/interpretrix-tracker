@@ -21,6 +21,9 @@ import { AdminList } from "./AdminList";
 import { InterpreterList } from "./InterpreterList";
 import { convertLanguagePairsToStrings } from "@/types/languages";
 
+type EmploymentStatus = "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
+
 interface AdminUser {
   id: string;
   email: string;
@@ -39,9 +42,9 @@ interface InterpreterUser {
   role: "interpreter";
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: EmploymentStatus;
   languages: string[];
-  status: "available" | "unavailable" | "pause" | "busy";
+  status: InterpreterStatus;
 }
 
 type UserData = AdminUser | InterpreterUser;
@@ -60,10 +63,16 @@ export const UserManagement = () => {
   const { data: users = [], refetch } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // Récupérer uniquement les administrateurs
-      const { data: adminRoles, error: adminError } = await supabase
+      console.log("Fetching user roles");
+      
+      // Récupérer les admins avec leurs données utilisateur
+      const { data: adminData, error: adminError } = await supabase
         .from('user_roles')
-        .select('*')
+        .select(`
+          user_id,
+          active,
+          role
+        `)
         .eq('role', 'admin');
 
       if (adminError) {
@@ -71,39 +80,75 @@ export const UserManagement = () => {
         throw adminError;
       }
 
-      console.log("Found admin roles:", adminRoles);
+      console.log("Admin roles found:", adminData);
 
-      // Pour chaque admin, récupérer ses informations depuis auth.users
-      const admins = await Promise.all(
-        adminRoles.map(async (role) => {
-          const { data: authData } = await supabase.auth.admin.getUserById(role.user_id);
+      // Récupérer les informations des utilisateurs admin depuis auth.users
+      const admins: AdminUser[] = await Promise.all(
+        adminData.map(async (role) => {
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(role.user_id);
           
-          console.log("Auth data for user:", role.user_id, authData);
+          if (userError) {
+            console.error("Error fetching user data:", userError);
+            return null;
+          }
 
-          if (!authData?.user) return null;
+          if (!userData) {
+            console.error("No user data found for ID:", role.user_id);
+            return null;
+          }
 
-          const adminUser: AdminUser = {
+          return {
             id: role.user_id,
-            email: authData.user.email || '',
-            first_name: authData.user.user_metadata?.first_name || '',
-            last_name: authData.user.user_metadata?.last_name || '',
-            role: 'admin',
+            email: userData.user.email || '',
+            role: 'admin' as const,
+            first_name: userData.user.user_metadata?.first_name || '',
+            last_name: userData.user.user_metadata?.last_name || '',
             active: role.active
           };
+        })
+      ).then(results => results.filter((user): user is AdminUser => user !== null));
 
-          console.log("Created admin user object:", adminUser);
-          return adminUser;
+      // Récupérer les interprètes
+      const { data: interpreterRoles } = await supabase
+        .from("user_roles")
+        .select("*")
+        .eq('role', 'interpreter');
+
+      const interpreters = await Promise.all(
+        (interpreterRoles || []).map(async (role) => {
+          const { data: profile, error: profileError } = await supabase
+            .from('interpreter_profiles')
+            .select('*')
+            .eq('id', role.user_id)
+            .single();
+
+          if (profileError) return null;
+
+          return {
+            id: role.user_id,
+            email: profile.email,
+            role: 'interpreter' as const,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            active: role.active,
+            languages: profile.languages || [],
+            status: profile.status || 'unavailable',
+            tarif_15min: profile.tarif_15min || 0,
+            tarif_5min: profile.tarif_5min || 0,
+            employment_status: profile.employment_status
+          };
         })
       );
 
-      const validAdmins = admins.filter((admin): admin is AdminUser => admin !== null);
-      console.log("Final valid admins:", validAdmins);
-
-      return validAdmins;
-    },
-    staleTime: 0, // Désactive le cache pour toujours avoir des données fraîches
-    refetchOnWindowFocus: true // Recharge les données quand la fenêtre reprend le focus
+      const allUsers = [...admins, ...interpreters].filter((user): user is UserData => user !== null);
+      console.log("All users:", allUsers);
+      
+      return allUsers;
+    }
   });
+
+  const adminUsers = users.filter((user): user is AdminUser => user.role === "admin");
+  const interpreterUsers = users.filter((user): user is InterpreterUser => user.role === "interpreter");
 
   const handleAddAdmin = async (formData: AdminFormData) => {
     try {
@@ -134,6 +179,48 @@ export const UserManagement = () => {
     }
   };
 
+  const handleAddUser = async (formData: InterpreterFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      const languageStrings = convertLanguagePairsToStrings(formData.languages);
+
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
+      const { data, error } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          ...formData,
+          role: "interpreter",
+          languages: languageStrings,
+          address: addressJson,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Invitation envoyée",
+        description: "Un email d'invitation a été envoyé à l'utilisateur",
+      });
+
+      setIsAddUserOpen(false);
+      refetch();
+    } catch (error: any) {
+      console.error("Error adding user:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     try {
       const { error: roleError } = await supabase
@@ -142,6 +229,15 @@ export const UserManagement = () => {
         .eq('user_id', userId);
 
       if (roleError) throw roleError;
+
+      const { error: profileError } = await supabase
+        .from('interpreter_profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error("Error deleting interpreter profile:", profileError);
+      }
 
       const { error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
@@ -233,6 +329,61 @@ export const UserManagement = () => {
     }
   };
 
+  const handleUpdateInterpreter = async (userId: string, formData: InterpreterFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      const languageStrings = formData.languages.map(
+        (pair) => `${pair.source} → ${pair.target}`
+      );
+
+      const addressJson = formData.address ? {
+        street: formData.address.street,
+        postal_code: formData.address.postal_code,
+        city: formData.address.city,
+      } : null;
+
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          employment_status: formData.employment_status,
+          languages: languageStrings,
+          tarif_5min: formData.tarif_5min,
+          tarif_15min: formData.tarif_15min,
+          address: addressJson,
+          phone_number: formData.phone_number || null,
+          birth_country: formData.birth_country || null,
+          nationality: formData.nationality || null,
+          phone_interpretation_rate: formData.phone_interpretation_rate || null,
+          siret_number: formData.siret_number || null,
+          vat_number: formData.vat_number || null,
+          specializations: formData.specializations || [],
+          landline_phone: formData.landline_phone || null
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil de l'interprète a été mis à jour avec succès",
+      });
+
+      refetch();
+    } catch (error: any) {
+      console.error("Error updating interpreter:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6">
@@ -257,18 +408,52 @@ export const UserManagement = () => {
               />
             </DialogContent>
           </Dialog>
+
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto whitespace-nowrap">
+                Ajouter un interprète
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh]">
+              <ScrollArea className="max-h-[85vh] px-1">
+                <DialogHeader>
+                  <DialogTitle>Ajouter un nouvel interprète</DialogTitle>
+                  <DialogDescription>
+                    Un email sera envoyé à l'interprète avec les instructions de connexion.
+                  </DialogDescription>
+                </DialogHeader>
+                <InterpreterProfileForm
+                  isEditing={true}
+                  onSubmit={handleAddUser}
+                  isSubmitting={isSubmitting}
+                />
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="space-y-6 overflow-x-hidden">
         <AdminList
-          admins={users}
+          admins={adminUsers}
           onToggleStatus={toggleUserStatus}
           onDeleteUser={handleDeleteUser}
           onResetPassword={(userId) => {
             setSelectedUserId(userId);
             setIsResetPasswordOpen(true);
           }}
+        />
+
+        <InterpreterList
+          interpreters={interpreterUsers}
+          onToggleStatus={toggleUserStatus}
+          onDeleteUser={handleDeleteUser}
+          onResetPassword={(userId) => {
+            setSelectedUserId(userId);
+            setIsResetPasswordOpen(true);
+          }}
+          onUpdateInterpreter={handleUpdateInterpreter}
         />
       </div>
 
