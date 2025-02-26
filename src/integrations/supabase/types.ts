@@ -686,6 +686,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       get_available_channel_users: {
         Args: {
           channel_id: string

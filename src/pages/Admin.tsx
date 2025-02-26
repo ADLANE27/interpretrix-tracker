@@ -30,10 +30,8 @@ const Admin = () => {
           return;
         }
 
-        // Verify admin status
-        const { data: isAdmin, error: adminCheckError } = await supabase.rpc('is_admin', {
-          user_id: user.id
-        });
+        // Verify admin status using the new SECURITY DEFINER function
+        const { data: isAdmin, error: adminCheckError } = await supabase.rpc('check_is_admin');
 
         if (adminCheckError) {
           console.error('Admin check error:', adminCheckError);
