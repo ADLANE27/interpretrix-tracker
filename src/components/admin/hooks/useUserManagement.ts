@@ -72,6 +72,19 @@ export const useUserManagement = () => {
             return { source, target };
           });
 
+          // Parse and validate address structure
+          let parsedAddress: Profile['address'] = null;
+          if (interpreter.address && typeof interpreter.address === 'object') {
+            const addr = interpreter.address as any;
+            if (addr.street && addr.postal_code && addr.city) {
+              parsedAddress = {
+                street: String(addr.street),
+                postal_code: String(addr.postal_code),
+                city: String(addr.city)
+              };
+            }
+          }
+
           return {
             id: interpreter.id,
             email: interpreter.email,
@@ -84,7 +97,7 @@ export const useUserManagement = () => {
             employment_status: interpreter.employment_status,
             status: (interpreter.status || 'available') as Profile['status'],
             phone_number: interpreter.phone_number,
-            address: interpreter.address,
+            address: parsedAddress,
             birth_country: interpreter.birth_country,
             nationality: interpreter.nationality,
             siret_number: interpreter.siret_number,
