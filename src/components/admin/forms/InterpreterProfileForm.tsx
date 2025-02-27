@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -342,27 +343,6 @@ export const InterpreterProfileForm = ({
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="phone_interpretation_rate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tarif d'interprétation téléphonique (€/min)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
