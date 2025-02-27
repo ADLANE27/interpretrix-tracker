@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,7 +71,23 @@ export const useUserManagement = () => {
           last_name: interpreter.last_name || '',
           role: 'interpreter',
           created_at: interpreter.created_at,
-          active: roleMap[interpreter.id]?.active ?? false
+          active: roleMap[interpreter.id]?.active ?? false,
+          languages: (interpreter.languages || []).map((lang: string) => {
+            const [source, target] = lang.split('→').map(l => l.trim());
+            return { source, target };
+          }),
+          employment_status: interpreter.employment_status,
+          status: interpreter.status || 'available',
+          phone_number: interpreter.phone_number,
+          address: interpreter.address,
+          birth_country: interpreter.birth_country,
+          nationality: interpreter.nationality,
+          siret_number: interpreter.siret_number,
+          vat_number: interpreter.vat_number,
+          specializations: interpreter.specializations || [],
+          landline_phone: interpreter.landline_phone,
+          tarif_15min: interpreter.tarif_15min,
+          tarif_5min: interpreter.tarif_5min
         }));
 
         return {
@@ -85,6 +100,17 @@ export const useUserManagement = () => {
       }
     }
   });
+
+  useEffect(() => {
+    const handleRefetch = () => {
+      refetch();
+    };
+
+    window.addEventListener('refetchUserData', handleRefetch);
+    return () => {
+      window.removeEventListener('refetchUserData', handleRefetch);
+    };
+  }, [refetch]);
 
   const handleDeleteUser = async (userId: string) => {
     try {
