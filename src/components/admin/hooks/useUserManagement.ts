@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData } from "../types/user-management";
+import { Profile } from "@/types/profile";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
@@ -82,7 +83,7 @@ export const useUserManagement = () => {
             active: roleMap[interpreter.id]?.active ?? false,
             languages,
             employment_status: interpreter.employment_status,
-            status: interpreter.status,
+            status: (interpreter.status || 'available') as Profile['status'],
             phone_number: interpreter.phone_number,
             address: interpreter.address,
             birth_country: interpreter.birth_country,
@@ -106,7 +107,7 @@ export const useUserManagement = () => {
       }
     },
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 0  // Don't cache the data
+    gcTime: 0  // Don't cache the data
   });
 
   const handleDeleteUser = async (userId: string) => {
