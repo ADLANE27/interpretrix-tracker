@@ -18,12 +18,10 @@ export interface Profile {
   } | null;
   birth_country: string | null;
   nationality: string | null;
-  phone_interpretation_rate: number | null;
   siret_number: string | null;
   vat_number: string | null;
   profile_picture_url: string | null;
   password_changed: boolean;
-  // Ajout des nouvelles propriétés
   tarif_5min: number;
   tarif_15min: number;
   specializations: string[];

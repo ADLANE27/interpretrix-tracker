@@ -42,7 +42,6 @@ export interface InterpreterFormData {
   phone_number?: string;
   birth_country?: string;
   nationality?: string;
-  phone_interpretation_rate?: number;
   siret_number?: string;
   vat_number?: string;
   specializations?: string[];
@@ -83,7 +82,6 @@ export const InterpreterProfileForm = ({
     phone_number: initialData?.phone_number || "",
     birth_country: initialData?.birth_country || "",
     nationality: initialData?.nationality || "",
-    phone_interpretation_rate: initialData?.phone_interpretation_rate || 0,
     siret_number: initialData?.siret_number || "",
     vat_number: initialData?.vat_number || "",
     specializations: initialData?.specializations || [],
