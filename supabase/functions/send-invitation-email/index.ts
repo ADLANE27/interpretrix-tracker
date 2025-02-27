@@ -2,26 +2,35 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
+interface Address {
+  street: string;
+  postal_code: string;
+  city: string;
+}
+
+interface LanguagePair {
+  source: string;
+  target: string;
+}
+
 interface InterpreterData {
   email: string;
   first_name: string;
   last_name: string;
   password?: string;
-  employment_status: string;
-  languages: string[];
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  languages: LanguagePair[];
   phone_number?: string;
   birth_country?: string;
   nationality?: string;
-  address?: {
-    street: string;
-    postal_code: string;
-    city: string;
-  };
+  address?: Address;
   phone_interpretation_rate?: number;
   siret_number?: string;
   vat_number?: string;
   specializations?: string[];
   landline_phone?: string;
+  tarif_15min: number;
+  tarif_5min: number;
 }
 
 Deno.serve(async (req) => {
@@ -37,7 +46,17 @@ Deno.serve(async (req) => {
     const interpreterData: InterpreterData = await req.json();
     console.log('Creating interpreter with data:', interpreterData);
 
-    // 1. Créer l'utilisateur avec le mot de passe fourni ou généré
+    // Validate required fields
+    if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
+      throw new Error('Missing required fields: email, first_name, or last_name');
+    }
+
+    // Transform languages to the correct format
+    const formattedLanguages = interpreterData.languages.map(lang => 
+      `${lang.source}→${lang.target}`
+    );
+
+    // 1. Create the user with the provided or generated password
     const password = interpreterData.password || Math.random().toString(36).slice(-12);
     
     const { data: authData, error: createError } = await supabase.auth.admin.createUser({
@@ -57,7 +76,7 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', authData);
 
-    // 2. Ajouter le rôle d'interprète
+    // 2. Add interpreter role
     const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
@@ -68,12 +87,12 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error('Error setting interpreter role:', roleError);
-      // En cas d'erreur, nettoyer l'utilisateur créé
+      // Clean up created user if role assignment fails
       await supabase.auth.admin.deleteUser(authData.user.id);
       throw roleError;
     }
 
-    // 3. Créer le profil d'interprète
+    // 3. Create interpreter profile
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
       .insert({
@@ -82,29 +101,31 @@ Deno.serve(async (req) => {
         last_name: interpreterData.last_name,
         email: interpreterData.email,
         employment_status: interpreterData.employment_status,
-        languages: interpreterData.languages,
-        phone_number: interpreterData.phone_number,
-        birth_country: interpreterData.birth_country,
-        nationality: interpreterData.nationality,
-        address: interpreterData.address,
-        phone_interpretation_rate: interpreterData.phone_interpretation_rate,
-        siret_number: interpreterData.siret_number,
-        vat_number: interpreterData.vat_number,
-        specializations: interpreterData.specializations,
-        landline_phone: interpreterData.landline_phone,
+        languages: formattedLanguages,
+        phone_number: interpreterData.phone_number || null,
+        birth_country: interpreterData.birth_country || null,
+        nationality: interpreterData.nationality || null,
+        address: interpreterData.address || null,
+        phone_interpretation_rate: interpreterData.phone_interpretation_rate || 0,
+        siret_number: interpreterData.siret_number || null,
+        vat_number: interpreterData.vat_number || null,
+        specializations: interpreterData.specializations || [],
+        landline_phone: interpreterData.landline_phone || null,
         password_changed: false,
         status: 'available',
+        tarif_15min: interpreterData.tarif_15min || 0,
+        tarif_5min: interpreterData.tarif_5min || 0
       });
 
     if (profileError) {
       console.error('Error creating interpreter profile:', profileError);
-      // En cas d'erreur, nettoyer l'utilisateur et son rôle
+      // Clean up user and role if profile creation fails
       await supabase.from('user_roles').delete().eq('user_id', authData.user.id);
       await supabase.auth.admin.deleteUser(authData.user.id);
       throw profileError;
     }
 
-    // 4. Envoyer l'email avec les informations de connexion
+    // 4. Send welcome email
     const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
       body: {
         email: interpreterData.email,
@@ -116,7 +137,7 @@ Deno.serve(async (req) => {
 
     if (emailError) {
       console.error('Error sending welcome email:', emailError);
-      // Ne pas bloquer la création si l'email échoue
+      // Don't block creation if email fails
     }
 
     return new Response(
@@ -143,3 +164,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+
