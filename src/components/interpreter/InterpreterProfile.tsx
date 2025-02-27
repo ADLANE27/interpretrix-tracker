@@ -61,7 +61,6 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
   const [city, setCity] = useState(profile.address?.city || "");
   const [birthCountry, setBirthCountry] = useState(profile.birth_country || "");
   const [nationality, setNationality] = useState(profile.nationality || "");
-  const [phoneInterpretationRate, setPhoneInterpretationRate] = useState<number | null>(profile.phone_interpretation_rate);
   const [siretNumber, setSiretNumber] = useState(profile.siret_number || "");
   const [vatNumber, setVatNumber] = useState(profile.vat_number || "");
   const [selectedLanguages, setSelectedLanguages] = useState(profile.languages);
@@ -79,7 +78,6 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
     setCity(profile.address?.city || "");
     setBirthCountry(profile.birth_country || "");
     setNationality(profile.nationality || "");
-    setPhoneInterpretationRate(profile.phone_interpretation_rate);
     setSiretNumber(profile.siret_number || "");
     setVatNumber(profile.vat_number || "");
     setSelectedLanguages(profile.languages);
@@ -125,7 +123,6 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
           },
           birth_country: birthCountry,
           nationality: nationality,
-          phone_interpretation_rate: phoneInterpretationRate,
           siret_number: siretNumber,
           vat_number: vatNumber,
           languages: languagesStringArray
