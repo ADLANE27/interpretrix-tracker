@@ -117,23 +117,42 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     setIsInterpreter(roleData?.role === 'interpreter');
   };
 
+  const initializeData = async () => {
+    await Promise.all([
+      fetchTarifs(),
+      fetchMissions(),
+      fetchCurrentStatus()
+    ]);
+  };
+
+  useEffect(() => {
+    console.log('[InterpreterCard] Initial data loading for interpreter:', interpreter.id);
+    initializeData();
+  }, [interpreter.id]);
+
   const fetchTarifs = async () => {
-    const { data, error } = await supabase
-      .from('interpreter_profiles')
-      .select('tarif_5min, tarif_15min')
-      .eq('id', interpreter.id)
-      .single();
+    try {
+      console.log('[InterpreterCard] Fetching tarifs for interpreter:', interpreter.id);
+      const { data, error } = await supabase
+        .from('interpreter_profiles')
+        .select('tarif_5min, tarif_15min')
+        .eq('id', interpreter.id)
+        .single();
 
-    if (error) {
-      console.error('[InterpreterCard] Error fetching tarifs:', error);
-      return;
-    }
+      if (error) {
+        console.error('[InterpreterCard] Error fetching tarifs:', error);
+        return;
+      }
 
-    if (data) {
-      setLocalTarifs({
-        tarif_5min: data.tarif_5min,
-        tarif_15min: data.tarif_15min
-      });
+      if (data) {
+        console.log('[InterpreterCard] Tarifs fetched successfully:', data);
+        setLocalTarifs({
+          tarif_5min: data.tarif_5min || 0,
+          tarif_15min: data.tarif_15min || 0
+        });
+      }
+    } catch (error) {
+      console.error('[InterpreterCard] Unexpected error fetching tarifs:', error);
     }
   };
 
