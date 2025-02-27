@@ -195,7 +195,6 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
-            onUpdate={refetch}
           />
         </div>
 
@@ -211,7 +210,6 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
-            onUpdate={refetch}
           />
         </div>
       </div>

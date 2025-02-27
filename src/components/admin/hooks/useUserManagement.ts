@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData } from "../types/user-management";
-import { Profile } from "@/types/profile";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
@@ -18,7 +17,7 @@ export const useUserManagement = () => {
     error
   } = useQuery<UsersData>({
     queryKey: ["users"],
-    queryFn: async (): Promise<UsersData> => {
+    queryFn: async () => {
       try {
         // Check if current user is admin
         const { data: roleCheck, error: roleError } = await supabase
@@ -44,7 +43,7 @@ export const useUserManagement = () => {
 
         if (adminError) throw adminError;
 
-        // Get interpreter profiles with complete data
+        // Get interpreter profiles
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
@@ -66,36 +65,15 @@ export const useUserManagement = () => {
           active: roleMap[admin.id]?.active ?? false
         }));
 
-        const interpreters = (interpreterData || []).map(interpreter => {
-          // Transform the languages array from strings to objects
-          const languages = (interpreter.languages || []).map((lang: string) => {
-            const [source, target] = lang.split('→').map(l => l.trim());
-            return { source, target };
-          });
-
-          return {
-            id: interpreter.id,
-            email: interpreter.email,
-            first_name: interpreter.first_name || '',
-            last_name: interpreter.last_name || '',
-            role: 'interpreter',
-            created_at: interpreter.created_at,
-            active: roleMap[interpreter.id]?.active ?? false,
-            languages,
-            employment_status: interpreter.employment_status,
-            status: (interpreter.status || 'available') as Profile['status'],
-            phone_number: interpreter.phone_number,
-            address: interpreter.address,
-            birth_country: interpreter.birth_country,
-            nationality: interpreter.nationality,
-            siret_number: interpreter.siret_number,
-            vat_number: interpreter.vat_number,
-            specializations: interpreter.specializations || [],
-            landline_phone: interpreter.landline_phone,
-            tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min
-          };
-        });
+        const interpreters = (interpreterData || []).map(interpreter => ({
+          id: interpreter.id,
+          email: interpreter.email,
+          first_name: interpreter.first_name || '',
+          last_name: interpreter.last_name || '',
+          role: 'interpreter',
+          created_at: interpreter.created_at,
+          active: roleMap[interpreter.id]?.active ?? false
+        }));
 
         return {
           admins: admins.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
@@ -105,9 +83,7 @@ export const useUserManagement = () => {
         console.error('Error fetching users:', error);
         throw error;
       }
-    },
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0  // Don't cache the data
+    }
   });
 
   const handleDeleteUser = async (userId: string) => {
