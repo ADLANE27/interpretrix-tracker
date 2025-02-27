@@ -28,9 +28,10 @@ interface UserTableProps {
   users: UserData[];
   onDelete: (id: string) => void;
   onResetPassword: (id: string) => void;
+  onUpdate?: () => void; // Add callback for updates
 }
 
-export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
+export const UserTable = ({ users, onDelete, onResetPassword, onUpdate }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,10 +115,11 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         description: "Profil mis à jour avec succès",
       });
 
-      // Instead of reloading the page, just close the dialog
       setIsEditingInterpreter(false);
-      // Optionally, you can implement a callback to refresh the data
-      // if (onProfileUpdated) onProfileUpdated();
+      // Call the update callback to refresh the parent component
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -209,4 +211,3 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     </>
   );
 };
-
