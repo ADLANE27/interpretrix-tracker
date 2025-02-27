@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -40,7 +39,6 @@ interface ProfileProps {
     } | null;
     birth_country: string | null;
     nationality: string | null;
-    phone_interpretation_rate: number | null;
     siret_number: string | null;
     vat_number: string | null;
     profile_picture_url: string | null;
