@@ -194,7 +194,7 @@ export const MissionManagement = () => {
         timestamp: new Date().toISOString() 
       });
       
-      // First get ALL interpreters with matching languages
+      // Première requête pour obtenir tous les interprètes
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select(`
@@ -205,20 +205,37 @@ export const MissionManagement = () => {
           profile_picture_url,
           languages,
           tarif_15min
-        `)
-        .contains('languages', [`${sourceLang} → ${targetLang}`]);
+        `);
 
       if (error) {
         console.error('[MissionManagement] Error fetching interpreters:', error);
         throw error;
       }
 
-      console.log('[MissionManagement] Found interpreters before filtering:', interpreters?.map(i => ({
-        name: `${i.first_name} ${i.last_name}`,
-        status: i.status
-      })));
+      console.log('[MissionManagement] Found all interpreters:', interpreters?.length);
       
       if (!interpreters || interpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found');
+        setAvailableInterpreters([]);
+        return;
+      }
+
+      // Filtrer les interprètes qui ont la bonne combinaison de langues
+      // en ignorant les espaces autour de la flèche
+      const matchingInterpreters = interpreters.filter(interpreter => {
+        return interpreter.languages.some(lang => {
+          const [source, target] = lang.split('→').map(l => l.trim());
+          return source === sourceLang && target === targetLang;
+        });
+      });
+
+      console.log('[MissionManagement] Found interpreters before filtering:', matchingInterpreters.map(i => ({
+        name: `${i.first_name} ${i.last_name}`,
+        status: i.status,
+        languages: i.languages
+      })));
+      
+      if (matchingInterpreters.length === 0) {
         console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
         toast({
           title: "Aucun interprète trouvé",
@@ -228,17 +245,17 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Filter interpreters based on mission type and status
-      let filteredInterpreters = interpreters;
+      // Filtrer les interprètes basés sur le type de mission et le statut
+      let filteredInterpreters = matchingInterpreters;
       if (missionType === 'immediate') {
-        filteredInterpreters = interpreters.filter(interpreter => interpreter.status === 'available');
+        filteredInterpreters = matchingInterpreters.filter(interpreter => interpreter.status === 'available');
         console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters.map(i => ({
           name: `${i.first_name} ${i.last_name}`,
           status: i.status
         })));
       }
 
-      // Filter out duplicates and sort by rate
+      // Filtrer les doublons et trier par tarif
       const uniqueInterpreters = filteredInterpreters
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
