@@ -114,8 +114,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         description: "Profil mis à jour avec succès",
       });
 
+      // Instead of reloading the page, just close the dialog
       setIsEditingInterpreter(false);
-      window.location.reload(); // Recharger la page pour voir les modifications
+      // Optionally, you can implement a callback to refresh the data
+      // if (onProfileUpdated) onProfileUpdated();
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -207,3 +209,4 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     </>
   );
 };
+
