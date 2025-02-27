@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -22,6 +21,7 @@ import { UserData } from "../types/user-management";
 import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
 
 interface UserTableProps {
@@ -116,7 +116,6 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       setIsEditingInterpreter(false);
       
-      // Instead of reloading the page, trigger a refetch of the data
       window.dispatchEvent(new CustomEvent('refetchUserData'));
       
     } catch (error: any) {
