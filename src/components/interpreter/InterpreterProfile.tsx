@@ -1,22 +1,14 @@
+
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { LANGUAGES } from "@/constants/languages";
-import { COUNTRIES } from "@/constants/countries";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { CalendarIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProfileProps {
@@ -65,9 +57,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
   const [vatNumber, setVatNumber] = useState(profile.vat_number || "");
   const [selectedLanguages, setSelectedLanguages] = useState(profile.languages);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [date, setDate] = useState<Date | undefined>(new Date("2023-01-23"));
 
   useEffect(() => {
     setFirstName(profile.first_name);
@@ -249,16 +239,6 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
                 <Label className="font-medium">Tarif (5 minutes)</Label>
                 <Input type="text" value={`${profile.tarif_5min} €`} readOnly className="bg-muted" />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="font-medium">Tarif d'interprétation téléphonique (€/min)</Label>
-              <Input
-                type="text"
-                value={profile.phone_interpretation_rate ? `${profile.phone_interpretation_rate} €` : ''}
-                readOnly
-                className="bg-muted"
-              />
             </div>
 
             <div className="grid grid-cols-1 gap-4">
