@@ -43,7 +43,7 @@ export const useUserManagement = () => {
 
         if (adminError) throw adminError;
 
-        // Get interpreter profiles
+        // Get interpreter profiles with complete data
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
@@ -72,7 +72,21 @@ export const useUserManagement = () => {
           last_name: interpreter.last_name || '',
           role: 'interpreter',
           created_at: interpreter.created_at,
-          active: roleMap[interpreter.id]?.active ?? false
+          active: roleMap[interpreter.id]?.active ?? false,
+          // Include all interpreter specific fields
+          languages: interpreter.languages || [],
+          employment_status: interpreter.employment_status,
+          status: interpreter.status,
+          phone_number: interpreter.phone_number,
+          address: interpreter.address,
+          birth_country: interpreter.birth_country,
+          nationality: interpreter.nationality,
+          siret_number: interpreter.siret_number,
+          vat_number: interpreter.vat_number,
+          specializations: interpreter.specializations || [],
+          landline_phone: interpreter.landline_phone,
+          tarif_15min: interpreter.tarif_15min,
+          tarif_5min: interpreter.tarif_5min
         }));
 
         return {
@@ -83,7 +97,9 @@ export const useUserManagement = () => {
         console.error('Error fetching users:', error);
         throw error;
       }
-    }
+    },
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0  // Don't cache the data
   });
 
   const handleDeleteUser = async (userId: string) => {
