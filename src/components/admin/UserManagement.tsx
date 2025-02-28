@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -101,18 +102,26 @@ export const UserManagement = () => {
   if (isPasswordRequired && !isVerified) {
     console.log("[UserManagement] Showing password verification dialog");
     return (
-      <UserManagementPasswordDialog
-        isOpen={true} // Force dialog to stay open until verified
-        onOpenChange={(open) => {
-          if (!open && !isVerified) {
-            setIsPasswordVerifyOpen(true); // Prevent closing without verification
-          } else {
-            setIsPasswordVerifyOpen(open);
-          }
-        }}
-        onSubmit={handlePasswordVerify}
-        mode="verify"
-      />
+      <div className="min-h-screen flex items-center justify-center">
+        <UserManagementPasswordDialog
+          isOpen={true}
+          onOpenChange={(open) => {
+            if (!open && !isVerified) {
+              console.log("[UserManagement] Preventing dialog close - not verified yet");
+              setIsPasswordVerifyOpen(true);
+            } else {
+              console.log("[UserManagement] Allowing dialog close - verified");
+              setIsPasswordVerifyOpen(open);
+            }
+          }}
+          onSubmit={async (password) => {
+            console.log("[UserManagement] Submitting password verification");
+            await handlePasswordVerify(password);
+            console.log("[UserManagement] Password verification complete");
+          }}
+          mode="verify"
+        />
+      </div>
     );
   }
 
