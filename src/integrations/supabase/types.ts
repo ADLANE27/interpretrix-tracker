@@ -44,6 +44,30 @@ export type Database = {
           },
         ]
       }
+      admin_settings: {
+        Row: {
+          created_at: string
+          id: string
+          setting_type: Database["public"]["Enums"]["setting_type"]
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          setting_type: Database["public"]["Enums"]["setting_type"]
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          setting_type?: Database["public"]["Enums"]["setting_type"]
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -1032,6 +1056,7 @@ export type Database = {
         | "diplomatic"
       notification_subscription_status: "active" | "unsubscribed" | "blocked"
       private_reservation_status: "scheduled" | "completed" | "cancelled"
+      setting_type: "user_management_password"
       subscription_status: "active" | "expired" | "error"
       user_role: "admin" | "interpreter"
     }

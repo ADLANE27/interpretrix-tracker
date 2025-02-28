@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,8 @@ import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 import { UserTable } from "./components/UserTable";
 import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
+import { useUserManagementPassword } from "./hooks/useUserManagementPassword";
+import { UserManagementPasswordDialog } from "./components/UserManagementPasswordDialog";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -38,6 +39,20 @@ export const UserManagement = () => {
     isSubmitting,
     setIsSubmitting,
   } = useUserManagement();
+
+  const {
+    isPasswordRequired,
+    isPasswordSetupOpen,
+    setIsPasswordSetupOpen,
+    isPasswordVerifyOpen,
+    setIsPasswordVerifyOpen,
+    isPasswordChangeOpen,
+    setIsPasswordChangeOpen,
+    isVerified,
+    handlePasswordSetup,
+    handlePasswordVerify,
+    handlePasswordChange,
+  } = useUserManagementPassword();
 
   const handleResetPassword = async (password: string) => {
     try {
@@ -81,14 +96,45 @@ export const UserManagement = () => {
     );
   }
 
+  if (isPasswordRequired && !isVerified) {
+    return (
+      <UserManagementPasswordDialog
+        isOpen={isPasswordVerifyOpen}
+        onOpenChange={setIsPasswordVerifyOpen}
+        onSubmit={handlePasswordVerify}
+        mode="verify"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
+      <UserManagementPasswordDialog
+        isOpen={isPasswordSetupOpen}
+        onOpenChange={setIsPasswordSetupOpen}
+        onSubmit={handlePasswordSetup}
+        mode="setup"
+      />
+
+      <UserManagementPasswordDialog
+        isOpen={isPasswordChangeOpen}
+        onOpenChange={setIsPasswordChangeOpen}
+        onSubmit={handlePasswordChange}
+        mode="change"
+      />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <UserCog className="h-6 w-6" />
           <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => setIsPasswordChangeOpen(true)}
+          >
+            Change Password
+          </Button>
           <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
