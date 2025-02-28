@@ -96,11 +96,20 @@ export const UserManagement = () => {
     );
   }
 
+  console.log("[UserManagement] Render state:", { isPasswordRequired, isVerified, isPasswordVerifyOpen });
+
   if (isPasswordRequired && !isVerified) {
+    console.log("[UserManagement] Showing password verification dialog");
     return (
       <UserManagementPasswordDialog
-        isOpen={isPasswordVerifyOpen}
-        onOpenChange={setIsPasswordVerifyOpen}
+        isOpen={true} // Force dialog to stay open until verified
+        onOpenChange={(open) => {
+          if (!open && !isVerified) {
+            setIsPasswordVerifyOpen(true); // Prevent closing without verification
+          } else {
+            setIsPasswordVerifyOpen(open);
+          }
+        }}
         onSubmit={handlePasswordVerify}
         mode="verify"
       />

@@ -14,6 +14,7 @@ export const useUserManagementPassword = () => {
 
   // Check if password exists
   useEffect(() => {
+    console.log("[useUserManagementPassword] Checking password existence...");
     const checkPassword = async () => {
       const { data, error } = await supabase
         .from('admin_settings')
@@ -22,9 +23,11 @@ export const useUserManagementPassword = () => {
         .single();
 
       if (!error && data) {
+        console.log("[useUserManagementPassword] Password exists, requiring verification");
         setIsPasswordRequired(true);
         setIsPasswordVerifyOpen(true);
       } else {
+        console.log("[useUserManagementPassword] No password found, opening setup");
         setIsPasswordSetupOpen(true);
       }
     };
@@ -49,6 +52,7 @@ export const useUserManagementPassword = () => {
 
     setIsPasswordRequired(true);
     setIsVerified(true);
+    setIsPasswordSetupOpen(false);  // Ensure dialog closes
     toast({
       title: "Mot de passe défini",
       description: "Le mot de passe de gestion des utilisateurs a été défini avec succès.",
@@ -56,21 +60,32 @@ export const useUserManagementPassword = () => {
   };
 
   const handlePasswordVerify = async (password: string) => {
-    const { data, error } = await supabase
-      .from('admin_settings')
-      .select('value')
-      .eq('setting_type', 'user_management_password')
-      .single();
+    try {
+      console.log("[useUserManagementPassword] Verifying password...");
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('value')
+        .eq('setting_type', 'user_management_password')
+        .single();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const isValid = await bcrypt.compare(password, data.value);
-    if (!isValid) {
-      throw new Error("Mot de passe incorrect");
+      const isValid = await bcrypt.compare(password, data.value);
+      if (!isValid) {
+        throw new Error("Mot de passe incorrect");
+      }
+
+      console.log("[useUserManagementPassword] Password verified successfully");
+      setIsVerified(true);
+      setIsPasswordVerifyOpen(false);
+      toast({
+        title: "Accès accordé",
+        description: "Vérification du mot de passe réussie.",
+      });
+    } catch (error: any) {
+      console.error("[useUserManagementPassword] Verification error:", error);
+      throw error;
     }
-
-    setIsVerified(true);
-    setIsPasswordVerifyOpen(false);
   };
 
   const handlePasswordChange = async (newPassword: string) => {
@@ -84,6 +99,7 @@ export const useUserManagementPassword = () => {
 
     if (error) throw error;
 
+    setIsPasswordChangeOpen(false);  // Ensure dialog closes
     toast({
       title: "Mot de passe mis à jour",
       description: "Le mot de passe de gestion des utilisateurs a été mis à jour avec succès.",
