@@ -1,14 +1,16 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay, addHours } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
+import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 
 interface Mission {
   id: string;
@@ -34,11 +36,6 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
   const { toast } = useToast();
-
-  const adjustForFrenchTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
-  };
 
   const fetchMissions = async (userId: string) => {
     console.log('[MissionsCalendar] Fetching missions for user:', userId);
@@ -153,7 +150,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
-    const missionDate = adjustForFrenchTime(mission.scheduled_start_time);
+    const missionDate = toFrenchTime(mission.scheduled_start_time);
     const selectedDayStart = startOfDay(selectedDate);
     const missionDayStart = startOfDay(missionDate);
     
@@ -166,7 +163,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
-      const date = startOfDay(adjustForFrenchTime(mission.scheduled_start_time));
+      const date = startOfDay(toFrenchTime(mission.scheduled_start_time));
       console.log(`[MissionsCalendar] Mission ${mission.id} date: ${date.toISOString()}`);
       return date;
     })
@@ -206,9 +203,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             </p>
           ) : (
             missionsForSelectedDate.map((mission) => {
-              const startTime = adjustForFrenchTime(mission.scheduled_start_time!);
+              const startTime = toFrenchTime(mission.scheduled_start_time!);
               const endTime = mission.scheduled_end_time 
-                ? adjustForFrenchTime(mission.scheduled_end_time)
+                ? toFrenchTime(mission.scheduled_end_time)
                 : null;
 
               return (
@@ -218,9 +215,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                       <div className="flex items-center gap-2 mb-2">
                         <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <span className="text-sm font-medium">
-                          {format(startTime, "HH:mm", { locale: fr })}
+                          {formatFrenchTime(startTime, "HH:mm")}
                           {endTime &&
-                            ` - ${format(endTime, "HH:mm", { locale: fr })}`}
+                            ` - ${formatFrenchTime(endTime, "HH:mm")}`}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">

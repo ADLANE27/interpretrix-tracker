@@ -1,5 +1,5 @@
-
-import { format, isWithinInterval, areIntervalsOverlapping, addMinutes } from 'date-fns';
+import { format, isWithinInterval } from 'date-fns';
+import { toFrenchTime, hasTimeOverlap as timeOverlap } from './timeZone';
 
 export const hasTimeOverlap = (
   startTime1: string,
@@ -13,26 +13,12 @@ export const hasTimeOverlap = (
   });
 
   try {
-    const start1 = new Date(startTime1);
-    const end1 = new Date(endTime1);
-    const start2 = new Date(startTime2);
-    const end2 = new Date(endTime2);
-
-    if ([start1, end1, start2, end2].some(date => isNaN(date.getTime()))) {
-      console.error('[missionUtils] Invalid date detected in overlap check');
+    if (!startTime1 || !endTime1 || !startTime2 || !endTime2) {
+      console.error('[missionUtils] Invalid dates provided');
       return true;
     }
 
-    if (end1 <= start1 || end2 <= start2) {
-      console.error('[missionUtils] End time is before or equal to start time');
-      return true;
-    }
-
-    const hasOverlap = areIntervalsOverlapping(
-      { start: start1, end: end1 },
-      { start: start2, end: end2 }
-    );
-
+    const hasOverlap = timeOverlap(startTime1, endTime1, startTime2, endTime2);
     console.log('[missionUtils] Overlap result:', hasOverlap);
     return hasOverlap;
   } catch (error) {
@@ -54,7 +40,6 @@ export const isInterpreterAvailableForScheduledMission = async (
   });
 
   try {
-    // Check active missions (accepted or in_progress)
     const { data: existingMissions, error: missionsError } = await supabase
       .from('interpretation_missions')
       .select('id, scheduled_start_time, scheduled_end_time, mission_type, status')
@@ -68,7 +53,6 @@ export const isInterpreterAvailableForScheduledMission = async (
 
     console.log('[missionUtils] Found existing missions:', existingMissions);
 
-    // Check for overlap with existing missions
     const hasConflict = existingMissions?.some(mission => {
       if (!mission.scheduled_start_time || !mission.scheduled_end_time) {
         return false;
@@ -93,7 +77,6 @@ export const isInterpreterAvailableForScheduledMission = async (
       return overlap;
     });
 
-    // Check for pending notifications that might create conflicts
     const { data: pendingNotifications, error: notificationsError } = await supabase
       .from('mission_notifications')
       .select(`
@@ -174,7 +157,6 @@ export const isInterpreterAvailableForImmediateMission = (
     const now = new Date();
     const thirtyMinutesFromNow = addMinutes(now, 30);
 
-    // Filter out deleted missions before checking conflicts
     const activeScheduledMissions = scheduledMissions.filter(
       mission => mission?.status !== 'deleted'
     );
@@ -185,7 +167,7 @@ export const isInterpreterAvailableForImmediateMission = (
       }
 
       try {
-        const missionStart = new Date(mission.scheduled_start_time);
+        const missionStart = toFrenchTime(mission.scheduled_start_time);
         
         if (isNaN(missionStart.getTime())) {
           console.error('[missionUtils] Invalid mission start time detected');

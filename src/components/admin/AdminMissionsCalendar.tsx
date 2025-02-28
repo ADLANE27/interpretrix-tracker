@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay, startOfWeek, endOfWeek, addHours } from "date-fns";
+import { format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock, User, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { toFrenchTime, formatFrenchTime, TIMEZONE } from "@/utils/timeZone";
 
 interface CalendarMission {
   mission_id: string;
@@ -35,11 +37,6 @@ export const AdminMissionsCalendar = () => {
   const [missions, setMissions] = useState<CalendarMission[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const { toast } = useToast();
-
-  const adjustForFrenchTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
-  };
 
   const fetchMissions = async () => {
     try {
@@ -106,21 +103,21 @@ export const AdminMissionsCalendar = () => {
         const weekStart = startOfWeek(selectedDate, { locale: fr });
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
-          const missionDate = adjustForFrenchTime(mission.scheduled_start_time);
+          const missionDate = toFrenchTime(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
       }
       case 'day':
       default: // month
         return missions.filter(mission => {
-          const missionDate = adjustForFrenchTime(mission.scheduled_start_time);
+          const missionDate = toFrenchTime(mission.scheduled_start_time);
           return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
         });
     }
   };
 
   const datesWithMissions = missions
-    .map((mission) => startOfDay(adjustForFrenchTime(mission.scheduled_start_time)))
+    .map((mission) => startOfDay(toFrenchTime(mission.scheduled_start_time)))
     .filter((date): date is Date => date !== null);
 
   const visibleMissions = getVisibleMissions();
@@ -179,8 +176,8 @@ export const AdminMissionsCalendar = () => {
               </p>
             ) : (
               visibleMissions.map((mission) => {
-                const startTime = adjustForFrenchTime(mission.scheduled_start_time);
-                const endTime = adjustForFrenchTime(mission.scheduled_end_time);
+                const startTime = toFrenchTime(mission.scheduled_start_time);
+                const endTime = toFrenchTime(mission.scheduled_end_time);
                 const isPrivate = mission.mission_type === 'private';
 
                 return (
@@ -196,9 +193,9 @@ export const AdminMissionsCalendar = () => {
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-blue-500" />
                           <span className="text-sm font-medium">
-                            {format(startTime, "HH:mm", { locale: fr })}
+                            {formatFrenchTime(startTime, "HH:mm")}
                             {" - "}
-                            {format(endTime, "HH:mm", { locale: fr })}
+                            {formatFrenchTime(endTime, "HH:mm")}
                           </span>
                           <Badge variant={isPrivate ? "outline" : "secondary"}>
                             {mission.estimated_duration} min
