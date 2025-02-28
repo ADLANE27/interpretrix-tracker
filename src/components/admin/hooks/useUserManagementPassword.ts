@@ -12,7 +12,6 @@ export const useUserManagementPassword = () => {
   const [isVerified, setIsVerified] = useState(false);
   const { toast } = useToast();
 
-  // Check if password exists
   useEffect(() => {
     console.log("[useUserManagementPassword] Checking password existence...");
     const checkPassword = async () => {
@@ -52,7 +51,7 @@ export const useUserManagementPassword = () => {
 
     setIsPasswordRequired(true);
     setIsVerified(true);
-    setIsPasswordSetupOpen(false);  // Ensure dialog closes
+    setIsPasswordSetupOpen(false);
     toast({
       title: "Mot de passe défini",
       description: "Le mot de passe de gestion des utilisateurs a été défini avec succès.",
@@ -99,7 +98,7 @@ export const useUserManagementPassword = () => {
 
     if (error) throw error;
 
-    setIsPasswordChangeOpen(false);  // Ensure dialog closes
+    setIsPasswordChangeOpen(false);
     toast({
       title: "Mot de passe mis à jour",
       description: "Le mot de passe de gestion des utilisateurs a été mis à jour avec succès.",

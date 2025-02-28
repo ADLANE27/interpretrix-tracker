@@ -102,22 +102,29 @@ export const UserManagement = () => {
   if (isPasswordRequired && !isVerified) {
     console.log("[UserManagement] Showing password verification dialog");
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen">
         <UserManagementPasswordDialog
-          isOpen={true}
+          isOpen={isPasswordVerifyOpen}
           onOpenChange={(open) => {
+            console.log("[UserManagement] Dialog onOpenChange:", { open, isVerified });
             if (!open && !isVerified) {
-              console.log("[UserManagement] Preventing dialog close - not verified yet");
+              console.log("[UserManagement] Keeping dialog open - not verified yet");
               setIsPasswordVerifyOpen(true);
             } else {
-              console.log("[UserManagement] Allowing dialog close - verified");
+              console.log("[UserManagement] Updating dialog state");
               setIsPasswordVerifyOpen(open);
             }
           }}
           onSubmit={async (password) => {
             console.log("[UserManagement] Submitting password verification");
-            await handlePasswordVerify(password);
-            console.log("[UserManagement] Password verification complete");
+            try {
+              await handlePasswordVerify(password);
+              setIsPasswordVerifyOpen(false);
+              console.log("[UserManagement] Password verification successful");
+            } catch (error) {
+              console.error("[UserManagement] Password verification failed:", error);
+              throw error;
+            }
           }}
           mode="verify"
         />

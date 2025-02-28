@@ -61,7 +61,6 @@ export const UserManagementPasswordDialog = ({
       setIsSubmitting(true);
       await onSubmit(values.password);
       form.reset();
-      onOpenChange(false);
     } catch (error: any) {
       toast({
         title: "Erreur",
