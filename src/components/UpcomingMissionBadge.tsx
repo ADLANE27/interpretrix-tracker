@@ -5,6 +5,7 @@ import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -12,7 +13,8 @@ interface UpcomingMissionBadgeProps {
 }
 
 export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingMissionBadgeProps) => {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(() => new Date());
+  const timeZone = 'Europe/Paris';
   
   useEffect(() => {
     // Update time every minute
@@ -23,17 +25,19 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
     return () => clearInterval(interval);
   }, []);
 
-  const missionStartDate = new Date(startTime);
+  // Convert times to French timezone
+  const missionStartDate = toZonedTime(new Date(startTime), timeZone);
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
+  const nowInFrance = toZonedTime(now, timeZone);
   
   const getMissionStatus = () => {
-    if (isBefore(now, missionStartDate)) {
+    if (isBefore(nowInFrance, missionStartDate)) {
       return "upcoming";
-    } else if (isAfter(now, missionEndDate)) {
+    } else if (isAfter(nowInFrance, missionEndDate)) {
       return "ended";
     } else {
       // Mission is in progress
-      const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
+      const minutesLeft = Math.round((missionEndDate.getTime() - nowInFrance.getTime()) / (1000 * 60));
       return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
   };
@@ -44,11 +48,17 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
     switch (status) {
       case "upcoming":
         return {
-          text: `Dans ${formatDistanceToNow(missionStartDate, { locale: fr })} (${estimatedDuration}min)`,
+          text: `Dans ${formatDistanceToNow(missionStartDate, { 
+            locale: fr,
+            addSuffix: false 
+          })} (${estimatedDuration}min)`,
           variant: "secondary" as const
         };
       case "in-progress":
-        const remainingTime = formatDistanceToNow(missionEndDate, { locale: fr, addSuffix: true });
+        const remainingTime = formatDistanceToNow(missionEndDate, { 
+          locale: fr, 
+          addSuffix: true 
+        });
         return {
           text: `Se termine ${remainingTime}`,
           variant: "default" as const
@@ -60,7 +70,7 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
         };
       case "ended":
         return {
-          text: `Mission terminée (${format(missionEndDate, "HH:mm", { locale: fr })})`,
+          text: `Mission terminée (${formatInTimeZone(missionEndDate, timeZone, 'HH:mm', { locale: fr })})`,
           variant: "outline" as const
         };
     }
