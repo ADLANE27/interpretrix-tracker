@@ -133,7 +133,7 @@ export const UserManagement = () => {
             variant="outline"
             onClick={() => setIsPasswordChangeOpen(true)}
           >
-            Change Password
+            Modifier le mot de passe
           </Button>
           <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
             <DialogTrigger asChild>

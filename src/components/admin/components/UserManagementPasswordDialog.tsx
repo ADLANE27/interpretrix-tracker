@@ -24,11 +24,11 @@ import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
+    message: "Le mot de passe doit contenir au moins 6 caractères.",
   }),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Les mots de passe ne correspondent pas",
   path: ["confirmPassword"],
 });
 
@@ -64,7 +64,7 @@ export const UserManagementPasswordDialog = ({
       onOpenChange(false);
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Erreur",
         description: error.message,
         variant: "destructive",
       });
@@ -74,15 +74,15 @@ export const UserManagementPasswordDialog = ({
   };
 
   const titles = {
-    setup: "Set User Management Password",
-    verify: "Enter User Management Password",
-    change: "Change User Management Password"
+    setup: "Définir le mot de passe de gestion des utilisateurs",
+    verify: "Entrer le mot de passe de gestion des utilisateurs",
+    change: "Modifier le mot de passe de gestion des utilisateurs"
   };
 
   const descriptions = {
-    setup: "Set a password to protect user management functionality. Share this password only with trusted administrators.",
-    verify: "Enter the user management password to continue.",
-    change: "Enter a new password for user management functionality."
+    setup: "Définissez un mot de passe pour protéger la gestion des utilisateurs. Partagez ce mot de passe uniquement avec les administrateurs de confiance.",
+    verify: "Entrez le mot de passe de gestion des utilisateurs pour continuer.",
+    change: "Entrez un nouveau mot de passe pour la gestion des utilisateurs."
   };
 
   return (
@@ -100,7 +100,7 @@ export const UserManagementPasswordDialog = ({
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{mode === 'verify' ? 'Password' : 'New Password'}</FormLabel>
+                  <FormLabel>{mode === 'verify' ? 'Mot de passe' : 'Nouveau mot de passe'}</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
@@ -115,7 +115,7 @@ export const UserManagementPasswordDialog = ({
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>Confirmer le mot de passe</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -126,7 +126,7 @@ export const UserManagementPasswordDialog = ({
             )}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Processing..." : mode === 'verify' ? "Verify" : "Save Password"}
+              {isSubmitting ? "Traitement..." : mode === 'verify' ? "Vérifier" : "Enregistrer le mot de passe"}
             </Button>
           </form>
         </Form>

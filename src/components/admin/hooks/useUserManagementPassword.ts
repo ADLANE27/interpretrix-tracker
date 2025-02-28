@@ -50,8 +50,8 @@ export const useUserManagementPassword = () => {
     setIsPasswordRequired(true);
     setIsVerified(true);
     toast({
-      title: "Password Set",
-      description: "User management password has been set successfully.",
+      title: "Mot de passe défini",
+      description: "Le mot de passe de gestion des utilisateurs a été défini avec succès.",
     });
   };
 
@@ -66,7 +66,7 @@ export const useUserManagementPassword = () => {
 
     const isValid = await bcrypt.compare(password, data.value);
     if (!isValid) {
-      throw new Error("Invalid password");
+      throw new Error("Mot de passe incorrect");
     }
 
     setIsVerified(true);
@@ -85,8 +85,8 @@ export const useUserManagementPassword = () => {
     if (error) throw error;
 
     toast({
-      title: "Password Updated",
-      description: "User management password has been updated successfully.",
+      title: "Mot de passe mis à jour",
+      description: "Le mot de passe de gestion des utilisateurs a été mis à jour avec succès.",
     });
   };
 
