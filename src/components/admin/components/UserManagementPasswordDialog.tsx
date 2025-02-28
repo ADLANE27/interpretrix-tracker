@@ -22,18 +22,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = mode => mode === 'verify' 
-  ? z.object({
-      password: z.string().min(1, "Le mot de passe est requis"),
-      confirmPassword: z.string().optional()
-    })
-  : z.object({
-      password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
-      confirmPassword: z.string()
-    }).refine((data) => data.password === data.confirmPassword, {
-      message: "Les mots de passe ne correspondent pas",
-      path: ["confirmPassword"],
-    });
+// Define type-safe schema types
+const verifySchema = z.object({
+  password: z.string().min(1, "Le mot de passe est requis"),
+  confirmPassword: z.string().optional(),
+});
+
+const setupSchema = z.object({
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"],
+});
+
+type FormData = z.infer<typeof verifySchema> | z.infer<typeof setupSchema>;
 
 interface UserManagementPasswordDialogProps {
   isOpen: boolean;
@@ -51,15 +54,17 @@ export const UserManagementPasswordDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema(mode)),
+  const schema = mode === 'verify' ? verifySchema : setupSchema;
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
     defaultValues: {
       password: "",
       confirmPassword: "",
     },
   });
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: FormData) => {
     if (isSubmitting) return;
     
     try {
@@ -81,13 +86,13 @@ export const UserManagementPasswordDialog = ({
     setup: "Définir le mot de passe de gestion des utilisateurs",
     verify: "Entrer le mot de passe de gestion des utilisateurs",
     change: "Modifier le mot de passe de gestion des utilisateurs"
-  };
+  } as const;
 
   const descriptions = {
     setup: "Définissez un mot de passe pour protéger la gestion des utilisateurs. Partagez ce mot de passe uniquement avec les administrateurs de confiance.",
     verify: "Entrez le mot de passe de gestion des utilisateurs pour continuer.",
     change: "Entrez un nouveau mot de passe pour la gestion des utilisateurs."
-  };
+  } as const;
 
   return (
     <Dialog open={isOpen} onOpenChange={mode === 'verify' ? undefined : onOpenChange}>
