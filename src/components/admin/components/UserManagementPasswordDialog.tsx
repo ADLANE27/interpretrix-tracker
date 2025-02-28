@@ -22,15 +22,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = z.object({
-  password: z.string().min(6, {
-    message: "Le mot de passe doit contenir au moins 6 caractères.",
-  }),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Les mots de passe ne correspondent pas",
-  path: ["confirmPassword"],
-});
+const formSchema = mode => mode === 'verify' 
+  ? z.object({
+      password: z.string().min(1, "Le mot de passe est requis"),
+      confirmPassword: z.string().optional()
+    })
+  : z.object({
+      password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+      confirmPassword: z.string()
+    }).refine((data) => data.password === data.confirmPassword, {
+      message: "Les mots de passe ne correspondent pas",
+      path: ["confirmPassword"],
+    });
 
 interface UserManagementPasswordDialogProps {
   isOpen: boolean;
@@ -49,7 +52,7 @@ export const UserManagementPasswordDialog = ({
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema(mode)),
     defaultValues: {
       password: "",
       confirmPassword: "",
@@ -57,6 +60,8 @@ export const UserManagementPasswordDialog = ({
   });
 
   const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (isSubmitting) return;
+    
     try {
       setIsSubmitting(true);
       await onSubmit(values.password);
@@ -85,7 +90,7 @@ export const UserManagementPasswordDialog = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={mode === 'verify' ? undefined : onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{titles[mode]}</DialogTitle>

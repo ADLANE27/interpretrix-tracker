@@ -13,7 +13,6 @@ export const useUserManagementPassword = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log("[useUserManagementPassword] Checking password existence...");
     const checkPassword = async () => {
       const { data, error } = await supabase
         .from('admin_settings')
@@ -22,11 +21,9 @@ export const useUserManagementPassword = () => {
         .single();
 
       if (!error && data) {
-        console.log("[useUserManagementPassword] Password exists, requiring verification");
         setIsPasswordRequired(true);
         setIsPasswordVerifyOpen(true);
       } else {
-        console.log("[useUserManagementPassword] No password found, opening setup");
         setIsPasswordSetupOpen(true);
       }
     };
@@ -60,7 +57,6 @@ export const useUserManagementPassword = () => {
 
   const handlePasswordVerify = async (password: string) => {
     try {
-      console.log("[useUserManagementPassword] Verifying password...");
       const { data, error } = await supabase
         .from('admin_settings')
         .select('value')
@@ -74,7 +70,6 @@ export const useUserManagementPassword = () => {
         throw new Error("Mot de passe incorrect");
       }
 
-      console.log("[useUserManagementPassword] Password verified successfully");
       setIsVerified(true);
       setIsPasswordVerifyOpen(false);
       toast({
@@ -82,7 +77,7 @@ export const useUserManagementPassword = () => {
         description: "Vérification du mot de passe réussie.",
       });
     } catch (error: any) {
-      console.error("[useUserManagementPassword] Verification error:", error);
+      console.error("Verification error:", error);
       throw error;
     }
   };
