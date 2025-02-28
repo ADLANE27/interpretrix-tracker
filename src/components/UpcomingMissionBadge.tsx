@@ -1,11 +1,11 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, addMinutes, isAfter, isBefore, format } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { toFrenchTime, formatFrenchTime, addMinutesInTimezone } from "@/utils/timeZone";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -14,7 +14,6 @@ interface UpcomingMissionBadgeProps {
 
 export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
-  const timeZone = 'Europe/Paris';
   
   useEffect(() => {
     // Update time every minute
@@ -26,9 +25,9 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
   }, []);
 
   // Convert times to French timezone
-  const missionStartDate = toZonedTime(new Date(startTime), timeZone);
-  const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
-  const nowInFrance = toZonedTime(now, timeZone);
+  const missionStartDate = toFrenchTime(startTime);
+  const missionEndDate = addMinutesInTimezone(missionStartDate, estimatedDuration);
+  const nowInFrance = toFrenchTime(now);
   
   const getMissionStatus = () => {
     if (isBefore(nowInFrance, missionStartDate)) {
@@ -70,7 +69,7 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
         };
       case "ended":
         return {
-          text: `Mission terminée (${formatInTimeZone(missionEndDate, timeZone, 'HH:mm', { locale: fr })})`,
+          text: `Mission terminée (${formatFrenchTime(missionEndDate, 'HH:mm')})`,
           variant: "outline" as const
         };
     }

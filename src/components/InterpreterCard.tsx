@@ -2,12 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
-import { format, addHours } from "date-fns";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import type { PrivateReservation } from "@/types/privateReservation";
+import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 
 interface Mission {
   scheduled_start_time: string;
@@ -326,11 +326,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
-  const adjustForFrenchTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return addHours(date, -1); // Subtract one hour to compensate for UTC to French time
-  };
-
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -429,9 +424,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
-                  {format(adjustForFrenchTime(nextMission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                  {formatFrenchTime(nextMission.scheduled_start_time, "d MMMM 'à' HH:mm")}
                   {nextMission.scheduled_end_time && (
-                    <> - {format(adjustForFrenchTime(nextMission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                    <> - {formatFrenchTime(nextMission.scheduled_end_time, "HH:mm")}</>
                   )}
                 </span>
               </div>
@@ -456,9 +451,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">
-                        {format(adjustForFrenchTime(mission.scheduled_start_time), "d MMMM 'à' HH:mm", { locale: fr })}
+                        {formatFrenchTime(mission.scheduled_start_time, "d MMMM 'à' HH:mm")}
                         {mission.scheduled_end_time && (
-                          <> - {format(adjustForFrenchTime(mission.scheduled_end_time), "HH:mm", { locale: fr })}</>
+                          <> - {formatFrenchTime(mission.scheduled_end_time, "HH:mm")}</>
                         )}
                       </span>
                     </div>
