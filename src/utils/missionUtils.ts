@@ -1,4 +1,5 @@
-import { format, isWithinInterval } from 'date-fns';
+
+import { format, isWithinInterval, addMinutes } from 'date-fns';
 import { toFrenchTime, hasTimeOverlap as timeOverlap } from './timeZone';
 
 export const hasTimeOverlap = (
