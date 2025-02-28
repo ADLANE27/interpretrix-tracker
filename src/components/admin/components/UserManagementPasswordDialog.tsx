@@ -42,6 +42,7 @@ interface UserManagementPasswordDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (password: string) => Promise<void>;
+  onCancel?: () => void;
   mode: 'setup' | 'verify' | 'change';
 }
 
@@ -49,6 +50,7 @@ export const UserManagementPasswordDialog = ({
   isOpen,
   onOpenChange,
   onSubmit,
+  onCancel,
   mode
 }: UserManagementPasswordDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +84,13 @@ export const UserManagementPasswordDialog = ({
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && mode === 'verify' && onCancel) {
+      onCancel();
+    }
+    onOpenChange(open);
+  };
+
   const titles = {
     setup: "Définir le mot de passe de gestion des utilisateurs",
     verify: "Entrer le mot de passe de gestion des utilisateurs",
@@ -95,7 +104,7 @@ export const UserManagementPasswordDialog = ({
   } as const;
 
   return (
-    <Dialog open={isOpen} onOpenChange={mode === 'verify' ? undefined : onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{titles[mode]}</DialogTitle>

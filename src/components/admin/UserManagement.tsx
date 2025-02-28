@@ -103,6 +103,9 @@ export const UserManagement = () => {
           isOpen={isPasswordVerifyOpen}
           onOpenChange={setIsPasswordVerifyOpen}
           onSubmit={handlePasswordVerify}
+          onCancel={() => {
+            window.location.href = '/admin?tab=interpreters';
+          }}
           mode="verify"
         />
       </div>
