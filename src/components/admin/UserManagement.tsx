@@ -62,14 +62,21 @@ export const UserManagement = () => {
         throw new Error("Missing user ID");
       }
 
-      const { error } = await supabase.functions.invoke('reset-user-password', {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
           password: password,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error from edge function:', error);
+        throw error;
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.message || 'Password reset failed');
+      }
 
       toast({
         title: "Mot de passe mis à jour",
@@ -78,9 +85,10 @@ export const UserManagement = () => {
 
       setIsResetPasswordOpen(false);
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de réinitialiser le mot de passe: " + error.message,
+        description: "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
         variant: "destructive",
       });
     } finally {
