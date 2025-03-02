@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +20,7 @@ import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
 import { useUserManagementPassword } from "./hooks/useUserManagementPassword";
 import { UserManagementPasswordDialog } from "./components/UserManagementPasswordDialog";
+import { useEffect } from "react";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -91,6 +91,10 @@ export const UserManagement = () => {
       });
 
       setIsResetPasswordOpen(false);
+      setSelectedUserId(null);
+      
+      await refetch();
+
     } catch (error: any) {
       console.error('Password reset error:', error);
       toast({
@@ -103,8 +107,17 @@ export const UserManagement = () => {
       setIsResetPasswordOpen(false);
     } finally {
       setIsSubmitting(false);
+      setSelectedUserId(null);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      setSelectedUserId(null);
+      setIsResetPasswordOpen(false);
+      setIsSubmitting(false);
+    };
+  }, []);
 
   if (error) {
     return (
