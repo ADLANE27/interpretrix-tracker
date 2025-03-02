@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface ResetPasswordDialogProps {
   isOpen: boolean;
@@ -27,16 +28,32 @@ export const ResetPasswordDialog = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const resetForm = () => {
+    setPassword("");
+    setConfirmPassword("");
+  };
+
   const handleSubmit = async () => {
     if (password === confirmPassword) {
-      await onSubmit(password);
-      setPassword("");
-      setConfirmPassword("");
+      try {
+        await onSubmit(password);
+        resetForm();
+      } catch (error) {
+        // Error is handled by parent component
+        resetForm();
+      }
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      resetForm();
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
@@ -51,6 +68,7 @@ export const ResetPasswordDialog = ({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
             />
           </div>
           <div className="space-y-2">
@@ -59,6 +77,7 @@ export const ResetPasswordDialog = ({
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isSubmitting}
             />
           </div>
           <Button 
@@ -66,7 +85,14 @@ export const ResetPasswordDialog = ({
             onClick={handleSubmit}
             disabled={isSubmitting || !password || !confirmPassword || password !== confirmPassword}
           >
-            {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
+            {isSubmitting ? (
+              <div className="flex items-center gap-2">
+                <LoadingSpinner size="sm" />
+                <span>Mise à jour...</span>
+              </div>
+            ) : (
+              "Mettre à jour"
+            )}
           </Button>
         </div>
       </DialogContent>

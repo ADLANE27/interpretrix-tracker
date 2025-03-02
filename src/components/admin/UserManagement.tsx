@@ -62,12 +62,18 @@ export const UserManagement = () => {
         throw new Error("Missing user ID");
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
           password: password,
         },
+        abortSignal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error('Error from edge function:', error);
@@ -88,9 +94,12 @@ export const UserManagement = () => {
       console.error('Password reset error:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
+        description: error.name === 'AbortError' 
+          ? "La requête a pris trop de temps. Veuillez réessayer."
+          : "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
         variant: "destructive",
       });
+      setIsResetPasswordOpen(false);
     } finally {
       setIsSubmitting(false);
     }
