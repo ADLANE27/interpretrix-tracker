@@ -25,7 +25,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       console.error('No authorization header provided')
-      throw new Error('No authorization header')
+      throw { status: 401, message: 'Authorization header is required' }
     }
 
     console.log('Verifying admin user')
@@ -37,33 +37,43 @@ serve(async (req) => {
 
     if (userError || !adminUser) {
       console.error('Invalid token:', userError)
-      throw new Error('Invalid token')
+      throw { status: 401, message: 'Invalid authentication token' }
     }
 
     console.log('Checking admin status for user:', adminUser.id)
 
-    // Check if user is admin using the is_admin RPC function
-    const { data: { is_admin }, error: adminCheckError } = await supabase
+    // Check if user is admin
+    const { data: adminRole, error: adminCheckError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', adminUser.id)
       .eq('role', 'admin')
       .eq('active', true)
-      .single()
+      .maybeSingle()
 
-    if (adminCheckError || !is_admin) {
-      console.error('User is not an admin:', adminCheckError)
-      throw new Error('Unauthorized: Only administrators can reset passwords')
+    if (adminCheckError) {
+      console.error('Error checking admin role:', adminCheckError)
+      throw { status: 500, message: 'Error verifying admin privileges' }
     }
 
-    console.log('Admin verified, processing password reset')
+    if (!adminRole) {
+      console.error('User is not an admin')
+      throw { status: 403, message: 'Unauthorized: Only administrators can reset passwords' }
+    }
 
     // Get the user ID and new password from request body
-    const { userId, password } = await req.json()
+    let body
+    try {
+      body = await req.json()
+    } catch (e) {
+      throw { status: 400, message: 'Invalid request body' }
+    }
+
+    const { userId, password } = body
 
     if (!userId || !password) {
       console.error('Missing required fields')
-      throw new Error('Missing required fields')
+      throw { status: 400, message: 'User ID and password are required' }
     }
 
     console.log('Resetting password for user:', userId)
@@ -76,13 +86,16 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Error updating password:', updateError)
-      throw updateError
+      throw { status: 500, message: updateError.message }
     }
 
     console.log('Password reset successful')
 
     return new Response(
-      JSON.stringify({ success: true, message: 'Password successfully updated' }),
+      JSON.stringify({ 
+        success: true, 
+        message: 'Password successfully updated' 
+      }),
       { 
         headers: { 
           ...corsHeaders,
@@ -92,10 +105,16 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('Error in reset-user-password function:', error)
+    const status = error.status || 500
+    const message = error.message || 'An unexpected error occurred'
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        message: message
+      }),
       { 
-        status: 400,
+        status: status,
         headers: { 
           ...corsHeaders,
           'Content-Type': 'application/json'
