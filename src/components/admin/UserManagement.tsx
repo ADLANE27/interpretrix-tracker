@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +71,7 @@ export const UserManagement = () => {
           userId: selectedUserId,
           password: password,
         },
-        abortSignal: controller.signal,
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
