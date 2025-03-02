@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -115,7 +114,9 @@ export const useUserManagement = () => {
         console.error('Error fetching users:', error);
         throw error;
       }
-    }
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 1000,
   });
 
   useEffect(() => {

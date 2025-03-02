@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +39,7 @@ export const UserManagement = () => {
     queryClient,
     isSubmitting,
     setIsSubmitting,
-    refetch // Add refetch from the hook
+    refetch
   } = useUserManagement();
 
   const {
@@ -95,15 +94,14 @@ export const UserManagement = () => {
       // First invalidate the query cache
       queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      // Add a small delay before closing dialog and resetting state
+      // Reset state with a slight delay to avoid UI freeze
       setTimeout(() => {
         setIsResetPasswordOpen(false);
         setTimeout(() => {
           setSelectedUserId(null);
+          window.location.reload(); // Force refresh the page to ensure clean state
         }, 100);
       }, 100);
-
-      await refetch(); // Now refetch is properly defined
 
     } catch (error: any) {
       console.error('Password reset error:', error);
