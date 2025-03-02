@@ -8,6 +8,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -18,52 +19,47 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Get the authorization header from the request
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
 
-    // Get user from the token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
+    // Get admin user from the token
+    const { data: { user: adminUser }, error: userError } = await supabase.auth.getUser(
       authHeader.replace('Bearer ', '')
     )
 
-    if (userError || !user) {
+    if (userError || !adminUser) {
       throw new Error('Invalid token')
     }
 
-    // Get the new password from request body
-    const { currentPassword, newPassword } = await req.json()
+    // Verify that the user is an admin
+    const { data: isAdmin, error: adminCheckError } = await supabase
+      .rpc('is_admin')
 
-    // Verify current password
-    const { error: verifyError } = await supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: currentPassword,
-    })
-
-    if (verifyError) {
-      throw new Error('Current password is incorrect')
+    if (adminCheckError || !isAdmin) {
+      throw new Error('Unauthorized: Only administrators can reset passwords')
     }
 
-    // Update password
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword
-    })
+    // Get the user ID and new password from request body
+    const { userId, password } = await req.json()
+
+    if (!userId || !password) {
+      throw new Error('Missing required fields')
+    }
+
+    // Use admin API to update the user's password
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      userId,
+      { password: password }
+    )
 
     if (updateError) {
       throw updateError
     }
 
-    // Update password_changed flag for interpreters
-    const { error: interpreterError } = await supabase
-      .from('interpreter_profiles')
-      .update({ password_changed: true })
-      .eq('id', user.id)
-
-    if (interpreterError) {
-      console.error('Error updating interpreter profile:', interpreterError)
-      // Don't throw here as password was successfully changed
-    }
+    console.log(`Password reset successful for user ${userId} by admin ${adminUser.id}`)
 
     return new Response(
       JSON.stringify({ success: true, message: 'Password successfully updated' }),
