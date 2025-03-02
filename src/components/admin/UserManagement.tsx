@@ -40,6 +40,7 @@ export const UserManagement = () => {
     queryClient,
     isSubmitting,
     setIsSubmitting,
+    refetch // Add refetch from the hook
   } = useUserManagement();
 
   const {
@@ -101,6 +102,8 @@ export const UserManagement = () => {
           setSelectedUserId(null);
         }, 100);
       }, 100);
+
+      await refetch(); // Now refetch is properly defined
 
     } catch (error: any) {
       console.error('Password reset error:', error);
