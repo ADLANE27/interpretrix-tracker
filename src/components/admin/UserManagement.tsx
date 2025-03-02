@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +37,7 @@ export const UserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
-    refetch,
+    queryClient,
     isSubmitting,
     setIsSubmitting,
   } = useUserManagement();
@@ -90,10 +91,16 @@ export const UserManagement = () => {
         description: "Le mot de passe a été mis à jour avec succès",
       });
 
-      setIsResetPasswordOpen(false);
-      setSelectedUserId(null);
+      // First invalidate the query cache
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      await refetch();
+      // Add a small delay before closing dialog and resetting state
+      setTimeout(() => {
+        setIsResetPasswordOpen(false);
+        setTimeout(() => {
+          setSelectedUserId(null);
+        }, 100);
+      }, 100);
 
     } catch (error: any) {
       console.error('Password reset error:', error);
@@ -104,10 +111,8 @@ export const UserManagement = () => {
           : "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
         variant: "destructive",
       });
-      setIsResetPasswordOpen(false);
     } finally {
       setIsSubmitting(false);
-      setSelectedUserId(null);
     }
   };
 

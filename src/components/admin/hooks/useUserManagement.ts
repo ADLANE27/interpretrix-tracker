@@ -1,6 +1,5 @@
-
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
@@ -10,17 +9,17 @@ export const useUserManagement = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     data: users = { admins: [], interpreters: [] },
-    refetch,
     isLoading,
-    error
-  } = useQuery<UsersData>({
-    queryKey: ["users"],
+    error,
+    refetch
+  } = useQuery({
+    queryKey: ['users'],
     queryFn: async () => {
       try {
-        // Check if current user is admin
         const { data: roleCheck, error: roleError } = await supabase
           .rpc('is_admin');
 
@@ -30,21 +29,18 @@ export const useUserManagement = () => {
           throw new Error("Unauthorized: Only administrators can access this page");
         }
 
-        // Get user roles mapping
         const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select('*');
 
         if (rolesError) throw rolesError;
 
-        // Get admin profiles
         const { data: adminProfiles, error: adminError } = await supabase
           .from('admin_profiles')
           .select('*');
 
         if (adminError) throw adminError;
 
-        // Get interpreter profiles
         const { data: interpreterData, error: interpreterError } = await supabase
           .from('interpreter_profiles')
           .select('*');
@@ -72,7 +68,6 @@ export const useUserManagement = () => {
             return { source, target };
           });
 
-          // Parse and validate address structure
           let parsedAddress: Profile['address'] = null;
           if (interpreter.address && typeof interpreter.address === 'object') {
             const addr = interpreter.address as any;
@@ -178,7 +173,7 @@ export const useUserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
-    refetch,
+    queryClient,
     isSubmitting,
     setIsSubmitting,
   };
