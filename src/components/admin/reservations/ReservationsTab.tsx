@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { PrivateReservationForm } from "./PrivateReservationForm";
 import { PrivateReservationList } from "./PrivateReservationList";
@@ -27,6 +26,8 @@ export const ReservationsTab = () => {
 
   return (
     <div className="space-y-6">
+      <PrivateReservationForm />
+      
       <Card className="p-4">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -117,16 +118,13 @@ export const ReservationsTab = () => {
         </div>
       </Card>
 
-      <div className="space-y-6">
-        <PrivateReservationForm />
-        <PrivateReservationList 
-          nameFilter={nameFilter}
-          sourceLanguageFilter={sourceLanguageFilter}
-          targetLanguageFilter={targetLanguageFilter}
-          startDateFilter={startDateFilter}
-          endDateFilter={endDateFilter}
-        />
-      </div>
+      <PrivateReservationList 
+        nameFilter={nameFilter}
+        sourceLanguageFilter={sourceLanguageFilter}
+        targetLanguageFilter={targetLanguageFilter}
+        startDateFilter={startDateFilter}
+        endDateFilter={endDateFilter}
+      />
     </div>
   );
 };
