@@ -57,33 +57,27 @@ export const UserManagement = () => {
   } = useUserManagementPassword();
 
   const handleResetPassword = async (password: string) => {
+    if (!selectedUserId) {
+      toast({
+        title: "Erreur",
+        description: "Utilisateur non sélectionné",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       
-      if (!selectedUserId) {
-        throw new Error("Missing user ID");
-      }
-
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 10000);
-      });
-
-      const resetPromise = supabase.functions.invoke('reset-user-password', {
+      const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
           password: password,
         }
       });
 
-      const { data, error } = await Promise.race([resetPromise, timeoutPromise]) as any;
-
-      if (error) {
-        console.error('Error from edge function:', error);
-        throw error;
-      }
-
-      if (!data?.success) {
-        throw new Error(data?.message || 'Password reset failed');
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.message || 'Password reset failed');
       }
 
       toast({
@@ -94,14 +88,9 @@ export const UserManagement = () => {
       // First invalidate the query cache
       queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      // Reset state with a slight delay to avoid UI freeze
-      setTimeout(() => {
-        setIsResetPasswordOpen(false);
-        setTimeout(() => {
-          setSelectedUserId(null);
-          window.location.reload(); // Force refresh the page to ensure clean state
-        }, 100);
-      }, 100);
+      // Reset state
+      setIsResetPasswordOpen(false);
+      setSelectedUserId(null);
 
     } catch (error: any) {
       console.error('Password reset error:', error);
