@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
@@ -341,6 +341,25 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
+    const channel = supabase.channel(`interpreter-status-${interpreter.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: `id=eq.${interpreter.id}`
+      }, (payload: RealtimeInterpreterProfilePayload) => {
+        if (payload.new && isValidStatus(payload.new.status)) {
+          setCurrentStatus(payload.new.status);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [interpreter.id]);
+
+  useEffect(() => {
     setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
 
@@ -379,7 +398,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+          <Badge className={`${isOnline ? statusConfig[currentStatus].color : 'bg-gray-500'} relative`}>
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
