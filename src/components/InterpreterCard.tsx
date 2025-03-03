@@ -303,16 +303,22 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     
     const fetchConnectionStatus = async () => {
       try {
+        console.log('[InterpreterCard] Fetching connection status for:', interpreter.id);
         const { data, error } = await supabase
           .from('interpreter_connection_status')
           .select('is_online')
           .eq('interpreter_id', interpreter.id)
           .single();
 
-        if (error) throw error;
-        setIsOnline(!!data?.is_online);
+        if (error) {
+          console.error('[InterpreterCard] Error fetching connection status:', error);
+          return;
+        }
+
+        console.log('[InterpreterCard] Connection status data:', data);
+        setIsOnline(data?.is_online ?? false);
       } catch (error) {
-        console.error('[InterpreterCard] Error fetching connection status:', error);
+        console.error('[InterpreterCard] Unexpected error fetching connection status:', error);
       }
     };
 
@@ -373,11 +379,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${isOnline ? statusConfig[currentStatus].color : 'bg-gray-500'} relative`}>
+          <Badge className={`${statusConfig[currentStatus].color} relative`}>
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
-            {!isOnline ? 'Déconnecté' : statusConfig[currentStatus].label}
+            {isOnline ? statusConfig[currentStatus].label : 'Déconnecté'}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
