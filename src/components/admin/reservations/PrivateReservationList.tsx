@@ -194,7 +194,7 @@ export const PrivateReservationList = ({
         .from('private_reservations')
         .select(`
           *,
-          interpreter:interpreter_profiles!private_reservations_interpreter_id_fkey (
+          interpreter_profiles:interpreter_profiles!private_reservations_interpreter_id_fkey (
             first_name,
             last_name,
             profile_picture_url
@@ -292,7 +292,9 @@ export const PrivateReservationList = ({
   }, []);
 
   const filteredReservations = reservations.filter(reservation => {
-    const interpreter = reservation.interpreter as any;
+    const interpreter = reservation.interpreter_profiles;
+    if (!interpreter) return false;
+    
     const interpreterName = `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase();
     const matchesName = nameFilter === "" || interpreterName.includes(nameFilter.toLowerCase());
     
@@ -328,6 +330,7 @@ export const PrivateReservationList = ({
         filteredReservations.map((reservation) => {
           const startTime = adjustForFrenchTime(reservation.start_time);
           const endTime = adjustForFrenchTime(reservation.end_time);
+          const interpreter = reservation.interpreter_profiles;
 
           return (
             <Card key={reservation.id} className="p-4 space-y-3">
@@ -366,7 +369,7 @@ export const PrivateReservationList = ({
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-purple-500" />
                     <span className="text-sm font-medium">
-                      {(reservation as any).interpreter.first_name} {(reservation as any).interpreter.last_name}
+                      {interpreter?.first_name} {interpreter?.last_name}
                     </span>
                   </div>
 

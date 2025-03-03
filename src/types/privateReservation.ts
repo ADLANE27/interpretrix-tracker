@@ -1,6 +1,12 @@
 
 export type PrivateReservationStatus = 'scheduled' | 'completed' | 'cancelled';
 
+interface InterpreterProfile {
+  first_name: string;
+  last_name: string;
+  profile_picture_url: string | null;
+}
+
 export interface PrivateReservation {
   id: string;
   interpreter_id: string;
@@ -14,4 +20,5 @@ export interface PrivateReservation {
   created_at: string;
   updated_at: string;
   status: PrivateReservationStatus;
+  interpreter_profiles?: InterpreterProfile;
 }
