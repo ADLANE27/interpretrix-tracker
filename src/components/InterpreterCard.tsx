@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
@@ -99,6 +99,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_15min: 0
   });
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
+  const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
 
   const checkIfInterpreter = async () => {
@@ -297,29 +298,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
-    const channel = supabase.channel(`interpreter-status-${interpreter.id}`)
-      .on(
-        'postgres_changes' as any,
-        {
-          event: '*',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${interpreter.id}`
-        },
-        (payload: RealtimeInterpreterProfilePayload) => {
-          if (payload.new && isValidStatus(payload.new.status)) {
-            setCurrentStatus(payload.new.status);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [interpreter.id]);
-
-  useEffect(() => {
     setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
 
@@ -359,6 +337,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge className={`${statusConfig[currentStatus].color} relative`}>
+            {!isOnline && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+            )}
             {statusConfig[currentStatus].label}
           </Badge>
           {nextMission && (

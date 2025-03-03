@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,9 +19,6 @@ export default {
       },
     },
     extend: {
-      fontFamily: {
-        'playfair': ['Playfair Display', 'serif'],
-      },
       colors: {
         interpreter: {
           navy: "#1a365d",
