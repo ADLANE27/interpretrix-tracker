@@ -305,27 +305,12 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       try {
         const { data, error } = await supabase
           .from('interpreter_connection_status')
-          .select('connection_status, is_online')
+          .select('is_online')
           .eq('interpreter_id', interpreter.id)
           .single();
 
         if (error) throw error;
-
-        if (data) {
-          setIsOnline(!!data.is_online);
-          setConnectionStatus(data.connection_status);
-          
-          if (!data.is_online) {
-            const { error: updateError } = await supabase
-              .from('interpreter_profiles')
-              .update({ status: 'unavailable' })
-              .eq('id', interpreter.id);
-
-            if (!updateError) {
-              setCurrentStatus('unavailable');
-            }
-          }
-        }
+        setIsOnline(!!data?.is_online);
       } catch (error) {
         console.error('[InterpreterCard] Error fetching connection status:', error);
       }
@@ -339,13 +324,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         schema: 'public',
         table: 'interpreter_connection_status',
         filter: `interpreter_id=eq.${interpreter.id}`
-      }, async (payload) => {
-        console.log('[InterpreterCard] Connection status changed:', payload);
+      }, async () => {
         await fetchConnectionStatus();
       })
-      .subscribe(status => {
-        console.log(`[InterpreterCard] Connection status subscription status: ${status}`);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -395,7 +377,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
-            {isOnline ? statusConfig[currentStatus].label : 'Déconnecté'}
+            {!isOnline ? 'Déconnecté' : statusConfig[currentStatus].label}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
