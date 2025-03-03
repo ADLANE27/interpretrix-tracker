@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -57,9 +58,16 @@ export const PrivateReservationForm = () => {
       const languagePair = `${sourceLang} → ${targetLang}`;
       console.log('[PrivateReservationForm] Recherche de la paire de langues:', languagePair);
 
-      const filteredInterpreters = interpreters?.filter(interpreter => 
-        interpreter.languages.includes(languagePair)
-      ) || [];
+      // Debug: log all interpreters and their language pairs
+      interpreters?.forEach(interpreter => {
+        console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
+      });
+
+      const filteredInterpreters = interpreters?.filter(interpreter => {
+        const hasLanguagePair = interpreter.languages.some(lang => lang === languagePair);
+        console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name} pour ${languagePair}:`, hasLanguagePair);
+        return hasLanguagePair;
+      }) || [];
 
       console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
       setAvailableInterpreters(filteredInterpreters);
