@@ -1,10 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { fr } from 'date-fns/locale';
-import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import type { PrivateReservation } from "@/types/privateReservation";
