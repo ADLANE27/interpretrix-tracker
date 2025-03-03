@@ -271,4 +271,6 @@ export const PrivateReservationForm = () => {
         </Button>
       </form>
     </Card>
-  
+  );
+};
+
