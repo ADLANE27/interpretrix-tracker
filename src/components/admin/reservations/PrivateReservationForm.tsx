@@ -55,18 +55,26 @@ export const PrivateReservationForm = () => {
         throw error;
       }
 
-      const languagePair = `${sourceLang} → ${targetLang}`;
-      console.log('[PrivateReservationForm] Recherche de la paire de langues:', languagePair);
-
-      // Debug: log all interpreters and their language pairs
+      // Debug: log all interpreters and their language pairs before filtering
       interpreters?.forEach(interpreter => {
         console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
       });
 
+      // Filter interpreters using the same logic as MissionManagement
       const filteredInterpreters = interpreters?.filter(interpreter => {
-        const hasLanguagePair = interpreter.languages.some(lang => lang === languagePair);
-        console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name} pour ${languagePair}:`, hasLanguagePair);
-        return hasLanguagePair;
+        return interpreter.languages.some(lang => {
+          const [source, target] = lang.split('→').map(l => l.trim());
+          const matches = source === sourceLang && target === targetLang;
+          console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name}:`, {
+            lang,
+            source,
+            target,
+            sourceLang,
+            targetLang,
+            matches
+          });
+          return matches;
+        });
       }) || [];
 
       console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
