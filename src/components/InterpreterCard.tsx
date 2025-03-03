@@ -315,9 +315,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           setIsOnline(!!data.is_online);
           setConnectionStatus(data.connection_status);
           
-          // Si l'interprète est déconnecté mais son statut est "available"
-          // on le met automatiquement en "unavailable"
-          if (!data.is_online && currentStatus === 'available') {
+          if (!data.is_online) {
             const { error: updateError } = await supabase
               .from('interpreter_profiles')
               .update({ status: 'unavailable' })
@@ -333,10 +331,8 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       }
     };
 
-    // Initial fetch
     fetchConnectionStatus();
 
-    // Subscribe to connection status changes
     const channel = supabase.channel(`interpreter-connection-${interpreter.id}`)
       .on('postgres_changes', {
         event: '*',
@@ -354,7 +350,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [interpreter.id, currentStatus]);
+  }, [interpreter.id]);
 
   useEffect(() => {
     setCurrentStatus(interpreter.status);
@@ -395,7 +391,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+          <Badge className={`${isOnline ? statusConfig[currentStatus].color : 'bg-gray-500'} relative`}>
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
