@@ -101,6 +101,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -298,6 +299,64 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
+    console.log('[InterpreterCard] Setting up connection status subscription for:', interpreter.id);
+    
+    const fetchConnectionStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_connection_status')
+          .select('connection_status, is_online')
+          .eq('interpreter_id', interpreter.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setIsOnline(!!data.is_online);
+          setConnectionStatus(data.connection_status);
+          
+          // Si l'interprète est déconnecté mais son statut est "available"
+          // on le met automatiquement en "unavailable"
+          if (!data.is_online && currentStatus === 'available') {
+            const { error: updateError } = await supabase
+              .from('interpreter_profiles')
+              .update({ status: 'unavailable' })
+              .eq('id', interpreter.id);
+
+            if (!updateError) {
+              setCurrentStatus('unavailable');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[InterpreterCard] Error fetching connection status:', error);
+      }
+    };
+
+    // Initial fetch
+    fetchConnectionStatus();
+
+    // Subscribe to connection status changes
+    const channel = supabase.channel(`interpreter-connection-${interpreter.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interpreter_connection_status',
+        filter: `interpreter_id=eq.${interpreter.id}`
+      }, async (payload) => {
+        console.log('[InterpreterCard] Connection status changed:', payload);
+        await fetchConnectionStatus();
+      })
+      .subscribe(status => {
+        console.log(`[InterpreterCard] Connection status subscription status: ${status}`);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [interpreter.id, currentStatus]);
+
+  useEffect(() => {
     setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
 
@@ -338,9 +397,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         <div className="flex flex-col items-end gap-2">
           <Badge className={`${statusConfig[currentStatus].color} relative`}>
             {!isOnline && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
-            {statusConfig[currentStatus].label}
+            {isOnline ? statusConfig[currentStatus].label : 'Déconnecté'}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
