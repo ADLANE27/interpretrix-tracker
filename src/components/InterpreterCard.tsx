@@ -342,16 +342,20 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   useEffect(() => {
     const channel = supabase.channel(`interpreter-status-${interpreter.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${interpreter.id}`
-      }, (payload: RealtimeInterpreterProfilePayload) => {
-        if (payload.new && isValidStatus(payload.new.status)) {
-          setCurrentStatus(payload.new.status);
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${interpreter.id}`
+        },
+        (payload: RealtimeInterpreterProfilePayload) => {
+          if (payload.new && isValidStatus(payload.new.status)) {
+            setCurrentStatus(payload.new.status);
+          }
         }
-      })
+      )
       .subscribe();
 
     return () => {
