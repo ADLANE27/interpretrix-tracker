@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -165,7 +164,21 @@ const EditReservationDialog = ({ reservation, onReservationUpdated }: {
   );
 };
 
-export const PrivateReservationList = () => {
+interface PrivateReservationListProps {
+  nameFilter: string;
+  sourceLanguageFilter: string;
+  targetLanguageFilter: string;
+  startDateFilter: string;
+  endDateFilter: string;
+}
+
+export const PrivateReservationList = ({ 
+  nameFilter, 
+  sourceLanguageFilter, 
+  targetLanguageFilter,
+  startDateFilter,
+  endDateFilter
+}: PrivateReservationListProps) => {
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -284,6 +297,28 @@ export const PrivateReservationList = () => {
     };
   }, []);
 
+  const filteredReservations = reservations.filter(reservation => {
+    const interpreter = reservation.interpreter as any;
+    const interpreterName = `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase();
+    const matchesName = nameFilter === "" || interpreterName.includes(nameFilter.toLowerCase());
+    
+    const matchesSourceLanguage = sourceLanguageFilter === "all" || 
+      reservation.source_language === sourceLanguageFilter;
+    
+    const matchesTargetLanguage = targetLanguageFilter === "all" || 
+      reservation.target_language === targetLanguageFilter;
+
+    const reservationDate = new Date(reservation.start_time);
+    const startDate = startDateFilter ? new Date(startDateFilter) : null;
+    const endDate = endDateFilter ? new Date(endDateFilter) : null;
+
+    const matchesDateRange = 
+      (!startDate || reservationDate >= startDate) &&
+      (!endDate || reservationDate <= endDate);
+
+    return matchesName && matchesSourceLanguage && matchesTargetLanguage && matchesDateRange;
+  });
+
   if (loading) {
     return <div>Chargement...</div>;
   }
@@ -291,12 +326,12 @@ export const PrivateReservationList = () => {
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Liste des réservations</h3>
-      {reservations.length === 0 ? (
+      {filteredReservations.length === 0 ? (
         <Card className="p-4">
           <p className="text-sm text-gray-500">Aucune réservation trouvée</p>
         </Card>
       ) : (
-        reservations.map((reservation) => {
+        filteredReservations.map((reservation) => {
           const startTime = adjustForFrenchTime(reservation.start_time);
           const endTime = adjustForFrenchTime(reservation.end_time);
 
