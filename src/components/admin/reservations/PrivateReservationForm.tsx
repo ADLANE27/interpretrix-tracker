@@ -36,7 +36,8 @@ export const PrivateReservationForm = () => {
     if (!sourceLang || !targetLang) return;
     
     try {
-      console.log('[PrivateReservationForm] Finding interpreters for languages:', { sourceLang, targetLang });
+      console.log('[PrivateReservationForm] Recherche des interprètes pour les langues:', { sourceLang, targetLang });
+      console.log(`[PrivateReservationForm] Recherche d'interprètes avec la paire de langues: ${sourceLang} → ${targetLang}`);
       
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
@@ -50,14 +51,17 @@ export const PrivateReservationForm = () => {
         `)
         .contains('languages', [`${sourceLang} → ${targetLang}`]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[PrivateReservationForm] Erreur:', error);
+        throw error;
+      }
 
-      console.log('[PrivateReservationForm] Found interpreters:', interpreters);
+      console.log('[PrivateReservationForm] Interprètes trouvés:', interpreters);
       setAvailableInterpreters(interpreters || []);
       setSelectedInterpreter(null);
 
     } catch (error) {
-      console.error('[PrivateReservationForm] Error:', error);
+      console.error('[PrivateReservationForm] Erreur:', error);
       toast({
         title: "Erreur",
         description: "Impossible de trouver les interprètes disponibles",
@@ -135,6 +139,7 @@ export const PrivateReservationForm = () => {
           <div className="space-y-2">
             <Label htmlFor="source_language">Langue source</Label>
             <Select value={sourceLanguage} onValueChange={(value) => {
+              console.log('[PrivateReservationForm] Langue source sélectionnée:', value);
               setSourceLanguage(value);
               if (targetLanguage) {
                 findAvailableInterpreters(value, targetLanguage);
@@ -156,6 +161,7 @@ export const PrivateReservationForm = () => {
           <div className="space-y-2">
             <Label htmlFor="target_language">Langue cible</Label>
             <Select value={targetLanguage} onValueChange={(value) => {
+              console.log('[PrivateReservationForm] Langue cible sélectionnée:', value);
               setTargetLanguage(value);
               if (sourceLanguage) {
                 findAvailableInterpreters(sourceLanguage, value);
@@ -265,5 +271,4 @@ export const PrivateReservationForm = () => {
         </Button>
       </form>
     </Card>
-  );
-};
+  
