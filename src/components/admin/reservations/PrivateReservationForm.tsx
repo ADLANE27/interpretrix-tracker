@@ -36,8 +36,6 @@ export const PrivateReservationForm = () => {
     
     try {
       console.log('[PrivateReservationForm] Recherche des interprètes pour les langues:', { sourceLang, targetLang });
-      const languagePair = `${sourceLang} → ${targetLang}`;
-      console.log(`[PrivateReservationForm] Recherche d'interprètes avec la paire de langues:`, languagePair);
       
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
@@ -49,15 +47,22 @@ export const PrivateReservationForm = () => {
           profile_picture_url,
           languages
         `)
-        .contains('languages', [languagePair]);
+        .eq('status', 'available');
 
       if (error) {
         console.error('[PrivateReservationForm] Erreur:', error);
         throw error;
       }
 
-      console.log('[PrivateReservationForm] Interprètes trouvés:', interpreters);
-      setAvailableInterpreters(interpreters || []);
+      const languagePair = `${sourceLang} → ${targetLang}`;
+      console.log('[PrivateReservationForm] Recherche de la paire de langues:', languagePair);
+
+      const filteredInterpreters = interpreters?.filter(interpreter => 
+        interpreter.languages.includes(languagePair)
+      ) || [];
+
+      console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
+      setAvailableInterpreters(filteredInterpreters);
       setSelectedInterpreter(null);
 
     } catch (error) {
@@ -110,7 +115,6 @@ export const PrivateReservationForm = () => {
         description: "La réservation a été créée avec succès",
       });
 
-      // Reset form
       setSelectedInterpreter(null);
       setSourceLanguage("");
       setTargetLanguage("");
