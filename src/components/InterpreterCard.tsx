@@ -99,9 +99,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_15min: 0
   });
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
-  const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -299,48 +297,6 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
-    console.log('[InterpreterCard] Setting up connection status subscription for:', interpreter.id);
-    
-    const fetchConnectionStatus = async () => {
-      try {
-        console.log('[InterpreterCard] Fetching connection status for:', interpreter.id);
-        const { data, error } = await supabase
-          .from('interpreter_connection_status')
-          .select('is_online')
-          .eq('interpreter_id', interpreter.id)
-          .single();
-
-        if (error) {
-          console.error('[InterpreterCard] Error fetching connection status:', error);
-          return;
-        }
-
-        console.log('[InterpreterCard] Connection status data:', data);
-        setIsOnline(data?.is_online ?? false);
-      } catch (error) {
-        console.error('[InterpreterCard] Unexpected error fetching connection status:', error);
-      }
-    };
-
-    fetchConnectionStatus();
-
-    const channel = supabase.channel(`interpreter-connection-${interpreter.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'interpreter_connection_status',
-        filter: `interpreter_id=eq.${interpreter.id}`
-      }, async () => {
-        await fetchConnectionStatus();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [interpreter.id]);
-
-  useEffect(() => {
     const channel = supabase.channel(`interpreter-status-${interpreter.id}`)
       .on(
         'postgres_changes' as any,
@@ -402,11 +358,8 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </Badge>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${isOnline ? statusConfig[currentStatus].color : 'bg-gray-500'} relative`}>
-            {!isOnline && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            )}
-            {isOnline ? statusConfig[currentStatus].label : 'Déconnecté'}
+          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+            {statusConfig[currentStatus].label}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
