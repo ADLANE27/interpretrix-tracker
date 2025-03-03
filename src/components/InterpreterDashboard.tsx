@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,20 +73,6 @@ export const InterpreterDashboard = () => {
           setError("Session expirée. Veuillez vous reconnecter.");
           navigate("/interpreter/login");
           return;
-        }
-
-        // Set status to unavailable when initializing if not already set
-        const { data: profile } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile && profile.status === 'available') {
-          await supabase
-            .from('interpreter_profiles')
-            .update({ status: 'unavailable' })
-            .eq('id', session.user.id);
         }
         
         setAuthChecked(true);
