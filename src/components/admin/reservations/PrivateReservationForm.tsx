@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,7 +36,8 @@ export const PrivateReservationForm = () => {
     
     try {
       console.log('[PrivateReservationForm] Recherche des interprètes pour les langues:', { sourceLang, targetLang });
-      console.log(`[PrivateReservationForm] Recherche d'interprètes avec la paire de langues: ${sourceLang} → ${targetLang}`);
+      const languagePair = `${sourceLang} → ${targetLang}`;
+      console.log(`[PrivateReservationForm] Recherche d'interprètes avec la paire de langues:`, languagePair);
       
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
@@ -49,7 +49,7 @@ export const PrivateReservationForm = () => {
           profile_picture_url,
           languages
         `)
-        .contains('languages', [`${sourceLang} → ${targetLang}`]);
+        .filter('languages', 'cs', `{${languagePair}}`);
 
       if (error) {
         console.error('[PrivateReservationForm] Erreur:', error);
@@ -273,4 +273,3 @@ export const PrivateReservationForm = () => {
     </Card>
   );
 };
-
