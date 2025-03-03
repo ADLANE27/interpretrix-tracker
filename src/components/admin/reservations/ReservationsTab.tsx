@@ -7,9 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { LANGUAGES } from "@/lib/constants";
-import { Search, Calendar } from "lucide-react";
+import { Search, Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
 
 export const ReservationsTab = () => {
   const [nameFilter, setNameFilter] = useState("");
@@ -89,22 +88,30 @@ export const ReservationsTab = () => {
 
             <div className="space-y-2">
               <Label htmlFor="start-date">Date de début</Label>
-              <Input
-                type="date"
-                id="start-date"
-                value={startDateFilter}
-                onChange={(e) => setStartDateFilter(e.target.value)}
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  id="start-date"
+                  value={startDateFilter}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="end-date">Date de fin</Label>
-              <Input
-                type="date"
-                id="end-date"
-                value={endDateFilter}
-                onChange={(e) => setEndDateFilter(e.target.value)}
-              />
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  id="end-date"
+                  value={endDateFilter}
+                  onChange={(e) => setEndDateFilter(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
         </div>

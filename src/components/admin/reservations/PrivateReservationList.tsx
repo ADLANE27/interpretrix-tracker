@@ -172,9 +172,9 @@ interface PrivateReservationListProps {
   endDateFilter: string;
 }
 
-export const PrivateReservationList = ({ 
-  nameFilter, 
-  sourceLanguageFilter, 
+export const PrivateReservationList = ({
+  nameFilter,
+  sourceLanguageFilter,
   targetLanguageFilter,
   startDateFilter,
   endDateFilter
@@ -194,7 +194,7 @@ export const PrivateReservationList = ({
         .from('private_reservations')
         .select(`
           *,
-          interpreter:interpreter_id (
+          interpreter:interpreter_profiles!private_reservations_interpreter_id_fkey (
             first_name,
             last_name,
             profile_picture_url
@@ -204,13 +204,7 @@ export const PrivateReservationList = ({
 
       if (error) throw error;
       
-      const adjustedReservations = (data as any).map((reservation: PrivateReservation) => ({
-        ...reservation,
-        start_time: reservation.start_time,
-        end_time: reservation.end_time
-      }));
-      
-      setReservations(adjustedReservations);
+      setReservations(data || []);
     } catch (error) {
       console.error('[PrivateReservationList] Error:', error);
       toast({
