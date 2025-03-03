@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
@@ -300,6 +301,53 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   useEffect(() => {
     setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
+
+  useEffect(() => {
+    const fetchConnectionStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_connection_status')
+          .select('is_online')
+          .eq('interpreter_id', interpreter.id)
+          .single();
+
+        if (error) throw error;
+        setIsOnline(!!data?.is_online);
+
+        if (!data?.is_online && currentStatus === 'available') {
+          // Update the status to unavailable if interpreter is offline
+          const { error: updateError } = await supabase
+            .from('interpreter_profiles')
+            .update({ status: 'unavailable' })
+            .eq('id', interpreter.id);
+
+          if (!updateError) {
+            setCurrentStatus('unavailable');
+          }
+        }
+      } catch (error) {
+        console.error('[InterpreterCard] Error fetching connection status:', error);
+      }
+    };
+
+    fetchConnectionStatus();
+
+    // Subscribe to realtime changes
+    const channel = supabase.channel(`interpreter_status_${interpreter.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interpreter_connection_status',
+        filter: `interpreter_id=eq.${interpreter.id}`
+      }, async () => {
+        await fetchConnectionStatus();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [interpreter.id, currentStatus]);
 
   if (!isInterpreter) {
     return null;
