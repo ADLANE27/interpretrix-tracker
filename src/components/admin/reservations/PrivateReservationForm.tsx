@@ -49,7 +49,7 @@ export const PrivateReservationForm = () => {
           profile_picture_url,
           languages
         `)
-        .filter('languages', 'cs', `{${languagePair}}`);
+        .contains('languages', [languagePair]);
 
       if (error) {
         console.error('[PrivateReservationForm] Erreur:', error);
@@ -138,18 +138,21 @@ export const PrivateReservationForm = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="source_language">Langue source</Label>
-            <Select value={sourceLanguage} onValueChange={(value) => {
-              console.log('[PrivateReservationForm] Langue source sélectionnée:', value);
-              setSourceLanguage(value);
-              if (targetLanguage) {
-                findAvailableInterpreters(value, targetLanguage);
-              }
-            }}>
+            <Select 
+              value={sourceLanguage} 
+              onValueChange={(value) => {
+                console.log('[PrivateReservationForm] Langue source sélectionnée:', value);
+                setSourceLanguage(value);
+                if (targetLanguage) {
+                  findAvailableInterpreters(value, targetLanguage);
+                }
+              }}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
+                {Object.values(LANGUAGES).map((lang) => (
                   <SelectItem key={lang} value={lang}>
                     {lang}
                   </SelectItem>
@@ -160,18 +163,21 @@ export const PrivateReservationForm = () => {
 
           <div className="space-y-2">
             <Label htmlFor="target_language">Langue cible</Label>
-            <Select value={targetLanguage} onValueChange={(value) => {
-              console.log('[PrivateReservationForm] Langue cible sélectionnée:', value);
-              setTargetLanguage(value);
-              if (sourceLanguage) {
-                findAvailableInterpreters(sourceLanguage, value);
-              }
-            }}>
+            <Select 
+              value={targetLanguage} 
+              onValueChange={(value) => {
+                console.log('[PrivateReservationForm] Langue cible sélectionnée:', value);
+                setTargetLanguage(value);
+                if (sourceLanguage) {
+                  findAvailableInterpreters(sourceLanguage, value);
+                }
+              }}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
+                {Object.values(LANGUAGES).map((lang) => (
                   <SelectItem key={lang} value={lang}>
                     {lang}
                   </SelectItem>
