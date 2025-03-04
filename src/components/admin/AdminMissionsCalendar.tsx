@@ -88,9 +88,18 @@ export const AdminMissionsCalendar = () => {
 
     fetchMissions();
 
+    // Add event listener for calendar refresh
+    const handleCalendarRefresh = () => {
+      console.log('[AdminMissionsCalendar] Refreshing data due to reservation update');
+      fetchMissions();
+    };
+
+    window.addEventListener('calendar-refresh', handleCalendarRefresh);
+
     return () => {
       console.log('[AdminMissionsCalendar] Cleaning up subscription');
       supabase.removeChannel(channel);
+      window.removeEventListener('calendar-refresh', handleCalendarRefresh);
     };
   }, []);
 
