@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { format } from "date-fns";
-import { toFrenchTime } from "@/utils/timeZone";
 
 interface ReservationEditDialogProps {
   reservation: PrivateReservation;
@@ -22,16 +20,13 @@ export const ReservationEditDialog = ({
   onSuccess,
 }: ReservationEditDialogProps) => {
   const { toast } = useToast();
-  
-  // Convert to local time for display
-  const startDateTime = toFrenchTime(reservation.start_time);
-  const endDateTime = toFrenchTime(reservation.end_time);
-  
-  const [startDate, setStartDate] = useState(format(startDateTime, "yyyy-MM-dd"));
-  const [startTime, setStartTime] = useState(format(startDateTime, "HH:mm"));
-  const [endDate, setEndDate] = useState(format(endDateTime, "yyyy-MM-dd"));
-  const [endTime, setEndTime] = useState(format(endDateTime, "HH:mm"));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Initialize form state with direct date values
+  const [startDate, setStartDate] = useState(format(new Date(reservation.start_time), "yyyy-MM-dd"));
+  const [startTime, setStartTime] = useState(format(new Date(reservation.start_time), "HH:mm"));
+  const [endDate, setEndDate] = useState(format(new Date(reservation.end_time), "yyyy-MM-dd"));
+  const [endTime, setEndTime] = useState(format(new Date(reservation.end_time), "HH:mm"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +35,8 @@ export const ReservationEditDialog = ({
     try {
       const newStartTime = new Date(`${startDate}T${startTime}`);
       const newEndTime = new Date(`${endDate}T${endTime}`);
-
-      // Calculate new duration in minutes
+      
+      // Calculate duration in minutes
       const durationMinutes = Math.round((newEndTime.getTime() - newStartTime.getTime()) / (1000 * 60));
 
       const { error } = await supabase
