@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
-import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ReservationEditDialogProps {
@@ -31,11 +30,12 @@ export const ReservationEditDialog = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState(reservation.interpreter_id);
-  
-  const [startDate, setStartDate] = useState(format(new Date(reservation.start_time), "yyyy-MM-dd"));
-  const [startTime, setStartTime] = useState(format(new Date(reservation.start_time), "HH:mm"));
-  const [endDate, setEndDate] = useState(format(new Date(reservation.end_time), "yyyy-MM-dd"));
-  const [endTime, setEndTime] = useState(format(new Date(reservation.end_time), "HH:mm"));
+
+  // Convert UTC dates to local format for form inputs without any timezone adjustments
+  const [startDate, setStartDate] = useState(reservation.start_time.split('T')[0]);
+  const [startTime, setStartTime] = useState(reservation.start_time.split('T')[1].substring(0, 5));
+  const [endDate, setEndDate] = useState(reservation.end_time.split('T')[0]);
+  const [endTime, setEndTime] = useState(reservation.end_time.split('T')[1].substring(0, 5));
 
   useEffect(() => {
     const fetchEligibleInterpreters = async () => {
@@ -46,7 +46,6 @@ export const ReservationEditDialog = ({
           .filter('languages', 'cs', `{${reservation.source_language}→${reservation.target_language}}`);
 
         if (error) throw error;
-
         setInterpreters(interpreterData || []);
       } catch (error) {
         console.error('[ReservationEditDialog] Error fetching interpreters:', error);
@@ -61,19 +60,22 @@ export const ReservationEditDialog = ({
     setIsSubmitting(true);
 
     try {
-      const newStartTime = new Date(`${startDate}T${startTime}`);
-      const newEndTime = new Date(`${endDate}T${endTime}`);
+      // Create new Date objects using the form values directly
+      const newStartTime = `${startDate}T${startTime}:00Z`;
+      const newEndTime = `${endDate}T${endTime}:00Z`;
       
       // Calculate duration in minutes
-      const durationMinutes = Math.round((newEndTime.getTime() - newStartTime.getTime()) / (1000 * 60));
+      const startTimeMs = new Date(newStartTime).getTime();
+      const endTimeMs = new Date(newEndTime).getTime();
+      const durationMinutes = Math.round((endTimeMs - startTimeMs) / (1000 * 60));
 
       // First check if the new interpreter is available for this time slot
       if (selectedInterpreter !== reservation.interpreter_id) {
         const { data: isAvailable, error: availabilityError } = await supabase
           .rpc('check_interpreter_availability', {
             p_interpreter_id: selectedInterpreter,
-            p_start_time: newStartTime.toISOString(),
-            p_end_time: newEndTime.toISOString(),
+            p_start_time: newStartTime,
+            p_end_time: newEndTime,
             p_exclude_reservation_id: reservation.id
           });
 
@@ -87,8 +89,8 @@ export const ReservationEditDialog = ({
       const { error } = await supabase
         .from('private_reservations')
         .update({
-          start_time: newStartTime.toISOString(),
-          end_time: newEndTime.toISOString(),
+          start_time: newStartTime,
+          end_time: newEndTime,
           duration_minutes: durationMinutes,
           interpreter_id: selectedInterpreter
         })
@@ -199,4 +201,3 @@ export const ReservationEditDialog = ({
     </Dialog>
   );
 };
-
