@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -166,60 +167,61 @@ export const AdminMissionsCalendar = () => {
             {selectedDate
               ? formatDateTimeDisplay(selectedDate.toISOString())
               : "Sélectionnez une date"}
-        </h3>
-        <div className="space-y-4 max-h-[600px] overflow-y-auto">
-          {visibleMissions.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Aucune mission programmée pour cette date
-            </p>
-          ) : (
-            visibleMissions.map((mission) => (
-              <Card key={mission.mission_id} className="p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      <span className="text-sm font-medium">
-                        {formatTimeString(mission.scheduled_start_time)}
-                        {" - "}
-                        {formatTimeString(mission.scheduled_end_time)}
-                      </span>
-                      <Badge variant={mission.mission_type === 'private' ? "outline" : "secondary"}>
-                        {mission.estimated_duration} min
-                      </Badge>
-                      {mission.mission_type === 'private' && (
-                        <Badge variant="default">
-                          Réservation privée
+          </h3>
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {visibleMissions.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Aucune mission programmée pour cette date
+              </p>
+            ) : (
+              visibleMissions.map((mission) => (
+                <Card key={mission.mission_id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">
+                          {formatTimeString(mission.scheduled_start_time)}
+                          {" - "}
+                          {formatTimeString(mission.scheduled_end_time)}
+                        </span>
+                        <Badge variant={mission.mission_type === 'private' ? "outline" : "secondary"}>
+                          {mission.estimated_duration} min
                         </Badge>
+                        {mission.mission_type === 'private' && (
+                          <Badge variant="default">
+                            Réservation privée
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Languages className="h-4 w-4 text-green-500" />
+                        <span className="text-sm">
+                          {mission.source_language} → {mission.target_language}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm font-medium">
+                          {mission.interpreter_first_name} {mission.interpreter_last_name}
+                        </span>
+                      </div>
+
+                      {mission.client_name && (
+                        <p className="text-sm text-gray-500">
+                          Client : {mission.client_name}
+                        </p>
                       )}
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <Languages className="h-4 w-4 text-green-500" />
-                      <span className="text-sm">
-                        {mission.source_language} → {mission.target_language}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">
-                        {mission.interpreter_first_name} {mission.interpreter_last_name}
-                      </span>
-                    </div>
-
-                    {mission.client_name && (
-                      <p className="text-sm text-gray-500">
-                        Client : {mission.client_name}
-                      </p>
-                    )}
                   </div>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      </Card>
+                </Card>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
