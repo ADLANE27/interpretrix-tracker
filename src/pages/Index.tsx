@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Globe2, Users, Clock, Languages } from "lucide-react";
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -84,83 +83,33 @@ const Index = () => {
 
   if (!userRole) {
     return (
-      <div className="min-h-screen flex flex-col justify-between bg-gradient-to-br from-[#1a2844] to-[#2a3854]">
-        <main className="flex-1 px-4">
-          <div className="max-w-6xl mx-auto pt-8 sm:pt-16">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-center mb-12"
-            >
-              <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6">
-                Bienvenue sur AFTraduction
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-200 max-w-2xl mx-auto">
-                Votre portail professionnel pour l'interprétation et la traduction de qualité
-              </p>
-            </motion.div>
-
-            <div className="grid sm:grid-cols-2 gap-8 max-w-4xl mx-auto px-4 mb-16">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex flex-col gap-6"
+      <div className="min-h-screen flex flex-col justify-between">
+        <div className="flex items-center justify-center flex-1">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-center space-y-4 px-4"
+          >
+            <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link 
+                to="/admin/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
               >
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <Globe2 className="h-8 w-8 text-[#f5a51d] mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Services Professionnels</h3>
-                  <p className="text-gray-200">Des services d'interprétation et de traduction de haute qualité</p>
-                </div>
-                <Link 
-                  to="/interpreter/login" 
-                  className="group relative overflow-hidden rounded-lg bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] p-[2px] transition-all duration-300 hover:from-[#f6b53d] hover:to-[#f7c55d]"
-                >
-                  <div className="relative bg-[#1a2844] rounded-[6px] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-semibold text-[#f5a51d] mb-2">Espace Interprète</h3>
-                        <p className="text-gray-300">Accédez à votre espace de travail</p>
-                      </div>
-                      <Languages className="h-6 w-6 text-[#f5a51d] transition-transform group-hover:scale-110" />
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="flex flex-col gap-6"
+                Espace Administrateur
+              </Link>
+              <Link 
+                to="/interpreter/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
               >
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <Clock className="h-8 w-8 text-white mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Disponibilité 24/7</h3>
-                  <p className="text-gray-200">Une équipe d'interprètes disponible à tout moment</p>
-                </div>
-                <Link 
-                  to="/admin/login" 
-                  className="group relative overflow-hidden rounded-lg bg-gradient-to-r from-[#2a3854] to-[#3a4864] p-[2px] transition-all duration-300 hover:from-[#3a4864] hover:to-[#4a5874]"
-                >
-                  <div className="relative bg-[#1a2844] rounded-[6px] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-xl font-semibold text-white mb-2">Espace Administrateur</h3>
-                        <p className="text-gray-300">Gérez votre équipe et vos services</p>
-                      </div>
-                      <Users className="h-6 w-6 text-white transition-transform group-hover:scale-110" />
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
+                Espace Interprète
+              </Link>
             </div>
-          </div>
-        </main>
-
-        <footer className="text-center py-6 text-gray-400 text-sm backdrop-blur-sm bg-black/10">
-          <p>© {new Date().getFullYear()} AFTraduction. Tous droits réservés.</p>
+          </motion.div>
+        </div>
+        <footer className="text-center py-4 text-gray-600 text-sm">
+          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
       </div>
     );
