@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
+import { toFrenchTime, toUTCString } from "@/utils/timeZone";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -17,16 +19,34 @@ interface EditMissionDialogProps {
 export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [startTime, setStartTime] = useState(mission.scheduled_start_time || "");
-  const [endTime, setEndTime] = useState(mission.scheduled_end_time || "");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState(mission.source_language);
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      setStartTime(mission.scheduled_start_time || "");
-      setEndTime(mission.scheduled_end_time || "");
+      // Convert UTC times from database to local datetime-local input format
+      if (mission.scheduled_start_time) {
+        const localStart = toFrenchTime(mission.scheduled_start_time);
+        const formattedStart = localStart.toISOString().slice(0, 16);
+        console.log('[EditMissionDialog] Setting start time:', {
+          original: mission.scheduled_start_time,
+          converted: formattedStart
+        });
+        setStartTime(formattedStart);
+      }
+
+      if (mission.scheduled_end_time) {
+        const localEnd = toFrenchTime(mission.scheduled_end_time);
+        const formattedEnd = localEnd.toISOString().slice(0, 16);
+        console.log('[EditMissionDialog] Setting end time:', {
+          original: mission.scheduled_end_time,
+          converted: formattedEnd
+        });
+        setEndTime(formattedEnd);
+      }
     }
     setIsOpen(open);
   };
@@ -36,8 +56,15 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
+      const startDate = toFrenchTime(startTime);
+      const endDate = toFrenchTime(endTime);
+      
+      console.log('[EditMissionDialog] Processing times:', {
+        inputStart: startTime,
+        inputEnd: endTime,
+        convertedStart: startDate,
+        convertedEnd: endDate
+      });
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
 
@@ -45,11 +72,21 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
         throw new Error("La date de fin doit être postérieure à la date de début");
       }
 
+      // Convert local times back to UTC for database storage
+      const utcStart = toUTCString(startDate);
+      const utcEnd = toUTCString(endDate);
+
+      console.log('[EditMissionDialog] Saving to database:', {
+        startTime: utcStart,
+        endTime: utcEnd,
+        duration: durationMinutes
+      });
+
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startTime,
-          scheduled_end_time: endTime,
+          scheduled_start_time: utcStart,
+          scheduled_end_time: utcEnd,
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
@@ -66,6 +103,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       onMissionUpdated();
       setIsOpen(false);
     } catch (error: any) {
+      console.error('[EditMissionDialog] Error updating mission:', error);
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue",
