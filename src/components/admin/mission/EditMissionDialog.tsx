@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { format } from "date-fns";
-import { fr } from 'date-fns/locale';
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -25,17 +24,27 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (mission.scheduled_start_time) {
+      console.log('Original start time from DB:', mission.scheduled_start_time);
+    }
+    if (mission.scheduled_end_time) {
+      console.log('Original end time from DB:', mission.scheduled_end_time);
+    }
+  }, [mission]);
+
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      // Simply use the ISO string directly - no conversions needed
       if (mission.scheduled_start_time) {
-        const isoStart = mission.scheduled_start_time.slice(0, 16); // Get YYYY-MM-DDThh:mm
-        setStartTime(isoStart);
+        // Use UTC timestamp directly
+        setStartTime(mission.scheduled_start_time);
+        console.log('Setting start time:', mission.scheduled_start_time);
       }
 
       if (mission.scheduled_end_time) {
-        const isoEnd = mission.scheduled_end_time.slice(0, 16); // Get YYYY-MM-DDThh:mm
-        setEndTime(isoEnd);
+        // Use UTC timestamp directly
+        setEndTime(mission.scheduled_end_time);
+        console.log('Setting end time:', mission.scheduled_end_time);
       }
     }
     setIsOpen(open);
@@ -46,10 +55,17 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
+      console.log('Form submission - Start time:', startTime);
+      console.log('Form submission - End time:', endTime);
+
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
+
+      console.log('Calculated duration:', durationMinutes);
+      console.log('Start date object:', startDate);
+      console.log('End date object:', endDate);
 
       if (durationMinutes <= 0) {
         throw new Error("La date de fin doit être postérieure à la date de début");
@@ -58,8 +74,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startTime, // Use the input values directly
-          scheduled_end_time: endTime,     // They're already in ISO format
+          scheduled_start_time: startTime,
+          scheduled_end_time: endTime,
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
