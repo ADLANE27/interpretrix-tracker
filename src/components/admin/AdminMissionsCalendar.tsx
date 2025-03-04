@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { toFrenchTime, formatFrenchTime, TIMEZONE } from "@/utils/timeZone";
+import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 
 interface CalendarMission {
   mission_id: string;
