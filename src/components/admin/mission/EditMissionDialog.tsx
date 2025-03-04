@@ -33,18 +33,26 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     }
   }, [mission]);
 
+  const formatDateForInput = (dateString: string) => {
+    const date = new Date(dateString);
+    // Get YYYY-MM-DDThh:mm in local time
+    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+      .toISOString()
+      .slice(0, 16);
+  };
+
   const handleDialogOpen = (open: boolean) => {
     if (open) {
       if (mission.scheduled_start_time) {
-        // Use UTC timestamp directly
-        setStartTime(mission.scheduled_start_time);
-        console.log('Setting start time:', mission.scheduled_start_time);
+        const formattedStart = formatDateForInput(mission.scheduled_start_time);
+        console.log('Setting formatted start time:', formattedStart);
+        setStartTime(formattedStart);
       }
 
       if (mission.scheduled_end_time) {
-        // Use UTC timestamp directly
-        setEndTime(mission.scheduled_end_time);
-        console.log('Setting end time:', mission.scheduled_end_time);
+        const formattedEnd = formatDateForInput(mission.scheduled_end_time);
+        console.log('Setting formatted end time:', formattedEnd);
+        setEndTime(formattedEnd);
       }
     }
     setIsOpen(open);
@@ -58,14 +66,19 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       console.log('Form submission - Start time:', startTime);
       console.log('Form submission - End time:', endTime);
 
-      const startDate = new Date(startTime);
-      const endDate = new Date(endTime);
+      // Convert local datetime-local values back to UTC for storage
+      const startUTC = new Date(startTime).toISOString();
+      const endUTC = new Date(endTime).toISOString();
+
+      console.log('UTC start time for storage:', startUTC);
+      console.log('UTC end time for storage:', endUTC);
+
+      const startDate = new Date(startUTC);
+      const endDate = new Date(endUTC);
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
 
       console.log('Calculated duration:', durationMinutes);
-      console.log('Start date object:', startDate);
-      console.log('End date object:', endDate);
 
       if (durationMinutes <= 0) {
         throw new Error("La date de fin doit être postérieure à la date de début");
@@ -74,8 +87,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startTime,
-          scheduled_end_time: endTime,
+          scheduled_start_time: startUTC,
+          scheduled_end_time: endUTC,
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
