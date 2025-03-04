@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { format, parseISO } from "date-fns";
-import { formatInTimeZone } from 'date-fns-tz';
+import { toZonedTime, format } from "date-fns-tz";
+import { fr } from "date-fns/locale";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -26,36 +26,61 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
 
-  const convertUTCToLocal = (utcDateString: string | null) => {
-    if (!utcDateString) return "";
-    // Convert UTC time to French time (Europe/Paris timezone)
-    const localDateTime = formatInTimeZone(
-      parseISO(utcDateString),
-      'Europe/Paris',
-      "yyyy-MM-dd'T'HH:mm"
-    );
-    console.log('Converting UTC to Local:', { utc: utcDateString, local: localDateTime });
-    return localDateTime;
+  // Convert UTC ISO string to French timezone datetime-local string
+  const toFrenchTime = (isoString: string | null) => {
+    if (!isoString) return "";
+    
+    // Convert UTC to Europe/Paris timezone
+    const zonedTime = toZonedTime(new Date(isoString), 'Europe/Paris');
+    
+    // Format for datetime-local input (YYYY-MM-DDThh:mm)
+    const formattedTime = format(zonedTime, "yyyy-MM-dd'T'HH:mm", { timeZone: 'Europe/Paris' });
+    console.log('Converting to French time:', { 
+      input: isoString,
+      output: formattedTime,
+      zoned: zonedTime
+    });
+    
+    return formattedTime;
   };
 
-  const convertLocalToUTC = (localDateString: string) => {
-    // Parse the local time as if it was in French timezone
-    const utcDate = new Date(localDateString).toISOString();
-    console.log('Converting Local to UTC:', { local: localDateString, utc: utcDate });
-    return utcDate;
+  // Convert French timezone datetime-local string back to UTC ISO string
+  const toUTCTime = (localString: string) => {
+    // Create a date object treating the input as Europe/Paris time
+    const date = new Date(localString);
+    
+    // Adjust for timezone offset to get correct UTC time
+    const utcString = new Date(
+      date.getTime() - (date.getTimezoneOffset() * 60000)
+    ).toISOString();
+
+    console.log('Converting to UTC:', {
+      input: localString,
+      output: utcString,
+      timezoneOffset: date.getTimezoneOffset()
+    });
+
+    return utcString;
   };
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
+      // When opening the dialog, convert mission times from UTC to French time
       if (mission.scheduled_start_time) {
-        const localStartTime = convertUTCToLocal(mission.scheduled_start_time);
-        console.log('Setting start time:', { original: mission.scheduled_start_time, converted: localStartTime });
-        setStartTime(localStartTime);
+        const frenchStartTime = toFrenchTime(mission.scheduled_start_time);
+        console.log('Setting initial start time:', { 
+          original: mission.scheduled_start_time,
+          converted: frenchStartTime 
+        });
+        setStartTime(frenchStartTime);
       }
       if (mission.scheduled_end_time) {
-        const localEndTime = convertUTCToLocal(mission.scheduled_end_time);
-        console.log('Setting end time:', { original: mission.scheduled_end_time, converted: localEndTime });
-        setEndTime(localEndTime);
+        const frenchEndTime = toFrenchTime(mission.scheduled_end_time);
+        console.log('Setting initial end time:', { 
+          original: mission.scheduled_end_time,
+          converted: frenchEndTime 
+        });
+        setEndTime(frenchEndTime);
       }
     }
     setIsOpen(open);
@@ -66,17 +91,13 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      console.log('Form times:', { startTime, endTime });
+      // Convert local times back to UTC for database storage
+      const utcStartTime = toUTCTime(startTime);
+      const utcEndTime = toUTCTime(endTime);
       
-      const utcStartTime = convertLocalToUTC(startTime);
-      const utcEndTime = convertLocalToUTC(endTime);
-      
-      console.log('Converted times for database:', { 
-        utcStartTime, 
-        utcEndTime,
-        estimatedDuration: Math.round(
-          (new Date(utcEndTime).getTime() - new Date(utcStartTime).getTime()) / 1000 / 60
-        )
+      console.log('Submitting mission update:', {
+        startTime: { local: startTime, utc: utcStartTime },
+        endTime: { local: endTime, utc: utcEndTime }
       });
 
       const { error } = await supabase
