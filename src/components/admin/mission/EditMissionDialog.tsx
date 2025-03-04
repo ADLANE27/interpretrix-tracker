@@ -23,27 +23,14 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (mission.scheduled_start_time) {
-      console.log('Original start time from DB:', mission.scheduled_start_time);
-    }
-    if (mission.scheduled_end_time) {
-      console.log('Original end time from DB:', mission.scheduled_end_time);
-    }
-  }, [mission]);
-
   const handleDialogOpen = (open: boolean) => {
     if (open) {
       if (mission.scheduled_start_time) {
-        const rawStart = mission.scheduled_start_time.slice(0, 16);
-        console.log('Setting raw start time:', rawStart);
-        setStartTime(rawStart);
+        setStartTime(mission.scheduled_start_time.slice(0, 16));
       }
 
       if (mission.scheduled_end_time) {
-        const rawEnd = mission.scheduled_end_time.slice(0, 16);
-        console.log('Setting raw end time:', rawEnd);
-        setEndTime(rawEnd);
+        setEndTime(mission.scheduled_end_time.slice(0, 16));
       }
     }
     setIsOpen(open);
@@ -54,34 +41,18 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      console.log('Form submission - Raw start time:', startTime);
-      console.log('Form submission - Raw end time:', endTime);
-
-      const startISO = new Date(startTime).toISOString();
-      const endISO = new Date(endTime).toISOString();
-
-      console.log('Start ISO for storage:', startISO);
-      console.log('End ISO for storage:', endISO);
-
-      const startDate = new Date(startISO);
-      const endDate = new Date(endISO);
-      
-      const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
-
-      console.log('Calculated duration:', durationMinutes);
-
-      if (durationMinutes <= 0) {
-        throw new Error("La date de fin doit être postérieure à la date de début");
-      }
+      console.log('Raw times from form:', { startTime, endTime });
 
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startISO,
-          scheduled_end_time: endISO,
-          estimated_duration: durationMinutes,
+          scheduled_start_time: startTime,
+          scheduled_end_time: endTime,
           source_language: sourceLanguage,
-          target_language: targetLanguage
+          target_language: targetLanguage,
+          estimated_duration: Math.round(
+            (new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000 / 60
+          )
         })
         .eq('id', mission.id);
 
@@ -94,23 +65,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
       onMissionUpdated();
       setIsOpen(false);
-
-      const channel = supabase.channel('custom-update-channel')
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'interpretation_missions' },
-          (payload) => {
-            console.log('Mission updated:', payload);
-          }
-        )
-        .subscribe();
-
-      setTimeout(() => {
-        supabase.removeChannel(channel);
-      }, 1000);
-
     } catch (error: any) {
-      console.error('[EditMissionDialog] Error updating mission:', error);
+      console.error('Error updating mission:', error);
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue",
