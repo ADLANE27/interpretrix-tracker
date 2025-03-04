@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { toFrenchTime } from "@/utils/timeZone";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -27,13 +25,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      // Convert the mission times to the correct timezone
-      const startDate = toFrenchTime(mission.scheduled_start_time || "");
-      const endDate = toFrenchTime(mission.scheduled_end_time || "");
-      
-      // Format for datetime-local input
-      setStartTime(startDate.toISOString().slice(0, 16));
-      setEndTime(endDate.toISOString().slice(0, 16));
+      setStartTime((mission.scheduled_start_time || "").slice(0, 16));
+      setEndTime((mission.scheduled_end_time || "").slice(0, 16));
     }
     setIsOpen(open);
   };
@@ -43,7 +36,6 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      // Convert input times to UTC for storage
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
       
@@ -56,8 +48,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startDate.toISOString(),
-          scheduled_end_time: endDate.toISOString(),
+          scheduled_start_time: startTime,
+          scheduled_end_time: endTime,
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage

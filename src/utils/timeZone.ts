@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Format a date without any timezone conversion
+// Format a date exactly as it is, no conversions
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
   try {
     const dateObj = new Date(date);
@@ -12,7 +12,7 @@ export const formatFrenchTime = (date: Date | string, formatString: string) => {
   }
 };
 
-// Convert a date string to a Date object without timezone adjustment
+// Just create a Date object, no conversions
 export const toFrenchTime = (date: string | Date) => {
   try {
     return new Date(date);
