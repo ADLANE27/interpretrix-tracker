@@ -1,13 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, LockIcon } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
-import { fr } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RealtimeChannel } from '@supabase/supabase-js';
-import type { PrivateReservation } from "@/types/privateReservation";
-import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 
 interface Mission {
   scheduled_start_time: string;
@@ -326,6 +323,8 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const parsedLanguages = parseLanguages(interpreter.languages);
 
+  const { getTimeFromString, getDateDisplay } = useTimeFormat();
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -424,10 +423,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
-                  {formatFrenchTime(new Date(nextMission.scheduled_start_time), "d MMMM")} de{' '}
-                  {nextMission.scheduled_start_time.slice(11, 16)}
+                  {getDateDisplay(nextMission.scheduled_start_time)} de{' '}
+                  {getTimeFromString(nextMission.scheduled_start_time)}
                   {nextMission.scheduled_end_time && (
-                    <> à {nextMission.scheduled_end_time.slice(11, 16)}</>
+                    <> à {getTimeFromString(nextMission.scheduled_end_time)}</>
                   )}
                 </span>
               </div>
@@ -452,10 +451,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatFrenchTime(new Date(mission.scheduled_start_time), "d MMMM")} de{' '}
-                        {mission.scheduled_start_time.slice(11, 16)}
+                        {getDateDisplay(mission.scheduled_start_time)} de{' '}
+                        {getTimeFromString(mission.scheduled_start_time)}
                         {mission.scheduled_end_time && (
-                          <> à {mission.scheduled_end_time.slice(11, 16)}</>
+                          <> à {getTimeFromString(mission.scheduled_end_time)}</>
                         )}
                       </span>
                     </div>

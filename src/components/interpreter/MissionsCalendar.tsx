@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -11,6 +10,7 @@ import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supab
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 
 interface Mission {
   id: string;
@@ -36,6 +36,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [missions, setMissions] = useState<Mission[]>(initialMissions);
   const { toast } = useToast();
+  const { getTimeFromString, getDateDisplay } = useTimeFormat();
 
   const fetchMissions = async (userId: string) => {
     console.log('[MissionsCalendar] Fetching missions for user:', userId);
@@ -215,9 +216,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
                       <div className="flex items-center gap-2 mb-2">
                         <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <span className="text-sm font-medium">
-                          {formatFrenchTime(startTime, "HH:mm")}
-                          {endTime &&
-                            ` - ${formatFrenchTime(endTime, "HH:mm")}`}
+                          {getTimeFromString(mission.scheduled_start_time)}
+                          {mission.scheduled_end_time &&
+                            ` - ${getTimeFromString(mission.scheduled_end_time)}`}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
