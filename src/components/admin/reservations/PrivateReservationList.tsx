@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { ReservationEditDialog } from "./ReservationEditDialog";
 import { formatDateTimeDisplay } from "@/utils/dateTimeUtils";
 import { Clock, Languages, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 
 interface PrivateReservationListProps {
   nameFilter: string;
@@ -43,7 +43,6 @@ export const PrivateReservationList = ({
         `)
         .order('start_time', { ascending: true });
 
-      // Apply filters
       if (nameFilter) {
         query = query.or(`interpreter_profiles.first_name.ilike.%${nameFilter}%,interpreter_profiles.last_name.ilike.%${nameFilter}%`);
       }
@@ -79,34 +78,13 @@ export const PrivateReservationList = ({
   };
 
   useEffect(() => {
-    console.log('[PrivateReservationList] Setting up realtime subscriptions');
-    
     fetchReservations();
-
-    // Subscribe to ALL changes on private_reservations
-    const channel = supabase
-      .channel('private-reservations-admin')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'private_reservations'
-        },
-        (payload) => {
-          console.log('[PrivateReservationList] Received reservation update:', payload);
-          fetchReservations();
-        }
-      )
-      .subscribe((status) => {
-        console.log('[PrivateReservationList] Subscription status:', status);
-      });
-
-    return () => {
-      console.log('[PrivateReservationList] Cleaning up subscription');
-      supabase.removeChannel(channel);
-    };
   }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter]);
+
+  useMissionUpdates(() => {
+    console.log('[PrivateReservationList] Received update, refreshing reservations');
+    fetchReservations();
+  });
 
   const onClose = () => setSelectedReservation(null);
 

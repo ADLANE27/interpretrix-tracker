@@ -17,8 +17,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        () => {
-          console.log('[useMissionUpdates] Mission update received');
+        (payload) => {
+          console.log('[useMissionUpdates] Mission update received:', payload);
           onUpdate();
         }
       )
@@ -34,8 +34,8 @@ export const useMissionUpdates = (onUpdate: () => void) => {
           schema: 'public',
           table: 'private_reservations'
         },
-        () => {
-          console.log('[useMissionUpdates] Private reservation update received');
+        (payload) => {
+          console.log('[useMissionUpdates] Private reservation update received:', payload);
           onUpdate();
         }
       )
