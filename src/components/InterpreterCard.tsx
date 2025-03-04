@@ -52,6 +52,7 @@ interface InterpreterCardProps {
     phone_number?: string | null;
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
+    landline_phone?: string | null;
   };
 }
 
@@ -354,29 +355,37 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-gray-500" />
-          <div className="flex flex-wrap gap-1">
-            {parsedLanguages.length > 0 ? (
-              parsedLanguages.map((lang, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {lang.source}
-                  </Badge>
-                  <span className="text-xs">→</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {lang.target}
-                  </Badge>
-                </div>
-              ))
-            ) : (
-              <span className="text-sm text-gray-500">Aucune langue spécifiée</span>
-            )}
-          </div>
+          {parsedLanguages.length > 0 ? (
+            parsedLanguages.map((lang, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <Badge variant="secondary" className="text-xs">
+                  {lang.source}
+                </Badge>
+                <span className="text-xs">→</span>
+                <Badge variant="secondary" className="text-xs">
+                  {lang.target}
+                </Badge>
+              </div>
+            ))
+          ) : (
+            <span className="text-sm text-gray-500">Aucune langue spécifiée</span>
+          )}
         </div>
 
-        {interpreter.phone_number && (
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">{interpreter.phone_number}</span>
+        {(interpreter.phone_number || interpreter.landline_phone) && (
+          <div className="space-y-1">
+            {interpreter.phone_number && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">{interpreter.phone_number} (Mobile)</span>
+              </div>
+            )}
+            {interpreter.landline_phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-gray-500" />
+                <span className="text-sm">{interpreter.landline_phone} (Fixe)</span>
+              </div>
+            )}
           </div>
         )}
 
