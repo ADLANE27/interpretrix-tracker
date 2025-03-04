@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { format, parseISO } from "date-fns";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -19,12 +17,8 @@ interface EditMissionDialogProps {
 export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [startTime, setStartTime] = useState(
-    format(parseISO(mission.scheduled_start_time!), "yyyy-MM-dd'T'HH:mm")
-  );
-  const [endTime, setEndTime] = useState(
-    mission.scheduled_end_time ? format(parseISO(mission.scheduled_end_time), "yyyy-MM-dd'T'HH:mm") : ""
-  );
+  const [startTime, setStartTime] = useState(mission.scheduled_start_time || "");
+  const [endTime, setEndTime] = useState(mission.scheduled_end_time || "");
   const [sourceLanguage, setSourceLanguage] = useState(mission.source_language);
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
