@@ -1,17 +1,33 @@
-
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Format a date in French format without timezone conversion
+// Format a date without any timezone conversion
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
-  // Ensure we don't do any timezone conversion, just format the date
-  const dateObj = new Date(date);
-  return format(dateObj, formatString, { locale: fr });
+  try {
+    // Create a date object that preserves the input time
+    const dateObj = new Date(date);
+    // Add timezone offset to compensate for local timezone conversion
+    const timezoneOffset = dateObj.getTimezoneOffset();
+    dateObj.setMinutes(dateObj.getMinutes() + timezoneOffset);
+    
+    return format(dateObj, formatString, { locale: fr });
+  } catch (error) {
+    console.error('Error in formatFrenchTime:', error);
+    return '';
+  }
 };
 
-// Simply return the date object without any conversion
+// Convert a date string to a Date object without timezone adjustment
 export const toFrenchTime = (date: string | Date) => {
-  return new Date(date);
+  try {
+    const dateObj = new Date(date);
+    const timezoneOffset = dateObj.getTimezoneOffset();
+    dateObj.setMinutes(dateObj.getMinutes() + timezoneOffset);
+    return dateObj;
+  } catch (error) {
+    console.error('Error in toFrenchTime:', error);
+    return new Date();
+  }
 };
 
 // Keep these functions as they are
@@ -31,10 +47,10 @@ export const hasTimeOverlap = (
   startTime2: string,
   endTime2: string
 ): boolean => {
-  const start1 = new Date(startTime1);
-  const end1 = new Date(endTime1);
-  const start2 = new Date(startTime2);
-  const end2 = new Date(endTime2);
+  const start1 = toFrenchTime(startTime1);
+  const end1 = toFrenchTime(endTime1);
+  const start2 = toFrenchTime(startTime2);
+  const end2 = toFrenchTime(endTime2);
 
   return start1 < end2 && end1 > start2;
 };

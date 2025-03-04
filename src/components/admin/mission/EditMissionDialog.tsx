@@ -26,11 +26,11 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      const localStartTime = mission.scheduled_start_time || "";
-      const localEndTime = mission.scheduled_end_time || "";
+      const startDate = new Date(mission.scheduled_start_time || "");
+      const endDate = new Date(mission.scheduled_end_time || "");
       
-      setStartTime(localStartTime);
-      setEndTime(localEndTime);
+      setStartTime(startDate.toISOString().slice(0, 16));
+      setEndTime(endDate.toISOString().slice(0, 16));
     }
     setIsOpen(open);
   };
@@ -42,6 +42,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     try {
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
+      
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
 
       if (durationMinutes <= 0) {
@@ -51,8 +52,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startTime,
-          scheduled_end_time: endTime,
+          scheduled_start_time: startDate.toISOString(),
+          scheduled_end_time: endDate.toISOString(),
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
