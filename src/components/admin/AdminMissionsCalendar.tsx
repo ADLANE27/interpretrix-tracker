@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 
 interface CalendarMission {
@@ -117,7 +116,7 @@ export const AdminMissionsCalendar = () => {
   };
 
   const datesWithMissions = missions
-    .map((mission) => startOfDay(toFrenchTime(mission.scheduled_start_time)))
+    .map((mission) => startOfDay(new Date(mission.scheduled_start_time)))
     .filter((date): date is Date => date !== null);
 
   const visibleMissions = getVisibleMissions();

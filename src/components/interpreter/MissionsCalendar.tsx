@@ -10,7 +10,6 @@ import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supab
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
-import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 
 interface Mission {
   id: string;
@@ -151,7 +150,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
-    const missionDate = toFrenchTime(mission.scheduled_start_time);
+    const missionDate = new Date(mission.scheduled_start_time);
     const selectedDayStart = startOfDay(selectedDate);
     const missionDayStart = startOfDay(missionDate);
     
@@ -164,7 +163,7 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
-      const date = startOfDay(toFrenchTime(mission.scheduled_start_time));
+      const date = startOfDay(new Date(mission.scheduled_start_time));
       console.log(`[MissionsCalendar] Mission ${mission.id} date: ${date.toISOString()}`);
       return date;
     })
@@ -204,9 +203,9 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
             </p>
           ) : (
             missionsForSelectedDate.map((mission) => {
-              const startTime = toFrenchTime(mission.scheduled_start_time!);
+              const startTime = new Date(mission.scheduled_start_time!);
               const endTime = mission.scheduled_end_time 
-                ? toFrenchTime(mission.scheduled_end_time)
+                ? new Date(mission.scheduled_end_time)
                 : null;
 
               return (
