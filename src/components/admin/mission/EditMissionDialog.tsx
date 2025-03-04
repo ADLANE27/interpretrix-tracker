@@ -17,11 +17,19 @@ interface EditMissionDialogProps {
 export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [startTime, setStartTime] = useState(mission.scheduled_start_time || "");
-  const [endTime, setEndTime] = useState(mission.scheduled_end_time || "");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [sourceLanguage, setSourceLanguage] = useState(mission.source_language);
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
+
+  const handleDialogOpen = (open: boolean) => {
+    if (open) {
+      setStartTime(mission.scheduled_start_time || "");
+      setEndTime(mission.scheduled_end_time || "");
+    }
+    setIsOpen(open);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +76,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleDialogOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Pencil className="h-4 w-4 mr-2" />
