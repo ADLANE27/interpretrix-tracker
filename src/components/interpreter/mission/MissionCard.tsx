@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
+import { formatTimeString, formatDateTimeDisplay } from "@/utils/dateTimeUtils";
 
 interface MissionCardProps {
   mission: Mission;
@@ -108,7 +108,7 @@ export const MissionCard = ({
             <div className="text-sm text-gray-600">
               {mission.mission_type === 'immediate' ? (
                 <>
-                  <p>Date: {formatDateDisplay(mission.created_at)}</p>
+                  <p>Date: {formatDateTimeDisplay(mission.created_at)}</p>
                   <p>Langues: {mission.source_language} → {mission.target_language}</p>
                   <p>Durée: {mission.estimated_duration} minutes</p>
                 </>
