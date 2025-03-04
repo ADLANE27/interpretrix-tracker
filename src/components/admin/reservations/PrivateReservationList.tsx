@@ -31,11 +31,6 @@ export const PrivateReservationList = ({
   const { toast } = useToast();
   const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
 
-  const adjustForFrenchTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return addHours(date, -1);
-  };
-
   const fetchReservations = async () => {
     try {
       const { data, error } = await supabase
