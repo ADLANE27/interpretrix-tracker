@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { format } from "date-fns";
+import { toFrenchTime } from "@/utils/timeZone";
 
 interface ReservationEditDialogProps {
   reservation: PrivateReservation;
@@ -21,10 +22,15 @@ export const ReservationEditDialog = ({
   onSuccess,
 }: ReservationEditDialogProps) => {
   const { toast } = useToast();
-  const [startDate, setStartDate] = useState(format(new Date(reservation.start_time), "yyyy-MM-dd"));
-  const [startTime, setStartTime] = useState(format(new Date(reservation.start_time), "HH:mm"));
-  const [endDate, setEndDate] = useState(format(new Date(reservation.end_time), "yyyy-MM-dd"));
-  const [endTime, setEndTime] = useState(format(new Date(reservation.end_time), "HH:mm"));
+  
+  // Convert to local time for display
+  const startDateTime = toFrenchTime(reservation.start_time);
+  const endDateTime = toFrenchTime(reservation.end_time);
+  
+  const [startDate, setStartDate] = useState(format(startDateTime, "yyyy-MM-dd"));
+  const [startTime, setStartTime] = useState(format(startDateTime, "HH:mm"));
+  const [endDate, setEndDate] = useState(format(endDateTime, "yyyy-MM-dd"));
+  const [endTime, setEndTime] = useState(format(endDateTime, "HH:mm"));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
