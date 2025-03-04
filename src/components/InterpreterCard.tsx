@@ -5,6 +5,7 @@ import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface Mission {
   scheduled_start_time: string;
