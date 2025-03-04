@@ -15,7 +15,7 @@ export const formatFrenchTime = (date: Date | string, formatString: string) => {
   }
 };
 
-// Use the raw timestamp without any timezone adjustments
+// Just return the date object directly without any timezone adjustments
 export const toFrenchTime = (date: string | Date) => {
   try {
     console.log('toFrenchTime input:', date);

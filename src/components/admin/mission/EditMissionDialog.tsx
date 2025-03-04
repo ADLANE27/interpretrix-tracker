@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -33,26 +32,18 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     }
   }, [mission]);
 
-  const formatDateForInput = (dateString: string) => {
-    const date = new Date(dateString);
-    // Get YYYY-MM-DDThh:mm in local time
-    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-      .toISOString()
-      .slice(0, 16);
-  };
-
   const handleDialogOpen = (open: boolean) => {
     if (open) {
       if (mission.scheduled_start_time) {
-        const formattedStart = formatDateForInput(mission.scheduled_start_time);
-        console.log('Setting formatted start time:', formattedStart);
-        setStartTime(formattedStart);
+        const rawStart = mission.scheduled_start_time.slice(0, 16);
+        console.log('Setting raw start time:', rawStart);
+        setStartTime(rawStart);
       }
 
       if (mission.scheduled_end_time) {
-        const formattedEnd = formatDateForInput(mission.scheduled_end_time);
-        console.log('Setting formatted end time:', formattedEnd);
-        setEndTime(formattedEnd);
+        const rawEnd = mission.scheduled_end_time.slice(0, 16);
+        console.log('Setting raw end time:', rawEnd);
+        setEndTime(rawEnd);
       }
     }
     setIsOpen(open);
@@ -63,18 +54,17 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      console.log('Form submission - Start time:', startTime);
-      console.log('Form submission - End time:', endTime);
+      console.log('Form submission - Raw start time:', startTime);
+      console.log('Form submission - Raw end time:', endTime);
 
-      // Convert local datetime-local values back to UTC for storage
-      const startUTC = new Date(startTime).toISOString();
-      const endUTC = new Date(endTime).toISOString();
+      const startISO = new Date(startTime).toISOString();
+      const endISO = new Date(endTime).toISOString();
 
-      console.log('UTC start time for storage:', startUTC);
-      console.log('UTC end time for storage:', endUTC);
+      console.log('Start ISO for storage:', startISO);
+      console.log('End ISO for storage:', endISO);
 
-      const startDate = new Date(startUTC);
-      const endDate = new Date(endUTC);
+      const startDate = new Date(startISO);
+      const endDate = new Date(endISO);
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
 
@@ -87,8 +77,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startUTC,
-          scheduled_end_time: endUTC,
+          scheduled_start_time: startISO,
+          scheduled_end_time: endISO,
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
@@ -105,7 +95,6 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       onMissionUpdated();
       setIsOpen(false);
 
-      // Force refresh for the calendar and other components
       const channel = supabase.channel('custom-update-channel')
         .on(
           'postgres_changes',
@@ -116,7 +105,6 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
         )
         .subscribe();
 
-      // Cleanup subscription after a short delay
       setTimeout(() => {
         supabase.removeChannel(channel);
       }, 1000);
