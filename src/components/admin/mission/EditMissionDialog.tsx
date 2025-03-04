@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -27,22 +26,16 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      // Convert database times to local datetime-local input format
+      // Convert database ISO string to datetime-local input format (YYYY-MM-DDThh:mm)
       if (mission.scheduled_start_time) {
-        const formattedStart = format(parseISO(mission.scheduled_start_time), "yyyy-MM-dd'T'HH:mm");
-        console.log('[EditMissionDialog] Setting start time:', {
-          original: mission.scheduled_start_time,
-          converted: formattedStart
-        });
+        const date = new Date(mission.scheduled_start_time);
+        const formattedStart = format(date, "yyyy-MM-dd'T'HH:mm");
         setStartTime(formattedStart);
       }
 
       if (mission.scheduled_end_time) {
-        const formattedEnd = format(parseISO(mission.scheduled_end_time), "yyyy-MM-dd'T'HH:mm");
-        console.log('[EditMissionDialog] Setting end time:', {
-          original: mission.scheduled_end_time,
-          converted: formattedEnd
-        });
+        const date = new Date(mission.scheduled_end_time);
+        const formattedEnd = format(date, "yyyy-MM-dd'T'HH:mm");
         setEndTime(formattedEnd);
       }
     }
@@ -54,15 +47,9 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
+      // Create Date objects from the form input values
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
-      
-      console.log('[EditMissionDialog] Processing times:', {
-        inputStart: startTime,
-        inputEnd: endTime,
-        convertedStart: startDate.toISOString(),
-        convertedEnd: endDate.toISOString()
-      });
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
 
@@ -70,7 +57,6 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
         throw new Error("La date de fin doit être postérieure à la date de début");
       }
 
-      // Store times in UTC format
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
