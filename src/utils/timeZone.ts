@@ -1,8 +1,10 @@
+
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 // Format a date in French format without timezone conversion
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
+  // Ensure we don't do any timezone conversion, just format the date
   const dateObj = new Date(date);
   return format(dateObj, formatString, { locale: fr });
 };

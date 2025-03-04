@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
+import { toFrenchTime } from "@/utils/timeZone";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -25,8 +26,11 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      setStartTime(mission.scheduled_start_time || "");
-      setEndTime(mission.scheduled_end_time || "");
+      const localStartTime = mission.scheduled_start_time || "";
+      const localEndTime = mission.scheduled_end_time || "";
+      
+      setStartTime(localStartTime);
+      setEndTime(localEndTime);
     }
     setIsOpen(open);
   };
