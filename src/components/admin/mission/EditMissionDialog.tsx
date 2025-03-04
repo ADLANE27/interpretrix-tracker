@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
-import { toFrenchTime, toUTCString } from "@/utils/timeZone";
+import { format, parseISO } from "date-fns";
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -27,10 +27,9 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      // Convert UTC times from database to local datetime-local input format
+      // Convert database times to local datetime-local input format
       if (mission.scheduled_start_time) {
-        const localStart = toFrenchTime(mission.scheduled_start_time);
-        const formattedStart = localStart.toISOString().slice(0, 16);
+        const formattedStart = format(parseISO(mission.scheduled_start_time), "yyyy-MM-dd'T'HH:mm");
         console.log('[EditMissionDialog] Setting start time:', {
           original: mission.scheduled_start_time,
           converted: formattedStart
@@ -39,8 +38,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       }
 
       if (mission.scheduled_end_time) {
-        const localEnd = toFrenchTime(mission.scheduled_end_time);
-        const formattedEnd = localEnd.toISOString().slice(0, 16);
+        const formattedEnd = format(parseISO(mission.scheduled_end_time), "yyyy-MM-dd'T'HH:mm");
         console.log('[EditMissionDialog] Setting end time:', {
           original: mission.scheduled_end_time,
           converted: formattedEnd
@@ -56,14 +54,14 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      const startDate = toFrenchTime(startTime);
-      const endDate = toFrenchTime(endTime);
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
       
       console.log('[EditMissionDialog] Processing times:', {
         inputStart: startTime,
         inputEnd: endTime,
-        convertedStart: startDate,
-        convertedEnd: endDate
+        convertedStart: startDate.toISOString(),
+        convertedEnd: endDate.toISOString()
       });
       
       const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 1000 / 60);
@@ -72,21 +70,12 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
         throw new Error("La date de fin doit être postérieure à la date de début");
       }
 
-      // Convert local times back to UTC for database storage
-      const utcStart = toUTCString(startDate);
-      const utcEnd = toUTCString(endDate);
-
-      console.log('[EditMissionDialog] Saving to database:', {
-        startTime: utcStart,
-        endTime: utcEnd,
-        duration: durationMinutes
-      });
-
+      // Store times in UTC format
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: utcStart,
-          scheduled_end_time: utcEnd,
+          scheduled_start_time: startDate.toISOString(),
+          scheduled_end_time: endDate.toISOString(),
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
@@ -102,6 +91,23 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
       onMissionUpdated();
       setIsOpen(false);
+
+      // Force refresh for the calendar and other components
+      const channel = supabase.channel('custom-update-channel')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'interpretation_missions' },
+          (payload) => {
+            console.log('Mission updated:', payload);
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription after a short delay
+      setTimeout(() => {
+        supabase.removeChannel(channel);
+      }, 1000);
+
     } catch (error: any) {
       console.error('[EditMissionDialog] Error updating mission:', error);
       toast({
