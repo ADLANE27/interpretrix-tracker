@@ -424,9 +424,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-500" />
                 <span className="text-sm">
-                  {formatFrenchTime(nextMission.scheduled_start_time, "d MMMM 'à' HH:mm")}
+                  {formatFrenchTime(new Date(nextMission.scheduled_start_time), "d MMMM")} de{' '}
+                  {nextMission.scheduled_start_time.slice(11, 16)}
                   {nextMission.scheduled_end_time && (
-                    <> - {formatFrenchTime(nextMission.scheduled_end_time, "HH:mm")}</>
+                    <> à {nextMission.scheduled_end_time.slice(11, 16)}</>
                   )}
                 </span>
               </div>
@@ -451,9 +452,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatFrenchTime(mission.scheduled_start_time, "d MMMM 'à' HH:mm")}
+                        {formatFrenchTime(new Date(mission.scheduled_start_time), "d MMMM")} de{' '}
+                        {mission.scheduled_start_time.slice(11, 16)}
                         {mission.scheduled_end_time && (
-                          <> - {formatFrenchTime(mission.scheduled_end_time, "HH:mm")}</>
+                          <> à {mission.scheduled_end_time.slice(11, 16)}</>
                         )}
                       </span>
                     </div>
