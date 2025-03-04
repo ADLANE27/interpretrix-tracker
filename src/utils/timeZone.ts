@@ -1,16 +1,21 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Format a date without timezone conversion
+// Format a date with proper timezone handling for legacy data
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
-  return format(new Date(date), formatString, { locale: fr });
+  // Handle legacy data by adding back the hour that was subtracted
+  const dateObj = new Date(date);
+  const adjustedDate = new Date(dateObj.getTime() + (1 * 60 * 60 * 1000)); // Add 1 hour for legacy data
+  return format(adjustedDate, formatString, { locale: fr });
 };
 
-// Keep these functions for backward compatibility but make them not do any timezone conversion
+// Convert date to French timezone for legacy data
 export const toFrenchTime = (date: string | Date) => {
-  return new Date(date);
+  const dateObj = new Date(date);
+  return new Date(dateObj.getTime() + (1 * 60 * 60 * 1000)); // Add 1 hour for legacy data
 };
 
+// Keep these functions as they are
 export const toUTCString = (date: Date) => {
   return date.toISOString();
 };
