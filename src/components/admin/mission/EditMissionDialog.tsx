@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
+import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -24,14 +26,36 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
   const [targetLanguage, setTargetLanguage] = useState(mission.target_language);
   const { toast } = useToast();
 
+  const convertUTCToLocal = (utcDateString: string | null) => {
+    if (!utcDateString) return "";
+    // Convert UTC time to French time (Europe/Paris timezone)
+    const localDateTime = formatInTimeZone(
+      parseISO(utcDateString),
+      'Europe/Paris',
+      "yyyy-MM-dd'T'HH:mm"
+    );
+    console.log('Converting UTC to Local:', { utc: utcDateString, local: localDateTime });
+    return localDateTime;
+  };
+
+  const convertLocalToUTC = (localDateString: string) => {
+    // Parse the local time as if it was in French timezone
+    const utcDate = new Date(localDateString).toISOString();
+    console.log('Converting Local to UTC:', { local: localDateString, utc: utcDate });
+    return utcDate;
+  };
+
   const handleDialogOpen = (open: boolean) => {
     if (open) {
       if (mission.scheduled_start_time) {
-        // Set the raw datetime value without any conversion
-        setStartTime(mission.scheduled_start_time.slice(0, 16));
+        const localStartTime = convertUTCToLocal(mission.scheduled_start_time);
+        console.log('Setting start time:', { original: mission.scheduled_start_time, converted: localStartTime });
+        setStartTime(localStartTime);
       }
       if (mission.scheduled_end_time) {
-        setEndTime(mission.scheduled_end_time.slice(0, 16));
+        const localEndTime = convertUTCToLocal(mission.scheduled_end_time);
+        console.log('Setting end time:', { original: mission.scheduled_end_time, converted: localEndTime });
+        setEndTime(localEndTime);
       }
     }
     setIsOpen(open);
@@ -42,17 +66,28 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      console.log('Raw times from form:', { startTime, endTime });
+      console.log('Form times:', { startTime, endTime });
+      
+      const utcStartTime = convertLocalToUTC(startTime);
+      const utcEndTime = convertLocalToUTC(endTime);
+      
+      console.log('Converted times for database:', { 
+        utcStartTime, 
+        utcEndTime,
+        estimatedDuration: Math.round(
+          (new Date(utcEndTime).getTime() - new Date(utcStartTime).getTime()) / 1000 / 60
+        )
+      });
 
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startTime,
-          scheduled_end_time: endTime,
+          scheduled_start_time: utcStartTime,
+          scheduled_end_time: utcEndTime,
           source_language: sourceLanguage,
           target_language: targetLanguage,
           estimated_duration: Math.round(
-            (new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000 / 60
+            (new Date(utcEndTime).getTime() - new Date(utcStartTime).getTime()) / 1000 / 60
           )
         })
         .eq('id', mission.id);
