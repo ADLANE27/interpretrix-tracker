@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -66,10 +67,11 @@ export const AdminMissionsCalendar = () => {
   };
 
   useEffect(() => {
-    console.log('[AdminMissionsCalendar] Setting up realtime subscription');
-    
-    const channel = supabase
-      .channel('admin-calendar')
+    console.log('[AdminMissionsCalendar] Setting up realtime subscriptions');
+    const channels = [];
+
+    // Subscribe to changes in interpretation_missions
+    const missionsChannel = supabase.channel('admin-calendar-missions')
       .on(
         'postgres_changes',
         {
@@ -78,28 +80,36 @@ export const AdminMissionsCalendar = () => {
           table: 'interpretation_missions'
         },
         () => {
-          console.log('[AdminMissionsCalendar] Mission update received, refreshing...');
+          console.log('[AdminMissionsCalendar] Mission update received');
           fetchMissions();
         }
       )
-      .subscribe((status) => {
-        console.log('[AdminMissionsCalendar] Subscription status:', status);
-      });
+      .subscribe();
+    channels.push(missionsChannel);
+
+    // Subscribe to changes in private_reservations
+    const reservationsChannel = supabase.channel('admin-calendar-reservations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'private_reservations'
+        },
+        () => {
+          console.log('[AdminMissionsCalendar] Private reservation update received');
+          fetchMissions();
+        }
+      )
+      .subscribe();
+    channels.push(reservationsChannel);
 
     fetchMissions();
 
-    // Add event listener for calendar refresh
-    const handleCalendarRefresh = () => {
-      console.log('[AdminMissionsCalendar] Refreshing data due to reservation update');
-      fetchMissions();
-    };
-
-    window.addEventListener('calendar-refresh', handleCalendarRefresh);
-
     return () => {
-      console.log('[AdminMissionsCalendar] Cleaning up subscription');
-      supabase.removeChannel(channel);
-      window.removeEventListener('calendar-refresh', handleCalendarRefresh);
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
     };
   }, []);
 

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 
 interface Mission {
   scheduled_start_time: string;
@@ -298,6 +299,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   useEffect(() => {
     setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
+
+  useMissionUpdates(() => {
+    console.log('[InterpreterCard] Updating missions for interpreter:', interpreter.id);
+    fetchMissions();
+  });
 
   if (!isInterpreter) {
     return null;

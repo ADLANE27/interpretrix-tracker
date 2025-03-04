@@ -79,10 +79,13 @@ export const PrivateReservationList = ({
   };
 
   useEffect(() => {
+    console.log('[PrivateReservationList] Setting up realtime subscriptions');
+    
     fetchReservations();
 
+    // Subscribe to ALL changes on private_reservations
     const channel = supabase
-      .channel('private-reservations')
+      .channel('private-reservations-admin')
       .on(
         'postgres_changes',
         {
@@ -90,26 +93,26 @@ export const PrivateReservationList = ({
           schema: 'public',
           table: 'private_reservations'
         },
-        () => {
+        (payload) => {
+          console.log('[PrivateReservationList] Received reservation update:', payload);
           fetchReservations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[PrivateReservationList] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[PrivateReservationList] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter]);
 
   const onClose = () => setSelectedReservation(null);
 
   const handleReservationUpdate = () => {
     fetchReservations();
     onClose();
-    
-    // Trigger a refresh of the calendar view
-    const calendarRefreshEvent = new CustomEvent('calendar-refresh');
-    window.dispatchEvent(calendarRefreshEvent);
   };
 
   return (
