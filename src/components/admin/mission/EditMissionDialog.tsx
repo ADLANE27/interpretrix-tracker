@@ -25,8 +25,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      setStartTime((mission.scheduled_start_time || "").slice(0, 16));
-      setEndTime((mission.scheduled_end_time || "").slice(0, 16));
+      setStartTime((mission.scheduled_start_time || ""));
+      setEndTime((mission.scheduled_end_time || ""));
     }
     setIsOpen(open);
   };
