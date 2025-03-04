@@ -9,12 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { PrivateReservation } from "@/types/privateReservation";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { LANGUAGES } from "@/lib/constants";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
+import { ReservationEditDialog } from "./ReservationEditDialog";
 
 interface PrivateReservationListProps {
   nameFilter: string;
@@ -34,6 +31,7 @@ export const PrivateReservationList = ({
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
 
   const adjustForFrenchTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -167,6 +165,11 @@ export const PrivateReservationList = ({
     return matchesName && matchesSourceLanguage && matchesTargetLanguage && matchesDateRange;
   });
 
+  const handleEditSuccess = () => {
+    fetchReservations();
+    setSelectedReservation(null);
+  };
+
   if (loading) {
     return <div>Chargement...</div>;
   }
@@ -179,97 +182,102 @@ export const PrivateReservationList = ({
           <p className="text-sm text-gray-500">Aucune réservation trouvée</p>
         </Card>
       ) : (
-        filteredReservations.map((reservation) => {
-          const startTime = adjustForFrenchTime(reservation.start_time);
-          const endTime = adjustForFrenchTime(reservation.end_time);
-          const interpreter = reservation.interpreter_profiles;
-
-          return (
-            <Card key={reservation.id} className="p-4 space-y-3">
+        filteredReservations.map((reservation) => (
+          <Card key={reservation.id} className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium">
+                {formatDateTimeDisplay(reservation.start_time)}
+                {" - "}
+                {formatTimeString(reservation.end_time)}
+              </span>
+              <Badge variant="secondary">
+                {reservation.duration_minutes} min
+              </Badge>
+              <Badge 
+                variant={
+                  reservation.status === 'scheduled' ? 'default' :
+                  reservation.status === 'completed' ? 'secondary' :
+                  'destructive'
+                }
+              >
+                {reservation.status === 'scheduled' ? 'Programmée' :
+                 reservation.status === 'completed' ? 'Terminée' :
+                 'Annulée'}
+              </Badge>
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">
-                  {formatDateTimeDisplay(reservation.start_time)}
-                  {" - "}
-                  {formatTimeString(reservation.end_time)}
+                <Languages className="h-4 w-4 text-green-500" />
+                <span className="text-sm">
+                  {reservation.source_language} → {reservation.target_language}
                 </span>
-                <Badge variant="secondary">
-                  {reservation.duration_minutes} min
-                </Badge>
-                <Badge 
-                  variant={
-                    reservation.status === 'scheduled' ? 'default' :
-                    reservation.status === 'completed' ? 'secondary' :
-                    'destructive'
-                  }
-                >
-                  {reservation.status === 'scheduled' ? 'Programmée' :
-                   reservation.status === 'completed' ? 'Terminée' :
-                   'Annulée'}
-                </Badge>
-                <div className="flex items-center gap-2">
-                  <Languages className="h-4 w-4 text-green-500" />
-                  <span className="text-sm">
-                    {reservation.source_language} → {reservation.target_language}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm font-medium">
-                    {interpreter?.first_name} {interpreter?.last_name}
-                  </span>
-                </div>
-                {reservation.commentary && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    {reservation.commentary}
-                  </p>
-                )}
               </div>
-              <div className="flex gap-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      <Trash2 className="h-4 w-4 mr-2" />
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium">
+                  {reservation.interpreter_profiles?.first_name} {reservation.interpreter_profiles?.last_name}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setSelectedReservation(reservation)}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer la réservation</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Êtes-vous sûr de vouloir supprimer cette réservation ? Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(reservation.id)}>
                       Supprimer
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer la réservation</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Êtes-vous sûr de vouloir supprimer cette réservation ? Cette action est irréversible.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(reservation.id)}>
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                {reservation.status === 'scheduled' && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange(reservation.id, 'completed')}
-                    >
-                      Marquer comme terminée
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleStatusChange(reservation.id, 'cancelled')}
-                    >
-                      Annuler
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          );
-        })
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              {reservation.status === 'scheduled' && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange(reservation.id, 'completed')}
+                  >
+                    Marquer comme terminée
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange(reservation.id, 'cancelled')}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+        ))
+      )}
+      
+      {selectedReservation && (
+        <ReservationEditDialog
+          reservation={selectedReservation}
+          onClose={() => setSelectedReservation(null)}
+          onSuccess={handleEditSuccess}
+        />
       )}
     </div>
   );
