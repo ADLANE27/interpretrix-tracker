@@ -147,7 +147,6 @@ export const MissionManagement = () => {
     return channel;
   };
 
-  // Effect to handle realtime subscription updates
   useEffect(() => {
     let channel: RealtimeChannel | null = null;
     
@@ -161,9 +160,8 @@ export const MissionManagement = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [sourceLanguage, targetLanguage, missionType]); // Re-subscribe when these values change
+  }, [sourceLanguage, targetLanguage, missionType]);
 
-  // Initial setup effect
   useEffect(() => {
     fetchMissions();
     
@@ -181,7 +179,7 @@ export const MissionManagement = () => {
     };
 
     fetchCreators();
-  }, []); // Only run once on mount
+  }, []);
 
   const findAvailableInterpreters = async (sourceLang: string, targetLang: string) => {
     if (!sourceLang || !targetLang) return;
@@ -194,7 +192,6 @@ export const MissionManagement = () => {
         timestamp: new Date().toISOString() 
       });
       
-      // Première requête pour obtenir tous les interprètes
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select(`
@@ -220,8 +217,6 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Filtrer les interprètes qui ont la bonne combinaison de langues
-      // en ignorant les espaces autour de la flèche
       const matchingInterpreters = interpreters.filter(interpreter => {
         return interpreter.languages.some(lang => {
           const [source, target] = lang.split('→').map(l => l.trim());
@@ -245,7 +240,6 @@ export const MissionManagement = () => {
         return;
       }
 
-      // Filtrer les interprètes basés sur le type de mission et le statut
       let filteredInterpreters = matchingInterpreters;
       if (missionType === 'immediate') {
         filteredInterpreters = matchingInterpreters.filter(interpreter => interpreter.status === 'available');
@@ -255,7 +249,6 @@ export const MissionManagement = () => {
         })));
       }
 
-      // Filtrer les doublons et trier par tarif
       const uniqueInterpreters = filteredInterpreters
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
@@ -351,7 +344,6 @@ export const MissionManagement = () => {
       setIsProcessing(true);
       console.log('[MissionManagement] Starting mission creation process');
       
-      // Initial validation
       if (!validateMissionInput()) {
         return;
       }
@@ -365,7 +357,6 @@ export const MissionManagement = () => {
       const missionData = await prepareMissionData(user.id);
       console.log('[MissionManagement] Prepared mission data:', missionData);
 
-      // Create the mission
       const { data: createdMission, error: missionError } = await supabase
         .from("interpretation_missions")
         .insert([missionData])
@@ -469,12 +460,12 @@ export const MissionManagement = () => {
 
   const prepareMissionData = async (userId: string) => {
     let calculatedDuration = parseInt(estimatedDuration);
-    let utcStartTime = null;
-    let utcEndTime = null;
+    let startTime = null;
+    let endTime = null;
 
     if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-      utcStartTime = formatISO(fromZonedTime(scheduledStartTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
-      utcEndTime = formatISO(fromZonedTime(scheduledEndTime, Intl.DateTimeFormat().resolvedOptions().timeZone));
+      startTime = scheduledStartTime;
+      endTime = scheduledEndTime;
       calculatedDuration = Math.round(
         (new Date(scheduledEndTime).getTime() - new Date(scheduledStartTime).getTime()) / 1000 / 60
       );
@@ -487,8 +478,8 @@ export const MissionManagement = () => {
       status: "awaiting_acceptance",
       notified_interpreters: selectedInterpreters,
       mission_type: missionType,
-      scheduled_start_time: utcStartTime,
-      scheduled_end_time: utcEndTime,
+      scheduled_start_time: startTime,
+      scheduled_end_time: endTime,
       created_by: userId,
       client_name: ""
     };
@@ -572,27 +563,22 @@ export const MissionManagement = () => {
   };
 
   const filteredMissions = missions.filter(mission => {
-    // Filter by status
     if (statusFilter !== 'all' && mission.status !== statusFilter) {
       return false;
     }
 
-    // Filter by mission type
     if (missionTypeFilter !== 'all' && mission.mission_type !== missionTypeFilter) {
       return false;
     }
 
-    // Filter by creator
     if (creatorFilter !== 'all' && mission.creator_email !== creatorFilter) {
       return false;
     }
 
-    // Filter by language
     if (languageFilter && !`${mission.source_language} → ${mission.target_language}`.includes(languageFilter)) {
       return false;
     }
 
-    // Filter by date range
     if (startDateFilter && mission.scheduled_start_time && new Date(mission.scheduled_start_time) < new Date(startDateFilter)) {
       return false;
     }
