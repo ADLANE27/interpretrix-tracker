@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,19 +25,13 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      console.log('Mission times from DB:', {
-        start: mission.scheduled_start_time,
-        end: mission.scheduled_end_time
-      });
-      
-      // Just take the raw ISO string and display it without any conversion
-      setStartTime(mission.scheduled_start_time || "");
-      setEndTime(mission.scheduled_end_time || "");
-      
-      console.log('Setting form times:', {
-        start: startTime,
-        end: endTime
-      });
+      if (mission.scheduled_start_time) {
+        setStartTime(mission.scheduled_start_time.slice(0, 16));
+      }
+
+      if (mission.scheduled_end_time) {
+        setEndTime(mission.scheduled_end_time.slice(0, 16));
+      }
     }
     setIsOpen(open);
   };
@@ -48,10 +41,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      console.log('Saving times to DB:', {
-        start: startTime,
-        end: endTime
-      });
+      console.log('Raw times from form:', { startTime, endTime });
 
       const { error } = await supabase
         .from('interpretation_missions')
