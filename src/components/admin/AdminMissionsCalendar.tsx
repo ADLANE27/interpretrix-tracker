@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
+import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 
 interface CalendarMission {
   mission_id: string;
@@ -162,78 +163,63 @@ export const AdminMissionsCalendar = () => {
 
         <Card className="p-4">
           <h3 className="font-semibold mb-4">
-            {selectedDate && (
-              viewMode === 'week' 
-                ? `Semaine du ${format(startOfWeek(selectedDate, { locale: fr }), "d MMMM yyyy", { locale: fr })}`
-                : format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })
-            )}
-          </h3>
-          <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {visibleMissions.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Aucune mission programmée pour cette période
-              </p>
-            ) : (
-              visibleMissions.map((mission) => {
-                const startTime = toFrenchTime(mission.scheduled_start_time);
-                const endTime = toFrenchTime(mission.scheduled_end_time);
-                const isPrivate = mission.mission_type === 'private';
-
-                return (
-                  <Card 
-                    key={mission.mission_id} 
-                    className={cn(
-                      "p-4 space-y-3",
-                      isPrivate && "border-dashed border-2"
-                    )}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm font-medium">
-                            {formatFrenchTime(startTime, "HH:mm")}
-                            {" - "}
-                            {formatFrenchTime(endTime, "HH:mm")}
-                          </span>
-                          <Badge variant={isPrivate ? "outline" : "secondary"}>
-                            {mission.estimated_duration} min
-                          </Badge>
-                          {isPrivate && (
-                            <Badge variant="default">
-                              Réservation privée
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Languages className="h-4 w-4 text-green-500" />
-                          <span className="text-sm">
-                            {mission.source_language} → {mission.target_language}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-purple-500" />
-                          <span className="text-sm font-medium">
-                            {mission.interpreter_first_name} {mission.interpreter_last_name}
-                          </span>
-                        </div>
-
-                        {mission.client_name && (
-                          <p className="text-sm text-gray-500">
-                            Client : {mission.client_name}
-                          </p>
-                        )}
-                      </div>
+            {selectedDate
+              ? formatDateTimeDisplay(selectedDate.toISOString())
+              : "Sélectionnez une date"}
+        </h3>
+        <div className="space-y-4 max-h-[600px] overflow-y-auto">
+          {visibleMissions.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Aucune mission programmée pour cette date
+            </p>
+          ) : (
+            visibleMissions.map((mission) => (
+              <Card key={mission.mission_id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium">
+                        {formatTimeString(mission.scheduled_start_time)}
+                        {" - "}
+                        {formatTimeString(mission.scheduled_end_time)}
+                      </span>
+                      <Badge variant={mission.mission_type === 'private' ? "outline" : "secondary"}>
+                        {mission.estimated_duration} min
+                      </Badge>
+                      {mission.mission_type === 'private' && (
+                        <Badge variant="default">
+                          Réservation privée
+                        </Badge>
+                      )}
                     </div>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        </Card>
-      </div>
+
+                    <div className="flex items-center gap-2">
+                      <Languages className="h-4 w-4 text-green-500" />
+                      <span className="text-sm">
+                        {mission.source_language} → {mission.target_language}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium">
+                        {mission.interpreter_first_name} {mission.interpreter_last_name}
+                      </span>
+                    </div>
+
+                    {mission.client_name && (
+                      <p className="text-sm text-gray-500">
+                        Client : {mission.client_name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      </Card>
     </div>
   );
 };

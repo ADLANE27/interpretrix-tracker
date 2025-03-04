@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar, Clock, CheckSquare, XSquare, Trash2 } from "lucide-react";
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 
 interface MissionCardProps {
   mission: Mission;
@@ -108,18 +108,18 @@ export const MissionCard = ({
             <div className="text-sm text-gray-600">
               {mission.mission_type === 'immediate' ? (
                 <>
-                  <p>Date: {format(new Date(mission.created_at), "EEEE d MMMM yyyy", { locale: fr })}</p>
+                  <p>Date: {formatDateDisplay(mission.created_at)}</p>
                   <p>Langues: {mission.source_language} → {mission.target_language}</p>
                   <p>Durée: {mission.estimated_duration} minutes</p>
                 </>
               ) : mission.scheduled_start_time && (
                 <div className="space-y-1">
                   <p className="text-blue-600">
-                    Début: {format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                    Début: {formatDateTimeDisplay(mission.scheduled_start_time)}
                   </p>
                   {mission.scheduled_end_time && (
                     <p className="text-blue-600">
-                      Fin: {format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })}
+                      Fin: {formatDateTimeDisplay(mission.scheduled_end_time)}
                     </p>
                   )}
                   <p>Langues: {mission.source_language} → {mission.target_language}</p>
