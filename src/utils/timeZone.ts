@@ -1,19 +1,15 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Format a date in French timezone
+// Format a date in French format without timezone conversion
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
   const dateObj = new Date(date);
-  // Convert UTC to local time (which is what was stored) and subtract one hour
-  const localDate = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000) - (60 * 60 * 1000));
-  return format(localDate, formatString, { locale: fr });
+  return format(dateObj, formatString, { locale: fr });
 };
 
-// Convert date to match stored local time
+// Simply return the date object without any conversion
 export const toFrenchTime = (date: string | Date) => {
-  const dateObj = new Date(date);
-  // Convert UTC to local time (which is what was stored) and subtract one hour
-  return new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000) - (60 * 60 * 1000));
+  return new Date(date);
 };
 
 // Keep these functions as they are
