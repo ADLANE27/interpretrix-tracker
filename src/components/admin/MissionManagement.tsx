@@ -189,6 +189,8 @@ export const MissionManagement = () => {
         sourceLang, 
         targetLang, 
         missionType,
+        scheduledStartTime,
+        scheduledEndTime,
         timestamp: new Date().toISOString() 
       });
       
@@ -217,14 +219,33 @@ export const MissionManagement = () => {
         return;
       }
 
+      // Filter interpreters by language match
       const matchingInterpreters = interpreters.filter(interpreter => {
-        return interpreter.languages.some(lang => {
+        const hasLanguageMatch = interpreter.languages.some(lang => {
           const [source, target] = lang.split('→').map(l => l.trim());
-          return source === sourceLang && target === targetLang;
+          const matches = source === sourceLang && target === targetLang;
+          if (matches) {
+            console.log('[MissionManagement] Language match found for interpreter:', {
+              interpreterId: interpreter.id,
+              interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+              language: `${source} → ${target}`
+            });
+          }
+          return matches;
         });
+        
+        if (!hasLanguageMatch) {
+          console.log('[MissionManagement] No language match for interpreter:', {
+            interpreterId: interpreter.id,
+            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+            interpreterLanguages: interpreter.languages
+          });
+        }
+        
+        return hasLanguageMatch;
       });
 
-      console.log('[MissionManagement] Found interpreters before filtering:', matchingInterpreters.map(i => ({
+      console.log('[MissionManagement] Interpreters matching language criteria:', matchingInterpreters.map(i => ({
         name: `${i.first_name} ${i.last_name}`,
         status: i.status,
         languages: i.languages
@@ -241,12 +262,37 @@ export const MissionManagement = () => {
       }
 
       let filteredInterpreters = matchingInterpreters;
+      
+      // Only filter by status for immediate missions
       if (missionType === 'immediate') {
         filteredInterpreters = matchingInterpreters.filter(interpreter => interpreter.status === 'available');
         console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters.map(i => ({
           name: `${i.first_name} ${i.last_name}`,
           status: i.status
         })));
+      } else if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        // For scheduled missions, check each interpreter's availability
+        filteredInterpreters = [];
+        for (const interpreter of matchingInterpreters) {
+          const isAvailable = await isInterpreterAvailableForScheduledMission(
+            interpreter.id,
+            scheduledStartTime,
+            scheduledEndTime,
+            supabase
+          );
+          
+          console.log('[MissionManagement] Checking scheduled availability:', {
+            interpreterId: interpreter.id,
+            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+            isAvailable,
+            scheduledStartTime,
+            scheduledEndTime
+          });
+          
+          if (isAvailable) {
+            filteredInterpreters.push(interpreter);
+          }
+        }
       }
 
       const uniqueInterpreters = filteredInterpreters
@@ -257,7 +303,8 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters.map(i => ({
         name: `${i.first_name} ${i.last_name}`,
-        status: i.status
+        status: i.status,
+        isSelected: selectedInterpreters.includes(i.id)
       })));
       
       setAvailableInterpreters(uniqueInterpreters);
