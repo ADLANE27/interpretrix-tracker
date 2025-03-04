@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,11 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      const startDate = new Date(mission.scheduled_start_time || "");
-      const endDate = new Date(mission.scheduled_end_time || "");
+      // Convert the mission times to the correct timezone
+      const startDate = toFrenchTime(mission.scheduled_start_time || "");
+      const endDate = toFrenchTime(mission.scheduled_end_time || "");
       
+      // Format for datetime-local input
       setStartTime(startDate.toISOString().slice(0, 16));
       setEndTime(endDate.toISOString().slice(0, 16));
     }
@@ -40,6 +43,7 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
+      // Convert input times to UTC for storage
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
       

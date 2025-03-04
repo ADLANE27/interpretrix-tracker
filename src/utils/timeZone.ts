@@ -4,12 +4,7 @@ import { fr } from 'date-fns/locale';
 // Format a date without any timezone conversion
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
   try {
-    // Create a date object that preserves the input time
     const dateObj = new Date(date);
-    // Add timezone offset to compensate for local timezone conversion
-    const timezoneOffset = dateObj.getTimezoneOffset();
-    dateObj.setMinutes(dateObj.getMinutes() + timezoneOffset);
-    
     return format(dateObj, formatString, { locale: fr });
   } catch (error) {
     console.error('Error in formatFrenchTime:', error);
@@ -20,10 +15,7 @@ export const formatFrenchTime = (date: Date | string, formatString: string) => {
 // Convert a date string to a Date object without timezone adjustment
 export const toFrenchTime = (date: string | Date) => {
   try {
-    const dateObj = new Date(date);
-    const timezoneOffset = dateObj.getTimezoneOffset();
-    dateObj.setMinutes(dateObj.getMinutes() + timezoneOffset);
-    return dateObj;
+    return new Date(date);
   } catch (error) {
     console.error('Error in toFrenchTime:', error);
     return new Date();
