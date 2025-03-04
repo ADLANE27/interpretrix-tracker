@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,14 +10,28 @@ import { formatDateTimeDisplay } from "@/utils/dateTimeUtils";
 import { Clock, Languages, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-export const PrivateReservationList = () => {
+interface PrivateReservationListProps {
+  nameFilter: string;
+  sourceLanguageFilter: string;
+  targetLanguageFilter: string;
+  startDateFilter: string;
+  endDateFilter: string;
+}
+
+export const PrivateReservationList = ({
+  nameFilter,
+  sourceLanguageFilter,
+  targetLanguageFilter,
+  startDateFilter,
+  endDateFilter
+}: PrivateReservationListProps) => {
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
   const { toast } = useToast();
 
   const fetchReservations = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('private_reservations')
         .select(`
           *,
@@ -27,6 +42,29 @@ export const PrivateReservationList = () => {
           )
         `)
         .order('start_time', { ascending: true });
+
+      // Apply filters
+      if (nameFilter) {
+        query = query.or(`interpreter_profiles.first_name.ilike.%${nameFilter}%,interpreter_profiles.last_name.ilike.%${nameFilter}%`);
+      }
+
+      if (sourceLanguageFilter !== 'all') {
+        query = query.eq('source_language', sourceLanguageFilter);
+      }
+
+      if (targetLanguageFilter !== 'all') {
+        query = query.eq('target_language', targetLanguageFilter);
+      }
+
+      if (startDateFilter) {
+        query = query.gte('start_time', `${startDateFilter}T00:00:00`);
+      }
+
+      if (endDateFilter) {
+        query = query.lte('start_time', `${endDateFilter}T23:59:59`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setReservations(data || []);
