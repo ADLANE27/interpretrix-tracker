@@ -1,40 +1,25 @@
-
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Just format the date string, no timezone handling
+// Just format the date string without any timezone manipulation
 export const formatFrenchTime = (date: Date | string, formatString: string) => {
   try {
-    // If it's a string, parse it while preserving the time
-    if (typeof date === 'string') {
-      const [datePart, timePart] = date.split('T');
-      const [hours, minutes] = (timePart || '').split(':');
-      const parsedDate = new Date(datePart);
-      parsedDate.setHours(parseInt(hours || '0', 10));
-      parsedDate.setMinutes(parseInt(minutes || '0', 10));
-      return format(parsedDate, formatString, { locale: fr });
-    }
-    return format(date, formatString, { locale: fr });
+    // If it's a string, use it directly
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return format(dateObj, formatString, { locale: fr });
   } catch (error) {
     console.error('Error in formatFrenchTime:', error);
     return '';
   }
 };
 
-// Create a Date object without any timezone adjustment
+// Create a Date object without timezone manipulation
 export const toFrenchTime = (date: string | Date) => {
   try {
     if (typeof date === 'string') {
-      const [datePart, timePart] = date.split('T');
-      if (datePart && timePart) {
-        const [hours, minutes] = timePart.split(':');
-        const newDate = new Date(datePart);
-        newDate.setHours(parseInt(hours, 10));
-        newDate.setMinutes(parseInt(minutes, 10));
-        return newDate;
-      }
+      return new Date(date);
     }
-    return new Date(date);
+    return date;
   } catch (error) {
     console.error('Error in toFrenchTime:', error);
     return new Date();

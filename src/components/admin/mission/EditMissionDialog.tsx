@@ -9,6 +9,7 @@ import { LANGUAGES } from "@/lib/constants";
 import { Pencil } from "lucide-react";
 import { Mission } from "@/types/mission";
 import { format } from "date-fns";
+import { fr } from 'date-fns/locale';
 
 interface EditMissionDialogProps {
   mission: Mission;
@@ -26,17 +27,15 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
 
   const handleDialogOpen = (open: boolean) => {
     if (open) {
-      // Convert database ISO string to datetime-local input format (YYYY-MM-DDThh:mm)
+      // Simply use the ISO string directly - no conversions needed
       if (mission.scheduled_start_time) {
-        const date = new Date(mission.scheduled_start_time);
-        const formattedStart = format(date, "yyyy-MM-dd'T'HH:mm");
-        setStartTime(formattedStart);
+        const isoStart = mission.scheduled_start_time.slice(0, 16); // Get YYYY-MM-DDThh:mm
+        setStartTime(isoStart);
       }
 
       if (mission.scheduled_end_time) {
-        const date = new Date(mission.scheduled_end_time);
-        const formattedEnd = format(date, "yyyy-MM-dd'T'HH:mm");
-        setEndTime(formattedEnd);
+        const isoEnd = mission.scheduled_end_time.slice(0, 16); // Get YYYY-MM-DDThh:mm
+        setEndTime(isoEnd);
       }
     }
     setIsOpen(open);
@@ -47,7 +46,6 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
     setIsLoading(true);
 
     try {
-      // Create Date objects from the form input values
       const startDate = new Date(startTime);
       const endDate = new Date(endTime);
       
@@ -60,8 +58,8 @@ export const EditMissionDialog = ({ mission, onMissionUpdated }: EditMissionDial
       const { error } = await supabase
         .from('interpretation_missions')
         .update({
-          scheduled_start_time: startDate.toISOString(),
-          scheduled_end_time: endDate.toISOString(),
+          scheduled_start_time: startTime, // Use the input values directly
+          scheduled_end_time: endTime,     // They're already in ISO format
           estimated_duration: durationMinutes,
           source_language: sourceLanguage,
           target_language: targetLanguage
