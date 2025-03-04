@@ -9,8 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
+import { toFrenchTime, formatFrenchTime } from "@/utils/timeZone";
 
 interface Mission {
   id: string;

@@ -103,14 +103,14 @@ export const AdminMissionsCalendar = () => {
         const weekStart = startOfWeek(selectedDate, { locale: fr });
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
-          const missionDate = toFrenchTime(mission.scheduled_start_time);
+          const missionDate = new Date(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
       }
       case 'day':
       default: // month
         return missions.filter(mission => {
-          const missionDate = toFrenchTime(mission.scheduled_start_time);
+          const missionDate = new Date(mission.scheduled_start_time);
           return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
         });
     }

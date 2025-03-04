@@ -1,6 +1,5 @@
 
 import { format, isWithinInterval, addMinutes } from 'date-fns';
-import { toFrenchTime, hasTimeOverlap as timeOverlap } from './timeZone';
 
 export const hasTimeOverlap = (
   startTime1: string,
@@ -19,9 +18,12 @@ export const hasTimeOverlap = (
       return true;
     }
 
-    const hasOverlap = timeOverlap(startTime1, endTime1, startTime2, endTime2);
-    console.log('[missionUtils] Overlap result:', hasOverlap);
-    return hasOverlap;
+    const start1 = new Date(startTime1);
+    const end1 = new Date(endTime1);
+    const start2 = new Date(startTime2);
+    const end2 = new Date(endTime2);
+
+    return (start1 < end2 && end1 > start2);
   } catch (error) {
     console.error('[missionUtils] Error in hasTimeOverlap:', error);
     return true;
@@ -168,7 +170,7 @@ export const isInterpreterAvailableForImmediateMission = (
       }
 
       try {
-        const missionStart = toFrenchTime(mission.scheduled_start_time);
+        const missionStart = new Date(mission.scheduled_start_time);
         
         if (isNaN(missionStart.getTime())) {
           console.error('[missionUtils] Invalid mission start time detected');

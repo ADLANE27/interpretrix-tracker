@@ -1,11 +1,10 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { toFrenchTime, formatFrenchTime, addMinutesInTimezone } from "@/utils/timeZone";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -24,19 +23,17 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
     return () => clearInterval(interval);
   }, []);
 
-  // Convert times to French timezone
-  const missionStartDate = toFrenchTime(startTime);
-  const missionEndDate = addMinutesInTimezone(missionStartDate, estimatedDuration);
-  const nowInFrance = toFrenchTime(now);
+  const missionStartDate = new Date(startTime);
+  const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {
-    if (isBefore(nowInFrance, missionStartDate)) {
+    if (isBefore(now, missionStartDate)) {
       return "upcoming";
-    } else if (isAfter(nowInFrance, missionEndDate)) {
+    } else if (isAfter(now, missionEndDate)) {
       return "ended";
     } else {
       // Mission is in progress
-      const minutesLeft = Math.round((missionEndDate.getTime() - nowInFrance.getTime()) / (1000 * 60));
+      const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
       return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
   };
@@ -69,7 +66,7 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
         };
       case "ended":
         return {
-          text: `Mission terminée (${formatFrenchTime(missionEndDate, 'HH:mm')})`,
+          text: `Mission terminée (${format(missionEndDate, 'HH:mm')})`,
           variant: "outline" as const
         };
     }
