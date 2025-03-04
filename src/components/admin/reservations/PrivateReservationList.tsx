@@ -77,6 +77,31 @@ export const PrivateReservationList = ({
     }
   };
 
+  const handleDeleteReservation = async (reservationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('private_reservations')
+        .delete()
+        .eq('id', reservationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "La réservation a été supprimée",
+      });
+      
+      fetchReservations();
+    } catch (error) {
+      console.error('[PrivateReservationList] Delete Error:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la réservation",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchReservations();
   }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter]);
@@ -132,12 +157,20 @@ export const PrivateReservationList = ({
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedReservation(reservation)}
-                  >
-                    Modifier
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedReservation(reservation)}
+                    >
+                      Modifier
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDeleteReservation(reservation.id)}
+                    >
+                      Supprimer
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
