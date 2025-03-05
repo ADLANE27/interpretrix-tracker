@@ -43,8 +43,7 @@ export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [nameFilter, setNameFilter] = useState("");
-  const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
-  const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
+  const [languageFilter, setLanguageFilter] = useState("all");
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
@@ -167,8 +166,7 @@ export const AdminDashboard = () => {
   const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
-    setSourceLanguageFilter("all");
-    setTargetLanguageFilter("all");
+    setLanguageFilter("all");
     setPhoneFilter("");
     setBirthCountryFilter("all");
     setEmploymentStatusFilter("all");
@@ -203,18 +201,15 @@ export const AdminDashboard = () => {
     const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
-    const matchesSourceLanguage = sourceLanguageFilter === "all" || interpreter.languages.some(lang => {
-      const [source] = lang.split(" → ");
-      return source.toLowerCase().includes(sourceLanguageFilter.toLowerCase());
-    });
-    const matchesTargetLanguage = targetLanguageFilter === "all" || interpreter.languages.some(lang => {
-      const [, target] = lang.split(" → ");
-      return target && target.toLowerCase().includes(targetLanguageFilter.toLowerCase());
+    const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
+      const [source, target] = lang.split(" → ");
+      return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
+             (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
     });
     const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
     const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
     const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
-    return isNotAdmin && matchesStatus && matchesName && matchesSourceLanguage && matchesTargetLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
+    return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
   }).sort((a, b) => {
     if (rateSort === "rate-asc") {
       const rateA = a.tarif_15min ?? 0;
@@ -324,31 +319,14 @@ export const AdminDashboard = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="source-language">Langue source</Label>
-                      <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
-                        <SelectTrigger id="source-language">
-                          <SelectValue placeholder="Sélectionner une langue source" />
+                      <Label htmlFor="language">Langue</Label>
+                      <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                        <SelectTrigger id="language">
+                          <SelectValue placeholder="Sélectionner une langue" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Toutes les langues</SelectItem>
-                          {sortedLanguages.map(lang => (
-                            <SelectItem key={lang} value={lang}>
-                              {lang}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="target-language">Langue cible</Label>
-                      <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
-                        <SelectTrigger id="target-language">
-                          <SelectValue placeholder="Sélectionner une langue cible" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Toutes les langues</SelectItem>
-                          {sortedLanguages.map(lang => (
+                          {LANGUAGES.map(lang => (
                             <SelectItem key={lang} value={lang}>
                               {lang}
                             </SelectItem>
