@@ -19,17 +19,16 @@ export const LANGUAGES = [
   "Espagnol (Espagne)", "Espagnol (Mexique)", "Espagnol (Pérou)", "Fidjien", "Finnois", "Fon", "Four", 
   "Français", "Géorgien", "Grec", "Guarani", "Gujarati", "Hakka", "Hassaniya", "Haoussa", "Hawaiien", 
   "Hindi", "Hongrois", "Igbo", "Ilokano", "Indonésien", "International Sign", "Inuktitut", "Islandais", 
-  "Italien", "Japonais", "Javanais", "Kannada", "Kashmiri", "Kazakh", "Khmer", "Kikongo", "Kinyarwanda", 
+  "Italien", "Japonais", "Javanais", "Kabyle", "Kannada", "Kashmiri", "Kazakh", "Khmer", "Kikongo", "Kinyarwanda", 
   "Kirghize", "Kirundi", "Konkani", "Kurde (Kurmandji)", "Kurde (Sorani)", "Langue des Signes Française (LSF)", 
   "Langue des Signes Québécoise (LSQ)", "Lao", "Letton", "Lingala", "Lituanien", "Macédonien", "Maithili", 
   "Malais", "Malayalam", "Malinké", "Mandarin", "Marathi", "Marshallais", "Maya (K'iche')", "Maya (Yucatèque)", 
   "Maori", "Min Nan", "Mina", "Mongol", "Moore", "Nahuatl", "Navajo", "Ndébélé", "Néerlandais", "Népalais", 
   "Norvégien", "Oromo", "Ouïghour", "Ourdou", "Ouzbek", "Pachto", "Papiamento", "Persan (Iran)", "Peul", 
-  "Polonais", "Portugais (Brésil)", "Portugais (Portugal)", "Punjabi (Inde)", "Punjabi (Pakistan)", "Quechua", 
-  "Roumain", "Russe", "Samoan", "Santali", "Serbe", "Shona", "Sindhi", "Slovaque", "Somali", "Soninké", 
+  "Peul Sénégal", "Polonais", "Portugais (Brésil)", "Portugais (Portugal)", "Punjabi (Inde)", "Punjabi (Pakistan)", 
+  "Quechua", "Roumain", "Russe", "Samoan", "Santali", "Serbe", "Shona", "Sindhi", "Slovaque", "Somali", "Soninké", 
   "Soussou", "Sundanais", "Suédois", "Swahili", "Sérère", "Tadjik", "Tagalog", "Tahitien", "Tamoul (Inde)", 
   "Tamoul (Sri Lanka)", "Tamasheq", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", 
   "Tshiluba", "Tswana", "Turc", "Turkmène", "Télougou", "Ukrainien", "Vietnamien", "Wolof", "Wu (Shanghaïen)", 
   "Xhosa", "Yoruba", "Zaghawa", "Zoulou", "Éwé"
 ].sort();
-
