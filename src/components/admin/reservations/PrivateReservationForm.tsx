@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,12 +54,10 @@ export const PrivateReservationForm = () => {
         throw error;
       }
 
-      // Debug: log all interpreters and their language pairs before filtering
       interpreters?.forEach(interpreter => {
         console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
       });
 
-      // Filter interpreters using the same logic as MissionManagement
       const filteredInterpreters = interpreters?.filter(interpreter => {
         return interpreter.languages.some(lang => {
           const [source, target] = lang.split('→').map(l => l.trim());
@@ -172,7 +169,7 @@ export const PrivateReservationForm = () => {
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {Object.values(LANGUAGES).map((lang) => (
+                {LANGUAGES.map((lang) => (
                   <SelectItem key={lang} value={lang}>
                     {lang}
                   </SelectItem>
@@ -197,7 +194,7 @@ export const PrivateReservationForm = () => {
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {Object.values(LANGUAGES).map((lang) => (
+                {LANGUAGES.map((lang) => (
                   <SelectItem key={lang} value={lang}>
                     {lang}
                   </SelectItem>
