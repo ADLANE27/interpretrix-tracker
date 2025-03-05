@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -63,6 +64,8 @@ export const InterpreterChat = ({
     markMentionsAsRead,
   } = useChat(channelId);
 
+  const { showNotification, requestPermission } = useBrowserNotification();
+
   const filteredMessages = useCallback(() => {
     let filtered = messages;
 
@@ -96,6 +99,10 @@ export const InterpreterChat = ({
   const { toast } = useToast();
 
   useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
+
+  useEffect(() => {
     if (channelId) {
       const channel = supabase
         .channel(`chat-mentions-${channelId}`)
@@ -113,10 +120,17 @@ export const InterpreterChat = ({
               // Play sound for mention
               await playNotificationSound();
               
+              // Show toast notification
               toast({
                 title: "💬 Nouvelle mention",
                 description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
+              });
+
+              // Show browser notification
+              showNotification("Nouvelle mention", {
+                body: "Quelqu'un vous a mentionné dans un message",
+                tag: 'chat-mention',
               });
               
               markMentionsAsRead();
@@ -129,7 +143,7 @@ export const InterpreterChat = ({
         supabase.removeChannel(channel);
       };
     }
-  }, [channelId, currentUserId, toast, markMentionsAsRead]);
+  }, [channelId, currentUserId, toast, markMentionsAsRead, showNotification]);
 
   useEffect(() => {
     if (channelId) {

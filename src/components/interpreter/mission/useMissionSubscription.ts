@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Mission } from '@/types/mission';
 import { playNotificationSound } from '@/utils/notificationSound';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 
 export const useMissionSubscription = (
   currentUserId: string | null,
@@ -13,6 +14,11 @@ export const useMissionSubscription = (
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { showNotification, requestPermission } = useBrowserNotification();
+
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
 
   useEffect(() => {
     console.log('[useMissionSubscription] Setting up subscription');
@@ -62,14 +68,23 @@ export const useMissionSubscription = (
               playNotificationSound();
 
               const isImmediate = mission.mission_type === 'immediate';
+              const title = isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée";
+              const description = `${mission.source_language} → ${mission.target_language}
+                            ${mission.client_name ? `\nClient: ${mission.client_name}` : ''}
+                            \nDurée: ${mission.estimated_duration} minutes`;
               
               toast({
-                title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
-                description: `${mission.source_language} → ${mission.target_language}
-                            ${mission.client_name ? `\nClient: ${mission.client_name}` : ''}
-                            \nDurée: ${mission.estimated_duration} minutes`,
+                title,
+                description,
                 variant: isImmediate ? "destructive" : "default",
                 duration: isImmediate ? 20000 : 10000,
+              });
+
+              // Show browser notification
+              showNotification(title, {
+                body: description,
+                tag: 'new-mission',
+                requireInteraction: isImmediate,
               });
               
               onMissionUpdate();
@@ -115,5 +130,5 @@ export const useMissionSubscription = (
           });
       }
     };
-  }, [currentUserId, onMissionUpdate, toast, isMobile]);
+  }, [currentUserId, onMissionUpdate, toast, showNotification, requestPermission]);
 };
