@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
-  const { totalUnreadCount } = useUnreadMentions();
+  const { totalUnreadCount, refreshMentions } = useUnreadMentions();
 
   const handleLogout = async () => {
     try {
@@ -45,29 +44,42 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   };
 
   useEffect(() => {
+    console.log('[Sidebar] Setting up mission notification listener');
     const fetchPendingMissions = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          console.log('[Sidebar] No authenticated user found');
+          setPendingMissionsCount(0);
+          return;
+        }
 
+        console.log('[Sidebar] Fetching missions for user:', user.id);
+        
         const { data: missions, error } = await supabase
           .from('interpretation_missions')
           .select('*')
           .or(`notified_interpreters.cs.{${user.id}},assigned_interpreter_id.eq.${user.id}`)
           .eq('status', 'awaiting_acceptance');
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Sidebar] Error fetching pending missions:', error);
+          throw error;
+        }
+
+        console.log('[Sidebar] Pending missions count:', missions?.length);
         setPendingMissionsCount(missions?.length || 0);
       } catch (error) {
         console.error('[Sidebar] Error fetching pending missions:', error);
       }
     };
 
+    // Initial fetch
     fetchPendingMissions();
-
+    
     // Set up real-time subscription for mission updates
     const channel = supabase
-      .channel('pending-missions')
+      .channel('pending-missions-notifications')
       .on(
         'postgres_changes',
         {
@@ -75,16 +87,25 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
           schema: 'public',
           table: 'interpretation_missions'
         },
-        () => {
+        (payload) => {
+          console.log('[Sidebar] Mission update received:', payload);
           fetchPendingMissions();
         }
       )
-      .subscribe();
+      .subscribe(status => {
+        console.log('[Sidebar] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[Sidebar] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }, []);
+
+  console.log('[Sidebar] Current badge counts:', {
+    pendingMissions: pendingMissionsCount,
+    unreadMessages: totalUnreadCount
+  });
 
   const tabs = [
     { 
@@ -165,7 +186,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              {tab.badge && (
+              {tab.badge !== undefined && (
                 <Badge 
                   variant="destructive" 
                   className="absolute right-2 animate-pulse"
