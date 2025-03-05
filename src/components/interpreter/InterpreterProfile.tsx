@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, type ChangeEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -43,6 +42,23 @@ interface ProfileProps {
   onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onProfilePictureDelete: () => Promise<void>;
 }
+
+const getEmploymentStatusLabel = (status: string) => {
+  switch (status) {
+    case "salaried_aft":
+      return "Salarié AFTrad";
+    case "salaried_aftcom":
+      return "Salarié AFTCOM";
+    case "salaried_planet":
+      return "Salarié PLANET";
+    case "permanent_interpreter":
+      return "Interprète permanent";
+    case "self_employed":
+      return "Externe";
+    default:
+      return status;
+  }
+};
 
 export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureUpload, onProfilePictureDelete }: ProfileProps) => {
   const [firstName, setFirstName] = useState(profile.first_name);
@@ -218,13 +234,7 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
               <Label className="font-medium">Statut professionnel</Label>
               <Input 
                 type="text" 
-                value={
-                  profile.employment_status === 'salaried_aft' ? 'Salarié AFTrad' :
-                  profile.employment_status === 'salaried_aftcom' ? 'Salarié AFTCOM' :
-                  profile.employment_status === 'salaried_planet' ? 'Salarié PLANET' :
-                  profile.employment_status === 'permanent_interpreter' ? 'Interprète permanent' :
-                  'Auto-entrepreneur'
-                } 
+                value={getEmploymentStatusLabel(profile.employment_status)} 
                 readOnly 
                 className="bg-muted"
               />

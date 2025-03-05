@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -292,7 +291,7 @@ export const InterpreterProfileForm = ({
                       <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                       <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                       <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                      <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                      <SelectItem value="self_employed">Externe</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

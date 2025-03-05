@@ -83,7 +83,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
   permanent_interpreter: "Interprète permanent",
-  self_employed: "Auto-entrepreneur",
+  self_employed: "Externe",
 };
 
 const isValidStatus = (status: string): status is InterpreterStatus => {
