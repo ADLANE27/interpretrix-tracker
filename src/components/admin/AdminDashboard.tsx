@@ -284,13 +284,11 @@ export const AdminDashboard = () => {
         <div className="flex-1 min-h-0 relative">
           <TabsContent value="interpreters" className="absolute inset-0 overflow-auto">
             <div className="min-h-full p-4 sm:p-6 space-y-6">
-              {/* Status Filter - Always visible */}
               <div className="space-y-2">
                 <h2 className="text-lg font-semibold">Statut</h2>
                 <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
               </div>
 
-              {/* Other Filters - Collapsible */}
               <Collapsible
                 open={isFiltersOpen}
                 onOpenChange={setIsFiltersOpen}
@@ -388,7 +386,7 @@ export const AdminDashboard = () => {
                           <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                           <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                           <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                          <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
+                          <SelectItem value="self_employed">Externe</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
