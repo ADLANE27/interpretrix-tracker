@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -8,6 +7,8 @@ import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { playNotificationSound } from '@/utils/notificationSound';
+import { toast } from 'react-toastify';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -91,6 +92,42 @@ export const InterpreterChat = ({
 
     return filtered;
   }, [messages, filters, currentUserId]);
+
+  useEffect(() => {
+    if (channelId) {
+      const channel = supabase
+        .channel(`chat-mentions-${channelId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'message_mentions'
+          },
+          async (payload) => {
+            if (!payload.new || !currentUserId) return;
+            
+            if (payload.new.mentioned_user_id === currentUserId) {
+              // Play sound for mention
+              await playNotificationSound();
+              
+              toast({
+                title: "💬 Nouvelle mention",
+                description: "Quelqu'un vous a mentionné dans un message",
+                duration: 5000,
+              });
+              
+              markMentionsAsRead();
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [channelId, currentUserId, toast, markMentionsAsRead]);
 
   useEffect(() => {
     if (channelId) {
@@ -199,4 +236,3 @@ export const InterpreterChat = ({
     </div>
   );
 };
-

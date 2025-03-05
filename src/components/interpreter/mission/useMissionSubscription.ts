@@ -1,10 +1,10 @@
-
 import { useRef, useEffect } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Mission } from '@/types/mission';
+import { playNotificationSound } from '@/utils/notificationSound';
 
 export const useMissionSubscription = (
   currentUserId: string | null,
@@ -13,12 +13,8 @@ export const useMissionSubscription = (
   const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Create audio element for notifications
-    audioRef.current = new Audio('/notification-sound.mp3'); // You'll need to add this sound file
-    
     console.log('[useMissionSubscription] Setting up subscription');
     let isSubscribed = true;
     
@@ -63,22 +59,17 @@ export const useMissionSubscription = (
               }
 
               // Play notification sound
-              try {
-                audioRef.current?.play().catch(e => console.error('Error playing notification:', e));
-              } catch (error) {
-                console.error('Error playing notification sound:', error);
-              }
+              playNotificationSound();
 
               const isImmediate = mission.mission_type === 'immediate';
               
-              // Show toast notification on both mobile and desktop
               toast({
                 title: isImmediate ? "🚨 Nouvelle mission immédiate" : "📅 Nouvelle mission programmée",
                 description: `${mission.source_language} → ${mission.target_language}
                             ${mission.client_name ? `\nClient: ${mission.client_name}` : ''}
                             \nDurée: ${mission.estimated_duration} minutes`,
                 variant: isImmediate ? "destructive" : "default",
-                duration: isImmediate ? 20000 : 10000, // Longer duration for immediate missions
+                duration: isImmediate ? 20000 : 10000,
               });
               
               onMissionUpdate();
