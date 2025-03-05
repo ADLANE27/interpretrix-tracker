@@ -8,7 +8,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
-import { toast } from 'react-toastify';
+import { useToast } from "@/hooks/use-toast";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -92,6 +92,8 @@ export const InterpreterChat = ({
 
     return filtered;
   }, [messages, filters, currentUserId]);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     if (channelId) {
