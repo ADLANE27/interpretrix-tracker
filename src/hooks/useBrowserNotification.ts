@@ -1,14 +1,21 @@
-
 import { useState, useEffect, useCallback } from 'react';
 
-export const useBrowserNotification = () => {
+export const useBrowserNotification = (test = false) => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
     }
-  }, []);
+
+    // Test notification if flag is true
+    if (test && Notification.permission === 'granted') {
+      new Notification('Test Notification', {
+        body: 'This is a test notification to verify the implementation',
+        icon: '/icon.svg'
+      });
+    }
+  }, [test]);
 
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
