@@ -1,3 +1,4 @@
+
 export const LANGUAGES = [
   // All languages in one sorted array
   "Afrikaans", "Albanais", "Allemand (Allemagne)", "Allemand (Autriche)", "Allemand (Suisse)", 
@@ -24,17 +25,8 @@ export const LANGUAGES = [
   "Lituanien", "Macédonien", "Maithili", "Malais", "Malayalam", "Malinké", "Mandarin", "Mandingo", 
   "Marathi", "Marshallais", "Maya (K'iche')", "Maya (Yucatèque)", "Maori", "Min Nan", "Mina", "Mongol", 
   "Moore", "Nahuatl", "Navajo", "Ndébélé", "Néerlandais", "Népalais", "Norvégien", "Oromo", "Ouïghour", 
-  "Ourdou", "Ouzbek", "Pachto", "Papiamento", "Peul Mali",
-  "Peul Mauritanie", 
-  "Peul Sénégal",
-  "Perse Afghanistan",
-  "Perse Iran",
-  "Mandingo",
-  "Konianké",
-  "Catalan",
-  "Krio",
-  "Pidgin",
-  "Polonais", "Portugais (Brésil)", "Portugais (Portugal)", 
+  "Ourdou", "Ouzbek", "Pachto", "Papiamento", "Perse Afghanistan", "Perse Iran", "Peul Mali", 
+  "Peul Mauritanie", "Peul Sénégal", "Pidgin", "Polonais", "Portugais (Brésil)", "Portugais (Portugal)", 
   "Punjabi (Inde)", "Punjabi (Pakistan)", "Quechua", "Roumain", "Russe", "Samoan", "Santali", "Serbe", 
   "Shona", "Sindhi", "Slovaque", "Somali", "Soninké", "Soussou", "Sundanais", "Suédois", "Swahili", 
   "Sérère", "Tadjik", "Tagalog", "Tahitien", "Tamoul (Inde)", "Tamoul (Sri Lanka)", "Tamasheq", "Tchèque", 
