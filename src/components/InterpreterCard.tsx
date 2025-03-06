@@ -1,10 +1,12 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useTimeFormat, useTimestampFormat } from "@/hooks";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
+import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 
