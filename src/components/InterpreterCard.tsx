@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -85,7 +84,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
-  const [lastSeen, setLastSeen] = useState<string | null>(null);
+  const [connectionUpdatedAt, setConnectionUpdatedAt] = useState<string | null>(null);
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -107,31 +106,31 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       fetchTarifs(),
       fetchMissions(),
       fetchCurrentStatus(),
-      fetchLastSeen()
+      fetchConnectionTimestamp()
     ]);
   };
 
-  const fetchLastSeen = async () => {
+  const fetchConnectionTimestamp = async () => {
     try {
       const { data, error } = await supabase
         .from('interpreter_connection_status')
-        .select('last_seen_at, connection_status')
+        .select('updated_at, connection_status')
         .eq('interpreter_id', interpreter.id)
         .single();
 
       if (error) {
-        console.error('[InterpreterCard] Error fetching last seen:', error);
+        console.error('[InterpreterCard] Error fetching connection timestamp:', error);
         return;
       }
 
       if (data) {
-        setLastSeen(data.last_seen_at);
+        setConnectionUpdatedAt(data.updated_at);
         if (isValidStatus(data.connection_status)) {
           setCurrentStatus(data.connection_status as InterpreterStatus);
         }
       }
     } catch (error) {
-      console.error('[InterpreterCard] Error fetching last seen:', error);
+      console.error('[InterpreterCard] Error fetching connection timestamp:', error);
     }
   };
 
@@ -353,7 +352,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             {employmentStatusLabels[interpreter.employment_status]}
           </Badge>
           <div className="mt-2 text-sm text-muted-foreground">
-            {formatLastSeen(lastSeen)}
+            {formatLastSeen(connectionUpdatedAt)}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
