@@ -14,8 +14,8 @@ export const useTimestampFormat = () => {
         return 'Date invalide';
       }
 
-      // If timestamp is in the future, something is wrong
-      if (date > new Date()) {
+      // If timestamp is in the future, we'll show 'Date invalide'
+      if (date.getTime() > Date.now()) {
         console.error('[useTimestampFormat] Future date detected:', lastSeenDate);
         return 'Date invalide';
       }
@@ -24,14 +24,18 @@ export const useTimestampFormat = () => {
       const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
       
       if (diffInMinutes < 1) return 'En ligne';
+      
+      // For less than an hour, show relative time
       if (diffInMinutes < 60) {
         return formatDistanceToNow(date, { addSuffix: true, locale: fr });
       }
 
-      if (diffInMinutes < 1440) { // Less than 24 hours
+      // Less than 24 hours, show relative time
+      if (diffInMinutes < 1440) { // 24 * 60 minutes
         return formatDistanceToNow(date, { addSuffix: true, locale: fr });
       }
 
+      // For dates older than 24 hours, show full date and time
       return `Dernière connexion: ${format(date, 'dd/MM/yyyy à HH:mm', { locale: fr })}`;
     } catch (error) {
       console.error('[useTimestampFormat] Error formatting date:', error);
