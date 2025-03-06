@@ -54,23 +54,6 @@ interface InterpreterCardProps {
   };
 }
 
-interface RealtimePostgresUpdatePayload {
-  commit_timestamp: string;
-  errors: null | any[];
-  old: { [key: string]: any } | null;
-  new: { [key: string]: any } | null;
-  schema: string;
-  table: string;
-  type: 'INSERT' | 'UPDATE' | 'DELETE';
-}
-
-interface RealtimeInterpreterProfilePayload extends RealtimePostgresUpdatePayload {
-  new: {
-    status: string;
-    [key: string]: any;
-  } | null;
-}
-
 const statusConfig = {
   available: { color: "bg-interpreter-available text-white", label: "Disponible" },
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
@@ -100,6 +83,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
 
   const checkIfInterpreter = async () => {
     const { data: roleData, error: roleError } = await supabase
@@ -120,8 +104,30 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     await Promise.all([
       fetchTarifs(),
       fetchMissions(),
-      fetchCurrentStatus()
+      fetchCurrentStatus(),
+      fetchLastSeen()
     ]);
+  };
+
+  const fetchLastSeen = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('interpreter_connection_status')
+        .select('last_seen_at')
+        .eq('interpreter_id', interpreter.id)
+        .single();
+
+      if (error) {
+        console.error('[InterpreterCard] Error fetching last seen:', error);
+        return;
+      }
+
+      if (data) {
+        setLastSeen(data.last_seen_at);
+      }
+    } catch (error) {
+      console.error('[InterpreterCard] Error fetching last seen:', error);
+    }
   };
 
   useEffect(() => {
@@ -332,6 +338,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const { getTimeFromString, getDateDisplay } = useTimeFormat();
 
+  const formatLastSeen = (lastSeenDate: string | null): string => {
+    if (!lastSeenDate) return 'Jamais connecté';
+    return `Dernière connexion: ${getDateDisplay(lastSeenDate, 'dd/MM/yyyy')} à ${getTimeFromString(lastSeenDate)}`;
+  };
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -340,6 +351,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           <Badge variant="outline" className="mt-1">
             {employmentStatusLabels[interpreter.employment_status]}
           </Badge>
+          <div className="mt-2 text-sm text-muted-foreground">
+            {formatLastSeen(lastSeen)}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge className={`${statusConfig[currentStatus].color} relative`}>

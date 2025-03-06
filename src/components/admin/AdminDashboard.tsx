@@ -37,6 +37,7 @@ interface Interpreter {
   next_mission_duration: number | null;
   tarif_15min: number | null;
   tarif_5min: number | null;
+  last_seen_at: string | null;
 }
 
 export const AdminDashboard = () => {
@@ -71,11 +72,15 @@ export const AdminDashboard = () => {
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
-      const {
-        data,
-        error
-      } = await supabase.from("interpreters_with_next_mission").select("*");
+      const { data, error } = await supabase
+        .from("interpreters_with_next_mission")
+        .select(`
+          *,
+          connection_status:interpreter_connection_status(last_seen_at)
+        `);
+
       if (error) throw error;
+
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
@@ -89,8 +94,10 @@ export const AdminDashboard = () => {
         next_mission_start: interpreter.next_mission_start,
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null
+        tarif_5min: null,
+        last_seen_at: interpreter.connection_status?.last_seen_at
       }));
+
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
     } catch (error) {
