@@ -78,7 +78,8 @@ export const AdminDashboard = () => {
           *,
           connection_status:interpreter_connection_status(
             last_seen_at,
-            connection_status
+            connection_status,
+            updated_at
           )
         `);
 

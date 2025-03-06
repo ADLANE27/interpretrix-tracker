@@ -4,7 +4,7 @@ import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "luc
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useTimeFormat } from "@/hooks/useTimeFormat";
+import { useTimeFormat, useTimestampFormat } from "@/hooks";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 
@@ -340,28 +340,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const parsedLanguages = parseLanguages(interpreter.languages);
 
   const { getTimeFromString, getDateDisplay } = useTimeFormat();
-
-  const formatLastSeen = (lastSeenDate: string | null): string => {
-    if (!lastSeenDate) return 'Jamais connecté';
-    
-    try {
-      const now = new Date();
-      const lastSeen = new Date(lastSeenDate);
-      const diffInMinutes = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60));
-      
-      if (diffInMinutes < 1) return 'En ligne';
-      if (diffInMinutes < 60) return `Dernière connexion il y a ${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''}`;
-      if (diffInMinutes < 1440) {
-        const hours = Math.floor(diffInMinutes / 60);
-        return `Dernière connexion il y a ${hours} heure${hours > 1 ? 's' : ''}`;
-      }
-
-      return `Dernière connexion: ${getDateDisplay(lastSeenDate, 'dd/MM/yyyy')} à ${getTimeFromString(lastSeenDate)}`;
-    } catch (error) {
-      console.error('[InterpreterCard] Error formatting last seen date:', error);
-      return 'Date de dernière connexion invalide';
-    }
-  };
+  const { formatLastSeen } = useTimestampFormat();
 
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
