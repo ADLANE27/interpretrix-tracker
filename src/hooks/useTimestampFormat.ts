@@ -7,6 +7,7 @@ export const useTimestampFormat = () => {
     if (!lastSeenDate) return 'Jamais connecté';
     
     try {
+      // Convert UTC date string to local Date object
       const date = new Date(lastSeenDate);
       
       if (!isValid(date)) {
@@ -35,8 +36,8 @@ export const useTimestampFormat = () => {
         return formatDistanceToNow(date, { addSuffix: true, locale: fr });
       }
 
-      // For dates older than 24 hours, show full date and time
-      return `Dernière connexion: ${format(date, 'dd/MM/yyyy à HH:mm', { locale: fr })}`;
+      // For dates older than 24 hours, show full date and time in local timezone
+      return `Dernière connexion: ${format(date, "dd/MM/yyyy 'à' HH:mm", { locale: fr })}`;
     } catch (error) {
       console.error('[useTimestampFormat] Error formatting date:', error);
       return 'Erreur de date';
