@@ -76,7 +76,10 @@ export const AdminDashboard = () => {
         .from("interpreters_with_next_mission")
         .select(`
           *,
-          connection_status:interpreter_connection_status(last_seen_at)
+          connection_status:interpreter_connection_status(
+            last_seen_at,
+            connection_status
+          )
         `);
 
       if (error) throw error;
@@ -85,7 +88,7 @@ export const AdminDashboard = () => {
         id: interpreter.id || "",
         first_name: interpreter.first_name || "",
         last_name: interpreter.last_name || "",
-        status: interpreter.status as "available" | "unavailable" | "pause" | "busy" || "unavailable",
+        status: interpreter.connection_status?.connection_status || 'unavailable',
         employment_status: interpreter.employment_status || "salaried_aft",
         languages: interpreter.languages || [],
         phone_interpretation_rate: interpreter.phone_interpretation_rate,

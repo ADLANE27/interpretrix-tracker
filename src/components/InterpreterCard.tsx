@@ -113,7 +113,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     try {
       const { data, error } = await supabase
         .from('interpreter_connection_status')
-        .select('last_seen_at')
+        .select('last_seen_at, connection_status')
         .eq('interpreter_id', interpreter.id)
         .single();
 
@@ -124,6 +124,9 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       if (data) {
         setLastSeen(data.last_seen_at);
+        if (isValidStatus(data.connection_status)) {
+          setCurrentStatus(data.connection_status as InterpreterStatus);
+        }
       }
     } catch (error) {
       console.error('[InterpreterCard] Error fetching last seen:', error);
@@ -340,7 +343,24 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
   const formatLastSeen = (lastSeenDate: string | null): string => {
     if (!lastSeenDate) return 'Jamais connecté';
-    return `Dernière connexion: ${getDateDisplay(lastSeenDate, 'dd/MM/yyyy')} à ${getTimeFromString(lastSeenDate)}`;
+    
+    try {
+      const now = new Date();
+      const lastSeen = new Date(lastSeenDate);
+      const diffInMinutes = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'En ligne';
+      if (diffInMinutes < 60) return `Dernière connexion il y a ${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''}`;
+      if (diffInMinutes < 1440) {
+        const hours = Math.floor(diffInMinutes / 60);
+        return `Dernière connexion il y a ${hours} heure${hours > 1 ? 's' : ''}`;
+      }
+
+      return `Dernière connexion: ${getDateDisplay(lastSeenDate, 'dd/MM/yyyy')} à ${getTimeFromString(lastSeenDate)}`;
+    } catch (error) {
+      console.error('[InterpreterCard] Error formatting last seen date:', error);
+      return 'Date de dernière connexion invalide';
+    }
   };
 
   return (
