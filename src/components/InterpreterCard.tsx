@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -271,6 +272,7 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     console.log('[InterpreterCard] Setting up real-time subscriptions');
     const channels: RealtimeChannel[] = [];
 
+    // Mission channel subscription
     const missionChannel = supabase.channel(`interpreter-missions-${interpreter.id}`)
       .on('postgres_changes' as any, {
         event: '*',
@@ -284,22 +286,24 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
       .subscribe();
     channels.push(missionChannel);
 
-    const reservationChannel = supabase.channel(`interpreter-reservations-${interpreter.id}`)
+    // New connection status channel subscription
+    const connectionStatusChannel = supabase.channel(`interpreter-connection-${interpreter.id}`)
       .on('postgres_changes' as any, {
         event: '*',
         schema: 'public',
-        table: 'private_reservations',
+        table: 'interpreter_connection_status',
         filter: `interpreter_id=eq.${interpreter.id}`,
       }, () => {
-        console.log('[InterpreterCard] Private reservation update received');
-        fetchMissions();
+        console.log('[InterpreterCard] Connection status update received');
+        fetchConnectionTimestamp();
       })
       .subscribe();
-    channels.push(reservationChannel);
+    channels.push(connectionStatusChannel);
 
     fetchMissions();
 
     return () => {
+      console.log('[InterpreterCard] Cleaning up subscriptions');
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
