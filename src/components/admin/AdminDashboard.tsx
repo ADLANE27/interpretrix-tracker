@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -84,7 +85,18 @@ export const AdminDashboard = () => {
       const { data, error } = await supabase
         .from("interpreters_with_next_mission")
         .select(`
-          *,
+          id,
+          first_name,
+          last_name,
+          employment_status,
+          languages,
+          phone_interpretation_rate,
+          phone_number,
+          birth_country,
+          next_mission_start,
+          next_mission_duration,
+          tarif_15min,
+          tarif_5min,
           connection_status:interpreter_connection_status(
             last_seen_at,
             connection_status,
@@ -102,7 +114,7 @@ export const AdminDashboard = () => {
         let parsedWorkHours: Interpreter['work_hours'] = null;
         if (interpreter.connection_status?.work_hours) {
           try {
-            const workHoursData = interpreter.connection_status.work_hours as Record<string, string>;
+            const workHoursData = interpreter.connection_status.work_hours;
             if (typeof workHoursData === 'object' && workHoursData !== null) {
               parsedWorkHours = {
                 start_morning: workHoursData.start_morning || "09:00",
