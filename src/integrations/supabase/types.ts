@@ -367,6 +367,7 @@ export type Database = {
         Row: {
           address: Json | null
           birth_country: string | null
+          booth_number: string | null
           created_at: string
           email: string
           employment_status: Database["public"]["Enums"]["employment_status"]
@@ -379,6 +380,8 @@ export type Database = {
           password_changed: boolean
           phone_interpretation_rate: number | null
           phone_number: string | null
+          private_phone: string | null
+          professional_phone: string | null
           profile_picture_url: string | null
           siret_number: string | null
           specializations: string[] | null
@@ -387,10 +390,12 @@ export type Database = {
           tarif_5min: number
           updated_at: string
           vat_number: string | null
+          work_hours: Json | null
         }
         Insert: {
           address?: Json | null
           birth_country?: string | null
+          booth_number?: string | null
           created_at?: string
           email: string
           employment_status: Database["public"]["Enums"]["employment_status"]
@@ -403,6 +408,8 @@ export type Database = {
           password_changed?: boolean
           phone_interpretation_rate?: number | null
           phone_number?: string | null
+          private_phone?: string | null
+          professional_phone?: string | null
           profile_picture_url?: string | null
           siret_number?: string | null
           specializations?: string[] | null
@@ -411,10 +418,12 @@ export type Database = {
           tarif_5min?: number
           updated_at?: string
           vat_number?: string | null
+          work_hours?: Json | null
         }
         Update: {
           address?: Json | null
           birth_country?: string | null
+          booth_number?: string | null
           created_at?: string
           email?: string
           employment_status?: Database["public"]["Enums"]["employment_status"]
@@ -427,6 +436,8 @@ export type Database = {
           password_changed?: boolean
           phone_interpretation_rate?: number | null
           phone_number?: string | null
+          private_phone?: string | null
+          professional_phone?: string | null
           profile_picture_url?: string | null
           siret_number?: string | null
           specializations?: string[] | null
@@ -435,6 +446,7 @@ export type Database = {
           tarif_5min?: number
           updated_at?: string
           vat_number?: string | null
+          work_hours?: Json | null
         }
         Relationships: [
           {
