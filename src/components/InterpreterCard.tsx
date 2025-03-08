@@ -41,6 +41,13 @@ interface DatabaseMission {
 
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
+interface WorkHours {
+  start_morning: string;
+  end_morning: string;
+  start_afternoon: string;
+  end_afternoon: string;
+}
+
 interface InterpreterCardProps {
   interpreter: {
     id: string;
@@ -56,41 +63,8 @@ interface InterpreterCardProps {
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
-    work_hours?: {
-      start_morning?: string;
-      end_morning?: string;
-      start_afternoon?: string;
-      end_afternoon?: string;
-    } | null;
+    work_hours?: Partial<WorkHours> | null;
   };
-}
-
-interface Interpreter {
-  id: string;
-  first_name: string;
-  last_name: string;
-  status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-  languages: string[];
-  phone_interpretation_rate: number | null;
-  phone_number: string | null;
-  birth_country: string | null;
-  next_mission_start: string | null;
-  next_mission_duration: number | null;
-  tarif_15min: number | null;
-  tarif_5min: number | null;
-  last_seen_at: string | null;
-  booth_number?: string | null;
-  private_phone?: string | null;
-  professional_phone?: string | null;
-  work_hours?: {
-    [key: string]: {
-      start: string;
-      end: string;
-      break_start: string;
-      break_end: string;
-    };
-  } | null;
 }
 
 const statusConfig = {
@@ -389,10 +363,20 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     return days[new Date().getDay()];
   };
 
-  const formatWorkHours = (hours: Profile['work_hours'] | null | undefined) => {
+  const formatWorkHours = (hours: Partial<WorkHours> | null | undefined) => {
     if (!hours) return 'Horaires non définis';
     
-    return `${hours.start_morning || ''} - ${hours.end_morning || ''}, ${hours.start_afternoon || ''} - ${hours.end_afternoon || ''}`;
+    const morning = hours.start_morning && hours.end_morning 
+      ? `${hours.start_morning} - ${hours.end_morning}`
+      : '';
+    const afternoon = hours.start_afternoon && hours.end_afternoon 
+      ? `${hours.start_afternoon} - ${hours.end_afternoon}`
+      : '';
+
+    if (!morning && !afternoon) return 'Horaires non définis';
+    if (!afternoon) return morning;
+    if (!morning) return afternoon;
+    return `${morning}, ${afternoon}`;
   };
 
   return (
