@@ -484,11 +484,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
 
-        {interpreter.work_hours && (
+        {interpreter.work_hours && interpreter.work_hours[getCurrentDay()] && (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
             <span className="text-sm">
-              {interpreter.work_hours[getCurrentDay()]?.start} - {interpreter.work_hours[getCurrentDay()]?.end}
+              {`${interpreter.work_hours[getCurrentDay()]?.start || ''} - ${interpreter.work_hours[getCurrentDay()]?.end || ''}`}
             </span>
           </div>
         )}
