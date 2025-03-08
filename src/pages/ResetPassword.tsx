@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -32,20 +31,26 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       
-      // Get the recovery token from the URL
       const token = searchParams.get('token');
       
       if (!token) {
         throw new Error('No recovery token found');
       }
 
-      const { error } = await supabase.auth.verifyOtp({
+      // First verify the token
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token,
-        type: 'recovery',
-        password: password // Changed from new_password to password
+        type: 'recovery'
       });
 
-      if (error) throw error;
+      if (verifyError) throw verifyError;
+
+      // Then update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (updateError) throw updateError;
 
       toast({
         title: "Succès",
