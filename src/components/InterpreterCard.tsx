@@ -8,7 +8,6 @@ import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
-import { Profile } from "@/types/profile";
 
 interface Mission {
   scheduled_start_time: string;
@@ -93,7 +92,6 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_5min: 0,
     tarif_15min: 0
   });
-  const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
   const [connectionUpdatedAt, setConnectionUpdatedAt] = useState<string | null>(null);
@@ -392,16 +390,16 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+          <Badge className={`${statusConfig[interpreter.status].color} relative`}>
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
             )}
-            {statusConfig[currentStatus].label}
+            {statusConfig[interpreter.status].label}
           </Badge>
-          {nextMission && (
+          {interpreter.next_mission_start && (
             <UpcomingMissionBadge
-              startTime={nextMission.scheduled_start_time}
-              estimatedDuration={nextMission.estimated_duration}
+              startTime={interpreter.next_mission_start}
+              estimatedDuration={interpreter.next_mission_duration || 0}
             />
           )}
         </div>
