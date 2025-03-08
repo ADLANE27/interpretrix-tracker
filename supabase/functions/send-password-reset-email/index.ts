@@ -1,8 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 console.log('Initializing Resend with API key');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -10,6 +10,11 @@ if (!resendApiKey) {
   console.error('RESEND_API_KEY is not configured');
 }
 const resend = new Resend(resendApiKey);
+
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,44 +30,18 @@ serve(async (req) => {
       throw new Error('Missing required user data');
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase configuration');
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Generate the password reset link
-    console.log('Generating password reset link...');
-    const { data: { user }, error: resetError } = await supabase.auth.admin.generateLink({
+    // Generate password reset token using Supabase
+    const { error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
+      options: {
+        redirectTo: `${req.headers.get('origin')}/reset-password?role=${role}`,
+      }
     });
 
     if (resetError) {
-      console.error('Error generating reset link:', resetError);
       throw resetError;
     }
-
-    if (!user?.confirmation_sent_at) {
-      console.error('No confirmation URL generated');
-      throw new Error('Failed to generate reset link');
-    }
-
-    // Extract the token from the recovery URL
-    const confirmationUrl = new URL(user.confirmation_sent_at);
-    const token = confirmationUrl.searchParams.get('token');
-
-    if (!token) {
-      console.error('No token found in confirmation URL');
-      throw new Error('Failed to generate reset token');
-    }
-
-    // Build the reset URL with the necessary parameters
-    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}&token=${token}&email=${encodeURIComponent(email)}`;
 
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
@@ -73,9 +52,7 @@ serve(async (req) => {
 
       <p>Une demande de réinitialisation de votre mot de passe ${roleText} a été effectuée.</p>
 
-      <p>Vous pouvez réinitialiser votre mot de passe en utilisant le lien ci-dessous:</p>
-
-      <p><a href="${resetUrl}" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Réinitialiser le mot de passe</a></p>
+      <p>Vous pouvez réinitialiser votre mot de passe en cliquant sur le lien que vous avez reçu dans un email séparé de Supabase.</p>
 
       <p>Pour des raisons de sécurité, ce lien expirera dans 24 heures.</p>
 

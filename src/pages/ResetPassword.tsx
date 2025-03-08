@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,22 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
 
+  useEffect(() => {
+    // Get the access_token and type from URL fragment
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.substring(1)); // Remove the # symbol
+    const accessToken = params.get('access_token');
+    const type = params.get('type');
+
+    // If we have a recovery token, set the session
+    if (accessToken && type === 'recovery') {
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '',
+      });
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -32,23 +48,6 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       
-      const token = searchParams.get('token');
-      const email = searchParams.get('email');
-      
-      if (!token || !email) {
-        throw new Error('Missing recovery token or email');
-      }
-
-      // First verify the token with both token and email
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        token,
-        type: 'recovery',
-        email
-      });
-
-      if (verifyError) throw verifyError;
-
-      // Then update the password
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
@@ -67,11 +66,9 @@ const ResetPassword = () => {
       console.error('Error resetting password:', error);
       toast({
         title: "Erreur",
-        description: "Le lien de réinitialisation est invalide ou a expiré",
+        description: error.message,
         variant: "destructive",
       });
-      // Redirect to login on error
-      navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
     } finally {
       setIsLoading(false);
     }
