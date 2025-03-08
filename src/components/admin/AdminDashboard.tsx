@@ -232,7 +232,9 @@ export const AdminDashboard = () => {
       const rateB = b.tarif_15min ?? 0;
       return rateA - rateB;
     }
-    return 0;
+    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+    return nameA.localeCompare(nameB);
   });
 
   const handleTabChange = (value: string) => {
