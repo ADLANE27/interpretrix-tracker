@@ -31,7 +31,7 @@ serve(async (req) => {
     }
 
     // Generate password reset token using Supabase
-    const { error: resetError } = await supabase.auth.admin.generateLink({
+    const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
@@ -43,6 +43,12 @@ serve(async (req) => {
       throw resetError;
     }
 
+    // Get the reset link from the response
+    const resetLink = resetData?.properties?.action_link;
+    if (!resetLink) {
+      throw new Error('No reset link generated');
+    }
+
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
     const emailContent = `
@@ -52,7 +58,9 @@ serve(async (req) => {
 
       <p>Une demande de réinitialisation de votre mot de passe ${roleText} a été effectuée.</p>
 
-      <p>Vous pouvez réinitialiser votre mot de passe en cliquant sur le lien que vous avez reçu dans un email séparé de Supabase.</p>
+      <p>Vous pouvez réinitialiser votre mot de passe en cliquant sur le lien ci-dessous :</p>
+
+      <p><a href="${resetLink}" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Réinitialiser le mot de passe</a></p>
 
       <p>Pour des raisons de sécurité, ce lien expirera dans 24 heures.</p>
 
