@@ -5,7 +5,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { format } from "npm:date-fns@2.30.0";
 import { fr } from "npm:date-fns/locale@2.30.0";
 
-console.log('Initializing Resend with API key');
+console.log('Initializing send-mission-notification function');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
 if (!resendApiKey) {
@@ -25,7 +25,11 @@ serve(async (req) => {
       mission
     } = await req.json();
 
-    console.log('Sending mission notification to:', interpreter.email);
+    console.log('Received notification request:', {
+      interpreterEmail: interpreter.email,
+      missionId: mission.id,
+      missionType: mission.mission_type
+    });
 
     const isMissionImmediate = mission.mission_type === 'immediate';
     const missionTypeText = isMissionImmediate ? 'immédiate' : 'programmée';
@@ -42,6 +46,8 @@ serve(async (req) => {
     const baseUrl = "https://interpretix.netlify.app";
     const loginPath = interpreter.role === 'interpreter' ? '/interpreter/login' : '/admin/login';
     const loginUrl = `${baseUrl}${loginPath}`;
+
+    console.log('Preparing email with timing info:', timingInfo);
 
     const emailContent = `
       <h1>Nouvelle mission d'interprétation ${missionTypeText}</h1>
@@ -66,7 +72,7 @@ serve(async (req) => {
       <p>Cordialement,<br>L'équipe Interpretix</p>
     `;
 
-    console.log('Attempting to send email with Resend');
+    console.log('Attempting to send email with Resend to:', interpreter.email);
     
     const emailResponse = await resend.emails.send({
       from: 'Interpretix <no-reply@aftraduction.com>',
@@ -75,7 +81,7 @@ serve(async (req) => {
       html: emailContent,
     });
 
-    console.log('Email sent successfully:', emailResponse);
+    console.log('Email sent successfully, Resend response:', emailResponse);
 
     return new Response(
       JSON.stringify({ 
