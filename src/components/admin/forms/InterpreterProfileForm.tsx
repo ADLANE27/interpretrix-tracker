@@ -446,24 +446,36 @@ export const InterpreterProfileForm = ({
               <div className="space-y-2">
                 <Label>Matin</Label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={form.watch("work_hours.start_morning")}
-                    onChange={(e) => {
-                      const newWorkHours = { ...form.getValues("work_hours") };
-                      newWorkHours.start_morning = e.target.value;
-                      form.setValue("work_hours", newWorkHours);
-                    }}
+                  <FormField
+                    control={form.control}
+                    name="work_hours.start_morning"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   <span>à</span>
-                  <Input
-                    type="time"
-                    value={form.watch("work_hours.end_morning")}
-                    onChange={(e) => {
-                      const newWorkHours = { ...form.getValues("work_hours") };
-                      newWorkHours.end_morning = e.target.value;
-                      form.setValue("work_hours", newWorkHours);
-                    }}
+                  <FormField
+                    control={form.control}
+                    name="work_hours.end_morning"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               </div>
@@ -471,24 +483,36 @@ export const InterpreterProfileForm = ({
               <div className="space-y-2">
                 <Label>Après-midi</Label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={form.watch("work_hours.start_afternoon")}
-                    onChange={(e) => {
-                      const newWorkHours = { ...form.getValues("work_hours") };
-                      newWorkHours.start_afternoon = e.target.value;
-                      form.setValue("work_hours", newWorkHours);
-                    }}
+                  <FormField
+                    control={form.control}
+                    name="work_hours.start_afternoon"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                   <span>à</span>
-                  <Input
-                    type="time"
-                    value={form.watch("work_hours.end_afternoon")}
-                    onChange={(e) => {
-                      const newWorkHours = { ...form.getValues("work_hours") };
-                      newWorkHours.end_afternoon = e.target.value;
-                      form.setValue("work_hours", newWorkHours);
-                    }}
+                  <FormField
+                    control={form.control}
+                    name="work_hours.end_afternoon"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
               </div>
