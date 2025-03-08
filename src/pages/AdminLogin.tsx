@@ -9,6 +9,9 @@ const AdminLogin = () => {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ 
           backgroundImage: 'url("/lovable-uploads/68d3bed9-9180-4b41-9204-59976a6ceda8.png")',
+          imageRendering: 'crisp-edges',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
         <div className="absolute inset-0 bg-black/40" /> {/* Dark overlay for better contrast */}
