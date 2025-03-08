@@ -469,7 +469,12 @@ export const AdminDashboard = () => {
                       booth_number: interpreter.booth_number,
                       private_phone: interpreter.private_phone,
                       professional_phone: interpreter.professional_phone,
-                      work_hours: interpreter.work_hours
+                      work_hours: interpreter.work_hours ? {
+                        start_morning: interpreter.work_hours.start_morning,
+                        end_morning: interpreter.work_hours.end_morning,
+                        start_afternoon: interpreter.work_hours.start_afternoon,
+                        end_afternoon: interpreter.work_hours.end_afternoon
+                      } : null
                     }}
                   />
                 ))}

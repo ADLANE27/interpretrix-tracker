@@ -486,8 +486,8 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
             <span className="text-sm">
-              {interpreter.work_hours.start_morning || ''} - {interpreter.work_hours.end_morning || ''}, {' '}
-              {interpreter.work_hours.start_afternoon || ''} - {interpreter.work_hours.end_afternoon || ''}
+              {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning}, {' '}
+              {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
             </span>
           </div>
         )}
