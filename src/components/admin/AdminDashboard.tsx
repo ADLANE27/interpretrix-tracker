@@ -94,10 +94,10 @@ export const AdminDashboard = () => {
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, unknown>;
           workHours = {
-            start_morning: String(hours.start_morning || ''),
-            end_morning: String(hours.end_morning || ''),
-            start_afternoon: String(hours.start_afternoon || ''),
-            end_afternoon: String(hours.end_afternoon || '')
+            start_morning: String(hours.morning_start || ''),
+            end_morning: String(hours.morning_end || ''),
+            start_afternoon: String(hours.afternoon_start || ''),
+            end_afternoon: String(hours.afternoon_end || '')
           };
         }
 
