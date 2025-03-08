@@ -91,11 +91,18 @@ export const AdminDashboard = () => {
         let parsedWorkHours = null;
         if (interpreter.work_hours) {
           try {
+            const workHours = interpreter.work_hours as {
+              start_morning?: string;
+              end_morning?: string;
+              start_afternoon?: string;
+              end_afternoon?: string;
+            };
+            
             parsedWorkHours = {
-              start_morning: interpreter.work_hours.start_morning || "09:00",
-              end_morning: interpreter.work_hours.end_morning || "13:00",
-              start_afternoon: interpreter.work_hours.start_afternoon || "14:00",
-              end_afternoon: interpreter.work_hours.end_afternoon || "17:00"
+              start_morning: workHours.start_morning || "09:00",
+              end_morning: workHours.end_morning || "13:00",
+              start_afternoon: workHours.start_afternoon || "14:00",
+              end_afternoon: workHours.end_afternoon || "17:00"
             };
           } catch (e) {
             console.error("[AdminDashboard] Error parsing work_hours:", e);
