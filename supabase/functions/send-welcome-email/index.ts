@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
@@ -48,9 +47,9 @@ Deno.serve(async (req) => {
       <p>Cordialement,<br>L'équipe Interpretix</p>
     `;
 
-    // Send the email using Resend
+    // Send the email using Resend with the custom domain
     const emailResponse = await resend.emails.send({
-      from: 'Interpretix <onboarding@resend.dev>',
+      from: 'Interpretix <no-reply@aftraduction.com>',
       to: emailData.email,
       subject: `Bienvenue sur Interpretix - Vos identifiants de connexion ${roleText}`,
       html: emailContent,
