@@ -17,6 +17,21 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
 
+  useEffect(() => {
+    // Check if we have a token hash in the URL (Supabase recovery flow)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+    const accessToken = hashParams.get('access_token');
+    
+    if (type === 'recovery' && accessToken) {
+      // Set the session with the recovery token
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '',
+      });
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -32,16 +47,19 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       toast({
         title: "Succès",
         description: "Votre mot de passe a été mis à jour",
       });
+
+      // Sign out the user after password reset
+      await supabase.auth.signOut();
 
       // Redirect based on role
       navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
@@ -50,7 +68,7 @@ const ResetPassword = () => {
       console.error('Error resetting password:', error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: "Une erreur est survenue lors de la réinitialisation du mot de passe. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {

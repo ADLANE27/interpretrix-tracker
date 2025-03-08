@@ -1,14 +1,24 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
 
 console.log('Initializing Resend with API key');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
 if (!resendApiKey) {
   console.error('RESEND_API_KEY is not configured');
 }
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not configured');
+}
+
 const resend = new Resend(resendApiKey);
+const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,17 +26,28 @@ serve(async (req) => {
   }
 
   try {
-    const { user_id, email, first_name, role } = await req.json();
-    console.log('Sending password reset email to:', { user_id, email, first_name, role });
+    const { email, first_name, role } = await req.json();
+    console.log('Sending password reset email to:', { email, first_name, role });
 
     // Ensure we have all required data
     if (!email || !first_name || !role) {
       throw new Error('Missing required user data');
     }
 
-    // Build the reset URL with the necessary parameters
-    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}`;
+    // Generate password reset link using Supabase
+    const { data, error: resetError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: `https://interpretix.netlify.app/reset-password?role=${role}`,
+      }
+    });
 
+    if (resetError) {
+      throw resetError;
+    }
+
+    const resetUrl = data.properties.action_link;
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
     const emailContent = `
@@ -49,7 +70,6 @@ serve(async (req) => {
 
     console.log('Attempting to send email with Resend');
     
-    // Send the email using Resend with the custom domain
     const emailResponse = await resend.emails.send({
       from: 'Interpretix <no-reply@aftraduction.com>',
       to: email,
@@ -83,3 +103,4 @@ serve(async (req) => {
     );
   }
 });
+
