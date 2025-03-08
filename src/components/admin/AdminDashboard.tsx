@@ -23,6 +23,13 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+interface WorkHours {
+  start_morning?: string;
+  end_morning?: string;
+  start_afternoon?: string;
+  end_afternoon?: string;
+}
+
 interface Interpreter {
   id: string;
   first_name: string;
@@ -41,14 +48,7 @@ interface Interpreter {
   booth_number?: string | null;
   private_phone?: string | null;
   professional_phone?: string | null;
-  work_hours?: {
-    [key: string]: {
-      start: string;
-      end: string;
-      break_start: string;
-      break_end: string;
-    };
-  } | null;
+  work_hours?: WorkHours | null;
 }
 
 export const AdminDashboard = () => {
@@ -91,12 +91,13 @@ export const AdminDashboard = () => {
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
         let workHours = null;
-        if (interpreter.work_hours) {
+        if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
+          const hours = interpreter.work_hours as Record<string, unknown>;
           workHours = {
-            start_morning: interpreter.work_hours.start_morning || '',
-            end_morning: interpreter.work_hours.end_morning || '',
-            start_afternoon: interpreter.work_hours.start_afternoon || '',
-            end_afternoon: interpreter.work_hours.end_afternoon || ''
+            start_morning: String(hours.start_morning || ''),
+            end_morning: String(hours.end_morning || ''),
+            start_afternoon: String(hours.start_afternoon || ''),
+            end_afternoon: String(hours.end_afternoon || '')
           };
         }
 
