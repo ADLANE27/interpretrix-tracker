@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { InterpreterCard } from "../InterpreterCard";
+import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
 import { Search, LogOut, X, Menu, ChevronUp, ChevronDown } from "lucide-react";
