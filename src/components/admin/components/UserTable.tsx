@@ -37,121 +37,16 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
-  const handleEditInterpreter = async (user: UserData) => {
-    try {
-      const { data: interpreterData, error } = await supabase
-        .from('interpreter_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-
-      const languages = (interpreterData.languages || []).map((lang: string) => {
-        const [source, target] = lang.split('→').map(l => l.trim());
-        return { source, target };
-      });
-
-      const address = interpreterData.address && typeof interpreterData.address === 'object' ? {
-        street: String((interpreterData.address as any).street || ''),
-        postal_code: String((interpreterData.address as any).postal_code || ''),
-        city: String((interpreterData.address as any).city || '')
-      } : null;
-
-      const status = interpreterData.status as Profile['status'] || 'available';
-
-      let workHours = null;
-      if (interpreterData.work_hours) {
-        workHours = typeof interpreterData.work_hours === 'string'
-          ? JSON.parse(interpreterData.work_hours)
-          : interpreterData.work_hours;
-      }
-
-      const userData: UserData = {
-        ...user,
-        ...interpreterData,
-        languages,
-        status,
-        address,
-        work_hours: workHours || {
-          start_morning: "09:00",
-          end_morning: "13:00",
-          start_afternoon: "14:00",
-          end_afternoon: "17:00"
-        }
-      };
-
-      setSelectedUser(userData);
-      setIsEditingInterpreter(true);
-    } catch (error) {
-      console.error('Error fetching interpreter data:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données de l'interprète",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUpdateProfile = async (data: any) => {
-    try {
-      setIsSubmitting(true);
-      
-      const formattedLanguages = data.languages.map((lang: any) => 
-        `${lang.source}→${lang.target}`
-      );
-
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          email: data.email,
-          phone_number: data.phone_number,
-          languages: formattedLanguages,
-          employment_status: data.employment_status,
-          address: data.address,
-          birth_country: data.birth_country,
-          nationality: data.nationality,
-          siret_number: data.siret_number,
-          vat_number: data.vat_number,
-          specializations: data.specializations,
-          landline_phone: data.landline_phone,
-          tarif_15min: data.tarif_15min,
-          tarif_5min: data.tarif_5min,
-          work_hours: data.work_hours,
-          booth_number: data.booth_number,
-          private_phone: data.private_phone,
-          professional_phone: data.professional_phone
-        })
-        .eq('id', selectedUser?.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Profil mis à jour avec succès",
-      });
-
-      setIsEditingInterpreter(false);
-      window.dispatchEvent(new CustomEvent('refetchUserData'));
-      
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSendPasswordReset = async (userId: string) => {
+  const handleSendPasswordReset = async (user: UserData) => {
     try {
       setIsSubmitting(true);
       const { error } = await supabase.functions.invoke('send-password-reset-email', {
-        body: { user_id: userId }
+        body: { 
+          user_id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          role: user.role
+        }
       });
 
       if (error) throw error;
@@ -220,7 +115,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                       Réinitialiser le mot de passe
                     </DropdownMenuItem>
                     <DropdownMenuItem 
-                      onClick={() => handleSendPasswordReset(user.id)}
+                      onClick={() => handleSendPasswordReset(user)}
                       disabled={isSubmitting}
                     >
                       <Mail className="mr-2 h-4 w-4" />
