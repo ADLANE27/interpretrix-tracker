@@ -93,7 +93,6 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     tarif_5min: 0,
     tarif_15min: 0
   });
-  const [currentStatus, setCurrentStatus] = useState<InterpreterStatus>(interpreter.status);
   const [isOnline, setIsOnline] = useState(true);
   const [isInterpreter, setIsInterpreter] = useState(true);
   const [connectionUpdatedAt, setConnectionUpdatedAt] = useState<string | null>(null);
@@ -392,11 +391,11 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge className={`${statusConfig[currentStatus].color} relative`}>
+          <Badge className={`${statusConfig[interpreter.status].color} relative`}>
             {!isOnline && (
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
             )}
-            {statusConfig[currentStatus].label}
+            {statusConfig[interpreter.status].label}
           </Badge>
           {nextMission && (
             <UpcomingMissionBadge
