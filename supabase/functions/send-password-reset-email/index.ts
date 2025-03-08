@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 console.log('Initializing Resend with API key');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -24,19 +25,44 @@ serve(async (req) => {
       throw new Error('Missing required user data');
     }
 
-    // Get the recovery token
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Generate the password reset link
+    console.log('Generating password reset link...');
     const { data: { user }, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
     });
-    
-    if (resetError) throw resetError;
-    
+
+    if (resetError) {
+      console.error('Error generating reset link:', resetError);
+      throw resetError;
+    }
+
+    if (!user?.confirmation_sent_at) {
+      console.error('No confirmation URL generated');
+      throw new Error('Failed to generate reset link');
+    }
+
     // Extract the token from the recovery URL
-    const token = new URL(user.confirmation_sent_at).searchParams.get('token');
-    
+    const confirmationUrl = new URL(user.confirmation_sent_at);
+    const token = confirmationUrl.searchParams.get('token');
+
+    if (!token) {
+      console.error('No token found in confirmation URL');
+      throw new Error('Failed to generate reset token');
+    }
+
     // Build the reset URL with the necessary parameters
-    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}&token=${token}`;
+    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}&token=${token}&email=${encodeURIComponent(email)}`;
 
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
