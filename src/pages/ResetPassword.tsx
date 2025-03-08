@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -18,10 +17,23 @@ const ResetPassword = () => {
   const role = searchParams.get('role');
 
   useEffect(() => {
-    // Get the access_token from URL fragment
+    // Get the token from URL hash or query params
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.substring(1)); // Remove the # symbol
     const accessToken = params.get('access_token');
+    const error = params.get('error');
+    const errorDescription = params.get('error_description');
+
+    if (error) {
+      toast({
+        title: "Erreur",
+        description: errorDescription || "Le lien de réinitialisation est invalide ou a expiré",
+        variant: "destructive",
+      });
+      // Redirect to appropriate login page after error
+      navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
+      return;
+    }
 
     // If we have a recovery token, set the session
     if (accessToken) {
@@ -30,7 +42,7 @@ const ResetPassword = () => {
         refresh_token: '',
       });
     }
-  }, []);
+  }, [navigate, role, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

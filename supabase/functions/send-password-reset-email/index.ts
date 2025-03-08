@@ -30,24 +30,30 @@ serve(async (req) => {
       throw new Error('Missing required user data');
     }
 
-    // Generate password reset token using Supabase
+    // Generate password reset token using Supabase with a longer expiration
     const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: email,
       options: {
         redirectTo: `${req.headers.get('origin')}/reset-password?role=${role}`,
+        // Set expiration to 24 hours (in seconds)
+        tokenExpiration: 86400
       }
     });
 
     if (resetError) {
+      console.error('Error generating reset link:', resetError);
       throw resetError;
     }
 
     // Get the reset link from the response
     const resetLink = resetData?.properties?.action_link;
     if (!resetLink) {
+      console.error('No reset link generated in response:', resetData);
       throw new Error('No reset link generated');
     }
+
+    console.log('Generated reset link:', resetLink);
 
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
