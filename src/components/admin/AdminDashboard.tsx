@@ -42,12 +42,10 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: {
-    [key: string]: {
-      start: string;
-      end: string;
-      break_start: string;
-      break_end: string;
-    };
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
   } | null;
 }
 
@@ -104,7 +102,7 @@ export const AdminDashboard = () => {
         let parsedWorkHours: Interpreter['work_hours'] = null;
         if (interpreter.connection_status?.work_hours) {
           try {
-            const workHoursData = interpreter.connection_status.work_hours;
+            const workHoursData = interpreter.connection_status.work_hours as Record<string, string>;
             if (typeof workHoursData === 'object' && workHoursData !== null) {
               parsedWorkHours = {
                 start_morning: workHoursData.start_morning || "09:00",
@@ -136,7 +134,7 @@ export const AdminDashboard = () => {
           next_mission_start: interpreter.next_mission_start,
           next_mission_duration: interpreter.next_mission_duration,
           tarif_15min: interpreter.tarif_15min,
-          tarif_5min: interpreter.tarif_5min,
+          tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: interpreter.connection_status?.last_seen_at,
           booth_number: interpreter.connection_status?.booth_number || null,
           private_phone: interpreter.connection_status?.private_phone || null,
