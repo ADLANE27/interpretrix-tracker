@@ -136,9 +136,6 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 
       if (data) {
         setConnectionUpdatedAt(data.updated_at);
-        if (isValidStatus(data.connection_status)) {
-          setCurrentStatus(data.connection_status as InterpreterStatus);
-        }
       }
     } catch (error) {
       console.error('[InterpreterCard] Error fetching connection timestamp:', error);
@@ -238,9 +235,8 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         .single();
 
       if (error) throw error;
-      if (data && isValidStatus(data.status)) {
-        setCurrentStatus(data.status);
-      }
+      
+      // We don't need to set local status anymore since we use interpreter.status directly
     } catch (error) {
       console.error('[InterpreterCard] Error fetching current status:', error);
     }
@@ -321,7 +317,6 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   }, [interpreter.id]);
 
   useEffect(() => {
-    setCurrentStatus(interpreter.status);
   }, [interpreter.status]);
 
   useMissionUpdates(() => {
