@@ -118,7 +118,11 @@ export const InterpreterDashboard = () => {
         ...data,
         languages: transformedLanguages,
         status,
-        address
+        address,
+        booth_number: data.booth_number || null,
+        private_phone: data.private_phone || null,
+        professional_phone: data.professional_phone || null,
+        work_hours: data.work_hours || null
       };
 
       setProfile(transformedProfile);
