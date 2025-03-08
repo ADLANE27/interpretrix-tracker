@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,7 +78,7 @@ export const AdminLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-2xl rounded-3xl border-0">
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white/95 backdrop-blur-sm shadow-2xl rounded-3xl border-0 relative z-10">
       <div className="space-y-2 text-center">
         <div className="flex justify-center mb-6">
           <div className="p-3 bg-[#1A1F2C] rounded-xl">
@@ -142,4 +141,3 @@ export const AdminLoginForm = () => {
     </Card>
   );
 };
-
