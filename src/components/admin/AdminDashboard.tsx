@@ -49,6 +49,7 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
+  connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
 
 export const AdminDashboard = () => {
@@ -111,6 +112,12 @@ export const AdminDashboard = () => {
                   interpreter.connection_status === "busy") 
                   ? interpreter.connection_status 
                   : "unavailable" as const,
+          connection_status: (interpreter.connection_status === "available" ||
+                            interpreter.connection_status === "unavailable" ||
+                            interpreter.connection_status === "pause" ||
+                            interpreter.connection_status === "busy")
+                            ? interpreter.connection_status
+                            : "unavailable" as const,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
