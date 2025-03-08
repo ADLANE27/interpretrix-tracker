@@ -90,7 +90,11 @@ export const AdminDashboard = () => {
           connection_status:interpreter_connection_status(
             last_seen_at,
             connection_status,
-            updated_at
+            updated_at,
+            booth_number,
+            private_phone,
+            professional_phone,
+            work_hours
           )
         `);
 
