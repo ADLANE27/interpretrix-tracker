@@ -92,17 +92,12 @@ export const AdminDashboard = () => {
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
         let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
-          const hours = interpreter.work_hours as Record<string, unknown>;
-          const formattedMorningStart = hours.morning_start ? String(hours.morning_start).replace(',', ':') : '';
-          const formattedMorningEnd = hours.morning_end ? String(hours.morning_end).replace(',', ':') : '';
-          const formattedAfternoonStart = hours.afternoon_start ? String(hours.afternoon_start).replace(',', ':') : '';
-          const formattedAfternoonEnd = hours.afternoon_end ? String(hours.afternoon_end).replace(',', ':') : '';
-
+          const hours = interpreter.work_hours as Record<string, any>;
           workHours = {
-            start_morning: formattedMorningStart,
-            end_morning: formattedMorningEnd,
-            start_afternoon: formattedAfternoonStart,
-            end_afternoon: formattedAfternoonEnd
+            start_morning: hours.start_morning || '',
+            end_morning: hours.end_morning || '',
+            start_afternoon: hours.start_afternoon || '',
+            end_afternoon: hours.end_afternoon || ''
           };
         }
 
