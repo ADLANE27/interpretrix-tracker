@@ -42,10 +42,12 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: {
-    start_morning: string;
-    end_morning: string;
-    start_afternoon: string;
-    end_afternoon: string;
+    [key: string]: {
+      start: string;
+      end: string;
+      break_start: string;
+      break_end: string;
+    };
   } | null;
 }
 
@@ -91,7 +93,7 @@ export const AdminDashboard = () => {
         let parsedWorkHours = null;
         if (interpreter.work_hours) {
           try {
-            const workHours = interpreter.work_hours as {
+            const rawHours = interpreter.work_hours as {
               start_morning?: string;
               end_morning?: string;
               start_afternoon?: string;
@@ -99,10 +101,18 @@ export const AdminDashboard = () => {
             };
             
             parsedWorkHours = {
-              start_morning: workHours.start_morning || "09:00",
-              end_morning: workHours.end_morning || "13:00",
-              start_afternoon: workHours.start_afternoon || "14:00",
-              end_afternoon: workHours.end_afternoon || "17:00"
+              morning: {
+                start: rawHours.start_morning || "09:00",
+                end: rawHours.end_morning || "13:00",
+                break_start: "11:00",
+                break_end: "11:15"
+              },
+              afternoon: {
+                start: rawHours.start_afternoon || "14:00",
+                end: rawHours.end_afternoon || "17:00",
+                break_start: "15:30",
+                break_end: "15:45"
+              }
             };
           } catch (e) {
             console.error("[AdminDashboard] Error parsing work_hours:", e);
