@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
-import { Search, LogOut, X, Menu, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, LogOut, X, Menu, ChevronUp, ChevronDown, LayoutGrid, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,6 +62,7 @@ export const AdminDashboard = () => {
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
   const [rateSort, setRateSort] = useState<string>("none");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const {
     toast
   } = useToast();
@@ -320,7 +321,27 @@ export const AdminDashboard = () => {
           <TabsContent value="interpreters" className="absolute inset-0 overflow-auto">
             <div className="min-h-full p-4 sm:p-6 space-y-6">
               <div className="space-y-2">
-                <h2 className="text-lg font-semibold">Statut</h2>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Statut</h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+                    className="gap-2"
+                  >
+                    {viewMode === "grid" ? (
+                      <>
+                        <List className="h-4 w-4" />
+                        Vue compacte
+                      </>
+                    ) : (
+                      <>
+                        <LayoutGrid className="h-4 w-4" />
+                        Vue détaillée
+                      </>
+                    )}
+                  </Button>
+                </div>
                 <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
               </div>
 
@@ -434,27 +455,45 @@ export const AdminDashboard = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <div className={viewMode === "grid" 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+                : "space-y-2"
+              }>
                 {filteredInterpreters.map(interpreter => (
-                  <InterpreterCard
-                    key={interpreter.id}
-                    interpreter={{
-                      id: interpreter.id,
-                      name: `${interpreter.first_name} ${interpreter.last_name}`,
-                      status: interpreter.status || "unavailable",
-                      employment_status: interpreter.employment_status,
-                      languages: interpreter.languages,
-                      tarif_15min: interpreter.tarif_15min,
-                      tarif_5min: interpreter.tarif_5min,
-                      phone_number: interpreter.phone_number,
-                      next_mission_start: interpreter.next_mission_start,
-                      next_mission_duration: interpreter.next_mission_duration,
-                      booth_number: interpreter.booth_number,
-                      private_phone: interpreter.private_phone,
-                      professional_phone: interpreter.professional_phone,
-                      work_hours: interpreter.work_hours
-                    }}
-                  />
+                  viewMode === "grid" ? (
+                    <InterpreterCard
+                      key={interpreter.id}
+                      interpreter={{
+                        id: interpreter.id,
+                        name: `${interpreter.first_name} ${interpreter.last_name}`,
+                        status: interpreter.status || "unavailable",
+                        employment_status: interpreter.employment_status,
+                        languages: interpreter.languages,
+                        tarif_15min: interpreter.tarif_15min,
+                        tarif_5min: interpreter.tarif_5min,
+                        phone_number: interpreter.phone_number,
+                        next_mission_start: interpreter.next_mission_start,
+                        next_mission_duration: interpreter.next_mission_duration,
+                        booth_number: interpreter.booth_number,
+                        private_phone: interpreter.private_phone,
+                        professional_phone: interpreter.professional_phone,
+                        work_hours: interpreter.work_hours
+                      }}
+                    />
+                  ) : (
+                    <InterpreterListItem
+                      key={interpreter.id}
+                      interpreter={{
+                        id: interpreter.id,
+                        name: `${interpreter.first_name} ${interpreter.last_name}`,
+                        status: interpreter.status || "unavailable",
+                        employment_status: interpreter.employment_status,
+                        languages: interpreter.languages,
+                        next_mission_start: interpreter.next_mission_start,
+                        next_mission_duration: interpreter.next_mission_duration,
+                      }}
+                    />
+                  )
                 ))}
               </div>
             </div>
