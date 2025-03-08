@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +16,34 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
 
+  useEffect(() => {
+    // Get the access token from the URL if it exists
+    const accessToken = searchParams.get('access_token');
+    const refreshToken = searchParams.get('refresh_token');
+    
+    // If we have tokens, establish the session
+    const setSession = async () => {
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        
+        if (error) {
+          console.error('Error setting session:', error);
+          toast({
+            title: "Erreur",
+            description: "Le lien de réinitialisation est invalide ou a expiré",
+            variant: "destructive",
+          });
+          navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
+        }
+      }
+    };
+
+    setSession();
+  }, [searchParams, navigate, role, toast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -32,11 +59,11 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       toast({
         title: "Succès",
