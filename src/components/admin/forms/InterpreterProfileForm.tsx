@@ -41,12 +41,10 @@ export interface InterpreterFormData {
   private_phone?: string;
   professional_phone?: string;
   work_hours?: {
-    [key: string]: {
-      start: string;
-      end: string;
-      break_start: string;
-      break_end: string;
-    };
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
   };
   languages: LanguagePair[];
   address?: Address;
@@ -92,11 +90,10 @@ export const InterpreterProfileForm = ({
     private_phone: initialData?.private_phone || "",
     professional_phone: initialData?.professional_phone || "",
     work_hours: initialData?.work_hours || {
-      monday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
-      tuesday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
-      wednesday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
-      thursday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
-      friday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" }
+      start_morning: "09:00",
+      end_morning: "13:00",
+      start_afternoon: "14:00",
+      end_afternoon: "17:00"
     },
     languages: languages,
     address: initialData?.address || { street: "", postal_code: "", city: "" },
@@ -445,61 +442,57 @@ export const InterpreterProfileForm = ({
             <CardTitle>Horaires de travail</CardTitle>
           </CardHeader>
           <CardContent>
-            {Object.entries(form.watch("work_hours") || {}).map(([day, hours]) => (
-              <div key={day} className="mb-4">
-                <Label className="mb-2 block font-semibold capitalize">{day}</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Heures de travail</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={hours.start}
-                        onChange={(e) => {
-                          const newWorkHours = { ...form.getValues("work_hours") };
-                          newWorkHours[day].start = e.target.value;
-                          form.setValue("work_hours", newWorkHours);
-                        }}
-                      />
-                      <span>à</span>
-                      <Input
-                        type="time"
-                        value={hours.end}
-                        onChange={(e) => {
-                          const newWorkHours = { ...form.getValues("work_hours") };
-                          newWorkHours[day].end = e.target.value;
-                          form.setValue("work_hours", newWorkHours);
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Pause</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        value={hours.break_start}
-                        onChange={(e) => {
-                          const newWorkHours = { ...form.getValues("work_hours") };
-                          newWorkHours[day].break_start = e.target.value;
-                          form.setValue("work_hours", newWorkHours);
-                        }}
-                      />
-                      <span>à</span>
-                      <Input
-                        type="time"
-                        value={hours.break_end}
-                        onChange={(e) => {
-                          const newWorkHours = { ...form.getValues("work_hours") };
-                          newWorkHours[day].break_end = e.target.value;
-                          form.setValue("work_hours", newWorkHours);
-                        }}
-                      />
-                    </div>
-                  </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Matin</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={form.watch("work_hours.start_morning")}
+                    onChange={(e) => {
+                      const newWorkHours = { ...form.getValues("work_hours") };
+                      newWorkHours.start_morning = e.target.value;
+                      form.setValue("work_hours", newWorkHours);
+                    }}
+                  />
+                  <span>à</span>
+                  <Input
+                    type="time"
+                    value={form.watch("work_hours.end_morning")}
+                    onChange={(e) => {
+                      const newWorkHours = { ...form.getValues("work_hours") };
+                      newWorkHours.end_morning = e.target.value;
+                      form.setValue("work_hours", newWorkHours);
+                    }}
+                  />
                 </div>
               </div>
-            ))}
+
+              <div className="space-y-2">
+                <Label>Après-midi</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={form.watch("work_hours.start_afternoon")}
+                    onChange={(e) => {
+                      const newWorkHours = { ...form.getValues("work_hours") };
+                      newWorkHours.start_afternoon = e.target.value;
+                      form.setValue("work_hours", newWorkHours);
+                    }}
+                  />
+                  <span>à</span>
+                  <Input
+                    type="time"
+                    value={form.watch("work_hours.end_afternoon")}
+                    onChange={(e) => {
+                      const newWorkHours = { ...form.getValues("work_hours") };
+                      newWorkHours.end_afternoon = e.target.value;
+                      form.setValue("work_hours", newWorkHours);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

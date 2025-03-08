@@ -58,11 +58,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       const status = interpreterData.status as Profile['status'] || 'available';
 
-      const parsedWorkHours = interpreterData.work_hours ? (
-        typeof interpreterData.work_hours === 'string' 
-          ? JSON.parse(interpreterData.work_hours) 
-          : interpreterData.work_hours
-      ) : null;
+      let workHours = null;
+      if (interpreterData.work_hours) {
+        const parsedHours = typeof interpreterData.work_hours === 'string'
+          ? JSON.parse(interpreterData.work_hours)
+          : interpreterData.work_hours;
+
+        workHours = {
+          start_morning: parsedHours.start_morning || "09:00",
+          end_morning: parsedHours.end_morning || "13:00",
+          start_afternoon: parsedHours.start_afternoon || "14:00",
+          end_afternoon: parsedHours.end_afternoon || "17:00"
+        };
+      }
 
       const userData: UserData = {
         ...user,
@@ -70,7 +78,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         languages,
         status,
         address,
-        work_hours: parsedWorkHours
+        work_hours: workHours
       };
 
       setSelectedUser(userData);

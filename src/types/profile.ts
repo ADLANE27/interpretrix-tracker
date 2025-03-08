@@ -1,3 +1,4 @@
+
 export interface Profile {
   id: string;
   first_name: string;
@@ -29,11 +30,10 @@ export interface Profile {
   private_phone: string | null;
   professional_phone: string | null;
   work_hours: {
-    [key: string]: {
-      start: string;
-      end: string;
-      break_start: string;
-      break_end: string;
-    };
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
   } | null;
 }
+

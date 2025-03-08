@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -114,12 +113,20 @@ export const InterpreterDashboard = () => {
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
 
-      // Parse work_hours from JSON to ensure correct typing
-      const parsedWorkHours = data.work_hours ? (
-        typeof data.work_hours === 'string' 
-          ? JSON.parse(data.work_hours) 
-          : data.work_hours
-      ) : null;
+      // Simplify work hours to a single schedule
+      let workHours = null;
+      if (data.work_hours) {
+        const parsedHours = typeof data.work_hours === 'string' 
+          ? JSON.parse(data.work_hours)
+          : data.work_hours;
+
+        workHours = {
+          start_morning: parsedHours.start_morning || "09:00",
+          end_morning: parsedHours.end_morning || "13:00",
+          start_afternoon: parsedHours.start_afternoon || "14:00",
+          end_afternoon: parsedHours.end_afternoon || "17:00"
+        };
+      }
 
       const transformedProfile: Profile = {
         ...data,
@@ -129,7 +136,7 @@ export const InterpreterDashboard = () => {
         booth_number: data.booth_number || null,
         private_phone: data.private_phone || null,
         professional_phone: data.professional_phone || null,
-        work_hours: parsedWorkHours,
+        work_hours: workHours,
         landline_phone: data.landline_phone || null,
         phone_number: data.phone_number || null,
         birth_country: data.birth_country || null,
