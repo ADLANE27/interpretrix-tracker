@@ -37,6 +37,43 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
+  const handleEditInterpreter = (user: UserData) => {
+    setSelectedUser(user);
+    setIsEditingInterpreter(true);
+  };
+
+  const handleUpdateProfile = async (data: Partial<Profile>) => {
+    if (!selectedUser) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(data)
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil a été mis à jour avec succès",
+      });
+
+      setIsEditingInterpreter(false);
+      window.dispatchEvent(new Event('refetchUserData'));
+      
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSendPasswordReset = async (user: UserData) => {
     try {
       setIsSubmitting(true);
