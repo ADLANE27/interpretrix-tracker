@@ -113,7 +113,7 @@ const isValidStatus = (status: string): status is InterpreterStatus => {
   return ['available', 'unavailable', 'pause', 'busy'].includes(status);
 };
 
-export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
+const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const [missions, setMissions] = useState<Mission[]>([]);
   const [showAllMissions, setShowAllMissions] = useState(false);
   const [localTarifs, setLocalTarifs] = useState({
@@ -484,11 +484,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
 
-        {interpreter.work_hours && interpreter.work_hours[getCurrentDay()] && (
+        {interpreter.work_hours && (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
             <span className="text-sm">
-              {`${interpreter.work_hours[getCurrentDay()]?.start || ''} - ${interpreter.work_hours[getCurrentDay()]?.end || ''}`}
+              {`${interpreter.work_hours.start_morning || ''} - ${interpreter.work_hours.end_morning || ''}, ${interpreter.work_hours.start_afternoon || ''} - ${interpreter.work_hours.end_afternoon || ''}`}
             </span>
           </div>
         )}
@@ -578,3 +578,5 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     </Card>
   );
 };
+
+export default InterpreterCard;
