@@ -100,31 +100,45 @@ export const AdminDashboard = () => {
 
       if (error) throw error;
 
-      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
-        id: interpreter.id || "",
-        first_name: interpreter.first_name || "",
-        last_name: interpreter.last_name || "",
-        status: (interpreter.connection_status?.connection_status === "available" ||
-                interpreter.connection_status?.connection_status === "unavailable" ||
-                interpreter.connection_status?.connection_status === "pause" ||
-                interpreter.connection_status?.connection_status === "busy") 
-                ? interpreter.connection_status.connection_status 
-                : "unavailable" as const,
-        employment_status: interpreter.employment_status || "salaried_aft",
-        languages: interpreter.languages || [],
-        phone_interpretation_rate: interpreter.phone_interpretation_rate,
-        phone_number: interpreter.phone_number,
-        birth_country: interpreter.birth_country,
-        next_mission_start: interpreter.next_mission_start,
-        next_mission_duration: interpreter.next_mission_duration,
-        tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null,
-        last_seen_at: interpreter.connection_status?.last_seen_at,
-        booth_number: interpreter.connection_status?.booth_number || null,
-        private_phone: interpreter.connection_status?.private_phone || null,
-        professional_phone: interpreter.connection_status?.professional_phone || null,
-        work_hours: interpreter.connection_status?.work_hours || null
-      }));
+      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
+        let parsedWorkHours: Interpreter['work_hours'] = null;
+        if (interpreter.connection_status?.work_hours) {
+          try {
+            const workHoursData = interpreter.connection_status.work_hours;
+            if (typeof workHoursData === 'object' && workHoursData !== null) {
+              parsedWorkHours = workHoursData as Interpreter['work_hours'];
+            }
+          } catch (e) {
+            console.error("[AdminDashboard] Error parsing work_hours:", e);
+          }
+        }
+
+        return {
+          id: interpreter.id || "",
+          first_name: interpreter.first_name || "",
+          last_name: interpreter.last_name || "",
+          status: (interpreter.connection_status?.connection_status === "available" ||
+                  interpreter.connection_status?.connection_status === "unavailable" ||
+                  interpreter.connection_status?.connection_status === "pause" ||
+                  interpreter.connection_status?.connection_status === "busy") 
+                  ? interpreter.connection_status.connection_status 
+                  : "unavailable" as const,
+          employment_status: interpreter.employment_status || "salaried_aft",
+          languages: interpreter.languages || [],
+          phone_interpretation_rate: interpreter.phone_interpretation_rate,
+          phone_number: interpreter.phone_number,
+          birth_country: interpreter.birth_country,
+          next_mission_start: interpreter.next_mission_start,
+          next_mission_duration: interpreter.next_mission_duration,
+          tarif_15min: interpreter.tarif_15min,
+          tarif_5min: null,
+          last_seen_at: interpreter.connection_status?.last_seen_at,
+          booth_number: interpreter.connection_status?.booth_number || null,
+          private_phone: interpreter.connection_status?.private_phone || null,
+          professional_phone: interpreter.connection_status?.professional_phone || null,
+          work_hours: parsedWorkHours
+        };
+      });
 
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
