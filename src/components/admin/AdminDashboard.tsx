@@ -38,15 +38,20 @@ interface Interpreter {
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
-  booth_number?: string | null;
-  private_phone?: string | null;
-  professional_phone?: string | null;
-  work_hours?: {
+  booth_number: string | null;
+  private_phone: string | null;
+  professional_phone: string | null;
+  work_hours: {
     start_morning: string;
     end_morning: string;
     start_afternoon: string;
     end_afternoon: string;
   } | null;
+  connection_status?: {
+    last_seen_at: string | null;
+    connection_status: "available" | "unavailable" | "pause" | "busy";
+    updated_at: string;
+  };
 }
 
 export const AdminDashboard = () => {
@@ -131,7 +136,8 @@ export const AdminDashboard = () => {
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
-          work_hours: parsedWorkHours
+          work_hours: parsedWorkHours,
+          connection_status: interpreter.connection_status
         };
       });
 
