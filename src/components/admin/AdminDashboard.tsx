@@ -38,10 +38,15 @@ interface Interpreter {
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
-  booth_number: string | null;
-  private_phone: string | null;
-  professional_phone: string | null;
-  work_hours: string | null;
+  booth_number?: string | null;
+  private_phone?: string | null;
+  professional_phone?: string | null;
+  work_hours?: {
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
+  } | null;
 }
 
 export const AdminDashboard = () => {
@@ -89,31 +94,46 @@ export const AdminDashboard = () => {
 
       if (error) throw error;
 
-      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => ({
-        id: interpreter.id || "",
-        first_name: interpreter.first_name || "",
-        last_name: interpreter.last_name || "",
-        status: (interpreter.connection_status?.connection_status === "available" ||
-                interpreter.connection_status?.connection_status === "unavailable" ||
-                interpreter.connection_status?.connection_status === "pause" ||
-                interpreter.connection_status?.connection_status === "busy") 
-                ? interpreter.connection_status.connection_status 
-                : "unavailable" as const,
-        employment_status: interpreter.employment_status || "salaried_aft",
-        languages: interpreter.languages || [],
-        phone_interpretation_rate: interpreter.phone_interpretation_rate,
-        phone_number: interpreter.phone_number,
-        birth_country: interpreter.birth_country,
-        next_mission_start: interpreter.next_mission_start,
-        next_mission_duration: interpreter.next_mission_duration,
-        tarif_15min: interpreter.tarif_15min,
-        tarif_5min: null,
-        last_seen_at: interpreter.connection_status?.last_seen_at,
-        booth_number: interpreter.booth_number,
-        private_phone: interpreter.private_phone,
-        professional_phone: interpreter.professional_phone,
-        work_hours: interpreter.work_hours
-      }));
+      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
+        let parsedWorkHours = null;
+        if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
+          const hours = interpreter.work_hours as any;
+          if (hours.start_morning && hours.end_morning && hours.start_afternoon && hours.end_afternoon) {
+            parsedWorkHours = {
+              start_morning: hours.start_morning,
+              end_morning: hours.end_morning,
+              start_afternoon: hours.start_afternoon,
+              end_afternoon: hours.end_afternoon
+            };
+          }
+        }
+
+        return {
+          id: interpreter.id || "",
+          first_name: interpreter.first_name || "",
+          last_name: interpreter.last_name || "",
+          status: (interpreter.connection_status?.connection_status === "available" ||
+                  interpreter.connection_status?.connection_status === "unavailable" ||
+                  interpreter.connection_status?.connection_status === "pause" ||
+                  interpreter.connection_status?.connection_status === "busy") 
+                  ? interpreter.connection_status.connection_status 
+                  : "unavailable" as const,
+          employment_status: interpreter.employment_status || "salaried_aft",
+          languages: interpreter.languages || [],
+          phone_interpretation_rate: interpreter.phone_interpretation_rate,
+          phone_number: interpreter.phone_number,
+          birth_country: interpreter.birth_country,
+          next_mission_start: interpreter.next_mission_start,
+          next_mission_duration: interpreter.next_mission_duration,
+          tarif_15min: interpreter.tarif_15min,
+          tarif_5min: null,
+          last_seen_at: interpreter.connection_status?.last_seen_at,
+          booth_number: interpreter.booth_number || null,
+          private_phone: interpreter.private_phone || null,
+          professional_phone: interpreter.professional_phone || null,
+          work_hours: parsedWorkHours
+        };
+      });
 
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
@@ -435,9 +455,9 @@ export const AdminDashboard = () => {
                       phone_number: interpreter.phone_number,
                       next_mission_start: interpreter.next_mission_start,
                       next_mission_duration: interpreter.next_mission_duration,
-                      booth_number: interpreter.booth_number,
-                      private_phone: interpreter.private_phone,
-                      professional_phone: interpreter.professional_phone,
+                      booth_number: interpreter.booth_number || null,
+                      private_phone: interpreter.private_phone || null,
+                      professional_phone: interpreter.professional_phone || null,
                       work_hours: interpreter.work_hours
                     }}
                   />
