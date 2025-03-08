@@ -672,6 +672,7 @@ export type Database = {
             | null
           first_name: string | null
           id: string | null
+          landline_phone: string | null
           languages: string[] | null
           last_name: string | null
           last_seen_at: string | null
@@ -683,6 +684,7 @@ export type Database = {
           phone_number: string | null
           private_phone: string | null
           professional_phone: string | null
+          profile_picture_url: string | null
           siret_number: string | null
           specializations: string[] | null
           status: string | null

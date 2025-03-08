@@ -388,6 +388,12 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
     return days[new Date().getDay()];
   };
 
+  const formatWorkHours = (hours: Profile['work_hours'] | null | undefined) => {
+    if (!hours) return 'Horaires non définis';
+    
+    return `${hours.start_morning || ''} - ${hours.end_morning || ''}, ${hours.start_afternoon || ''} - ${hours.end_afternoon || ''}`;
+  };
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -482,11 +488,11 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
           </div>
         )}
 
-        {interpreter.work_hours && Object.keys(interpreter.work_hours).length > 0 && (
+        {interpreter.work_hours && (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
             <span className="text-sm">
-              {`${interpreter.work_hours.start_morning || ''} - ${interpreter.work_hours.end_morning || ''}, ${interpreter.work_hours.start_afternoon || ''} - ${interpreter.work_hours.end_afternoon || ''}`}
+              {formatWorkHours(interpreter.work_hours)}
             </span>
           </div>
         )}
