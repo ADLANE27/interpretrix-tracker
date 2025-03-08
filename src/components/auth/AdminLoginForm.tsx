@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Globe2 } from "lucide-react";
 
 export const AdminLoginForm = () => {
   const [email, setEmail] = useState("");
@@ -78,9 +79,14 @@ export const AdminLoginForm = () => {
   };
 
   return (
-    <Card className="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border-0">
+    <Card className="w-full max-w-md p-8 space-y-6 bg-white shadow-2xl rounded-3xl border-0">
       <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#1A1F2C] to-[#403E43] bg-clip-text text-transparent">
+        <div className="flex justify-center mb-6">
+          <div className="p-3 bg-[#1A1F2C] rounded-xl">
+            <Globe2 className="w-8 h-8 text-white" />
+          </div>
+        </div>
+        <h2 className="text-3xl font-bold tracking-tight text-[#1A1F2C]">
           Administration
         </h2>
         <p className="text-sm text-[#8E9196]">
@@ -98,7 +104,7 @@ export const AdminLoginForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all duration-200"
             placeholder="admin@example.com"
             disabled={isLoading}
           />
@@ -113,14 +119,14 @@ export const AdminLoginForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-lg focus:ring-2 focus:ring-[#1A1F2C] focus:border-transparent transition-all duration-200"
+            className="w-full px-4 py-2 border border-[#E5E7EB] rounded-xl focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all duration-200"
             placeholder="••••••••"
             disabled={isLoading}
           />
         </div>
         <Button 
           type="submit" 
-          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-gradient-to-r from-[#1A1F2C] to-[#403E43] hover:from-[#2A2F3C] hover:to-[#504E53] rounded-lg shadow-md hover:shadow-lg"
+          className="w-full py-6 font-semibold text-white transition-all duration-200 bg-[#1A1F2C] hover:bg-[#2A2F3C] rounded-xl shadow-md hover:shadow-lg"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -136,3 +142,4 @@ export const AdminLoginForm = () => {
     </Card>
   );
 };
+
