@@ -56,12 +56,10 @@ interface InterpreterCardProps {
     private_phone?: string | null;
     professional_phone?: string | null;
     work_hours?: {
-      [key: string]: {
-        start: string;
-        end: string;
-        break_start: string;
-        break_end: string;
-      };
+      start_morning: string;
+      end_morning: string;
+      start_afternoon: string;
+      end_afternoon: string;
     } | null;
   };
 }
@@ -487,9 +485,10 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
         {interpreter.work_hours && (
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">
-              Horaires aujourd'hui: {interpreter.work_hours[getCurrentDay()]?.start} - {interpreter.work_hours[getCurrentDay()]?.end}
-            </span>
+            <div className="text-sm">
+              Horaires: {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning},
+              {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
+            </div>
           </div>
         )}
 
