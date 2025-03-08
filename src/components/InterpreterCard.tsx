@@ -1,7 +1,6 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, DoorClosed } from "lucide-react";
 import { UpcomingMissionBadge } from "./UpcomingMissionBadge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,7 +52,46 @@ interface InterpreterCardProps {
     phone_number?: string | null;
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
+    booth_number?: string | null;
+    private_phone?: string | null;
+    professional_phone?: string | null;
+    work_hours?: {
+      [key: string]: {
+        start: string;
+        end: string;
+        break_start: string;
+        break_end: string;
+      };
+    } | null;
   };
+}
+
+interface Interpreter {
+  id: string;
+  first_name: string;
+  last_name: string;
+  status: "available" | "unavailable" | "pause" | "busy";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  languages: string[];
+  phone_interpretation_rate: number | null;
+  phone_number: string | null;
+  birth_country: string | null;
+  next_mission_start: string | null;
+  next_mission_duration: number | null;
+  tarif_15min: number | null;
+  tarif_5min: number | null;
+  last_seen_at: string | null;
+  booth_number?: string | null;
+  private_phone?: string | null;
+  professional_phone?: string | null;
+  work_hours?: {
+    [key: string]: {
+      start: string;
+      end: string;
+      break_start: string;
+      break_end: string;
+    };
+  } | null;
 }
 
 const statusConfig = {
@@ -347,6 +385,11 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
   const { getTimeFromString, getDateDisplay } = useTimeFormat();
   const { formatLastSeen } = useTimestampFormat();
 
+  const getCurrentDay = () => {
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return days[new Date().getDay()];
+  };
+
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="flex justify-between items-start mb-3">
@@ -419,6 +462,36 @@ export const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
             </div>
           )}
         </div>
+
+        {interpreter.booth_number && (
+          <div className="flex items-center gap-2">
+            <DoorClosed className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">Cabine: {interpreter.booth_number}</span>
+          </div>
+        )}
+
+        {interpreter.private_phone && (
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">Tél. personnel: {interpreter.private_phone}</span>
+          </div>
+        )}
+
+        {interpreter.professional_phone && (
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">Tél. pro: {interpreter.professional_phone}</span>
+          </div>
+        )}
+
+        {interpreter.work_hours && (
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-500" />
+            <span className="text-sm">
+              Horaires aujourd'hui: {interpreter.work_hours[getCurrentDay()]?.start} - {interpreter.work_hours[getCurrentDay()]?.end}
+            </span>
+          </div>
+        )}
 
         {nextMission && (
           <div className="mt-4 border-t pt-3 space-y-2">

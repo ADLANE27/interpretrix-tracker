@@ -37,6 +37,17 @@ export interface InterpreterFormData {
   tarif_15min: number;
   tarif_5min: number;
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  booth_number?: string;
+  private_phone?: string;
+  professional_phone?: string;
+  work_hours?: {
+    [key: string]: {
+      start: string;
+      end: string;
+      break_start: string;
+      break_end: string;
+    };
+  };
   languages: LanguagePair[];
   address?: Address;
   phone_number?: string;
@@ -77,6 +88,16 @@ export const InterpreterProfileForm = ({
     tarif_15min: initialData?.tarif_15min || 0,
     tarif_5min: initialData?.tarif_5min || 0,
     employment_status: initialData?.employment_status || "salaried_aft",
+    booth_number: initialData?.booth_number || "",
+    private_phone: initialData?.private_phone || "",
+    professional_phone: initialData?.professional_phone || "",
+    work_hours: initialData?.work_hours || {
+      monday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
+      tuesday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
+      wednesday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
+      thursday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" },
+      friday: { start: "09:00", end: "17:00", break_start: "12:00", break_end: "13:00" }
+    },
     languages: languages,
     address: initialData?.address || { street: "", postal_code: "", city: "" },
     phone_number: initialData?.phone_number || "",
@@ -181,6 +202,50 @@ export const InterpreterProfileForm = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Téléphone fixe</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="booth_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Numéro de cabine</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Ex: C12" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="private_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone personnel</FormLabel>
+                    <FormControl>
+                      <Input type="tel" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="professional_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone professionnel</FormLabel>
                     <FormControl>
                       <Input type="tel" {...field} />
                     </FormControl>
@@ -372,6 +437,69 @@ export const InterpreterProfileForm = ({
                 )}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-none">
+          <CardHeader>
+            <CardTitle>Horaires de travail</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Object.entries(form.watch("work_hours") || {}).map(([day, hours]) => (
+              <div key={day} className="mb-4">
+                <Label className="mb-2 block font-semibold capitalize">{day}</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Heures de travail</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={hours.start}
+                        onChange={(e) => {
+                          const newWorkHours = { ...form.getValues("work_hours") };
+                          newWorkHours[day].start = e.target.value;
+                          form.setValue("work_hours", newWorkHours);
+                        }}
+                      />
+                      <span>à</span>
+                      <Input
+                        type="time"
+                        value={hours.end}
+                        onChange={(e) => {
+                          const newWorkHours = { ...form.getValues("work_hours") };
+                          newWorkHours[day].end = e.target.value;
+                          form.setValue("work_hours", newWorkHours);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pause</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        value={hours.break_start}
+                        onChange={(e) => {
+                          const newWorkHours = { ...form.getValues("work_hours") };
+                          newWorkHours[day].break_start = e.target.value;
+                          form.setValue("work_hours", newWorkHours);
+                        }}
+                      />
+                      <span>à</span>
+                      <Input
+                        type="time"
+                        value={hours.break_end}
+                        onChange={(e) => {
+                          const newWorkHours = { ...form.getValues("work_hours") };
+                          newWorkHours[day].break_end = e.target.value;
+                          form.setValue("work_hours", newWorkHours);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
 

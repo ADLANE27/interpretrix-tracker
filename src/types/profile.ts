@@ -1,4 +1,3 @@
-
 export interface Profile {
   id: string;
   first_name: string;
@@ -26,4 +25,15 @@ export interface Profile {
   tarif_15min: number;
   specializations: string[];
   landline_phone: string | null;
+  booth_number: string | null;
+  private_phone: string | null;
+  professional_phone: string | null;
+  work_hours: {
+    [key: string]: {
+      start: string;
+      end: string;
+      break_start: string;
+      break_end: string;
+    };
+  } | null;
 }
