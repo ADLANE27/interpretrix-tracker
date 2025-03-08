@@ -8,6 +8,7 @@ import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
+import { Profile } from "@/types/profile";
 
 interface Mission {
   scheduled_start_time: string;
