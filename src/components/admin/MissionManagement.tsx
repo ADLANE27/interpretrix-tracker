@@ -28,6 +28,7 @@ interface Interpreter {
   status: string;
   profile_picture_url: string | null;
   tarif_15min: number;
+  email: string;
 }
 
 interface Creator {
