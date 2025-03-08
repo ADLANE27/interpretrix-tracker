@@ -18,20 +18,32 @@ const ResetPassword = () => {
   const role = searchParams.get('role');
 
   useEffect(() => {
-    // Get the access_token and type from URL fragment
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.substring(1)); // Remove the # symbol
-    const accessToken = params.get('access_token');
-    const type = params.get('type');
+    const handleRecoveryToken = async () => {
+      try {
+        // Get the code from URL fragment
+        const fragment = new URLSearchParams(window.location.hash.substring(1));
+        const code = fragment.get('code');
+        const type = fragment.get('type');
 
-    // If we have a recovery token, set the session
-    if (accessToken && type === 'recovery') {
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: '',
-      });
-    }
-  }, []);
+        if (code && type === 'recovery') {
+          // Exchange the recovery code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          
+          console.log('Successfully exchanged code for session');
+        }
+      } catch (error) {
+        console.error('Error processing recovery token:', error);
+        toast({
+          title: "Erreur",
+          description: "Le lien de réinitialisation n'est pas valide ou a expiré",
+          variant: "destructive",
+        });
+      }
+    };
+
+    handleRecoveryToken();
+  }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
