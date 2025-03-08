@@ -24,8 +24,19 @@ serve(async (req) => {
       throw new Error('Missing required user data');
     }
 
+    // Get the recovery token
+    const { data: { user }, error: resetError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+    });
+    
+    if (resetError) throw resetError;
+    
+    // Extract the token from the recovery URL
+    const token = new URL(user.confirmation_sent_at).searchParams.get('token');
+    
     // Build the reset URL with the necessary parameters
-    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}`;
+    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}&token=${token}`;
 
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     

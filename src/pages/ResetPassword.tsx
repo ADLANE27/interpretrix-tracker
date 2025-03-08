@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,34 +17,6 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
 
-  useEffect(() => {
-    // Get the access token from the URL if it exists
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    
-    // If we have tokens, establish the session
-    const setSession = async () => {
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
-        
-        if (error) {
-          console.error('Error setting session:', error);
-          toast({
-            title: "Erreur",
-            description: "Le lien de réinitialisation est invalide ou a expiré",
-            variant: "destructive",
-          });
-          navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
-        }
-      }
-    };
-
-    setSession();
-  }, [searchParams, navigate, role, toast]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -59,8 +32,17 @@ const ResetPassword = () => {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      // Get the recovery token from the URL
+      const token = searchParams.get('token');
+      
+      if (!token) {
+        throw new Error('No recovery token found');
+      }
+
+      const { error } = await supabase.auth.verifyOtp({
+        token,
+        type: 'recovery',
+        new_password: password
       });
 
       if (error) throw error;
@@ -77,9 +59,11 @@ const ResetPassword = () => {
       console.error('Error resetting password:', error);
       toast({
         title: "Erreur",
-        description: error.message,
+        description: "Le lien de réinitialisation est invalide ou a expiré",
         variant: "destructive",
       });
+      // Redirect to login on error
+      navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
     } finally {
       setIsLoading(false);
     }
