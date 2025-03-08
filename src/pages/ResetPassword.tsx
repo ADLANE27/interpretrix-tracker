@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -32,15 +33,17 @@ const ResetPassword = () => {
       setIsLoading(true);
       
       const token = searchParams.get('token');
+      const email = searchParams.get('email');
       
-      if (!token) {
-        throw new Error('No recovery token found');
+      if (!token || !email) {
+        throw new Error('Missing recovery token or email');
       }
 
-      // First verify the token
+      // First verify the token with both token and email
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token,
-        type: 'recovery'
+        type: 'recovery',
+        email
       });
 
       if (verifyError) throw verifyError;
