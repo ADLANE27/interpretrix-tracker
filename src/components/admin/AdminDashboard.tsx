@@ -236,7 +236,7 @@ export const AdminDashboard = () => {
 
   const filteredInterpreters = interpreters.filter(interpreter => {
     const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
-    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+    const matchesStatus = !selectedStatus || interpreter.connection_status === selectedStatus;
     const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
     const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
       const [source, target] = lang.split(" → ");
