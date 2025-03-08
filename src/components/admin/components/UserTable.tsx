@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -24,17 +23,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
 
 interface UserTableProps {
   users: UserData[];
   onDelete: (id: string) => void;
-  onResetPassword: (id: string) => void;
+  onResetPassword: (id: string, password: string) => void;
 }
 
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   const handleEditInterpreter = async (user: UserData) => {
     try {
@@ -187,7 +188,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                         Modifier
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => onResetPassword(user.id)}>
+                    <DropdownMenuItem onClick={() => {
+                      setSelectedUser(user);
+                      setIsResetPasswordOpen(true);
+                    }}>
                       <Key className="mr-2 h-4 w-4" />
                       Réinitialiser le mot de passe
                     </DropdownMenuItem>
@@ -223,6 +227,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <ResetPasswordDialog
+        isOpen={isResetPasswordOpen}
+        onOpenChange={setIsResetPasswordOpen}
+        onSubmit={(password) => onResetPassword(selectedUser?.id || '', password)}
+        isSubmitting={isSubmitting}
+        userData={selectedUser ? {
+          email: selectedUser.email || '',
+          first_name: selectedUser.first_name || '',
+          role: selectedUser.role as 'admin' | 'interpreter',
+          id: selectedUser.id
+        } : undefined}
+      />
     </>
   );
 };
