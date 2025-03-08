@@ -48,9 +48,14 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     try {
       setIsSubmitting(true);
       
+      const transformedData = {
+        ...data,
+        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+      };
+      
       const { error } = await supabase
         .from('interpreter_profiles')
-        .update(data)
+        .update(transformedData)
         .eq('id', selectedUser.id);
 
       if (error) throw error;
