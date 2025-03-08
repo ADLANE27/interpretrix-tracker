@@ -88,7 +88,7 @@ export const AdminDashboard = () => {
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
-        let parsedWorkHours: Interpreter['work_hours'] = null;
+        let parsedWorkHours = null;
         if (interpreter.work_hours) {
           try {
             parsedWorkHours = {
