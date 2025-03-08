@@ -113,16 +113,19 @@ export const AdminDashboard = () => {
           }
         }
 
+        const connectionStatus = interpreter.connection_status?.connection_status;
+        const validStatus = connectionStatus === "available" || 
+                          connectionStatus === "unavailable" || 
+                          connectionStatus === "pause" || 
+                          connectionStatus === "busy" 
+                          ? connectionStatus 
+                          : "unavailable";
+
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
-          status: (interpreter.connection_status?.connection_status === "available" ||
-                  interpreter.connection_status?.connection_status === "unavailable" ||
-                  interpreter.connection_status?.connection_status === "pause" ||
-                  interpreter.connection_status?.connection_status === "busy") 
-                  ? interpreter.connection_status.connection_status 
-                  : "unavailable" as const,
+          status: validStatus as "available" | "unavailable" | "pause" | "busy",
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
@@ -137,7 +140,11 @@ export const AdminDashboard = () => {
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
           work_hours: parsedWorkHours,
-          connection_status: interpreter.connection_status
+          connection_status: interpreter.connection_status ? {
+            last_seen_at: interpreter.connection_status.last_seen_at,
+            connection_status: validStatus,
+            updated_at: interpreter.connection_status.updated_at
+          } : undefined
         };
       });
 
