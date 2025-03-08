@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Pencil, MoreHorizontal, Key, Trash } from "lucide-react";
+import { Pencil, MoreHorizontal, Key, Trash, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -147,6 +147,30 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     }
   };
 
+  const handleSendPasswordReset = async (userId: string) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.functions.invoke('send-password-reset-email', {
+        body: { user_id: userId }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email envoyé",
+        description: "L'email de réinitialisation du mot de passe a été envoyé",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer l'email: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (users.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -194,6 +218,13 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                     }}>
                       <Key className="mr-2 h-4 w-4" />
                       Réinitialiser le mot de passe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleSendPasswordReset(user.id)}
+                      disabled={isSubmitting}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Envoyer un lien de réinitialisation
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
