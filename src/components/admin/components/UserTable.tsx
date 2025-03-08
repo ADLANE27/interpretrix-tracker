@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -60,16 +61,9 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       let workHours = null;
       if (interpreterData.work_hours) {
-        const parsedHours = typeof interpreterData.work_hours === 'string'
+        workHours = typeof interpreterData.work_hours === 'string'
           ? JSON.parse(interpreterData.work_hours)
           : interpreterData.work_hours;
-
-        workHours = {
-          start_morning: parsedHours.start_morning || "09:00",
-          end_morning: parsedHours.end_morning || "13:00",
-          start_afternoon: parsedHours.start_afternoon || "14:00",
-          end_afternoon: parsedHours.end_afternoon || "17:00"
-        };
       }
 
       const userData: UserData = {
@@ -78,7 +72,12 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         languages,
         status,
         address,
-        work_hours: workHours
+        work_hours: workHours || {
+          start_morning: "09:00",
+          end_morning: "13:00",
+          start_afternoon: "14:00",
+          end_afternoon: "17:00"
+        }
       };
 
       setSelectedUser(userData);
@@ -118,7 +117,11 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           specializations: data.specializations,
           landline_phone: data.landline_phone,
           tarif_15min: data.tarif_15min,
-          tarif_5min: data.tarif_5min
+          tarif_5min: data.tarif_5min,
+          work_hours: data.work_hours,
+          booth_number: data.booth_number,
+          private_phone: data.private_phone,
+          professional_phone: data.professional_phone
         })
         .eq('id', selectedUser?.id);
 
@@ -130,7 +133,6 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
       });
 
       setIsEditingInterpreter(false);
-      
       window.dispatchEvent(new CustomEvent('refetchUserData'));
       
     } catch (error: any) {

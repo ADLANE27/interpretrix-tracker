@@ -36,4 +36,3 @@ export interface Profile {
     end_afternoon: string;
   } | null;
 }
-
