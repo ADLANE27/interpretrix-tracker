@@ -421,6 +421,33 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
+      // Send notification emails to selected interpreters
+      const notificationPromises = selectedInterpreters.map(async (interpreterId) => {
+        const interpreter = availableInterpreters.find(i => i.id === interpreterId);
+        if (!interpreter) return;
+
+        try {
+          const { error } = await supabase.functions.invoke('send-mission-notification', {
+            body: {
+              interpreter: {
+                email: interpreter.email,
+                first_name: interpreter.first_name,
+                role: 'interpreter'
+              },
+              mission: createdMission
+            }
+          });
+
+          if (error) {
+            console.error('[MissionManagement] Error sending notification to interpreter:', interpreter.email, error);
+          }
+        } catch (error) {
+          console.error('[MissionManagement] Error invoking send-mission-notification:', error);
+        }
+      });
+
+      await Promise.all(notificationPromises);
+
       toast({
         title: "Mission créée avec succès",
         description: `La mission ${missionType === 'scheduled' ? 'programmée' : 'immédiate'} a été créée et les interprètes seront notifiés`,
