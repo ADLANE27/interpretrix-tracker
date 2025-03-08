@@ -90,33 +90,14 @@ export const AdminDashboard = () => {
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
-        let parsedWorkHours = null;
+        let workHours = null;
         if (interpreter.work_hours) {
-          try {
-            const rawHours = interpreter.work_hours as {
-              start_morning?: string;
-              end_morning?: string;
-              start_afternoon?: string;
-              end_afternoon?: string;
-            };
-            
-            parsedWorkHours = {
-              morning: {
-                start: rawHours.start_morning || "09:00",
-                end: rawHours.end_morning || "13:00",
-                break_start: "11:00",
-                break_end: "11:15"
-              },
-              afternoon: {
-                start: rawHours.start_afternoon || "14:00",
-                end: rawHours.end_afternoon || "17:00",
-                break_start: "15:30",
-                break_end: "15:45"
-              }
-            };
-          } catch (e) {
-            console.error("[AdminDashboard] Error parsing work_hours:", e);
-          }
+          workHours = {
+            start_morning: interpreter.work_hours.start_morning || '',
+            end_morning: interpreter.work_hours.end_morning || '',
+            start_afternoon: interpreter.work_hours.start_afternoon || '',
+            end_afternoon: interpreter.work_hours.end_afternoon || ''
+          };
         }
 
         return {
@@ -142,7 +123,7 @@ export const AdminDashboard = () => {
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
-          work_hours: parsedWorkHours
+          work_hours: workHours
         };
       });
 
@@ -469,12 +450,7 @@ export const AdminDashboard = () => {
                       booth_number: interpreter.booth_number,
                       private_phone: interpreter.private_phone,
                       professional_phone: interpreter.professional_phone,
-                      work_hours: interpreter.work_hours ? {
-                        start_morning: interpreter.work_hours.start_morning,
-                        end_morning: interpreter.work_hours.end_morning,
-                        start_afternoon: interpreter.work_hours.start_afternoon,
-                        end_afternoon: interpreter.work_hours.end_afternoon
-                      } : null
+                      work_hours: interpreter.work_hours
                     }}
                   />
                 ))}
