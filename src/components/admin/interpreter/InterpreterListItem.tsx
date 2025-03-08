@@ -1,7 +1,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Clock, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 
 interface InterpreterListItemProps {

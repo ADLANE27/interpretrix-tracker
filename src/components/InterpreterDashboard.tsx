@@ -11,7 +11,6 @@ import { DashboardHeader } from "./interpreter/dashboard/DashboardHeader";
 import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { InterpreterListItem } from "./interpreter/InterpreterListItem";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
