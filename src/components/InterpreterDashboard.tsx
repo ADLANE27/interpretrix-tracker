@@ -122,7 +122,15 @@ export const InterpreterDashboard = () => {
         booth_number: data.booth_number || null,
         private_phone: data.private_phone || null,
         professional_phone: data.professional_phone || null,
-        work_hours: data.work_hours || null
+        work_hours: data.work_hours || null,
+        landline_phone: data.landline_phone || null,
+        phone_number: data.phone_number || null,
+        birth_country: data.birth_country || null,
+        nationality: data.nationality || null,
+        siret_number: data.siret_number || null,
+        vat_number: data.vat_number || null,
+        profile_picture_url: data.profile_picture_url || null,
+        specializations: data.specializations || []
       };
 
       setProfile(transformedProfile);
