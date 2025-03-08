@@ -58,12 +58,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       const status = interpreterData.status as Profile['status'] || 'available';
 
-      const userData = {
+      const parsedWorkHours = interpreterData.work_hours ? (
+        typeof interpreterData.work_hours === 'string' 
+          ? JSON.parse(interpreterData.work_hours) 
+          : interpreterData.work_hours
+      ) : null;
+
+      const userData: UserData = {
         ...user,
         ...interpreterData,
         languages,
         status,
         address,
+        work_hours: parsedWorkHours
       };
 
       setSelectedUser(userData);

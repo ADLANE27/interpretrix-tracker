@@ -114,6 +114,13 @@ export const InterpreterDashboard = () => {
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
 
+      // Parse work_hours from JSON to ensure correct typing
+      const parsedWorkHours = data.work_hours ? (
+        typeof data.work_hours === 'string' 
+          ? JSON.parse(data.work_hours) 
+          : data.work_hours
+      ) : null;
+
       const transformedProfile: Profile = {
         ...data,
         languages: transformedLanguages,
@@ -122,7 +129,7 @@ export const InterpreterDashboard = () => {
         booth_number: data.booth_number || null,
         private_phone: data.private_phone || null,
         professional_phone: data.professional_phone || null,
-        work_hours: data.work_hours || null,
+        work_hours: parsedWorkHours,
         landline_phone: data.landline_phone || null,
         phone_number: data.phone_number || null,
         birth_country: data.birth_country || null,

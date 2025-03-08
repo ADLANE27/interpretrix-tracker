@@ -1,4 +1,3 @@
-
 export interface Profile {
   id: string;
   first_name: string;
