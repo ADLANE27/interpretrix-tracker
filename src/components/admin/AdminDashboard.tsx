@@ -38,6 +38,17 @@ interface Interpreter {
   tarif_15min: number | null;
   tarif_5min: number | null;
   last_seen_at: string | null;
+  booth_number?: string | null;
+  private_phone?: string | null;
+  professional_phone?: string | null;
+  work_hours?: {
+    [key: string]: {
+      start: string;
+      end: string;
+      break_start: string;
+      break_end: string;
+    };
+  } | null;
 }
 
 export const AdminDashboard = () => {
@@ -104,7 +115,11 @@ export const AdminDashboard = () => {
         next_mission_duration: interpreter.next_mission_duration,
         tarif_15min: interpreter.tarif_15min,
         tarif_5min: null,
-        last_seen_at: interpreter.connection_status?.last_seen_at
+        last_seen_at: interpreter.connection_status?.last_seen_at,
+        booth_number: interpreter.booth_number || null,
+        private_phone: interpreter.private_phone || null,
+        professional_phone: interpreter.professional_phone || null,
+        work_hours: interpreter.work_hours || null
       }));
 
       setInterpreters(mappedInterpreters);
@@ -426,7 +441,11 @@ export const AdminDashboard = () => {
                       tarif_5min: interpreter.tarif_5min,
                       phone_number: interpreter.phone_number,
                       next_mission_start: interpreter.next_mission_start,
-                      next_mission_duration: interpreter.next_mission_duration
+                      next_mission_duration: interpreter.next_mission_duration,
+                      booth_number: interpreter.booth_number,
+                      private_phone: interpreter.private_phone,
+                      professional_phone: interpreter.professional_phone,
+                      work_hours: interpreter.work_hours
                     }}
                   />
                 ))}
