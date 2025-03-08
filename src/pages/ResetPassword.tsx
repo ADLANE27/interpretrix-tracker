@@ -17,36 +17,6 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role');
 
-  useEffect(() => {
-    const handleRecoveryToken = async () => {
-      try {
-        // Get the code from URL fragment
-        const fragment = new URLSearchParams(window.location.hash.substring(1));
-        const code = fragment.get('code');
-        const type = fragment.get('type');
-
-        if (code && type === 'recovery') {
-          // Exchange the recovery code for a session
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-          
-          console.log('Successfully exchanged code for session');
-        }
-      } catch (error) {
-        console.error('Error processing recovery token:', error);
-        toast({
-          title: "Erreur",
-          description: "Le lien de réinitialisation n'est pas valide ou a expiré",
-          variant: "destructive",
-        });
-        // Redirect to login page after error
-        navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
-      }
-    };
-
-    handleRecoveryToken();
-  }, [toast, navigate, role]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
