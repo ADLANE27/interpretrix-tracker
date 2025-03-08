@@ -231,7 +231,10 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
       <ResetPasswordDialog
         isOpen={isResetPasswordOpen}
         onOpenChange={setIsResetPasswordOpen}
-        onSubmit={(password) => onResetPassword(selectedUser?.id || '', password)}
+        onSubmit={async (password) => {
+          await onResetPassword(selectedUser?.id || '', password);
+          setIsResetPasswordOpen(false);
+        }}
         isSubmitting={isSubmitting}
         userData={selectedUser ? {
           email: selectedUser.email || '',
