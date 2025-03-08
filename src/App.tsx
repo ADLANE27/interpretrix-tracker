@@ -6,6 +6,7 @@ import InterpreterLogin from './pages/InterpreterLogin';
 import AdminLogin from './pages/AdminLogin';
 import Admin from './pages/Admin';
 import Index from './pages/Index';
+import ResetPassword from './pages/ResetPassword';
 import { AuthenticatedLayout } from '@/layouts/AuthenticatedLayout';
 
 function App() {
@@ -22,6 +23,9 @@ function App() {
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<Admin />} />
+        
+        {/* Password Reset */}
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* 404 - Redirect to home */}
         <Route path="*" element={<Index />} />

@@ -24,10 +24,8 @@ serve(async (req) => {
       throw new Error('Missing required user data');
     }
 
-    // Construire le contenu de l'email en fonction du rôle
-    const loginUrl = role === 'admin' 
-      ? 'https://interpretix.netlify.app/admin/login'
-      : 'https://interpretix.netlify.app/interpreter/login';
+    // Build the reset URL with the necessary parameters
+    const resetUrl = `https://interpretix.netlify.app/reset-password?role=${role}`;
 
     const roleText = role === 'admin' ? "administrateur" : "interprète";
     
@@ -38,11 +36,13 @@ serve(async (req) => {
 
       <p>Une demande de réinitialisation de votre mot de passe ${roleText} a été effectuée.</p>
 
-      <p>Vous pouvez vous connecter en utilisant le lien ci-dessous:</p>
+      <p>Vous pouvez réinitialiser votre mot de passe en utilisant le lien ci-dessous:</p>
 
-      <p><a href="${loginUrl}" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Se connecter</a></p>
+      <p><a href="${resetUrl}" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Réinitialiser le mot de passe</a></p>
 
-      <p>Pour des raisons de sécurité, nous vous recommandons de changer votre mot de passe après votre première connexion.</p>
+      <p>Pour des raisons de sécurité, ce lien expirera dans 24 heures.</p>
+
+      <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
 
       <p>Cordialement,<br>L'équipe Interpretix</p>
     `;
