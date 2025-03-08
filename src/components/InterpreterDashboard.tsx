@@ -113,20 +113,8 @@ export const InterpreterDashboard = () => {
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
 
-      // Simplify work hours to a single schedule
-      let workHours = null;
-      if (data.work_hours) {
-        const parsedHours = typeof data.work_hours === 'string' 
-          ? JSON.parse(data.work_hours)
-          : data.work_hours;
-
-        workHours = {
-          start_morning: parsedHours.start_morning || "09:00",
-          end_morning: parsedHours.end_morning || "13:00",
-          start_afternoon: parsedHours.start_afternoon || "14:00",
-          end_afternoon: parsedHours.end_afternoon || "17:00"
-        };
-      }
+      // No default values for work hours, just use what's in the database
+      const workHours = data.work_hours;
 
       const transformedProfile: Profile = {
         ...data,
