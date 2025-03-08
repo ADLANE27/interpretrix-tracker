@@ -106,7 +106,12 @@ export const AdminDashboard = () => {
           try {
             const workHoursData = interpreter.connection_status.work_hours;
             if (typeof workHoursData === 'object' && workHoursData !== null) {
-              parsedWorkHours = workHoursData as Interpreter['work_hours'];
+              parsedWorkHours = {
+                start_morning: workHoursData.start_morning || "09:00",
+                end_morning: workHoursData.end_morning || "13:00",
+                start_afternoon: workHoursData.start_afternoon || "14:00",
+                end_afternoon: workHoursData.end_afternoon || "17:00"
+              };
             }
           } catch (e) {
             console.error("[AdminDashboard] Error parsing work_hours:", e);
@@ -131,7 +136,7 @@ export const AdminDashboard = () => {
           next_mission_start: interpreter.next_mission_start,
           next_mission_duration: interpreter.next_mission_duration,
           tarif_15min: interpreter.tarif_15min,
-          tarif_5min: null,
+          tarif_5min: interpreter.tarif_5min,
           last_seen_at: interpreter.connection_status?.last_seen_at,
           booth_number: interpreter.connection_status?.booth_number || null,
           private_phone: interpreter.connection_status?.private_phone || null,
