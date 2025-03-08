@@ -663,6 +663,8 @@ export type Database = {
         Row: {
           address: Json | null
           birth_country: string | null
+          booth_number: string | null
+          connection_status: string | null
           created_at: string | null
           email: string | null
           employment_status:
@@ -670,23 +672,25 @@ export type Database = {
             | null
           first_name: string | null
           id: string | null
-          landline_phone: string | null
           languages: string[] | null
           last_name: string | null
+          last_seen_at: string | null
           nationality: string | null
           next_mission_duration: number | null
-          next_mission_end: string | null
           next_mission_start: string | null
           password_changed: boolean | null
           phone_interpretation_rate: number | null
           phone_number: string | null
-          profile_picture_url: string | null
+          private_phone: string | null
+          professional_phone: string | null
           siret_number: string | null
           specializations: string[] | null
           status: string | null
           tarif_15min: number | null
+          tarif_5min: number | null
           updated_at: string | null
           vat_number: string | null
+          work_hours: Json | null
         }
         Relationships: [
           {

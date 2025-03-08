@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterCard } from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -84,45 +83,20 @@ export const AdminDashboard = () => {
       console.log("[AdminDashboard] Fetching interpreters data");
       const { data, error } = await supabase
         .from("interpreters_with_next_mission")
-        .select(`
-          id,
-          first_name,
-          last_name,
-          employment_status,
-          languages,
-          phone_interpretation_rate,
-          phone_number,
-          birth_country,
-          next_mission_start,
-          next_mission_duration,
-          tarif_15min,
-          tarif_5min,
-          connection_status:interpreter_connection_status(
-            last_seen_at,
-            connection_status,
-            updated_at,
-            booth_number,
-            private_phone,
-            professional_phone,
-            work_hours
-          )
-        `);
+        .select();
 
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
         let parsedWorkHours: Interpreter['work_hours'] = null;
-        if (interpreter.connection_status?.work_hours) {
+        if (interpreter.work_hours) {
           try {
-            const workHoursData = interpreter.connection_status.work_hours;
-            if (typeof workHoursData === 'object' && workHoursData !== null) {
-              parsedWorkHours = {
-                start_morning: workHoursData.start_morning || "09:00",
-                end_morning: workHoursData.end_morning || "13:00",
-                start_afternoon: workHoursData.start_afternoon || "14:00",
-                end_afternoon: workHoursData.end_afternoon || "17:00"
-              };
-            }
+            parsedWorkHours = {
+              start_morning: interpreter.work_hours.start_morning || "09:00",
+              end_morning: interpreter.work_hours.end_morning || "13:00",
+              start_afternoon: interpreter.work_hours.start_afternoon || "14:00",
+              end_afternoon: interpreter.work_hours.end_afternoon || "17:00"
+            };
           } catch (e) {
             console.error("[AdminDashboard] Error parsing work_hours:", e);
           }
@@ -132,11 +106,11 @@ export const AdminDashboard = () => {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
-          status: (interpreter.connection_status?.connection_status === "available" ||
-                  interpreter.connection_status?.connection_status === "unavailable" ||
-                  interpreter.connection_status?.connection_status === "pause" ||
-                  interpreter.connection_status?.connection_status === "busy") 
-                  ? interpreter.connection_status.connection_status 
+          status: (interpreter.connection_status === "available" ||
+                  interpreter.connection_status === "unavailable" ||
+                  interpreter.connection_status === "pause" ||
+                  interpreter.connection_status === "busy") 
+                  ? interpreter.connection_status 
                   : "unavailable" as const,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
@@ -147,10 +121,10 @@ export const AdminDashboard = () => {
           next_mission_duration: interpreter.next_mission_duration,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
-          last_seen_at: interpreter.connection_status?.last_seen_at,
-          booth_number: interpreter.connection_status?.booth_number || null,
-          private_phone: interpreter.connection_status?.private_phone || null,
-          professional_phone: interpreter.connection_status?.professional_phone || null,
+          last_seen_at: interpreter.last_seen_at,
+          booth_number: interpreter.booth_number || null,
+          private_phone: interpreter.private_phone || null,
+          professional_phone: interpreter.professional_phone || null,
           work_hours: parsedWorkHours
         };
       });
