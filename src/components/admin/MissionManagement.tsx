@@ -204,7 +204,8 @@ export const MissionManagement = () => {
           status,
           profile_picture_url,
           languages,
-          tarif_15min
+          tarif_15min,
+          email
         `);
 
       if (error) {
