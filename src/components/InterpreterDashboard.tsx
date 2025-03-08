@@ -26,6 +26,15 @@ const isValidAddress = (address: unknown): address is Profile['address'] => {
   );
 };
 
+const isValidWorkHours = (hours: any): hours is Profile['work_hours'] => {
+  if (!hours) return true; // null is valid
+  return typeof hours === 'object' &&
+    typeof hours.start_morning === 'string' &&
+    typeof hours.end_morning === 'string' &&
+    typeof hours.start_afternoon === 'string' &&
+    typeof hours.end_afternoon === 'string';
+};
+
 export const InterpreterDashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [scheduledMissions, setScheduledMissions] = useState<any[]>([]);
@@ -113,18 +122,18 @@ export const InterpreterDashboard = () => {
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
 
-      // No default values for work hours, just use what's in the database
-      const workHours = data.work_hours;
+      // Validate work hours from the database
+      const workHours = isValidWorkHours(data.work_hours) ? data.work_hours : null;
 
       const transformedProfile: Profile = {
         ...data,
         languages: transformedLanguages,
         status,
         address,
+        work_hours: workHours,
         booth_number: data.booth_number || null,
         private_phone: data.private_phone || null,
         professional_phone: data.professional_phone || null,
-        work_hours: workHours,
         landline_phone: data.landline_phone || null,
         phone_number: data.phone_number || null,
         birth_country: data.birth_country || null,
