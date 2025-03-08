@@ -18,14 +18,13 @@ const ResetPassword = () => {
   const role = searchParams.get('role');
 
   useEffect(() => {
-    // Get the access_token and type from URL fragment
+    // Get the access_token from URL fragment
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.substring(1)); // Remove the # symbol
     const accessToken = params.get('access_token');
-    const type = params.get('type');
 
     // If we have a recovery token, set the session
-    if (accessToken && type === 'recovery') {
+    if (accessToken) {
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: '',
