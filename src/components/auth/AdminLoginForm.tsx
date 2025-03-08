@@ -80,13 +80,8 @@ export const AdminLoginForm = () => {
   return (
     <Card className="w-full max-w-md p-8 space-y-6 bg-white/95 backdrop-blur-sm shadow-2xl rounded-3xl border-0 relative z-10">
       <div className="space-y-2 text-center">
-        <div className="flex justify-center mb-6">
-          <div className="p-3 bg-[#1A1F2C] rounded-xl">
-            <Globe2 className="w-8 h-8 text-white" />
-          </div>
-        </div>
         <h2 className="text-3xl font-bold tracking-tight text-[#1A1F2C]">
-          Administration
+          Espace administrateur
         </h2>
         <p className="text-sm text-[#8E9196]">
           Connectez-vous à votre espace administrateur
