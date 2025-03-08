@@ -106,18 +106,12 @@ export const AdminDashboard = () => {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
-          status: (interpreter.connection_status === "available" ||
-                  interpreter.connection_status === "unavailable" ||
-                  interpreter.connection_status === "pause" ||
-                  interpreter.connection_status === "busy") 
-                  ? interpreter.connection_status 
+          status: (interpreter.status === "available" ||
+                  interpreter.status === "unavailable" ||
+                  interpreter.status === "pause" ||
+                  interpreter.status === "busy") 
+                  ? interpreter.status 
                   : "unavailable" as const,
-          connection_status: (interpreter.connection_status === "available" ||
-                            interpreter.connection_status === "unavailable" ||
-                            interpreter.connection_status === "pause" ||
-                            interpreter.connection_status === "busy")
-                            ? interpreter.connection_status
-                            : "unavailable" as const,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
@@ -243,7 +237,7 @@ export const AdminDashboard = () => {
 
   const filteredInterpreters = interpreters.filter(interpreter => {
     const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
-    const matchesStatus = !selectedStatus || interpreter.connection_status === selectedStatus;
+    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
     const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
       const [source, target] = lang.split(" → ");
