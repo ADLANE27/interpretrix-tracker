@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Phone, Euro, Globe, Calendar, ChevronDown, ChevronUp, Clock, DoorClosed } from "lucide-react";
@@ -56,12 +57,10 @@ interface InterpreterCardProps {
     private_phone?: string | null;
     professional_phone?: string | null;
     work_hours?: {
-      [key: string]: {
-        start: string;
-        end: string;
-        break_start: string;
-        break_end: string;
-      };
+      start_morning?: string;
+      end_morning?: string;
+      start_afternoon?: string;
+      end_afternoon?: string;
     } | null;
   };
 }
