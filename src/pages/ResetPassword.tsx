@@ -39,11 +39,13 @@ const ResetPassword = () => {
           description: "Le lien de réinitialisation n'est pas valide ou a expiré",
           variant: "destructive",
         });
+        // Redirect to login page after error
+        navigate(role === 'admin' ? '/admin/login' : '/interpreter/login');
       }
     };
 
     handleRecoveryToken();
-  }, [toast]);
+  }, [toast, navigate, role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
