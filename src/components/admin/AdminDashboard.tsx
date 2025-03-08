@@ -120,10 +120,10 @@ export const AdminDashboard = () => {
         tarif_15min: interpreter.tarif_15min,
         tarif_5min: null,
         last_seen_at: interpreter.connection_status?.last_seen_at,
-        booth_number: interpreter.booth_number || null,
-        private_phone: interpreter.private_phone || null,
-        professional_phone: interpreter.professional_phone || null,
-        work_hours: interpreter.work_hours || null
+        booth_number: interpreter.connection_status?.booth_number || null,
+        private_phone: interpreter.connection_status?.private_phone || null,
+        professional_phone: interpreter.connection_status?.professional_phone || null,
+        work_hours: interpreter.connection_status?.work_hours || null
       }));
 
       setInterpreters(mappedInterpreters);

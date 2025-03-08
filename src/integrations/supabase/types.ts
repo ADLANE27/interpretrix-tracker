@@ -281,31 +281,43 @@ export type Database = {
       }
       interpreter_connection_status: {
         Row: {
+          booth_number: string | null
           connection_status: string | null
           created_at: string
           interpreter_id: string
           is_online: boolean | null
           last_heartbeat: string | null
           last_seen_at: string | null
+          private_phone: string | null
+          professional_phone: string | null
           updated_at: string
+          work_hours: Json | null
         }
         Insert: {
+          booth_number?: string | null
           connection_status?: string | null
           created_at?: string
           interpreter_id: string
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
+          private_phone?: string | null
+          professional_phone?: string | null
           updated_at?: string
+          work_hours?: Json | null
         }
         Update: {
+          booth_number?: string | null
           connection_status?: string | null
           created_at?: string
           interpreter_id?: string
           is_online?: boolean | null
           last_heartbeat?: string | null
           last_seen_at?: string | null
+          private_phone?: string | null
+          professional_phone?: string | null
           updated_at?: string
+          work_hours?: Json | null
         }
         Relationships: [
           {
