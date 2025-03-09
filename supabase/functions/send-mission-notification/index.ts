@@ -15,17 +15,29 @@ if (!resendApiKey) {
 const resend = new Resend(resendApiKey);
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { 
-      interpreter,
-      mission
-    } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+      console.log('Received request body:', body);
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      throw new Error('Invalid request body');
+    }
 
-    console.log('Received notification request:', {
+    const { interpreter, mission } = body;
+
+    if (!interpreter || !mission) {
+      console.error('Missing required fields in request:', { interpreter, mission });
+      throw new Error('Missing required fields');
+    }
+
+    console.log('Processing notification request:', {
       interpreterEmail: interpreter.email,
       missionId: mission.id,
       missionType: mission.mission_type
@@ -38,9 +50,14 @@ serve(async (req) => {
     if (isMissionImmediate) {
       timingInfo = `Durée estimée : ${mission.estimated_duration} minutes`;
     } else {
-      const startTime = format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
-      const endTime = format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
-      timingInfo = `Date de début : ${startTime}\nDate de fin : ${endTime}`;
+      try {
+        const startTime = format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
+        const endTime = format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
+        timingInfo = `Date de début : ${startTime}\nDate de fin : ${endTime}`;
+      } catch (error) {
+        console.error('Error formatting dates:', error);
+        throw new Error('Invalid date format');
+      }
     }
 
     const baseUrl = "https://interpretix.netlify.app";
