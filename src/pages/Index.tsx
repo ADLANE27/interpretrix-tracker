@@ -91,6 +91,11 @@ const Index = () => {
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center justify-center space-y-4 px-4"
           >
+            <img 
+              src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
+              alt="Interpretix Logo" 
+              className="w-[300px] mb-8"
+            />
             <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link 
