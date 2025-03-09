@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
 import { format } from "npm:date-fns@2.30.0";
-import { fr } from "npm:date-fns@2.30.0/locale/fr/index.js";
+import frLocale from "npm:date-fns/locale/fr/index.js";
 
 console.log('Initializing send-mission-notification function');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -51,8 +51,8 @@ serve(async (req) => {
       timingInfo = `Durée estimée : ${mission.estimated_duration} minutes`;
     } else {
       try {
-        const startTime = format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
-        const endTime = format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr });
+        const startTime = format(new Date(mission.scheduled_start_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: frLocale });
+        const endTime = format(new Date(mission.scheduled_end_time), "EEEE d MMMM yyyy 'à' HH:mm", { locale: frLocale });
         timingInfo = `Date de début : ${startTime}\nDate de fin : ${endTime}`;
       } catch (error) {
         console.error('Error formatting dates:', error);
