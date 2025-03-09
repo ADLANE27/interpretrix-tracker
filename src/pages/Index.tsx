@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterDashboard } from "@/components/InterpreterDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -94,7 +93,7 @@ const Index = () => {
             <img 
               src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
               alt="Interpretix Logo" 
-              className="w-[300px] mb-8"
+              className="w-[400px] md:w-[500px] mb-12"
             />
             <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
             <div className="flex flex-col sm:flex-row gap-4">
