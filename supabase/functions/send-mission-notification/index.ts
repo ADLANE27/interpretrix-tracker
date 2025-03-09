@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { corsHeaders } from '../_shared/cors.ts';
 import { format } from "npm:date-fns@2.30.0";
-import { fr } from "npm:date-fns@2.30.0/locale/fr";
+import { fr } from "npm:date-fns@2.30.0/locale/fr/index.js";
 
 console.log('Initializing send-mission-notification function');
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
