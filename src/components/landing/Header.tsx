@@ -12,7 +12,11 @@ export const Header = () => {
         className="container mx-auto flex justify-between items-center"
       >
         <div className="flex items-center gap-2">
-          <img src="/icon.svg" alt="Logo" className="w-8 h-8" />
+          <img 
+            src="/lovable-uploads/b5871352-bd6c-4c19-9434-bcf62d8d01e1.png" 
+            alt="AFTraduction Logo" 
+            className="w-12 h-12 object-contain"
+          />
           <h1 className="text-2xl font-semibold tracking-tight">AFTraduction</h1>
         </div>
       </motion.div>
