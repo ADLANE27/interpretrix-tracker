@@ -86,7 +86,7 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-start h-full pt-12 space-y-12 px-4"
+            className="flex flex-col items-center justify-start h-full pt-6 space-y-12 px-4"
           >
             <motion.img 
               src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
