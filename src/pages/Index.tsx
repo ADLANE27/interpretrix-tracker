@@ -86,12 +86,12 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-start h-full pt-6 space-y-12 px-4"
+            className="flex flex-col items-center justify-start h-full pt-0 space-y-16 px-4"
           >
             <motion.img 
               src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
               alt="Interpretix Logo" 
-              className="w-[500px] md:w-[600px] max-w-[90vw]"
+              className="w-[500px] md:w-[600px] max-w-[90vw] mt-4"
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
