@@ -91,7 +91,14 @@ const Index = () => {
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center justify-center space-y-4 px-4"
           >
-            <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
+            <motion.img
+              src="/interpretix-logo.png"
+              alt="Interpretix"
+              className="w-[300px] mb-8"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            />
             <div className="flex flex-col sm:flex-row gap-4">
               <Link 
                 to="/admin/login" 
@@ -109,7 +116,7 @@ const Index = () => {
           </motion.div>
         </div>
         <footer className="text-center py-4 text-gray-600 text-sm">
-          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+          © {new Date().getFullYear()} Interpretix. Tous droits réservés.
         </footer>
       </div>
     );
@@ -140,3 +147,4 @@ const Index = () => {
 };
 
 export default Index;
+
