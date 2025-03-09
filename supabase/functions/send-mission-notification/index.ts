@@ -24,7 +24,7 @@ serve(async (req) => {
     let body;
     try {
       body = await req.json();
-      console.log('Received request body:', body);
+      console.log('Received request body:', JSON.stringify(body, null, 2));
     } catch (error) {
       console.error('Error parsing request body:', error);
       throw new Error('Invalid request body');
@@ -89,11 +89,12 @@ serve(async (req) => {
       <p>Cordialement,<br>L'équipe Interpretix</p>
     `;
 
+    console.log('Email content prepared:', emailContent);
     console.log('Attempting to send email with Resend to:', interpreter.email);
     
     const emailResponse = await resend.emails.send({
       from: 'Interpretix <no-reply@aftraduction.com>',
-      to: interpreter.email,
+      to: [interpreter.email],
       subject: `Interpretix - Nouvelle mission d'interprétation ${missionTypeText}`,
       html: emailContent,
     });
@@ -113,13 +114,22 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in send-mission-notification:', error);
+    
+    // Log additional error details if available
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+
     return new Response(
       JSON.stringify({ 
-        error: error.message 
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
+        details: error
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500,
       },
     );
   }
