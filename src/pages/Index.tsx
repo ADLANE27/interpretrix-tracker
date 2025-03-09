@@ -23,7 +23,6 @@ const Index = () => {
           return;
         }
 
-        // Get user's roles from the user_roles table
         const { data: role, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
@@ -38,7 +37,6 @@ const Index = () => {
             description: "Impossible de vérifier vos permissions. Veuillez vous reconnecter.",
             variant: "destructive",
           });
-          // Sign out user if we can't verify their role
           await supabase.auth.signOut();
           setLoading(false);
           return;
@@ -90,10 +88,13 @@ const Index = () => {
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center justify-center space-y-4 px-4"
           >
-            <img 
+            <motion.img 
               src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
               alt="Interpretix Logo" 
-              className="w-[400px] md:w-[500px] mb-12"
+              className="w-[500px] md:w-[600px] mb-12 max-w-[90vw]"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5 }}
             />
             <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
             <div className="flex flex-col sm:flex-row gap-4">
