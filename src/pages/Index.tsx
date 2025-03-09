@@ -86,30 +86,32 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-center space-y-4 px-4"
+            className="flex flex-col items-center justify-start h-full pt-12 space-y-12 px-4"
           >
             <motion.img 
               src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
               alt="Interpretix Logo" 
-              className="w-[500px] md:w-[600px] mb-12 max-w-[90vw]"
+              className="w-[500px] md:w-[600px] max-w-[90vw]"
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
             />
-            <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link 
-                to="/admin/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-              >
-                Espace Administrateur
-              </Link>
-              <Link 
-                to="/interpreter/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-              >
-                Espace Interprète
-              </Link>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link 
+                  to="/admin/login" 
+                  className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
+                >
+                  Espace Administrateur
+                </Link>
+                <Link 
+                  to="/interpreter/login" 
+                  className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
+                >
+                  Espace Interprète
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>
