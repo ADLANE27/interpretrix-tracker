@@ -423,6 +423,12 @@ export const MissionManagement = () => {
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
 
+      // Get authentication headers
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session found');
+      }
+
       // Send notification emails to selected interpreters with better error handling
       const notificationPromises = selectedInterpreters.map(async (interpreterId) => {
         const interpreter = availableInterpreters.find(i => i.id === interpreterId);
@@ -442,7 +448,10 @@ export const MissionManagement = () => {
                 role: 'interpreter'
               },
               mission: createdMission
-            })
+            }),
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
           });
 
           if (error) {
