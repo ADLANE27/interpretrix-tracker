@@ -4,6 +4,7 @@ import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { EmploymentStatus } from "@/types/employment";
 
 interface ExtendedProfile {
   id: string;

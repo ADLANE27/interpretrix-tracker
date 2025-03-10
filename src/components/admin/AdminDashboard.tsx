@@ -23,7 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
-import { EmploymentStatus } from "@/types/employment";
+import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 
 interface WorkHours {
   start_morning?: string;
@@ -423,11 +423,11 @@ export const AdminDashboard = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous les statuts</SelectItem>
-                          <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                          <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                          <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                          <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                          <SelectItem value="self_employed">Externe</SelectItem>
+                          {Object.entries(employmentStatusLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
