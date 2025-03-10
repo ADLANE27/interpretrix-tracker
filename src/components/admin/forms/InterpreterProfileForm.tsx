@@ -36,7 +36,7 @@ export interface InterpreterFormData {
   active: boolean;
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   booth_number?: string;
   private_phone?: string;
   professional_phone?: string;
@@ -353,6 +353,7 @@ export const InterpreterProfileForm = ({
                       <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                       <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                       <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                      <SelectItem value="permanent_interpreter_aftcom">Interprète permanent AFTcom</SelectItem>
                       <SelectItem value="self_employed">Externe</SelectItem>
                     </SelectContent>
                   </Select>
