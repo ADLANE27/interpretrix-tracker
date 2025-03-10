@@ -426,6 +426,7 @@ export const AdminDashboard = () => {
                           <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
                           <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                           <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                          <SelectItem value="permanent_interpreter_aftcom">Interprète permanent AFTcom</SelectItem>
                           <SelectItem value="self_employed">Externe</SelectItem>
                         </SelectContent>
                       </Select>
