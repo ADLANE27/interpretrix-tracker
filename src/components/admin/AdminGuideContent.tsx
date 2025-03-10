@@ -5,7 +5,7 @@ export const AdminGuideContent = () => {
   return (
     <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)]">
       <ScrollArea className="h-full">
-        <div className="p-6">
+        <div className="p-6 pr-8">
           <h2 className="text-2xl font-bold mb-6">Guide d'Administration Détaillé</h2>
           <div className="space-y-8">
             <section className="space-y-3">
