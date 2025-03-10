@@ -1,11 +1,10 @@
-
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserCog, Clock, Bell, CheckCircle, Settings, Calendar, MessageSquare, Search, Shield, PhoneCall } from "lucide-react";
 
 export const AdminGuideContent = () => {
   return (
-    <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)] overflow-hidden">
-      <ScrollArea>
+    <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)]">
+      <ScrollArea className="h-full">
         <div className="p-6">
           <h2 className="text-2xl font-bold mb-6">Guide d'Administration Détaillé</h2>
           <div className="space-y-8">
@@ -148,4 +147,3 @@ export const AdminGuideContent = () => {
     </div>
   );
 };
-
