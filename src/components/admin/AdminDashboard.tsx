@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLazyTab } from "@/hooks/useLazyTab";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("interpreters");
@@ -161,3 +162,4 @@ export const AdminDashboard = () => {
     </div>
   );
 };
+
