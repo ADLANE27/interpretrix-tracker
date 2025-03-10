@@ -61,6 +61,7 @@
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
     @apply touch-manipulation overscroll-none;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   
   body {
