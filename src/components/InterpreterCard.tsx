@@ -9,6 +9,7 @@ import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { Profile } from "@/types/profile";
+import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 
 interface Mission {
   scheduled_start_time: string;
@@ -53,7 +54,7 @@ interface InterpreterCardProps {
     id: string;
     name: string;
     status: InterpreterStatus;
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
+    employment_status: EmploymentStatus;
     languages: string[];
     tarif_15min?: number | null;
     tarif_5min?: number | null;
@@ -63,7 +64,7 @@ interface InterpreterCardProps {
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
-    work_hours?: Partial<WorkHours> | null;
+    work_hours?: WorkHours | null;
   };
 }
 
@@ -563,3 +564,4 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 };
 
 export default InterpreterCard;
+
