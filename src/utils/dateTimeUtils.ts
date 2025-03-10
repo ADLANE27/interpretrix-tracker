@@ -1,7 +1,7 @@
 
 /**
- * Utility functions for handling dates and times consistently across the application
- * Times are stored and displayed exactly as entered without timezone conversion
+ * Utility functions for handling dates and times consistently across the application.
+ * Times are stored and displayed exactly as entered without timezone conversion.
  */
 
 export const formatTimeString = (timeString: string | null): string => {
@@ -28,3 +28,4 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
   return `${formatDateDisplay(dateString)} à ${formatTimeString(dateString)}`;
 };
+
