@@ -9,6 +9,7 @@ import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { Profile } from "@/types/profile";
+import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 
 interface Mission {
   scheduled_start_time: string;
@@ -52,8 +53,8 @@ interface InterpreterCardProps {
   interpreter: {
     id: string;
     name: string;
-    status: InterpreterStatus;
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
+    status: "available" | "unavailable" | "pause" | "busy";
+    employment_status: EmploymentStatus;
     languages: string[];
     tarif_15min?: number | null;
     tarif_5min?: number | null;
@@ -63,7 +64,12 @@ interface InterpreterCardProps {
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
-    work_hours?: Partial<WorkHours> | null;
+    work_hours?: {
+      start_morning: string;
+      end_morning: string;
+      start_afternoon: string;
+      end_afternoon: string;
+    } | null;
   };
 }
 
@@ -72,19 +78,6 @@ const statusConfig = {
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   pause: { color: "bg-interpreter-pause text-white", label: "En pause" },
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
-};
-
-const employmentStatusLabels: Record<string, string> = {
-  salaried_aft: "Salarié AFTrad",
-  salaried_aftcom: "Salarié AFTCOM",
-  salaried_planet: "Salarié PLANET",
-  permanent_interpreter: "Interprète permanent",
-  permanent_interpreter_aftcom: "Interprète permanent AFTcom",
-  self_employed: "Externe",
-};
-
-const isValidStatus = (status: string): status is InterpreterStatus => {
-  return ['available', 'unavailable', 'pause', 'busy'].includes(status);
 };
 
 const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
@@ -564,4 +557,3 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 };
 
 export default InterpreterCard;
-
