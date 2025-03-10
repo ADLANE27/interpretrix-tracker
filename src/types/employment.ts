@@ -1,7 +1,7 @@
 
 export type EmploymentStatus = 
   | "salaried_aft"
-  | "salaried_aftcom" 
+  | "salaried_aftcom"
   | "salaried_planet"
   | "self_employed"
   | "permanent_interpreter"
