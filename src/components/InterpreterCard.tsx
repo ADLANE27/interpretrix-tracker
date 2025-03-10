@@ -75,14 +75,6 @@ const statusConfig = {
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
 };
 
-const employmentStatusLabels: Record<string, string> = {
-  salaried_aft: "Salarié AFTrad",
-  salaried_aftcom: "Salarié AFTCOM",
-  salaried_planet: "Salarié PLANET",
-  permanent_interpreter: "Interprète permanent",
-  self_employed: "Externe",
-};
-
 const isValidStatus = (status: string): status is InterpreterStatus => {
   return ['available', 'unavailable', 'pause', 'busy'].includes(status);
 };
@@ -564,4 +556,3 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 };
 
 export default InterpreterCard;
-
