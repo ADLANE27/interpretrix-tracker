@@ -3,9 +3,9 @@ import { UserCog, Clock, Bell, CheckCircle, Settings, Calendar, MessageSquare, S
 
 export const AdminGuideContent = () => {
   return (
-    <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)]">
-      <ScrollArea className="h-full">
-        <div className="p-6 pr-8">
+    <div className="bg-background rounded-lg border shadow-sm">
+      <ScrollArea className="h-[calc(100vh-100px)]">
+        <div className="p-6">
           <h2 className="text-2xl font-bold mb-6">Guide d'Administration Détaillé</h2>
           <div className="space-y-8">
             <section className="space-y-3">
