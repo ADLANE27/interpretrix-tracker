@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
@@ -6,7 +5,6 @@ import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
 import { Profile } from "@/types/profile";
-import { EmploymentStatus } from "@/types/employment";
 
 interface DashboardContentProps {
   activeTab: string;
