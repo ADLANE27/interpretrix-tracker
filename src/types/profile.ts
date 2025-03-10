@@ -1,13 +1,4 @@
 
-import { EmploymentStatus } from "./employment";
-
-export interface WorkHours {
-  start_morning: string;
-  end_morning: string;
-  start_afternoon: string;
-  end_afternoon: string;
-}
-
 export interface Profile {
   id: string;
   first_name: string;
@@ -18,7 +9,7 @@ export interface Profile {
     source: string;
     target: string;
   }[];
-  employment_status: EmploymentStatus;
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   status: "available" | "busy" | "pause" | "unavailable";
   address: {
     street: string;
@@ -38,5 +29,10 @@ export interface Profile {
   booth_number: string | null;
   private_phone: string | null;
   professional_phone: string | null;
-  work_hours: WorkHours | null;
+  work_hours: {
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
+  } | null;
 }
