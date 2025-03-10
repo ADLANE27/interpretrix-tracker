@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
 import { LanguagePair } from "@/types/languages";
+import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 
 interface Address {
   street: string;
@@ -36,7 +37,7 @@ export interface InterpreterFormData {
   active: boolean;
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
+  employment_status: EmploymentStatus;
   booth_number?: string;
   private_phone?: string;
   professional_phone?: string;
@@ -349,12 +350,11 @@ export const InterpreterProfileForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                      <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                      <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                      <SelectItem value="permanent_interpreter_aftcom">Interprète Permanent AFTcom</SelectItem>
-                      <SelectItem value="self_employed">Externe</SelectItem>
+                      {Object.entries(employmentStatusLabels).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
