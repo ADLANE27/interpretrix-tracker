@@ -54,6 +54,13 @@ interface Interpreter {
   connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
 
+const defaultWorkHours: WorkHours = {
+  start_morning: "09:00",
+  end_morning: "13:00",
+  start_afternoon: "14:00",
+  end_afternoon: "17:00"
+};
+
 export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -94,15 +101,19 @@ export const AdminDashboard = () => {
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
-        let workHours = null;
+        let workHours: WorkHours | null = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, any>;
-          workHours = {
-            start_morning: hours.start_morning || '',
-            end_morning: hours.end_morning || '',
-            start_afternoon: hours.start_afternoon || '',
-            end_afternoon: hours.end_afternoon || ''
-          };
+          if (hours.start_morning && hours.end_morning && hours.start_afternoon && hours.end_afternoon) {
+            workHours = {
+              start_morning: hours.start_morning,
+              end_morning: hours.end_morning,
+              start_afternoon: hours.start_afternoon,
+              end_afternoon: hours.end_afternoon
+            };
+          } else {
+            workHours = defaultWorkHours;
+          }
         }
 
         return {
