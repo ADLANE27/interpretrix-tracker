@@ -13,7 +13,7 @@ interface ExtendedProfile {
   phone_number: string | null;
   landline_phone: string | null;
   nationality: string | null;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: EmploymentStatus;
   languages: { source: string; target: string; }[];
   address: {
     street: string;

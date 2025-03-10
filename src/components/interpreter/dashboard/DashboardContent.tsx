@@ -6,6 +6,7 @@ import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
 import { Profile } from "@/types/profile";
+import { EmploymentStatus } from "@/types/employment";
 
 interface DashboardContentProps {
   activeTab: string;
