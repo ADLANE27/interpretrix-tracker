@@ -1,20 +1,29 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserCog, Clock, Bell, CheckCircle, Settings, Calendar, MessageSquare, Search, Shield, PhoneCall } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 
 export const AdminGuideContent = () => {
   return (
-    <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)] overflow-hidden">
-      <ScrollArea>
+    <div className="bg-background rounded-lg border shadow-sm h-[calc(100vh-100px)]">
+      <ScrollArea className="h-full">
         <div className="p-6">
           <h2 className="text-2xl font-bold mb-6">Guide d'Administration Détaillé</h2>
-          <div className="space-y-8">
-            <section className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <UserCog className="h-5 w-5 text-blue-500" />
-                Gestion des Interprètes
-              </h3>
-              <div className="ml-7 space-y-4">
+          <div className="space-y-4">
+            
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <UserCog className="h-5 w-5 text-blue-500" />
+                    <span className="text-lg font-semibold">Gestion des Interprètes</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2 px-7">
                 <div>
                   <p className="font-medium">Dans la liste des interprètes :</p>
                   <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -32,15 +41,20 @@ export const AdminGuideContent = () => {
                     <li>Un email d'invitation sera automatiquement envoyé</li>
                   </ul>
                 </div>
-              </div>
-            </section>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <section className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <PhoneCall className="h-5 w-5 text-purple-500" />
-                Gestion des Missions
-              </h3>
-              <div className="ml-7 space-y-4">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall className="h-5 w-5 text-purple-500" />
+                    <span className="text-lg font-semibold">Gestion des Missions</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2 px-7">
                 <div>
                   <p className="font-medium">Pour les missions immédiates :</p>
                   <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -65,15 +79,20 @@ export const AdminGuideContent = () => {
                     <li>Consultez l'historique complet</li>
                   </ul>
                 </div>
-              </div>
-            </section>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <section className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-green-500" />
-                Calendrier et Réservations
-              </h3>
-              <div className="ml-7 space-y-4">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-green-500" />
+                    <span className="text-lg font-semibold">Calendrier et Réservations</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2 px-7">
                 <div>
                   <p className="font-medium">Vue du calendrier :</p>
                   <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -90,15 +109,20 @@ export const AdminGuideContent = () => {
                     <li>Évitez les conflits d'horaires</li>
                   </ul>
                 </div>
-              </div>
-            </section>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <section className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-yellow-500" />
-                Communication
-              </h3>
-              <div className="ml-7 space-y-4">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-yellow-500" />
+                    <span className="text-lg font-semibold">Communication</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2 px-7">
                 <div>
                   <p className="font-medium">Messages et notifications :</p>
                   <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -115,15 +139,20 @@ export const AdminGuideContent = () => {
                     <li>Gardez une trace des communications</li>
                   </ul>
                 </div>
-              </div>
-            </section>
+              </CollapsibleContent>
+            </Collapsible>
 
-            <section className="space-y-3">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5 text-red-500" />
-                Gestion des Accès
-              </h3>
-              <div className="ml-7 space-y-4">
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-red-500" />
+                    <span className="text-lg font-semibold">Gestion des Accès</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2 px-7">
                 <div>
                   <p className="font-medium">Gestion des comptes :</p>
                   <ul className="list-disc ml-6 mt-2 space-y-1">
@@ -140,12 +169,12 @@ export const AdminGuideContent = () => {
                     <li>Gérez les sessions actives</li>
                   </ul>
                 </div>
-              </div>
-            </section>
+              </CollapsibleContent>
+            </Collapsible>
+
           </div>
         </div>
       </ScrollArea>
     </div>
   );
 };
-
