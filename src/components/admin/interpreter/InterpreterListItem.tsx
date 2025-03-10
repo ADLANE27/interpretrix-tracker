@@ -25,15 +25,6 @@ const statusConfig = {
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
 };
 
-const employmentStatusLabels: Record<string, string> = {
-  salaried_aft: "Salarié AFTrad",
-  salaried_aftcom: "Salarié AFTCOM",
-  salaried_planet: "Salarié PLANET",
-  permanent_interpreter: "Interprète permanent",
-  permanent_interpreter_aftcom: "Interprète Permanent AFTcom",
-  self_employed: "Externe",
-};
-
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
   const parsedLanguages = interpreter.languages
     .map(lang => {
