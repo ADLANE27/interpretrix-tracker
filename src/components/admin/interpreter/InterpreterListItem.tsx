@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Globe } from "lucide-react";
@@ -28,6 +27,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
   permanent_interpreter: "Interprète permanent",
+  permanent_interpreter_aftcom: "Interprète Permanent AFTcom",
   self_employed: "Externe",
 };
 
