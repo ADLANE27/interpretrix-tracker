@@ -53,7 +53,7 @@ interface InterpreterCardProps {
     id: string;
     name: string;
     status: InterpreterStatus;
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
     languages: string[];
     tarif_15min?: number | null;
     tarif_5min?: number | null;
@@ -79,6 +79,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
   permanent_interpreter: "Interprète permanent",
+  permanent_interpreter_aftcom: "Interprète permanent AFTcom",
   self_employed: "Externe",
 };
 
@@ -563,3 +564,4 @@ const InterpreterCard = ({ interpreter }: InterpreterCardProps) => {
 };
 
 export default InterpreterCard;
+

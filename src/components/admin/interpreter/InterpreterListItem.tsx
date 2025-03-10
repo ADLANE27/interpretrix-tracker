@@ -28,6 +28,7 @@ const employmentStatusLabels: Record<string, string> = {
   salaried_aftcom: "Salarié AFTCOM",
   salaried_planet: "Salarié PLANET",
   permanent_interpreter: "Interprète permanent",
+  permanent_interpreter_aftcom: "Interprète permanent AFTcom",
   self_employed: "Externe",
 };
 
