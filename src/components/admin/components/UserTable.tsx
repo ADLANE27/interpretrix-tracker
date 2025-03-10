@@ -49,19 +49,34 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     try {
       setIsSubmitting(true);
       
-      // Transform the data and remove the active field
-      const transformedData = {
-        ...data,
-        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+      // Create a clean profile object without extra fields
+      const profileData = {
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`),
+        employment_status: data.employment_status,
+        status: data.status,
+        phone_number: data.phone_number,
+        address: data.address,
+        birth_country: data.birth_country,
+        nationality: data.nationality,
+        siret_number: data.siret_number,
+        vat_number: data.vat_number,
+        specializations: data.specializations,
+        landline_phone: data.landline_phone,
+        tarif_15min: data.tarif_15min,
+        tarif_5min: data.tarif_5min,
+        booth_number: data.booth_number,
+        professional_phone: data.professional_phone,
+        private_phone: data.private_phone,
+        work_hours: data.work_hours
       };
-      
-      // Remove the active field as it doesn't exist in the database
-      delete transformedData.active;
       
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: {
           id: selectedUser.id,
-          ...transformedData
+          ...profileData
         }
       });
 
