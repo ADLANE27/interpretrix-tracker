@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
@@ -5,32 +6,10 @@ import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
 import { Profile } from "@/types/profile";
-import { EmploymentStatus } from "@/types/employment";
 
 interface DashboardContentProps {
   activeTab: string;
-  profile: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone_number: string;
-    languages: { source: string; target: string; }[];
-    employment_status: EmploymentStatus;
-    status: "available" | "busy" | "pause" | "unavailable";
-    address: {
-      street: string;
-      postal_code: string;
-      city: string;
-    } | null;
-    birth_country: string | null;
-    nationality: string | null;
-    siret_number: string | null;
-    vat_number: string | null;
-    profile_picture_url: string | null;
-    password_changed: boolean;
-    landline_phone: string;
-  } | null;
+  profile: Profile | null;
   scheduledMissions: any[];
   onProfileUpdate: () => Promise<void>;
   onProfilePictureUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
