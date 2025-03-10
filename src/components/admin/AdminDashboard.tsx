@@ -1,3 +1,4 @@
+import { WorkHours, Interpreter } from "./types/interpreter";
 import { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -23,34 +24,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
+import { EmploymentStatus } from "@/types/employment";
 
-interface WorkHours {
-  start_morning?: string;
-  end_morning?: string;
-  start_afternoon?: string;
-  end_afternoon?: string;
-}
-
-interface Interpreter {
-  id: string;
-  first_name: string;
-  last_name: string;
-  status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-  languages: string[];
-  phone_interpretation_rate: number | null;
-  phone_number: string | null;
-  birth_country: string | null;
-  next_mission_start: string | null;
-  next_mission_duration: number | null;
-  tarif_15min: number | null;
-  tarif_5min: number | null;
-  last_seen_at: string | null;
-  booth_number?: string | null;
-  private_phone?: string | null;
-  professional_phone?: string | null;
-  work_hours?: WorkHours | null;
-  connection_status?: "available" | "unavailable" | "pause" | "busy";
+interface InterpreterWithWorkHours extends Omit<Interpreter, 'work_hours'> {
+  work_hours: WorkHours | null;
 }
 
 export const AdminDashboard = () => {
@@ -93,15 +70,17 @@ export const AdminDashboard = () => {
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
-        let workHours = null;
+        let workHours: WorkHours | null = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, any>;
-          workHours = {
-            start_morning: hours.start_morning || '',
-            end_morning: hours.end_morning || '',
-            start_afternoon: hours.start_afternoon || '',
-            end_afternoon: hours.end_afternoon || ''
-          };
+          if (hours.start_morning && hours.end_morning && hours.start_afternoon && hours.end_afternoon) {
+            workHours = {
+              start_morning: hours.start_morning,
+              end_morning: hours.end_morning,
+              start_afternoon: hours.start_afternoon,
+              end_afternoon: hours.end_afternoon
+            };
+          }
         }
 
         return {

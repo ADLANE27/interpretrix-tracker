@@ -1,4 +1,6 @@
 
+import { EmploymentStatus } from "./employment";
+
 export interface Profile {
   id: string;
   first_name: string;
@@ -9,7 +11,7 @@ export interface Profile {
     source: string;
     target: string;
   }[];
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
+  employment_status: EmploymentStatus;
   status: "available" | "busy" | "pause" | "unavailable";
   address: {
     street: string;

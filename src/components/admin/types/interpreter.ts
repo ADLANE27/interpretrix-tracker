@@ -1,6 +1,13 @@
 
 import { EmploymentStatus } from "@/types/employment";
 
+export interface WorkHours {
+  start_morning: string;
+  end_morning: string;
+  start_afternoon: string;
+  end_afternoon: string;
+}
+
 export interface Interpreter {
   id: string;
   first_name: string;
@@ -19,11 +26,6 @@ export interface Interpreter {
   booth_number?: string | null;
   private_phone?: string | null;
   professional_phone?: string | null;
-  work_hours?: {
-    start_morning?: string;
-    end_morning?: string;
-    start_afternoon?: string;
-    end_afternoon?: string;
-  } | null;
+  work_hours?: WorkHours | null;
   connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
