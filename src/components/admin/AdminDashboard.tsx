@@ -24,13 +24,7 @@ import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
 import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
-
-interface WorkHours {
-  start_morning?: string;
-  end_morning?: string;
-  start_afternoon?: string;
-  end_afternoon?: string;
-}
+import { WorkHours } from "@/types/workHours";
 
 interface Interpreter {
   id: string;
