@@ -31,7 +31,7 @@ export const ReservationEditDialog = ({
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState(reservation.interpreter_id);
 
-  // Convert UTC dates to local format for form inputs without any timezone adjustments
+  // Use time strings directly without timezone conversion
   const [startDate, setStartDate] = useState(reservation.start_time.split('T')[0]);
   const [startTime, setStartTime] = useState(reservation.start_time.split('T')[1].substring(0, 5));
   const [endDate, setEndDate] = useState(reservation.end_time.split('T')[0]);
@@ -60,16 +60,17 @@ export const ReservationEditDialog = ({
     setIsSubmitting(true);
 
     try {
-      // Create new Date objects using the form values directly
+      // Create ISO strings without timezone conversion
       const newStartTime = `${startDate}T${startTime}:00Z`;
       const newEndTime = `${endDate}T${endTime}:00Z`;
       
-      // Calculate duration in minutes
-      const startTimeMs = new Date(newStartTime).getTime();
-      const endTimeMs = new Date(newEndTime).getTime();
-      const durationMinutes = Math.round((endTimeMs - startTimeMs) / (1000 * 60));
+      // Calculate duration without timezone conversion
+      const startTimeParts = startTime.split(':').map(Number);
+      const endTimeParts = endTime.split(':').map(Number);
+      const startMinutes = startTimeParts[0] * 60 + startTimeParts[1];
+      const endMinutes = endTimeParts[0] * 60 + endTimeParts[1];
+      const durationMinutes = endMinutes - startMinutes;
 
-      // First check if the new interpreter is available for this time slot
       if (selectedInterpreter !== reservation.interpreter_id) {
         const { data: isAvailable, error: availabilityError } = await supabase
           .rpc('check_interpreter_availability', {
