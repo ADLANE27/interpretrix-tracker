@@ -24,18 +24,7 @@ Deno.serve(async (req) => {
     const profileData: UpdateProfileData = await req.json();
     console.log('Updating profile with data:', profileData);
 
-    // First update the auth.users email if it has changed
-    const { error: authError } = await supabase.auth.admin.updateUserById(
-      profileData.id,
-      { email: profileData.email }
-    );
-
-    if (authError) {
-      console.error('Error updating auth user:', authError);
-      throw authError;
-    }
-
-    // Then update the interpreter profile
+    // First update the interpreter profile to avoid auth issues
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
       .update(profileData)
@@ -44,6 +33,17 @@ Deno.serve(async (req) => {
     if (profileError) {
       console.error('Error updating interpreter profile:', profileError);
       throw profileError;
+    }
+
+    // Then update the auth.users email if it has changed
+    const { error: authError } = await supabase.auth.admin.updateUserById(
+      profileData.id,
+      { email: profileData.email }
+    );
+
+    if (authError) {
+      console.error('Error updating auth user:', authError);
+      throw authError;
     }
 
     return new Response(

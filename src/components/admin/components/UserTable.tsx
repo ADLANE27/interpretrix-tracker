@@ -25,6 +25,7 @@ import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface UserTableProps {
   users: UserData[];
@@ -82,15 +83,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       if (error) throw error;
 
+      // Don't close the dialog immediately
       toast({
         title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès",
+        description: "Le profil a été mis à jour avec succès. La page va se recharger...",
       });
 
-      setIsEditingInterpreter(false);
-      window.dispatchEvent(new Event('refetchUserData'));
+      // Give time for the toast to be visible
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
       
     } catch (error: any) {
+      console.error('Error updating profile:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
@@ -207,12 +212,19 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           </DialogHeader>
           <ScrollArea className="max-h-[85vh] px-1">
             {selectedUser && (
-              <InterpreterProfileForm
-                isEditing={true}
-                initialData={selectedUser}
-                onSubmit={handleUpdateProfile}
-                isSubmitting={isSubmitting}
-              />
+              <>
+                {isSubmitting && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <LoadingSpinner size="lg" text="Mise à jour du profil..." />
+                  </div>
+                )}
+                <InterpreterProfileForm
+                  isEditing={true}
+                  initialData={selectedUser}
+                  onSubmit={handleUpdateProfile}
+                  isSubmitting={isSubmitting}
+                />
+              </>
             )}
           </ScrollArea>
         </DialogContent>
