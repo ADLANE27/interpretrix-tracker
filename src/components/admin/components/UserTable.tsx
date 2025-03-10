@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -48,10 +49,14 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     try {
       setIsSubmitting(true);
       
+      // Transform the data and remove the active field
       const transformedData = {
         ...data,
         languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
       };
+      
+      // Remove the active field as it doesn't exist in the database
+      delete transformedData.active;
       
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: {
