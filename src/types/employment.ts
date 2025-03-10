@@ -15,4 +15,3 @@ export const employmentStatusLabels: Record<EmploymentStatus, string> = {
   permanent_interpreter: "Interprète permanent",
   permanent_interpreter_aftcom: "Interprète Permanent AFTcom"
 };
-

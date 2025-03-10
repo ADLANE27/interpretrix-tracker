@@ -10,6 +10,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { Profile } from "@/types/profile";
 import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
+import { WorkHours } from "@/types/workHours";
 
 interface Mission {
   scheduled_start_time: string;
@@ -41,13 +42,6 @@ interface DatabaseMission {
 }
 
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
-
-interface WorkHours {
-  start_morning: string;
-  end_morning: string;
-  start_afternoon: string;
-  end_afternoon: string;
-}
 
 interface InterpreterCardProps {
   interpreter: {
