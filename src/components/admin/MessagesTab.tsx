@@ -204,12 +204,12 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-screen min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 h-screen min-h-[500px] relative">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden h-full",
+          "shadow-lg border-0 overflow-hidden h-full",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-          "transition-all duration-300 hover:shadow-xl rounded-lg",
+          "transition-all duration-300 hover:shadow-xl",
           "dark:from-gray-800 dark:to-gray-900",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
@@ -334,26 +334,25 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
           "flex flex-col",
-          "p-0 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
           "lg:col-span-2 h-full",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-0 z-50 m-0"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between px-4 border-b h-[40px]">
+            <div className="flex items-center justify-between px-4 border-b h-9">
               {isMobile && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowChannelList(true)}
-                  className="absolute left-4 z-10 h-9 px-2 flex items-center gap-1"
+                  className="absolute left-4 z-10 h-8 px-2 flex items-center gap-1"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-4 w-4" />
                   Retour
                 </Button>
               )}
-              <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
+              <h2 className="text-base font-semibold w-full text-center truncate">{selectedChannel.display_name}</h2>
             </div>
             <div className="flex-1 overflow-hidden">
               <MessageListContainer

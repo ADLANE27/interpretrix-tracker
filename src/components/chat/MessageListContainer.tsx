@@ -1,3 +1,4 @@
+
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
@@ -95,8 +96,8 @@ export const MessageListContainer = React.memo(({
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex-shrink-0 sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b">
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 z-10 bg-background/95 backdrop-blur-md border-b">
         <MessageFilters
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -105,7 +106,7 @@ export const MessageListContainer = React.memo(({
           channelId={channelId}
         />
       </div>
-      <div className="flex-1 overflow-y-auto px-4" ref={scrollAreaRef}>
+      <div className="flex-1 overflow-y-auto" ref={scrollAreaRef}>
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}
@@ -121,3 +122,4 @@ export const MessageListContainer = React.memo(({
 });
 
 MessageListContainer.displayName = 'MessageListContainer';
+
