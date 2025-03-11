@@ -26,6 +26,14 @@ interface InterpreterChatProps {
   onClearFilters: () => void;
 }
 
+interface MessagePayload {
+  id: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
+  channel_id: string;
+}
+
 export const InterpreterChat = ({ 
   channelId, 
   filters, 
@@ -47,6 +55,7 @@ export const InterpreterChat = ({
   });
 
   const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -60,7 +69,7 @@ export const InterpreterChat = ({
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
   const {
-    messages,
+    messages: realMessages,
     isLoading,
     isSubscribed,
     subscriptionStatus,
@@ -73,12 +82,10 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  // Reset filters when channel changes
   useEffect(() => {
     onClearFilters();
   }, [channelId, onClearFilters]);
 
-  // Cache for sender details
   const senderDetailsCache = useRef<Map<string, { id: string; name: string; avatarUrl?: string }>>(
     new Map()
   );
@@ -104,22 +111,16 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
-              // Play sound for mention
               await playNotificationSound();
-              
-              // Show toast notification
               toast({
                 title: "💬 Nouvelle mention",
                 description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
               });
-
-              // Show browser notification
               showNotification("Nouvelle mention", {
                 body: "Quelqu'un vous a mentionné dans un message",
                 tag: 'chat-mention',
               });
-              
               markMentionsAsRead();
             }
           }
@@ -149,14 +150,13 @@ export const InterpreterChat = ({
   const handleSendMessage = async () => {
     if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
-    // Create optimistic message
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMessage: Message = {
       id: optimisticId,
       content: message,
       sender: {
         id: currentUserId,
-        name: 'You', // Will be updated when real message arrives
+        name: 'You',
         avatarUrl: ''
       },
       timestamp: new Date(),
@@ -173,7 +173,6 @@ export const InterpreterChat = ({
         inputRef.current.style.height = 'auto';
       }
     } catch (error) {
-      // Remove optimistic message on error
       setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticId));
       console.error('Error sending message:', error);
     }
@@ -219,10 +218,9 @@ export const InterpreterChat = ({
             table: 'chat_messages',
             filter: `channel_id=eq.${channelId}`
           },
-          async (payload) => {
+          async (payload: { new: MessagePayload }) => {
             if (!payload.new || !currentUserId) return;
             
-            // Try to get sender details from cache first
             let senderDetails = senderDetailsCache.current.get(payload.new.sender_id);
             
             if (!senderDetails) {
@@ -239,7 +237,6 @@ export const InterpreterChat = ({
                     name: data.name,
                     avatarUrl: data.avatar_url
                   };
-                  // Cache the sender details
                   senderDetailsCache.current.set(payload.new.sender_id, senderDetails);
                 }
               } catch (error) {
@@ -259,12 +256,10 @@ export const InterpreterChat = ({
             };
 
             setMessages(prevMessages => {
-              // Remove optimistic message if it exists
               const filtered = prevMessages.filter(msg => 
                 !msg.id.startsWith('temp-')
               );
               
-              // Add new message if it doesn't exist
               if (!filtered.find(msg => msg.id === formattedMessage.id)) {
                 return [...filtered, formattedMessage];
               }
@@ -280,14 +275,12 @@ export const InterpreterChat = ({
     }
   }, [channelId, currentUserId]);
 
-  // Combine optimistic and real messages
   const displayMessages = useCallback(() => {
     const allMessages = [...messages, ...optimisticMessages]
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
     let filtered = allMessages;
 
-    // Apply filters
     if (filters.userId) {
       filtered = filtered.filter(msg => {
         if (filters.userId === 'current') {
