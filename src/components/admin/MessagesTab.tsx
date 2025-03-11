@@ -204,114 +204,113 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0 overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
           "flex flex-col h-full",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-          "transition-all duration-300 hover:shadow-xl",
-          "dark:from-gray-800 dark:to-gray-900",
-          "p-0 overflow-hidden border-0",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          "bg-background/95 backdrop-blur-sm",
+          "transition-opacity duration-200",
+          "lg:border-r border-0",
+          isMobile && "fixed inset-0 z-50"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
+            <div className="flex items-center justify-between px-3 h-12">
               {isMobile && onMenuClick && (
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={onMenuClick}
-                  className="lg:hidden -ml-2"
+                  className="lg:hidden"
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
-              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+              <h2 className="text-base font-semibold">Conversations</h2>
             </div>
-            <div className="mb-4 px-2">
+            <div className="px-3 pb-2">
               <Input
                 placeholder="Rechercher un canal..."
                 className="w-full"
               />
             </div>
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="p-3 space-y-1">
-                  {channels.map((channel) => (
-                    <div
-                      key={channel.id}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                        selectedChannel?.id === channel.id ? 'bg-accent' : ''
-                      }`}
-                      onClick={() => {
-                        setSelectedChannel(channel);
-                        if (isMobile) setShowChannelList(false);
-                      }}
-                    >
-                      <span className="truncate text-sm font-medium">
-                        {editingChannel?.id === channel.id ? (
-                          <Input
-                            value={editingChannel.name}
-                            onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
-                            onKeyDown={(e) => {
-                              e.stopPropagation();
-                              if (e.key === 'Enter') {
-                                handleRename(channel.id, editingChannel.name);
-                              } else if (e.key === 'Escape') {
-                                setEditingChannel(null);
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-8"
-                            autoFocus
-                          />
-                        ) : (
-                          channel.display_name
-                        )}
-                      </span>
-                      {selectedChannel?.id === channel.id && (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingChannel({ id: channel.id, name: channel.display_name });
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowMemberManagement(true);
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setChannelToDelete(channel);
-                              setShowDeleteDialog(true);
-                            }}
-                            className="h-8 w-8 p-0 text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+            <ScrollArea className="flex-1">
+              <div className="space-y-0.5 p-2">
+                {channels.map((channel) => (
+                  <div
+                    key={channel.id}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-md cursor-pointer",
+                      "hover:bg-accent/50 transition-colors",
+                      selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                    )}
+                    onClick={() => {
+                      setSelectedChannel(channel);
+                      if (isMobile) setShowChannelList(false);
+                    }}
+                  >
+                    <span className="truncate text-sm font-medium">
+                      {editingChannel?.id === channel.id ? (
+                        <Input
+                          value={editingChannel.name}
+                          onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') {
+                              handleRename(channel.id, editingChannel.name);
+                            } else if (e.key === 'Escape') {
+                              setEditingChannel(null);
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-8"
+                          autoFocus
+                        />
+                      ) : (
+                        channel.display_name
                       )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
+                    </span>
+                    {selectedChannel?.id === channel.id && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingChannel({ id: channel.id, name: channel.display_name });
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMemberManagement(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChannelToDelete(channel);
+                            setShowDeleteDialog(true);
+                          }}
+                          className="h-8 w-8 p-0 text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </div>
         </Card>
       )}
@@ -319,46 +318,40 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
           "flex flex-col h-full",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "transition-all duration-300",
-          "lg:col-span-2 overflow-hidden",
-          "p-0 border-0",
-          isMobile && "fixed inset-0 z-50 m-0"
+          "bg-background/95",
+          "lg:col-span-2",
+          "lg:border-0",
+          isMobile && "fixed inset-0 z-50"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex-shrink-0">
-              <div className="flex items-center justify-between px-4 h-10 border-b">
-                {isMobile && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowChannelList(true)}
-                    className="absolute left-4 z-10 h-9 px-2 flex items-center gap-1"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                    Retour
-                  </Button>
-                )}
-                <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
-              </div>
+            <div className="flex items-center h-12 px-3 border-b">
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChannelList(true)}
+                  className="mr-2"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <h2 className="text-base font-semibold">{selectedChannel.display_name}</h2>
             </div>
             
-            <div className="flex-1 min-h-0 relative">
-              <ScrollArea className="h-full">
-                <MessageListContainer
-                  messages={messages}
-                  currentUserId={currentUserId}
-                  onDeleteMessage={deleteMessage}
-                  onReactToMessage={reactToMessage}
-                  replyTo={replyTo}
-                  setReplyTo={setReplyTo}
-                  channelId={selectedChannel.id}
-                  filters={{}}
-                />
-              </ScrollArea>
+            <div className="flex-1 overflow-hidden">
+              <MessageListContainer
+                messages={messages}
+                currentUserId={currentUserId}
+                onDeleteMessage={deleteMessage}
+                onReactToMessage={reactToMessage}
+                replyTo={replyTo}
+                setReplyTo={setReplyTo}
+                channelId={selectedChannel.id}
+                filters={{}}
+              />
             </div>
 
-            <div className="flex-shrink-0 mt-auto">
+            <div className="border-t">
               <ChatInput
                 message={message}
                 setMessage={setMessage}
@@ -376,12 +369,11 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       ) : !selectedChannel && !isMobile ? (
         <Card className={cn(
           "flex items-center justify-center",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "lg:col-span-2 overflow-hidden",
-          "p-4 border-0"
+          "bg-background/95",
+          "lg:col-span-2"
         )}>
           <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">
+            <p className="text-base font-light">
               Sélectionnez une conversation pour commencer à discuter
             </p>
           </div>

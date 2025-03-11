@@ -127,19 +127,19 @@ export const MessageList = React.memo<MessageListProps>(({
         ref={(el) => observeMessage(el)}
         data-message-id={message.id}
         className={cn(
-          "group transition-all duration-200",
-          "px-6 py-3",
-          "border-b-2",
+          "group",
+          "px-3 py-2",
+          "border-b",
           userColors.border,
           userColors.bg,
           "dark:bg-opacity-10 dark:hover:bg-opacity-20",
-          isThreadReply ? "ml-12 border-l-2 pl-6" : ""
+          isThreadReply ? "ml-8 border-l pl-4" : ""
         )}
       >
-        <div className="flex gap-4 relative">
+        <div className="flex gap-3 relative">
           <div className="flex-shrink-0 pt-0.5">
             <Avatar className={cn(
-              "h-10 w-10 ring-2 transition-shadow",
+              "h-8 w-8 ring-2",
               userColors.border,
               "hover:ring-opacity-70"
             )}>
@@ -151,7 +151,7 @@ export const MessageList = React.memo<MessageListProps>(({
                 />
               ) : (
                 <div className={cn(
-                  "w-full h-full flex items-center justify-center text-sm font-semibold rounded-full",
+                  "w-full h-full flex items-center justify-center text-sm font-medium rounded-full",
                   userColors.bg,
                   userColors.text
                 )}>
@@ -161,33 +161,32 @@ export const MessageList = React.memo<MessageListProps>(({
             </Avatar>
           </div>
           
-          <div className="flex-1 min-w-0 max-w-[85%] space-y-2">
+          <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2">
               <span className={cn(
-                "font-bold text-[0.95rem]",
+                "font-medium text-sm",
                 userColors.text,
                 "dark:text-opacity-90"
               )}>
                 {message.sender.name}
               </span>
-              <span className="text-xs text-muted-foreground font-medium">
+              <span className="text-xs text-muted-foreground">
                 {format(message.timestamp, 'HH:mm', { locale: fr })}
               </span>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className={cn(
                 "text-sm break-words leading-relaxed",
-                "text-gray-700 dark:text-gray-200",
-                "rounded-lg py-1"
+                "text-foreground/90"
               )}>
                 {message.content}
               </div>
               
               {message.attachments && message.attachments.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {message.attachments.map((attachment, index) => (
-                    <div key={index} className="group/attachment relative">
+                    <div key={index} className="group/attachment">
                       <MessageAttachment
                         url={attachment.url}
                         filename={attachment.filename}
@@ -200,7 +199,7 @@ export const MessageList = React.memo<MessageListProps>(({
             </div>
           </div>
           
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 -top-1 flex items-center gap-1.5">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 -top-1 flex items-center gap-1">
             {message.sender.id === currentUserId && (
               <Button
                 variant="ghost"
@@ -231,17 +230,16 @@ export const MessageList = React.memo<MessageListProps>(({
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="divide-y divide-gray-100/50 dark:divide-gray-800/50">
+    <div className="h-full">
+      <div className="divide-y divide-border/5">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
             {shouldShowDate(message, messages[index - 1]) && (
-              <div className="flex justify-center my-4">
+              <div className="flex justify-center py-2">
                 <div className={cn(
-                  "bg-purple-100/50 dark:bg-purple-900/30",
-                  "text-purple-700 dark:text-purple-300",
-                  "px-4 py-1.5 rounded-full text-xs font-medium",
-                  "shadow-sm border border-purple-200/50 dark:border-purple-800/30"
+                  "bg-muted/50",
+                  "text-muted-foreground",
+                  "px-3 py-1 rounded-full text-xs font-medium"
                 )}>
                   {formatMessageDate(message.timestamp)}
                 </div>
@@ -250,7 +248,7 @@ export const MessageList = React.memo<MessageListProps>(({
             {renderMessage(message)}
             
             {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-14 mt-1">
+              <div className="ml-10 mt-0.5 mb-1">
                 <Button
                   variant="ghost"
                   size="sm"
