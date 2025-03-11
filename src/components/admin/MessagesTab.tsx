@@ -329,10 +329,11 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           "bg-background/95",
           "lg:col-span-2",
           "lg:border-0",
-          isMobile && "fixed inset-0 z-[101]"
+          isMobile && "fixed inset-0 z-[101]",
+          isFullScreen && "h-screen"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex items-center h-12 px-3 border-b justify-between">
+            <div className="flex items-center h-12 px-3 border-b justify-between sticky top-0 bg-background/95 backdrop-blur-sm z-10">
               <div className="flex items-center">
                 {isMobile && (
                   <Button
@@ -360,7 +361,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
               </Button>
             </div>
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
               <MessageListContainer
                 messages={messages}
                 currentUserId={currentUserId}
@@ -369,11 +370,11 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                 replyTo={replyTo}
                 setReplyTo={setReplyTo}
                 channelId={selectedChannel.id}
-                filters={{}}
+                filters={filters}
               />
             </div>
 
-            <div className="border-t">
+            <div className="border-t sticky bottom-0 bg-background/95 backdrop-blur-sm">
               <ChatInput
                 message={message}
                 setMessage={setMessage}

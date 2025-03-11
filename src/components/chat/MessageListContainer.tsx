@@ -34,11 +34,12 @@ export const MessageListContainer = React.memo(({
   const lastMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
+    console.log('Filter update effect triggered:', initialFilters);
     setFilters(initialFilters);
   }, [initialFilters]);
   
   const filteredMessages = useMemo(() => {
-    console.log('Filtering messages with:', filters);
+    console.log('Filtering messages:', messages.length, 'with filters:', filters);
     let filtered = messages;
 
     if (filters.userId) {
@@ -69,6 +70,7 @@ export const MessageListContainer = React.memo(({
       });
     }
 
+    console.log('Filtered messages:', filtered.length);
     return filtered;
   }, [messages, filters, currentUserId]);
 
@@ -99,7 +101,7 @@ export const MessageListContainer = React.memo(({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-md border-b z-10">
+      <div className="flex-shrink-0 bg-background/95 backdrop-blur-md border-b z-10 sticky top-0">
         <MessageFilters
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -109,7 +111,7 @@ export const MessageListContainer = React.memo(({
         />
       </div>
       <ScrollArea className="flex-1">
-        <div className="min-h-full p-4" ref={scrollAreaRef}>
+        <div className="min-h-full p-4">
           <MessageList
             messages={filteredMessages}
             currentUserId={currentUserId}

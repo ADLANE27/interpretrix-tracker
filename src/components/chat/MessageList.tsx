@@ -161,7 +161,7 @@ export const MessageList = React.memo<MessageListProps>(({
           
           <div className={cn(
             "rounded-2xl px-4 py-2",
-            "break-words",
+            "break-words relative group",
             isCurrentUser ? 
               "bg-primary text-primary-foreground ml-auto" : 
               "bg-muted text-muted-foreground"
@@ -196,7 +196,7 @@ export const MessageList = React.memo<MessageListProps>(({
               variant="ghost"
               size="sm"
               onClick={() => handleDeleteMessage(message.id)}
-              className="h-8 w-8 p-0 rounded-full hover:bg-red-100/50 dark:hover:bg-red-900/50 hover:text-red-500"
+              className="h-8 w-8 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
