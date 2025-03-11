@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -150,45 +151,68 @@ export const useChat = (channelId: string) => {
     currentUserId,
     retryCount,
     setRetryCount,
-    (payload) => {
-      // Handle real-time updates directly
-      const handleRealtimeMessage = async (payload: { 
-        eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-        new: MessageData;
-        old: MessageData;
-      }) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload;
-        
-        try {
-          switch (eventType) {
-            case 'INSERT':
-              const formattedMessage = await formatMessage(newRecord);
-              if (formattedMessage) {
-                setMessages(prev => [...prev, formattedMessage]);
-              }
-              break;
-
-            case 'DELETE':
-              if (oldRecord?.id) {
-                setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
-              }
-              break;
-
-            case 'UPDATE':
-              const updatedMessage = await formatMessage(newRecord);
-              if (updatedMessage) {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === updatedMessage.id ? updatedMessage : msg
-                ));
-              }
-              break;
-          }
-        } catch (error) {
-          console.error('[Chat] Error handling realtime message:', error);
-        }
-      }
+    async (payload: { 
+      eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+      new: { [key: string]: any };
+      old: { [key: string]: any };
+    }) => {
+      const { eventType, new: newRecord, old: oldRecord } = payload;
       
-      handleRealtimeMessage(payload);
+      try {
+        switch (eventType) {
+          case 'INSERT': {
+            // Ensure newRecord matches MessageData structure
+            const messageData: MessageData = {
+              id: newRecord.id,
+              content: newRecord.content,
+              sender_id: newRecord.sender_id,
+              channel_id: newRecord.channel_id,
+              created_at: newRecord.created_at,
+              reactions: newRecord.reactions || {},
+              attachments: newRecord.attachments || []
+            };
+            const formattedMessage = await formatMessage(messageData);
+            if (formattedMessage) {
+              setMessages(prev => {
+                // Remove any optimistic message with matching content and replace with real message
+                const withoutOptimistic = prev.filter(msg => 
+                  !(msg.id.startsWith('temp-') && msg.content === formattedMessage.content)
+                );
+                return [...withoutOptimistic, formattedMessage];
+              });
+            }
+            break;
+          }
+
+          case 'DELETE':
+            if (oldRecord?.id) {
+              setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
+            }
+            break;
+
+          case 'UPDATE': {
+            // Ensure newRecord matches MessageData structure for updates
+            const messageData: MessageData = {
+              id: newRecord.id,
+              content: newRecord.content,
+              sender_id: newRecord.sender_id,
+              channel_id: newRecord.channel_id,
+              created_at: newRecord.created_at,
+              reactions: newRecord.reactions || {},
+              attachments: newRecord.attachments || []
+            };
+            const updatedMessage = await formatMessage(messageData);
+            if (updatedMessage) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === updatedMessage.id ? updatedMessage : msg
+              ));
+            }
+            break;
+          }
+        }
+      } catch (error) {
+        console.error('[Chat] Error handling realtime message:', error);
+      }
     }
   );
 
