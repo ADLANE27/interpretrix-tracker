@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
 import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 import { WorkHours } from "@/types/workHours";
+import { VirtualizedInterpreterList } from "./interpreter/VirtualizedInterpreterList";
 
 interface Interpreter {
   id: string;
@@ -149,9 +150,41 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Memoize filter functions for better performance
+  const filteredInterpreters = useMemo(() => {
+    console.log("[AdminDashboard] Recomputing filtered interpreters");
+    return interpreters.filter(interpreter => {
+      const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
+      const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+      const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
+        const [source, target] = lang.split(" → ");
+        return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
+               (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
+      });
+      const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
+      const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
+      const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
+      return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
+    }).sort((a, b) => {
+      if (rateSort === "rate-asc") {
+        const rateA = a.tarif_15min ?? 0;
+        const rateB = b.tarif_15min ?? 0;
+        return rateA - rateB;
+      }
+      const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+      const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [interpreters, selectedStatus, nameFilter, languageFilter, phoneFilter, birthCountryFilter, employmentStatusFilter, rateSort]);
+
+  // Lazy load realtime subscriptions based on active tab
   useEffect(() => {
-    console.log("[AdminDashboard] Setting up real-time subscriptions");
+    if (activeTab !== "interpreters") return;
+
+    console.log("[AdminDashboard] Setting up real-time subscriptions for interpreters tab");
     const channels: RealtimeChannel[] = [];
+    
     const setupChannel = (channelName: string, table: string) => {
       const channel = supabase.channel(`admin-${channelName}`).on('postgres_changes', {
         event: '*',
@@ -175,6 +208,7 @@ export const AdminDashboard = () => {
       channels.push(channel);
       return channel;
     };
+
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -207,9 +241,9 @@ export const AdminDashboard = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(connectionCheckInterval);
     };
-  }, []);
+  }, [activeTab]);
 
-  const resetAllFilters = () => {
+  const resetAllFilters = useCallback(() => {
     setSelectedStatus(null);
     setNameFilter("");
     setLanguageFilter("all");
@@ -221,7 +255,7 @@ export const AdminDashboard = () => {
       title: "Filtres réinitialisés",
       description: "Tous les filtres ont été réinitialisés"
     });
-  };
+  }, [toast]);
 
   const handleLogout = async () => {
     try {
@@ -242,30 +276,6 @@ export const AdminDashboard = () => {
       });
     }
   };
-
-  const filteredInterpreters = interpreters.filter(interpreter => {
-    const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
-    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-    const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
-    const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
-      const [source, target] = lang.split(" → ");
-      return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
-             (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
-    });
-    const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
-    const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
-    const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
-    return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
-  }).sort((a, b) => {
-    if (rateSort === "rate-asc") {
-      const rateA = a.tarif_15min ?? 0;
-      const rateB = b.tarif_15min ?? 0;
-      return rateA - rateB;
-    }
-    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -462,12 +472,9 @@ export const AdminDashboard = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              <div className={viewMode === "grid" 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-                : "space-y-2"
-              }>
-                {filteredInterpreters.map(interpreter => (
-                  viewMode === "grid" ? (
+              {viewMode === "grid" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {filteredInterpreters.map(interpreter => (
                     <InterpreterCard
                       key={interpreter.id}
                       interpreter={{
@@ -487,22 +494,11 @@ export const AdminDashboard = () => {
                         work_hours: interpreter.work_hours
                       }}
                     />
-                  ) : (
-                    <InterpreterListItem
-                      key={interpreter.id}
-                      interpreter={{
-                        id: interpreter.id,
-                        name: `${interpreter.first_name} ${interpreter.last_name}`,
-                        status: interpreter.status || "unavailable",
-                        employment_status: interpreter.employment_status,
-                        languages: interpreter.languages,
-                        next_mission_start: interpreter.next_mission_start,
-                        next_mission_duration: interpreter.next_mission_duration,
-                      }}
-                    />
-                  )
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <VirtualizedInterpreterList interpreters={filteredInterpreters} />
+              )}
             </div>
           </TabsContent>
 
