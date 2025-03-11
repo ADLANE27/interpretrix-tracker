@@ -96,7 +96,7 @@ export const MessageListContainer = React.memo(({
   };
 
   return (
-    <div className="h-full overflow-y-auto transition-opacity duration-200 pb-[200px]">
+    <div className="h-full overflow-y-auto transition-opacity duration-200 pb-[120px]">
       <MessageFilters
         filters={filters}
         onFiltersChange={handleFiltersChange}

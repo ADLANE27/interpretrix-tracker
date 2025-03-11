@@ -49,7 +49,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t p-4 bg-background/80 backdrop-blur-lg shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 border-t p-2 bg-background/95 backdrop-blur-lg shadow-lg">
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
           <span>En réponse à : {replyTo.sender.name}</span>
@@ -64,13 +64,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       )}
       <div className="relative max-w-[1200px] mx-auto">
         <div className="flex items-end gap-2 bg-white dark:bg-gray-800 rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[80px] flex items-end">
+          <div className="flex-1 min-h-[60px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[80px] py-3 px-4 text-base"
+              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[60px] py-2 px-4 text-base"
               onKeyDown={handleKeyDown}
             />
           </div>
