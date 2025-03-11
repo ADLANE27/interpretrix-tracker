@@ -190,32 +190,20 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChannelList(true)}
-              className="h-9 w-9 p-0"
+      <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center gap-2 ml-12 lg:ml-0">
+          <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
+          {hasActiveFilters && (
+            <Badge 
+              variant="secondary"
+              className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
+              onClick={onClearFilters}
             >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+              <Filter className="h-3 w-3" />
+              <span className="hidden sm:inline">Filtres actifs</span>
+              <X className="h-3 w-3" />
+            </Badge>
           )}
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">{channel?.name}</h2>
-            {hasActiveFilters && (
-              <Badge 
-                variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
-                onClick={onClearFilters}
-              >
-                <Filter className="h-3 w-3" />
-                <span>Filtres actifs</span>
-                <X className="h-3 w-3" />
-              </Badge>
-            )}
-          </div>
         </div>
         <ChannelMembersPopover 
           channelId={channelId} 
@@ -232,21 +220,22 @@ export const InterpreterChat = ({
           </div>
         ) : !isSubscribed ? (
           <div className="h-full flex items-center justify-center">
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Connexion en cours...
             </p>
           </div>
-        ) : null}
-        <MessageListContainer
-          messages={allMessages}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-          filters={filters}
-        />
+        ) : (
+          <MessageListContainer
+            messages={allMessages}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReactToMessage={reactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            channelId={channelId}
+            filters={filters}
+          />
+        )}
       </div>
 
       <ChatInput

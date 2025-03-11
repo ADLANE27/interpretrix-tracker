@@ -49,111 +49,114 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 bg-background">
+    <div className="border-t bg-background">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-          <span>En réponse à : {replyTo.sender.name}</span>
+        <div className="flex items-center gap-2 p-2 text-sm text-gray-500 border-b">
+          <span className="truncate">En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
+            className="shrink-0"
           >
             Annuler
           </Button>
         </div>
       )}
-      <div className="relative">
-        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[120px] flex items-end">
-            <Textarea
-              ref={inputRef}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[120px] py-3 px-4 text-base"
-              onKeyDown={handleKeyDown}
-            />
-          </div>
-          <div className="flex items-center gap-1 p-2">
-            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-purple-500"
+      <div className="p-2 sm:p-4">
+        <div className="relative">
+          <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
+            <div className="flex-1 min-h-[80px] max-h-[160px] flex items-end">
+              <Textarea
+                ref={inputRef}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Écrivez un message..."
+                className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[80px] max-h-[160px] py-3 px-4 text-base"
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            <div className="flex items-center gap-1 p-2">
+              <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-auto p-0" 
+                  side="top" 
+                  align="end"
                 >
-                  <Smile className="h-5 w-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent 
-                className="w-auto p-0" 
-                side="top" 
-                align="end"
-              >
-                <Picker
-                  data={data}
-                  onEmojiSelect={handleEmojiSelect}
-                  theme="light"
-                  locale="fr"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                  categories={[
-                    'frequent',
-                    'people',
-                    'nature',
-                    'foods',
-                    'activity',
-                    'places',
-                    'objects',
-                    'symbols',
-                    'flags'
-                  ]}
-                />
-              </PopoverContent>
-            </Popover>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              className="hidden"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            <Button
-              size="icon"
-              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
-              onClick={onSendMessage}
-              disabled={!message.trim() && attachments.length === 0}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-      {attachments.length > 0 && (
-        <div className="mt-2 space-y-1">
-          {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-              <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                  <Picker
+                    data={data}
+                    onEmojiSelect={handleEmojiSelect}
+                    theme="light"
+                    locale="fr"
+                    previewPosition="none"
+                    skinTonePosition="none"
+                    categories={[
+                      'frequent',
+                      'people',
+                      'nature',
+                      'foods',
+                      'activity',
+                      'places',
+                      'objects',
+                      'symbols',
+                      'flags'
+                    ]}
+                  />
+                </PopoverContent>
+              </Popover>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                multiple
+                className="hidden"
+              />
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-6 hover:text-red-500"
-                onClick={() => handleRemoveAttachment(index)}
+                size="icon"
+                className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                onClick={() => fileInputRef.current?.click()}
               >
-                Supprimer
+                <Paperclip className="h-5 w-5" />
+              </Button>
+              <Button
+                size="icon"
+                className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
+                onClick={onSendMessage}
+                disabled={!message.trim() && attachments.length === 0}
+              >
+                <Send className="h-4 w-4" />
               </Button>
             </div>
-          ))}
+          </div>
         </div>
-      )}
+        {attachments.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
+                <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 hover:text-red-500 shrink-0"
+                  onClick={() => handleRemoveAttachment(index)}
+                >
+                  Supprimer
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
