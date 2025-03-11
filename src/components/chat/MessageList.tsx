@@ -231,7 +231,7 @@ export const MessageList = React.memo<MessageListProps>(({
   };
 
   return (
-    <ScrollArea className="h-full px-2">
+    <div className="h-full overflow-y-auto">
       <div className="divide-y divide-gray-100/50 dark:divide-gray-800/50">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
@@ -281,7 +281,7 @@ export const MessageList = React.memo<MessageListProps>(({
           </React.Fragment>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 });
 

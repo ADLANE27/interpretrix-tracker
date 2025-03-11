@@ -204,13 +204,14 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-screen min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-1rem)] gap-3 sm:gap-6">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden h-full",
+          "flex flex-col",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
+          "p-0 overflow-hidden",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
@@ -252,8 +253,8 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
               className="w-full"
             />
           </div>
-          <ScrollArea className="flex-1 h-[calc(100vh-450px)]">
-            <div className="space-y-1">
+          <ScrollArea className="flex-1">
+            <div className="p-3 space-y-1">
               {channels.map((channel) => (
                 <div
                   key={channel.id}
@@ -334,14 +335,14 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
           "flex flex-col",
-          "p-0 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
-          "lg:col-span-2 h-full",
+          "transition-all duration-300 rounded-lg",
+          "lg:col-span-2 overflow-hidden",
+          "p-0 border-0",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between px-4 border-b h-[40px]">
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between px-4 h-10 border-b flex-shrink-0">
               {isMobile && (
                 <Button
                   variant="ghost"
@@ -381,9 +382,16 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           </div>
         </Card>
       ) : !selectedChannel && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900 h-full">
+        <Card className={cn(
+          "flex items-center justify-center",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+          "lg:col-span-2 overflow-hidden",
+          "p-4 border-0"
+        )}>
           <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+            <p className="text-base sm:text-lg font-light animate-fade-in">
+              Sélectionnez une conversation pour commencer à discuter
+            </p>
           </div>
         </Card>
       ) : null}
