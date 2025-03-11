@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -230,7 +231,7 @@ export const MessageList = React.memo<MessageListProps>(({
   };
 
   return (
-    <div className="h-full">
+    <ScrollArea className="h-full">
       <div className="divide-y divide-border/5">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
@@ -248,7 +249,7 @@ export const MessageList = React.memo<MessageListProps>(({
             {renderMessage(message)}
             
             {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-10 mt-0.5 mb-1">
+              <div className="ml-8 mt-0.5 mb-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -279,7 +280,7 @@ export const MessageList = React.memo<MessageListProps>(({
           </React.Fragment>
         ))}
       </div>
-    </div>
+    </ScrollArea>
   );
 });
 
