@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,45 +53,56 @@ export const MessagesTab = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    const fetchChannels = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
+  const fetchChannels = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-        const { data, error } = await supabase
-          .rpc('get_channels_with_display_names', {
-            current_user_id: user.id
-          }) as { data: Channel[] | null; error: any };
+      const { data, error } = await supabase
+        .rpc('get_channels_with_display_names', {
+          current_user_id: user.id
+        }) as { data: Channel[] | null; error: any };
 
-        if (error) throw error;
-        if (data) {
-          setChannels(data);
-          if (data.length > 0 && !selectedChannel) {
-            setSelectedChannel(data[0]);
-          }
+      if (error) throw error;
+      if (data) {
+        setChannels(data);
+        if (data.length > 0 && !selectedChannel) {
+          setSelectedChannel(data[0]);
         }
-      } catch (error) {
-        console.error("Error fetching channels:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch channels",
-          variant: "destructive",
-        });
       }
-    };
-
-    fetchChannels();
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch channels",
+        variant: "destructive",
+      });
+    }
   }, [selectedChannel]);
 
   const {
     messages,
     isLoading,
-    error,
+    error
+  } = useMessageOptimization(selectedChannel?.id || '');
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    }
+  });
+
+  const {
     sendMessage: sendMessageToChannel,
     deleteMessage,
     reactToMessage
-  } = useMessageOptimization(selectedChannel?.id || '');
+  } = useMessageActions(
+    selectedChannel?.id || '',
+    currentUser?.id || null,
+    fetchChannels
+  );
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -218,26 +229,6 @@ export const MessagesTab = () => {
     };
     fetchChannels();
   };
-
-  const { data: currentUser } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return user;
-    }
-  });
-
-  const {
-    sendMessage: sendMessageToChannel,
-    deleteMessage,
-    reactToMessage
-  } = useMessageActions(
-    selectedChannel?.id || '',
-    currentUser?.id || null,
-    async () => {
-      await fetchChannels();
-    }
-  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
