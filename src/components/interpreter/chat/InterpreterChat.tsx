@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
@@ -190,45 +189,43 @@ export const InterpreterChat = ({
   );
 
   return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowChannelList(true)}
-              className="h-8 w-8 shrink-0"
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-20">
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowChannelList(true)}
+            className="h-8 w-8 shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="flex flex-col min-w-0 flex-1">
+          <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
+          {hasActiveFilters && (
+            <Badge 
+              variant="secondary"
+              className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs w-fit"
+              onClick={onClearFilters}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <Filter className="h-3 w-3" />
+              <span className="hidden sm:inline">Filtres actifs</span>
+              <X className="h-3 w-3" />
+            </Badge>
           )}
-          <div className="flex flex-col min-w-0 flex-1">
-            <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
-            {hasActiveFilters && (
-              <Badge 
-                variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs w-fit"
-                onClick={onClearFilters}
-              >
-                <Filter className="h-3 w-3" />
-                <span className="hidden sm:inline">Filtres actifs</span>
-                <X className="h-3 w-3" />
-              </Badge>
-            )}
-          </div>
-          <div className="shrink-0 ml-2">
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole="interpreter"
-            />
-          </div>
+        </div>
+        <div className="shrink-0 ml-2">
+          <ChannelMembersPopover 
+            channelId={channelId} 
+            channelName={channel?.name || ''} 
+            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+            userRole="interpreter"
+          />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto relative">
+      <div className="flex-1 overflow-y-auto pb-[180px]">
         {isLoading ? (
           <div className="p-4">
             <MessageSkeletonList />
@@ -253,7 +250,7 @@ export const InterpreterChat = ({
         )}
       </div>
 
-      <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur-sm z-10">
+      <div className="fixed bottom-0 left-0 right-0 z-10">
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -269,4 +266,3 @@ export const InterpreterChat = ({
     </div>
   );
 };
-

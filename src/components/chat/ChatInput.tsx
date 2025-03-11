@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -48,7 +49,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-background/95 backdrop-blur-md border-t">
       {replyTo && (
         <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted/30">
           <span className="truncate">En réponse à : {replyTo.sender.name}</span>
@@ -62,9 +63,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="p-2">
+      <div className="p-3">
         <div className="relative flex flex-col gap-2">
-          <div className="flex items-end gap-2 rounded-xl border bg-white dark:bg-gray-800/90 shadow-sm">
+          <div className="flex items-end gap-2 rounded-xl border bg-white dark:bg-gray-800/95 shadow-sm">
             <Textarea
               ref={inputRef}
               value={message}
