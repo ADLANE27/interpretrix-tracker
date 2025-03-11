@@ -106,80 +106,80 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div 
       ref={(el) => observeMessage(el)}
       data-message-id={message.id}
-      className={`flex gap-3 ${
-        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-      } ${isThreadReply ? 'ml-8 mt-2' : ''}`}
+      className={`group hover:bg-gray-50/50 px-4 py-2 transition-colors ${
+        isThreadReply ? 'ml-8' : ''
+      }`}
     >
-      <Avatar className="h-10 w-10 shrink-0 ring-2 ring-purple-200">
-        {message.sender.avatarUrl ? (
-          <img 
-            src={message.sender.avatarUrl} 
-            alt={message.sender.name}
-            className="h-full w-full object-cover rounded-full"
-          />
-        ) : (
-          <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium rounded-full">
-            {getInitials(message.sender.name)}
-          </div>
-        )}
-      </Avatar>
-      <div className={`flex-1 max-w-[70%] space-y-1 ${
-        message.sender.id === currentUserId ? 'items-end' : 'items-start'
-      }`}>
-        <div className={`flex items-center gap-2 ${
-          message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-        }`}>
-          <span className="font-semibold text-[0.95rem] text-purple-900">{message.sender.name}</span>
-          <span className="text-gray-500 text-xs">
-            {format(message.timestamp, 'HH:mm', { locale: fr })}
-          </span>
+      <div className="flex gap-3">
+        <div className="flex-shrink-0">
+          <Avatar className="h-10 w-10 ring-2 ring-purple-200">
+            {message.sender.avatarUrl ? (
+              <img 
+                src={message.sender.avatarUrl} 
+                alt={message.sender.name}
+                className="h-full w-full object-cover rounded-full"
+              />
+            ) : (
+              <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium rounded-full">
+                {getInitials(message.sender.name)}
+              </div>
+            )}
+          </Avatar>
         </div>
-        <div className={`group relative ${
-          message.sender.id === currentUserId 
-            ? 'bg-purple-50 text-purple-900' 
-            : 'bg-gray-50 text-gray-900'
-        } rounded-lg px-4 py-2`}>
-          <div className="text-sm break-words">{message.content}</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {message.sender.id === currentUserId && (
-              <button
-                onClick={() => handleDeleteMessage(message.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-                aria-label="Supprimer le message"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </button>
-            )}
-            {!isThreadReply && setReplyTo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyTo(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-              >
-                <MessageCircle className="h-4 w-4 text-gray-500" />
-              </Button>
-            )}
+        
+        <div className="flex-1 max-w-[80%] space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-[0.95rem] text-purple-900">{message.sender.name}</span>
+            <span className="text-gray-500 text-xs">
+              {format(message.timestamp, 'HH:mm', { locale: fr })}
+            </span>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="text-sm break-words text-gray-900">{message.content}</div>
+            
+            {message.attachments && message.attachments.map((attachment, index) => (
+              <div key={index} className="relative group/attachment">
+                <MessageAttachment
+                  url={attachment.url}
+                  filename={attachment.filename}
+                  locale="fr"
+                />
+                {message.sender.id === currentUserId && (
+                  <button
+                    onClick={() => handleDeleteMessage(message.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover/attachment:opacity-100 transition-opacity shadow-sm"
+                    aria-label="Supprimer la pièce jointe"
+                  >
+                    <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         </div>
-        {message.attachments && message.attachments.map((attachment, index) => (
-          <div key={index} className="relative group">
-            <MessageAttachment
-              url={attachment.url}
-              filename={attachment.filename}
-              locale="fr"
-            />
-            {message.sender.id === currentUserId && (
-              <button
-                onClick={() => handleDeleteMessage(message.id)}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                aria-label="Supprimer la pièce jointe"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </button>
-            )}
-          </div>
-        ))}
+        
+        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1">
+          {message.sender.id === currentUserId && (
+            <button
+              onClick={() => handleDeleteMessage(message.id)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+              aria-label="Supprimer le message"
+            >
+              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+            </button>
+          )}
+          {!isThreadReply && setReplyTo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyTo(message)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+            >
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
