@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
-import { MessageList } from "@/components/chat/MessageList";
+import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from 'lucide-react';
+import { useMessageOptimization } from '@/hooks/chat/useMessageOptimization';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -24,14 +25,6 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
-}
-
-interface MessagePayload {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  channel_id: string;
 }
 
 export const InterpreterChat = ({ 
@@ -55,22 +48,19 @@ export const InterpreterChat = ({
   });
 
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [showChannelList, setShowChannelList] = useState(true);
 
-  const [chatMembers, setChatMembers] = useState([
-    { id: 'current', name: 'Mes messages' },
-  ]);
-
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+  const {
+    messages,
+    isLoading,
+    error
+  } = useMessageOptimization(channelId);
 
   const {
-    messages: realMessages,
-    isLoading,
     isSubscribed,
     subscriptionStatus,
     sendMessage,
@@ -85,10 +75,6 @@ export const InterpreterChat = ({
   useEffect(() => {
     onClearFilters();
   }, [channelId, onClearFilters]);
-
-  const senderDetailsCache = useRef<Map<string, { id: string; name: string; avatarUrl?: string }>>(
-    new Map()
-  );
 
   const { toast } = useToast();
 
@@ -150,21 +136,7 @@ export const InterpreterChat = ({
   const handleSendMessage = async () => {
     if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
-    const optimisticId = `temp-${Date.now()}`;
-    const optimisticMessage: Message = {
-      id: optimisticId,
-      content: message,
-      sender: {
-        id: currentUserId,
-        name: 'You',
-        avatarUrl: ''
-      },
-      timestamp: new Date(),
-      channelType: 'group'
-    };
-
     try {
-      setOptimisticMessages(prev => [...prev, optimisticMessage]);
       await sendMessage(message, replyTo?.id, attachments);
       setMessage('');
       setAttachments([]);
@@ -173,7 +145,6 @@ export const InterpreterChat = ({
         inputRef.current.style.height = 'auto';
       }
     } catch (error) {
-      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticId));
       console.error('Error sending message:', error);
     }
   };
@@ -185,127 +156,6 @@ export const InterpreterChat = ({
       return newAttachments;
     });
   };
-
-  useEffect(() => {
-    const uniqueMembers = new Map();
-    
-    if (currentUserId) {
-      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
-    }
-
-    messages.forEach(msg => {
-      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
-        uniqueMembers.set(msg.sender.id, {
-          id: msg.sender.id,
-          name: msg.sender.name,
-          avatarUrl: msg.sender.avatarUrl
-        });
-      }
-    });
-
-    setChatMembers(Array.from(uniqueMembers.values()));
-  }, [messages, currentUserId]);
-
-  useEffect(() => {
-    if (channelId) {
-      const messagesChannel = supabase
-        .channel(`chat-${channelId}`)
-        .on('postgres_changes' as never,
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chat_messages',
-            filter: `channel_id=eq.${channelId}`
-          },
-          async (payload: { new: MessagePayload }) => {
-            if (!payload.new || !currentUserId) return;
-            
-            let senderDetails = senderDetailsCache.current.get(payload.new.sender_id);
-            
-            if (!senderDetails) {
-              try {
-                const { data } = await supabase
-                  .rpc('get_message_sender_details', {
-                    sender_id: payload.new.sender_id
-                  })
-                  .single();
-
-                if (data) {
-                  senderDetails = {
-                    id: data.id,
-                    name: data.name,
-                    avatarUrl: data.avatar_url
-                  };
-                  senderDetailsCache.current.set(payload.new.sender_id, senderDetails);
-                }
-              } catch (error) {
-                console.error('Error fetching sender details:', error);
-                return;
-              }
-            }
-
-            if (!senderDetails) return;
-
-            const formattedMessage: Message = {
-              id: payload.new.id,
-              content: payload.new.content,
-              sender: senderDetails,
-              timestamp: new Date(payload.new.created_at),
-              channelType: 'group'
-            };
-
-            setMessages(prevMessages => {
-              const filtered = prevMessages.filter(msg => 
-                !msg.id.startsWith('temp-')
-              );
-              
-              if (!filtered.find(msg => msg.id === formattedMessage.id)) {
-                return [...filtered, formattedMessage];
-              }
-              return filtered;
-            });
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(messagesChannel);
-      };
-    }
-  }, [channelId, currentUserId]);
-
-  const displayMessages = useCallback(() => {
-    const allMessages = [...messages, ...optimisticMessages]
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    
-    let filtered = allMessages;
-
-    if (filters.userId) {
-      filtered = filtered.filter(msg => {
-        if (filters.userId === 'current') {
-          return msg.sender.id === currentUserId;
-        }
-        return msg.sender.id === filters.userId;
-      });
-    }
-
-    if (filters.keyword) {
-      const keywordLower = filters.keyword.toLowerCase();
-      filtered = filtered.filter(msg =>
-        msg.content.toLowerCase().includes(keywordLower)
-      );
-    }
-
-    if (filters.date) {
-      filtered = filtered.filter(msg => {
-        const messageDate = new Date(msg.timestamp).toDateString();
-        const filterDate = filters.date!.toDateString();
-        return messageDate === filterDate;
-      });
-    }
-
-    return filtered;
-  }, [messages, optimisticMessages, filters, currentUserId]);
 
   const hasActiveFilters = Boolean(filters.userId || filters.keyword || filters.date);
 
@@ -358,14 +208,15 @@ export const InterpreterChat = ({
             </p>
           </div>
         ) : null}
-        <MessageList
-          messages={displayMessages()}
+        <MessageListContainer
+          messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
+          filters={filters}
         />
       </div>
 
