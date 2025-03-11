@@ -105,7 +105,7 @@ export const MessageListContainer = React.memo(({
           channelId={channelId}
         />
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-[100px]" ref={scrollAreaRef}>
+      <div className="flex-1 overflow-y-auto px-4 pb-[200px]" ref={scrollAreaRef}>
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}

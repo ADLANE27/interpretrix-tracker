@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -48,7 +49,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg">
+    <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg z-50">
       {replyTo && (
         <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -64,7 +65,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="max-w-[1200px] mx-auto px-4 py-4 mb-4">
+      <div className="max-w-[1200px] mx-auto px-4 py-4">
         <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
           <div className="flex-1 min-h-[48px] flex items-end">
             <Textarea
