@@ -1,7 +1,8 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MessageListContainerProps {
   messages: Message[];
@@ -28,6 +29,8 @@ export const MessageListContainer = React.memo(({
   channelId,
   filters
 }: MessageListContainerProps) => {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  
   const filteredMessages = useMemo(() => {
     let filtered = messages;
 
@@ -58,16 +61,36 @@ export const MessageListContainer = React.memo(({
     return filtered;
   }, [messages, filters, currentUserId]);
 
+  // Scroll to bottom when new messages arrive or component mounts
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (scrollAreaRef.current) {
+        const scrollContainer = scrollAreaRef.current;
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    };
+
+    // Scroll immediately for initial load
+    scrollToBottom();
+
+    // Also scroll after a short delay to ensure all content is rendered
+    const timeoutId = setTimeout(scrollToBottom, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [filteredMessages]);
+
   return (
-    <MessageList
-      messages={filteredMessages}
-      currentUserId={currentUserId}
-      onDeleteMessage={onDeleteMessage}
-      onReactToMessage={onReactToMessage}
-      replyTo={replyTo}
-      setReplyTo={setReplyTo}
-      channelId={channelId}
-    />
+    <div ref={scrollAreaRef} className="h-full overflow-y-auto px-4">
+      <MessageList
+        messages={filteredMessages}
+        currentUserId={currentUserId}
+        onDeleteMessage={onDeleteMessage}
+        onReactToMessage={onReactToMessage}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
+        channelId={channelId}
+      />
+    </div>
   );
 });
 
