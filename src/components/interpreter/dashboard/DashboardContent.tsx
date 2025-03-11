@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
@@ -46,8 +47,8 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full">
-      <div className="container mx-auto p-0 sm:p-4 h-full">
+    <div className="flex-1 overflow-auto h-full w-full">
+      <div className="h-full max-w-none px-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -57,7 +58,7 @@ export const DashboardContent = ({
             transition={{ duration: 0.2 }}
             className="w-full h-full"
           >
-            <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
+            <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full w-full">
               {renderActiveTab()}
             </Card>
           </motion.div>
@@ -66,3 +67,4 @@ export const DashboardContent = ({
     </div>
   );
 };
+
