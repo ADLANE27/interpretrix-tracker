@@ -143,7 +143,7 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId]);
 
-  const {
+  const { 
     subscriptionStates, 
     handleSubscriptionError 
   } = useSubscriptions(
@@ -151,102 +151,54 @@ export const useChat = (channelId: string) => {
     currentUserId,
     retryCount,
     setRetryCount,
-    async (payload: { 
-      eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-      new: {
-        id: string;
-        content: string;
-        sender_id: string;
-        channel_id: string;
-        created_at: string;
-        reactions?: Record<string, string[]>;
-        attachments?: Array<{
-          url: string;
-          filename: string;
-          type: string;
-          size: number;
-        }>;
-      };
-      old: {
-        id: string;
-        content?: string;
-        sender_id?: string;
-        channel_id?: string;
-        created_at?: string;
-      };
-    }) => {
-      const { eventType, new: newRecord, old: oldRecord } = payload;
-      
-      try {
-        switch (eventType) {
-          case 'INSERT': {
-            const messageData: MessageData = {
-              id: newRecord.id,
-              content: newRecord.content,
-              sender_id: newRecord.sender_id,
-              channel_id: newRecord.channel_id,
-              created_at: newRecord.created_at,
-              reactions: newRecord.reactions || {},
-              attachments: newRecord.attachments || []
-            };
-            const formattedMessage = await formatMessage(messageData);
-            if (formattedMessage) {
-              setMessages(prev => {
-                const withoutOptimistic = prev.filter(msg => 
-                  !(msg.id.startsWith('temp-') && msg.content === formattedMessage.content)
-                );
-                return [...withoutOptimistic, formattedMessage];
-              });
-            }
-            break;
-          }
+    (payload) => {
+      // Handle real-time updates directly
+      const handleRealtimeMessage = async (payload: any) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        
+        try {
+          switch (eventType) {
+            case 'INSERT':
+              const formattedMessage = await formatMessage(newRecord);
+              if (formattedMessage) {
+                setMessages(prev => [...prev, formattedMessage]);
+              }
+              break;
 
-          case 'DELETE':
-            if (oldRecord?.id) {
+            case 'DELETE':
               setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
-            }
-            break;
+              break;
 
-          case 'UPDATE': {
-            const messageData: MessageData = {
-              id: newRecord.id,
-              content: newRecord.content,
-              sender_id: newRecord.sender_id,
-              channel_id: newRecord.channel_id,
-              created_at: newRecord.created_at,
-              reactions: newRecord.reactions || {},
-              attachments: newRecord.attachments || []
-            };
-            const updatedMessage = await formatMessage(messageData);
-            if (updatedMessage) {
-              setMessages(prev => prev.map(msg => 
-                msg.id === updatedMessage.id ? updatedMessage : msg
-              ));
-            }
-            break;
+            case 'UPDATE':
+              const updatedMessage = await formatMessage(newRecord);
+              if (updatedMessage) {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === updatedMessage.id ? updatedMessage : msg
+                ));
+              }
+              break;
           }
+        } catch (error) {
+          console.error('[Chat] Error handling realtime message:', error);
         }
-      } catch (error) {
-        console.error('[Chat] Error handling realtime message:', error);
       }
+      
+      handleRealtimeMessage(payload);
     }
   );
 
   const optimisticSendMessage = async (content: string, replyToId: string | null | undefined, attachments: File[]) => {
     if (!currentUserId) return null;
 
-    const timestamp = new Date();
-    const optimisticId = `temp-${timestamp.getTime()}`;
-
     const optimisticMessage: Message = {
-      id: optimisticId,
+      id: `temp-${Date.now()}`,
       content,
       sender: {
         id: currentUserId,
-        name: 'You', // This will be replaced when the real message arrives
+        name: 'You', // This will be replaced with actual data
         avatarUrl: ''
       },
-      timestamp,
+      timestamp: new Date(),
       channelType: 'group',
       attachments: []
     };
@@ -256,10 +208,9 @@ export const useChat = (channelId: string) => {
 
     try {
       await sendMessageToChannel(content, replyToId, attachments);
-      // Don't remove the optimistic message here - let the real-time update handle it
     } catch (error) {
-      // Only remove the optimistic message if there's an error
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
       throw error;
     }
   };
@@ -312,40 +263,6 @@ export const useChat = (channelId: string) => {
       mentions: subscriptionStates.mentions?.status === 'SUBSCRIBED'
     });
   }, [subscriptionStates]);
-
-  useEffect(() => {
-    if (channelId) {
-      const channel = supabase.channel(`chat-${channelId}`)
-        .on('postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'chat_messages',
-            filter: `channel_id=eq.${channelId}`
-          },
-          async (payload) => {
-            if (payload.eventType === 'INSERT') {
-              const formattedMessage = await formatMessage(payload.new);
-              if (formattedMessage) {
-                setMessages(prev => {
-                  // Remove any optimistic message with matching content and replace with real message
-                  const withoutOptimistic = prev.filter(msg => 
-                    !(msg.id.startsWith('temp-') && msg.content === formattedMessage.content)
-                  );
-                  return [...withoutOptimistic, formattedMessage];
-                });
-              }
-            } else if (payload.eventType === 'DELETE') {
-              setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
-            }
-          })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [channelId]);
 
   return {
     messages,
