@@ -31,7 +31,8 @@ export const LANGUAGES = [
   "Punjabi (Inde)", "Punjabi (Pakistan)", "Quechua", "Roumain", "Russe", "Samoan", "Santali", 
   "Serbe", "Shona", "Sindhi", "Slovaque", "Somali", "Soninké", "Soussou", "Sundanais", "Suédois", 
   "Swahili", "Sérère", "Tadjik", "Tagalog", "Tahitien", "Tamoul (Inde)", "Tamoul (Sri Lanka)", 
-  "Tamasheq", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", "Tshiluba", "Tswana", 
+  "Tamasheq", "Tchéchène", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", "Tshiluba", "Tswana", 
   "Turc", "Turkmène", "Télougou", "Ukrainien", "Vietnamien", "Wolof", "Wu (Shanghaïen)", "Xhosa", 
   "Yoruba", "Zaghawa", "Zoulou", "Éwé"
 ].sort();
+
