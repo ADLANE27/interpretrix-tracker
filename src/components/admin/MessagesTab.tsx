@@ -352,7 +352,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                   Retour
                 </Button>
               )}
-              <h2 className="text-lg font-semibold ml-12 lg:ml-0">{selectedChannel.display_name}</h2>
+              <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
             </div>
             <ScrollArea className="flex-1 p-4">
               <MessageListContainer
