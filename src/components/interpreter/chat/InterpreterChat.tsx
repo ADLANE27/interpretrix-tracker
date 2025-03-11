@@ -10,6 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { Badge } from "@/components/ui/badge";
+import { Filter, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft } from 'lucide-react';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -47,6 +51,7 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const [showChannelList, setShowChannelList] = useState(true);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
@@ -66,6 +71,12 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
+  // Reset filters when channel changes
+  useEffect(() => {
+    onClearFilters();
+  }, [channelId, onClearFilters]);
+
+  // Update filteredMessages function to handle filters
   const filteredMessages = useCallback(() => {
     let filtered = messages;
 
@@ -203,10 +214,37 @@ export const InterpreterChat = ({
     setChatMembers(Array.from(uniqueMembers.values()));
   }, [messages, currentUserId]);
 
+  const hasActiveFilters = Boolean(filters.userId || filters.keyword || filters.date);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <div className="flex items-center gap-3">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannelList(true)}
+              className="h-9 w-9 p-0"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">{channel?.name}</h2>
+            {hasActiveFilters && (
+              <Badge 
+                variant="secondary"
+                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
+                onClick={onClearFilters}
+              >
+                <Filter className="h-3 w-3" />
+                <span>Filtres actifs</span>
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+          </div>
+        </div>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 

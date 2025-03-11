@@ -32,12 +32,13 @@ export const MessagingTab = () => {
     setFilters(newFilters);
   };
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setFilters({});
-  };
+  }, []);
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
+    handleClearFilters(); // Reset filters when changing channels
     if (isMobile) {
       setShowChannels(false);
     }
