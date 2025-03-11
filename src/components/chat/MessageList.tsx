@@ -120,29 +120,21 @@ export const MessageList = React.memo<MessageListProps>(({
   };
 
   const renderMessage = (message: Message, isThreadReply = false) => {
-    const userColors = getUserColor(message.sender.id);
+    const isCurrentUser = message.sender.id === currentUserId;
     
     return (
       <div 
         ref={(el) => observeMessage(el)}
         data-message-id={message.id}
         className={cn(
-          "group",
-          "px-3 py-2",
-          "border-b",
-          userColors.border,
-          userColors.bg,
-          "dark:bg-opacity-10 dark:hover:bg-opacity-20",
-          isThreadReply ? "ml-8 border-l pl-4" : ""
+          "group flex gap-3",
+          "px-3 py-1.5",
+          isThreadReply ? "ml-8" : ""
         )}
       >
-        <div className="flex gap-3 relative">
+        {!isCurrentUser && (
           <div className="flex-shrink-0 pt-0.5">
-            <Avatar className={cn(
-              "h-8 w-8 ring-2",
-              userColors.border,
-              "hover:ring-opacity-70"
-            )}>
+            <Avatar className="h-8 w-8 ring-2 ring-background/10">
               {message.sender.avatarUrl ? (
                 <img 
                   src={message.sender.avatarUrl} 
@@ -150,97 +142,89 @@ export const MessageList = React.memo<MessageListProps>(({
                   className="h-full w-full object-cover rounded-full"
                 />
               ) : (
-                <div className={cn(
-                  "w-full h-full flex items-center justify-center text-sm font-medium rounded-full",
-                  userColors.bg,
-                  userColors.text
-                )}>
+                <div className="w-full h-full flex items-center justify-center text-sm font-medium rounded-full bg-muted">
                   {getInitials(message.sender.name)}
                 </div>
               )}
             </Avatar>
           </div>
+        )}
+        
+        <div className={cn(
+          "flex flex-col gap-1 max-w-[80%]",
+          isCurrentUser ? "ml-auto" : ""
+        )}>
+          {!isCurrentUser && (
+            <span className="text-xs text-muted-foreground ml-1">
+              {message.sender.name}
+            </span>
+          )}
           
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={cn(
-                "font-medium text-sm",
-                userColors.text,
-                "dark:text-opacity-90"
-              )}>
-                {message.sender.name}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {format(message.timestamp, 'HH:mm', { locale: fr })}
-              </span>
+          <div className={cn(
+            "rounded-2xl px-4 py-2",
+            "break-words",
+            isCurrentUser ? 
+              "bg-primary text-primary-foreground ml-auto" : 
+              "bg-muted text-muted-foreground"
+          )}>
+            <div className="text-sm leading-relaxed">
+              {message.content}
             </div>
             
-            <div className="space-y-2">
-              <div className={cn(
-                "text-sm break-words leading-relaxed",
-                "text-foreground/90"
-              )}>
-                {message.content}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {message.attachments.map((attachment, index) => (
+                  <div key={index} className="group/attachment">
+                    <MessageAttachment
+                      url={attachment.url}
+                      filename={attachment.filename}
+                      locale="fr"
+                    />
+                  </div>
+                ))}
               </div>
-              
-              {message.attachments && message.attachments.length > 0 && (
-                <div className="space-y-1.5">
-                  {message.attachments.map((attachment, index) => (
-                    <div key={index} className="group/attachment">
-                      <MessageAttachment
-                        url={attachment.url}
-                        filename={attachment.filename}
-                        locale="fr"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+            )}
+            
+            <div className="text-xs opacity-70 mt-1 text-right">
+              {format(message.timestamp, 'HH:mm', { locale: fr })}
             </div>
           </div>
-          
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 -top-1 flex items-center gap-1">
-            {message.sender.id === currentUserId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteMessage(message.id)}
-                className="h-8 w-8 p-0 rounded-full hover:bg-red-100/50 dark:hover:bg-red-900/50 hover:text-red-500"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-            {!isThreadReply && setReplyTo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyTo(message)}
-                className={cn(
-                  "h-8 w-8 p-0 rounded-full",
-                  "hover:bg-gray-100/50 dark:hover:bg-gray-800/50"
-                )}
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+        </div>
+        
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity self-start flex items-center gap-1">
+          {message.sender.id === currentUserId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteMessage(message.id)}
+              className="h-8 w-8 p-0 rounded-full hover:bg-red-100/50 dark:hover:bg-red-900/50 hover:text-red-500"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          {!isThreadReply && setReplyTo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyTo(message)}
+              className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="divide-y divide-border/5">
+    <ScrollArea className="h-full bg-background">
+      <div className="space-y-1">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
             {shouldShowDate(message, messages[index - 1]) && (
               <div className="flex justify-center py-2">
-                <div className={cn(
-                  "bg-muted/50",
-                  "text-muted-foreground",
-                  "px-3 py-1 rounded-full text-xs font-medium"
-                )}>
+                <div className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
                   {formatMessageDate(message.timestamp)}
                 </div>
               </div>
@@ -248,16 +232,12 @@ export const MessageList = React.memo<MessageListProps>(({
             {renderMessage(message)}
             
             {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-8 mt-0.5 mb-1">
+              <div className="ml-14 mt-0.5 mb-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleThread(message.id)}
-                  className={cn(
-                    "text-xs text-muted-foreground",
-                    "hover:text-foreground transition-colors",
-                    "flex items-center gap-1.5"
-                  )}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
                 >
                   {expandedThreads.has(message.id) ? (
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -268,7 +248,7 @@ export const MessageList = React.memo<MessageListProps>(({
                 </Button>
                 
                 {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-2">
+                  <div className="space-y-1 mt-1">
                     {messageThreads[message.id]
                       .filter(reply => reply.id !== message.id)
                       .map(reply => renderMessage(reply, true))}
