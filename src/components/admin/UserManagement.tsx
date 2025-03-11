@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import { UserManagementPasswordDialog } from "./components/UserManagementPasswor
 import { useUserManagementToasts } from "./hooks/useUserManagementToasts";
 
 export const UserManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);

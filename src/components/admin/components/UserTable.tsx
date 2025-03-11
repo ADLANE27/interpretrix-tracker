@@ -26,6 +26,7 @@ import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UserTableProps {
   users: UserData[];
@@ -38,6 +39,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
@@ -83,16 +85,14 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       if (error) throw error;
 
-      // Don't close the dialog immediately
+      // Instead of reloading, invalidate the query and show success message
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      setIsEditingInterpreter(false);
+      
       toast({
         title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès. La page va se recharger...",
+        description: "Le profil a été mis à jour avec succès",
       });
-
-      // Give time for the toast to be visible
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
       
     } catch (error: any) {
       console.error('Error updating profile:', error);
