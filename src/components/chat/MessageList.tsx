@@ -101,23 +101,23 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         )}
       </Avatar>
-      <div className={`flex-1 max-w-[70%] space-y-1.5 ${
+      <div className={`flex-1 max-w-[70%] space-y-1 ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
         <div className={`flex items-center gap-2 text-sm ${
           message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
         }`}>
-          <span className="font-medium text-foreground">{message.sender.name}</span>
-          <span className="text-muted-foreground text-xs">
+          <span className="font-medium">{message.sender.name}</span>
+          <span className="text-gray-500 text-xs">
             {format(message.timestamp, 'HH:mm', { locale: fr })}
           </span>
         </div>
         <div className={`group relative ${
           message.sender.id === currentUserId 
-            ? 'bg-purple-100 text-purple-900' 
-            : 'bg-gray-800 text-gray-50'
-        } rounded-lg px-6 py-3`}>
-          <div className="text-[15px] leading-relaxed break-words">{message.content}</div>
+            ? 'bg-purple-50 text-purple-900' 
+            : 'bg-gray-50 text-gray-900'
+        } rounded-lg px-4 py-2`}>
+          <div className="text-sm break-words">{message.content}</div>
           <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {message.sender.id === currentUserId && (
               <button
@@ -147,6 +147,15 @@ export const MessageList: React.FC<MessageListProps> = ({
               filename={attachment.filename}
               locale="fr"
             />
+            {message.sender.id === currentUserId && (
+              <button
+                onClick={() => onDeleteMessage(message.id)}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                aria-label="Supprimer la pièce jointe"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </button>
+            )}
           </div>
         ))}
       </div>

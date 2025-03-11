@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +71,6 @@ export const MessagesTab = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDirectMessageDialog, setShowDirectMessageDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
@@ -84,7 +83,6 @@ export const MessagesTab = () => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [showChannelList, setShowChannelList] = useState(true);
   const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -95,14 +93,6 @@ export const MessagesTab = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -557,37 +547,6 @@ export const MessagesTab = () => {
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
-  const handleFiltersChange = (newFilters: typeof filters) => {
-    setFilters(newFilters);
-  };
-
-  const handleClearFilters = useCallback(() => {
-    setFilters({});
-  }, []);
-
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-    handleClearFilters();
-    if (isMobile) {
-      setShowChannels(false);
-    }
-  };
-
-  const handleMentionClick = async (mention: any) => {
-    try {
-      if (mention.channel_id) {
-        setSelectedChannelId(mention.channel_id);
-        if (isMobile) {
-          setShowChannels(false);
-        }
-      }
-      await markMentionAsRead(mention.mention_id);
-      await refreshMentions();
-    } catch (error) {
-      console.error("Error handling mention click:", error);
-    }
-  };
-
   const handleRename = async (channelId: string, newName: string) => {
     try {
       const { error } = await supabase
@@ -614,19 +573,19 @@ export const MessagesTab = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background/50 backdrop-blur-sm">
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
         {/* Channel List */}
         <div 
           className={`${
             isMobile 
               ? showChannelList 
-                ? 'absolute inset-0 z-30 bg-background/95' 
+                ? 'absolute inset-0 z-30 bg-background' 
                 : 'hidden'
               : 'w-80'
-          } border-r border-border/40 flex flex-col`}
+          } border-r flex flex-col`}
         >
-          <div className="p-4 border-b border-border/40 safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
@@ -657,10 +616,8 @@ export const MessagesTab = () => {
             {channels.map((channel) => (
               <div
                 key={channel.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                  selectedChannel?.id === channel.id 
-                    ? 'bg-accent/40 shadow-sm' 
-                    : 'hover:bg-accent/20'
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
+                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
                 }`}
                 onClick={() => {
                   setSelectedChannel(channel);
@@ -732,10 +689,10 @@ export const MessagesTab = () => {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background/95' : ''}`}>
+        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <>
-              <div className="p-4 border-b border-border/40 safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
                   {isMobile && (
                     <Button
@@ -753,97 +710,71 @@ export const MessagesTab = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <div 
-                    key={message.id} 
-                    className={`group transition-all duration-200 ${
-                      message.sender?.id === currentUserId 
-                        ? 'ml-auto' 
-                        : 'mr-auto'
-                    }`}
-                  >
-                    <div className={`max-w-[80%] ${
-                      message.sender?.id === currentUserId 
-                        ? 'ml-auto' 
-                        : 'mr-auto'
-                    }`}>
-                      <div className="flex items-center justify-between mb-1 px-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            {message.sender?.avatarUrl && (
-                              <AvatarImage src={message.sender.avatarUrl} />
-                            )}
-                            <AvatarFallback>
-                              {message.sender?.name.substring(0, 2) || '??'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-sm font-medium">{message.sender?.name || 'Unknown User'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(message.created_at), "HH:mm", { locale: fr })}
-                            </p>
-                          </div>
+                  <Card key={message.id} className="p-4 group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          {message.sender?.avatarUrl && (
+                            <AvatarImage src={message.sender.avatarUrl} />
+                          )}
+                          <AvatarFallback>
+                            {message.sender?.name.substring(0, 2) || '??'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(message.created_at), "PPp", { locale: fr })}
+                          </p>
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleReply(message)}
+                          className="h-8 w-8"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        {message.sender?.id && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleReply(message)}
-                            className="h-7 w-7"
+                            onClick={() => deleteMessage(message.id, message.sender_id)}
+                            className="h-8 w-8"
                           >
-                            <MessageSquare className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          {message.sender?.id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteMessage(message.id, message.sender_id)}
-                              className="h-7 w-7 text-destructive/70 hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <div className={`rounded-2xl px-4 py-3 ${
-                        message.sender?.id === currentUserId
-                          ? 'bg-primary/10 text-primary-foreground ml-auto'
-                          : 'bg-accent/40 text-accent-foreground mr-auto'
-                      }`}>
-                        {renderMessageContent(message.content)}
+                        )}
                       </div>
                     </div>
-
+                    {renderMessageContent(message.content)}
+                    
                     {messageThreads[message.id]?.length > 1 && (
-                      <div className="ml-8 mt-2">
+                      <div className="ml-10 mt-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleThread(message.id)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
+                          className="text-xs text-gray-500 hover:text-gray-700"
                         >
                           {expandedThreads.has(message.id) ? (
-                            <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                            <ChevronDown className="h-4 w-4 mr-1" />
                           ) : (
-                            <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                            <ChevronRight className="h-4 w-4 mr-1" />
                           )}
                           {messageThreads[message.id].length - 1} réponses
                         </Button>
                         
                         {expandedThreads.has(message.id) && (
-                          <div className="space-y-2 mt-2 pl-2">
+                          <div className="space-y-2 mt-2">
                             {messageThreads[message.id]
                               .filter(reply => reply.id !== message.id)
                               .map(reply => (
-                                <div 
-                                  key={reply.id}
-                                  className={`max-w-[90%] ${
-                                    reply.sender?.id === currentUserId 
-                                      ? 'ml-auto' 
-                                      : 'mr-auto'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 mb-1 px-2">
-                                    <Avatar className="h-5 w-5">
+                                <Card key={reply.id} className="p-3 bg-accent/50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Avatar className="h-6 w-6">
                                       {reply.sender?.avatarUrl && (
                                         <AvatarImage src={reply.sender.avatarUrl} />
                                       )}
@@ -851,32 +782,26 @@ export const MessagesTab = () => {
                                         {reply.sender?.name.substring(0, 2) || '??'}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <span className="text-xs font-medium">{reply.sender?.name}</span>
+                                    <span className="text-sm font-medium">{reply.sender?.name}</span>
                                     <span className="text-xs text-muted-foreground">
                                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                                     </span>
                                   </div>
-                                  <div className={`rounded-xl px-4 py-3 text-base ${
-                                    reply.sender?.id === currentUserId
-                                      ? 'bg-primary/5 text-primary-foreground ml-auto'
-                                      : 'bg-accent/30 text-accent-foreground mr-auto'
-                                  }`}>
-                                    {renderMessageContent(reply.content)}
-                                  </div>
-                                </div>
+                                  {renderMessageContent(reply.content)}
+                                </Card>
                               ))}
                           </div>
                         )}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t border-border/40 p-4 bg-background/95 backdrop-blur safe-area-bottom">
+              <div className="border-t p-4 bg-background safe-area-bottom">
                 {replyTo && (
-                  <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-accent/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">
                       En réponse à : {replyTo.sender?.name}
                     </span>
@@ -884,7 +809,7 @@ export const MessagesTab = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => setReplyTo(null)}
-                      className="h-6 px-2 text-xs hover:bg-background/50"
+                      className="h-6 px-2 text-xs"
                     >
                       Annuler
                     </Button>
@@ -901,7 +826,7 @@ export const MessagesTab = () => {
                         value={newMessage}
                         onChange={handleInput}
                         placeholder="Écrivez un message..."
-                        className="min-h-[120px] py-4 px-6 text-base bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 shadow-inner"
+                        className="pr-24"
                       />
                       {showMentions && (
                         <MentionSuggestions
