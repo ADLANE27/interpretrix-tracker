@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
