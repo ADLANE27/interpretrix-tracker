@@ -9,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { Message } from "@/types/messaging";
 import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +27,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  channel_id: string;
+  sender_id: string;
+  parent_message_id?: string | null;
+  sender?: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+}
 
 interface Channel {
   id: string;
@@ -58,7 +71,6 @@ export const MessagesTab = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDirectMessageDialog, setShowDirectMessageDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
@@ -81,14 +93,6 @@ export const MessagesTab = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
 
   useEffect(() => {
     const fetchChannels = async () => {
@@ -568,29 +572,19 @@ export const MessagesTab = () => {
     }
   };
 
-  const getAvatarColor = (userId: string) => {
-    const colors = [
-      'bg-purple-100 text-purple-600',
-      'bg-blue-100 text-blue-600',
-      'bg-green-100 text-green-600',
-      'bg-yellow-100 text-yellow-600',
-      'bg-pink-100 text-pink-600'
-    ];
-    const index = userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
-  };
-
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
         {/* Channel List */}
-        <div className={`${
-          isMobile 
-            ? showChannelList 
-              ? 'absolute inset-0 z-30 bg-background' 
-              : 'hidden'
-            : 'w-80'
-          } border-r flex flex-col bg-gray-50/50`}>
+        <div 
+          className={`${
+            isMobile 
+              ? showChannelList 
+                ? 'absolute inset-0 z-30 bg-background' 
+                : 'hidden'
+              : 'w-80'
+          } border-r flex flex-col`}
+        >
           <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
@@ -714,76 +708,93 @@ export const MessagesTab = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {messages.map((message, index) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 ${
-                      message.sender?.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-                    }`}
-                  >
-                    <Avatar className="h-8 w-8 shrink-0">
-                      {message.sender?.avatarUrl ? (
-                        <AvatarImage src={message.sender.avatarUrl} />
-                      ) : (
-                        <AvatarFallback className={`${getAvatarColor(message.sender?.id || '')}`}>
-                          {message.sender?.name.substring(0, 2) || '??'}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-
-                    <div className={`flex-1 max-w-[70%] space-y-1 ${
-                      message.sender?.id === currentUserId ? 'items-end' : 'items-start'
-                    }`}>
-                      <div className={`flex items-center gap-2 text-sm ${
-                        message.sender?.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-                      }`}>
-                        <span className="font-medium">{message.sender?.name}</span>
-                        <span className="text-gray-500 text-xs">
-                          {format(new Date(message.created_at), 'HH:mm', { locale: fr })}
-                        </span>
-                      </div>
-
-                      <div className={`group relative ${
-                        message.sender?.id === currentUserId 
-                          ? 'bg-purple-50 text-purple-900' 
-                          : 'bg-gray-50 text-gray-900'
-                        } rounded-lg px-4 py-2 shadow-sm hover:shadow-md transition-shadow`}>
-                        <div className="text-sm break-words">{message.content}</div>
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {message.sender?.id === currentUserId && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteMessage(message.id, message.sender_id)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((message) => (
+                  <Card key={message.id} className="p-4 group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          {message.sender?.avatarUrl && (
+                            <AvatarImage src={message.sender.avatarUrl} />
                           )}
+                          <AvatarFallback>
+                            {message.sender?.name.substring(0, 2) || '??'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(message.created_at), "PPp", { locale: fr })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleReply(message)}
+                          className="h-8 w-8"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                        {message.sender?.id && (
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() => handleReply(message)}
-                            className="h-8 w-8 p-0"
+                            size="icon"
+                            onClick={() => deleteMessage(message.id, message.sender_id)}
+                            className="h-8 w-8"
                           >
-                            <MessageSquare className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
+                        )}
                       </div>
-
-                      {/* Message Attachments */}
-                      {message.attachments?.map((attachment, attachmentIndex) => (
-                        <div key={attachmentIndex} className="relative group">
-                          <MessageAttachment
-                            url={attachment.url}
-                            filename={attachment.filename}
-                            locale="fr"
-                          />
-                        </div>
-                      ))}
                     </div>
-                  </div>
+                    {renderMessageContent(message.content)}
+                    
+                    {messageThreads[message.id]?.length > 1 && (
+                      <div className="ml-10 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleThread(message.id)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          {expandedThreads.has(message.id) ? (
+                            <ChevronDown className="h-4 w-4 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 mr-1" />
+                          )}
+                          {messageThreads[message.id].length - 1} réponses
+                        </Button>
+                        
+                        {expandedThreads.has(message.id) && (
+                          <div className="space-y-2 mt-2">
+                            {messageThreads[message.id]
+                              .filter(reply => reply.id !== message.id)
+                              .map(reply => (
+                                <Card key={reply.id} className="p-3 bg-accent/50">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Avatar className="h-6 w-6">
+                                      {reply.sender?.avatarUrl && (
+                                        <AvatarImage src={reply.sender.avatarUrl} />
+                                      )}
+                                      <AvatarFallback>
+                                        {reply.sender?.name.substring(0, 2) || '??'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-sm font-medium">{reply.sender?.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
+                                    </span>
+                                  </div>
+                                  {renderMessageContent(reply.content)}
+                                </Card>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
