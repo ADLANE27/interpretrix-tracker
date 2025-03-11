@@ -11,6 +11,7 @@ import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { normalizeLanguagePair, formatLanguagePair } from "@/utils/languageFormatting";
+import { isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 
 interface Interpreter {
   id: string;
