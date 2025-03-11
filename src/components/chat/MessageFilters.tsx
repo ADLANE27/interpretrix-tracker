@@ -4,12 +4,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Search, UserSearch, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 interface MessageFiltersProps {
   filters: {
@@ -20,40 +17,14 @@ interface MessageFiltersProps {
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
   currentUserId: string | null;
-  channelId: string;
 }
 
 export const MessageFilters = ({
   filters,
   onFiltersChange,
   onClearFilters,
-  currentUserId,
-  channelId
+  currentUserId
 }: MessageFiltersProps) => {
-  const { data: channelMembers } = useQuery({
-    queryKey: ['channelMembers', channelId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('channel_members')
-        .select(`
-          user_id,
-          users:user_id (
-            id,
-            first_name,
-            last_name
-          )
-        `)
-        .eq('channel_id', channelId);
-
-      if (error) throw error;
-      return data.map(member => ({
-        id: member.user_id,
-        name: `${member.users.first_name} ${member.users.last_name}`
-      }));
-    },
-    enabled: !!channelId
-  });
-
   return (
     <div className="flex items-center gap-2 p-2 border-b">
       <Input
@@ -63,23 +34,21 @@ export const MessageFilters = ({
         className="max-w-[200px]"
       />
 
-      <Select
-        value={filters.userId || ''}
-        onValueChange={(value) => onFiltersChange({ ...filters, userId: value || undefined })}
+      <Button
+        variant="outline"
+        size="sm"
+        className={filters.userId ? "bg-purple-50 border-purple-200" : ""}
+        onClick={() => {
+          if (filters.userId) {
+            onFiltersChange({ ...filters, userId: undefined });
+          } else {
+            onFiltersChange({ ...filters, userId: 'current' });
+          }
+        }}
       >
-        <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Filtrer par utilisateur" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="">Tous les messages</SelectItem>
-          <SelectItem value="current">Mes messages</SelectItem>
-          {channelMembers?.filter(member => member.id !== currentUserId).map((member) => (
-            <SelectItem key={member.id} value={member.id}>
-              {member.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        <UserSearch className="h-4 w-4 mr-2" />
+        {filters.userId ? "Mes messages" : "Tous les messages"}
+      </Button>
 
       <Popover>
         <PopoverTrigger asChild>
