@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft } from "lucide-react";
+import { Bell, ChevronLeft, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -69,10 +69,22 @@ export const MessagingTab = () => {
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
+          isMobile && "fixed inset-0 z-[35] m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden"
+                  onClick={() => setShowChannels(false)}
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              )}
+              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            </div>
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
