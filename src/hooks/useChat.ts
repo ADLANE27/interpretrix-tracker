@@ -153,15 +153,33 @@ export const useChat = (channelId: string) => {
     setRetryCount,
     async (payload: { 
       eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-      new: { [key: string]: any };
-      old: { [key: string]: any };
+      new: {
+        id: string;
+        content: string;
+        sender_id: string;
+        channel_id: string;
+        created_at: string;
+        reactions?: Record<string, string[]>;
+        attachments?: Array<{
+          url: string;
+          filename: string;
+          type: string;
+          size: number;
+        }>;
+      };
+      old: {
+        id: string;
+        content?: string;
+        sender_id?: string;
+        channel_id?: string;
+        created_at?: string;
+      };
     }) => {
       const { eventType, new: newRecord, old: oldRecord } = payload;
       
       try {
         switch (eventType) {
           case 'INSERT': {
-            // Ensure newRecord matches MessageData structure
             const messageData: MessageData = {
               id: newRecord.id,
               content: newRecord.content,
@@ -174,7 +192,6 @@ export const useChat = (channelId: string) => {
             const formattedMessage = await formatMessage(messageData);
             if (formattedMessage) {
               setMessages(prev => {
-                // Remove any optimistic message with matching content and replace with real message
                 const withoutOptimistic = prev.filter(msg => 
                   !(msg.id.startsWith('temp-') && msg.content === formattedMessage.content)
                 );
@@ -191,7 +208,6 @@ export const useChat = (channelId: string) => {
             break;
 
           case 'UPDATE': {
-            // Ensure newRecord matches MessageData structure for updates
             const messageData: MessageData = {
               id: newRecord.id,
               content: newRecord.content,
