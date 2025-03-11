@@ -65,25 +65,28 @@ export const MessagingTab = () => {
       {/* Channel List */}
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-          "transition-all duration-300 hover:shadow-xl rounded-lg",
-          "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-[35] m-0 rounded-none"
+          "relative overflow-hidden",
+          "bg-gradient-to-br from-purple-50/90 to-white dark:from-gray-900/90 dark:to-gray-800",
+          "backdrop-blur-xl border-0 shadow-lg",
+          "transition-all duration-300 hover:shadow-xl",
+          "p-2 sm:p-4 lg:col-span-1",
+          isMobile && "fixed inset-0 z-[35] m-0"
         )}>
-          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
+          <div className="flex items-center justify-between mb-4 px-2">
             <div className="flex items-center gap-2">
               {isMobile && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden"
+                  className="lg:hidden hover:bg-purple-100/50 dark:hover:bg-gray-700/50"
                   onClick={() => setShowChannels(false)}
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
-              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+              <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
+                Conversations
+              </h2>
             </div>
             <MentionsPopover
               mentions={unreadMentions}
@@ -93,10 +96,12 @@ export const MessagingTab = () => {
               onDelete={deleteMention}
             >
               <div className={cn(
-                "transition-all duration-200 p-1.5 sm:p-2",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                "border border-gray-100 dark:border-gray-700",
-                "rounded-lg flex items-center justify-center relative",
+                "transition-all duration-200",
+                "bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700",
+                "shadow-sm hover:shadow-md",
+                "border border-purple-100 dark:border-gray-700",
+                "rounded-full p-2",
+                "flex items-center justify-center relative",
                 totalUnreadCount > 0 && "text-purple-500"
               )}>
                 <Bell className="h-4 w-4" />
@@ -120,18 +125,19 @@ export const MessagingTab = () => {
       {/* Chat Area */}
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
-          "lg:col-span-2",
-          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
+          "relative overflow-hidden",
+          "bg-gradient-to-br from-white to-purple-50/90 dark:from-gray-800 dark:to-gray-900/90",
+          "backdrop-blur-xl border-0 shadow-lg",
+          "transition-all duration-300 hover:shadow-xl",
+          "p-2 sm:p-4 lg:col-span-2",
+          isMobile && "fixed inset-0 z-[45] m-0"
         )}>
           {isMobile && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleBackToChannels}
-              className="absolute top-2 left-2 z-10 h-8 px-2"
+              className="absolute top-2 left-2 z-10 h-8 px-2 hover:bg-purple-100/50 dark:hover:bg-gray-700/50"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Retour
@@ -146,9 +152,17 @@ export const MessagingTab = () => {
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+        <Card className={cn(
+          "flex items-center justify-center",
+          "bg-gradient-to-br from-white to-purple-50/90 dark:from-gray-800 dark:to-gray-900/90",
+          "backdrop-blur-xl border-0 shadow-lg",
+          "transition-all duration-300 hover:shadow-xl",
+          "p-3 sm:p-4 lg:col-span-2"
+        )}>
           <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+            <p className="text-base sm:text-lg font-light animate-fade-in">
+              Sélectionnez une conversation pour commencer à discuter
+            </p>
           </div>
         </Card>
       ) : null}

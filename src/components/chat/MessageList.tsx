@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -111,11 +110,11 @@ export const MessageList = React.memo<MessageListProps>(({
       className={cn(
         "group transition-all duration-200",
         "px-4 py-2.5 relative",
-        "hover:bg-accent/5 dark:hover:bg-accent/10",
-        isThreadReply ? "ml-12 border-l-2 border-accent/10 pl-6" : "",
+        "hover:bg-purple-50/50 dark:hover:bg-gray-800/50",
+        isThreadReply ? "ml-12 border-l-2 border-purple-200/50 dark:border-purple-800/50 pl-6" : "",
         message.sender.id === currentUserId 
-          ? "hover:bg-blue-50/50 dark:hover:bg-blue-950/20" 
-          : "hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+          ? "hover:bg-blue-50/50 dark:hover:bg-blue-900/20" 
+          : "hover:bg-purple-50/50 dark:hover:bg-purple-900/20"
       )}
     >
       <div className="flex gap-4 relative">
@@ -150,8 +149,8 @@ export const MessageList = React.memo<MessageListProps>(({
             <span className={cn(
               "font-semibold text-[0.95rem]",
               message.sender.id === currentUserId 
-                ? "text-blue-900 dark:text-blue-300" 
-                : "text-purple-900 dark:text-purple-300"
+                ? "text-blue-600 dark:text-blue-400" 
+                : "text-purple-600 dark:text-purple-400"
             )}>
               {message.sender.name}
             </span>
@@ -161,7 +160,11 @@ export const MessageList = React.memo<MessageListProps>(({
           </div>
           
           <div className="space-y-3">
-            <div className="text-sm text-foreground/90 break-words leading-relaxed">
+            <div className={cn(
+              "text-sm break-words leading-relaxed",
+              "text-foreground/90 dark:text-foreground/80",
+              "rounded-lg py-1"
+            )}>
               {message.content}
             </div>
             
@@ -187,11 +190,7 @@ export const MessageList = React.memo<MessageListProps>(({
               variant="ghost"
               size="sm"
               onClick={() => handleDeleteMessage(message.id)}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full",
-                "hover:bg-destructive/10 hover:text-destructive",
-                "transition-colors duration-200"
-              )}
+              className="h-8 w-8 p-0 rounded-full hover:bg-red-100/50 dark:hover:bg-red-900/50 hover:text-red-500"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -201,11 +200,7 @@ export const MessageList = React.memo<MessageListProps>(({
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(message)}
-              className={cn(
-                "h-8 w-8 p-0 rounded-full",
-                "hover:bg-accent/20",
-                "transition-colors duration-200"
-              )}
+              className="h-8 w-8 p-0 rounded-full hover:bg-purple-100/50 dark:hover:bg-purple-900/50"
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
@@ -222,9 +217,10 @@ export const MessageList = React.memo<MessageListProps>(({
           {shouldShowDate(message, messages[index - 1]) && (
             <div className="flex justify-center my-6">
               <div className={cn(
-                "bg-accent/5 text-foreground/60 px-4 py-1.5",
-                "rounded-full text-xs font-medium",
-                "shadow-sm border border-accent/10"
+                "bg-purple-100/50 dark:bg-purple-900/30",
+                "text-purple-700 dark:text-purple-300",
+                "px-4 py-1.5 rounded-full text-xs font-medium",
+                "shadow-sm border border-purple-200/50 dark:border-purple-800/30"
               )}>
                 {formatMessageDate(message.timestamp)}
               </div>
@@ -268,4 +264,3 @@ export const MessageList = React.memo<MessageListProps>(({
 });
 
 MessageList.displayName = 'MessageList';
-
