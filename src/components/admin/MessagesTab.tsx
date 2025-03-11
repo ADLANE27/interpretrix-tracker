@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2, Menu } from 'lucide-react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -17,7 +17,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu } from 'lucide-react';
 
 interface Channel {
   id: string;
@@ -221,7 +220,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                   variant="ghost"
                   size="icon"
                   onClick={onMenuClick}
-                  className="lg:hidden -ml-2 h-9 w-9"
+                  className="lg:hidden -ml-2"
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
@@ -341,18 +340,18 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex flex-col h-full">
-            {isMobile && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowChannelList(true)}
-                className="absolute top-4 left-4 z-10 h-9 px-2"
-              >
-                <ChevronLeft className="h-5 w-5 mr-1" />
-                Retour
-              </Button>
-            )}
             <div className="flex items-center justify-between p-4 border-b">
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChannelList(true)}
+                  className="absolute left-4 z-10 h-9 px-2 flex items-center gap-1"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  Retour
+                </Button>
+              )}
               <h2 className="text-lg font-semibold ml-12 lg:ml-0">{selectedChannel.display_name}</h2>
             </div>
             <ScrollArea className="flex-1 p-4">
