@@ -204,18 +204,18 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0 overflow-hidden">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
-          "flex flex-col",
+          "flex flex-col h-full",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl",
           "dark:from-gray-800 dark:to-gray-900",
           "p-0 overflow-hidden border-0",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
               {isMobile && onMenuClick && (
                 <Button
                   variant="ghost"
@@ -228,157 +228,149 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
               )}
               <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDirectMessageDialog(true)}
-                className="h-9 w-9 p-0"
-              >
-                <UserPlus className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCreateDialog(true)}
-                className="h-9 w-9 p-0"
-              >
-                <PlusCircle className="h-5 w-5" />
-              </Button>
+            <div className="mb-4 px-2">
+              <Input
+                placeholder="Rechercher un canal..."
+                className="w-full"
+              />
             </div>
-          </div>
-          <div className="mb-4">
-            <Input
-              placeholder="Rechercher un canal..."
-              className="w-full"
-            />
-          </div>
-          <ScrollArea className="flex-1">
-            <div className="p-3 space-y-1">
-              {channels.map((channel) => (
-                <div
-                  key={channel.id}
-                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                    selectedChannel?.id === channel.id ? 'bg-accent' : ''
-                  }`}
-                  onClick={() => {
-                    setSelectedChannel(channel);
-                    if (isMobile) setShowChannelList(false);
-                  }}
-                >
-                  <span className="truncate text-sm font-medium">
-                    {editingChannel?.id === channel.id ? (
-                      <Input
-                        value={editingChannel.name}
-                        onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === 'Enter') {
-                            handleRename(channel.id, editingChannel.name);
-                          } else if (e.key === 'Escape') {
-                            setEditingChannel(null);
-                          }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-8"
-                        autoFocus
-                      />
-                    ) : (
-                      channel.display_name
-                    )}
-                  </span>
-                  {selectedChannel?.id === channel.id && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingChannel({ id: channel.id, name: channel.display_name });
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMemberManagement(true);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setChannelToDelete(channel);
-                          setShowDeleteDialog(true);
-                        }}
-                        className="h-8 w-8 p-0 text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            <div className="flex-1 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="p-3 space-y-1">
+                  {channels.map((channel) => (
+                    <div
+                      key={channel.id}
+                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
+                        selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedChannel(channel);
+                        if (isMobile) setShowChannelList(false);
+                      }}
+                    >
+                      <span className="truncate text-sm font-medium">
+                        {editingChannel?.id === channel.id ? (
+                          <Input
+                            value={editingChannel.name}
+                            onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                            onKeyDown={(e) => {
+                              e.stopPropagation();
+                              if (e.key === 'Enter') {
+                                handleRename(channel.id, editingChannel.name);
+                              } else if (e.key === 'Escape') {
+                                setEditingChannel(null);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-8"
+                            autoFocus
+                          />
+                        ) : (
+                          channel.display_name
+                        )}
+                      </span>
+                      {selectedChannel?.id === channel.id && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingChannel({ id: channel.id, name: channel.display_name });
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMemberManagement(true);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Settings className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setChannelToDelete(channel);
+                              setShowDeleteDialog(true);
+                            }}
+                            className="h-8 w-8 p-0 text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              </ScrollArea>
             </div>
-          </ScrollArea>
+          </div>
         </Card>
       )}
       
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
-          "flex flex-col",
+          "flex flex-col h-full",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "transition-all duration-300",
           "lg:col-span-2 overflow-hidden",
           "p-0 border-0",
           isMobile && "fixed inset-0 z-50 m-0"
         )}>
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex items-center justify-between px-4 h-10 border-b flex-shrink-0">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChannelList(true)}
-                  className="absolute left-4 z-10 h-9 px-2 flex items-center gap-1"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                  Retour
-                </Button>
-              )}
-              <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
+          <div className="flex flex-col h-full">
+            <div className="flex-shrink-0">
+              <div className="flex items-center justify-between px-4 h-10 border-b">
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowChannelList(true)}
+                    className="absolute left-4 z-10 h-9 px-2 flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    Retour
+                  </Button>
+                )}
+                <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
+              </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-              <MessageListContainer
-                messages={messages}
-                currentUserId={currentUserId}
-                onDeleteMessage={deleteMessage}
-                onReactToMessage={reactToMessage}
+            
+            <div className="flex-1 min-h-0 relative">
+              <ScrollArea className="h-full">
+                <MessageListContainer
+                  messages={messages}
+                  currentUserId={currentUserId}
+                  onDeleteMessage={deleteMessage}
+                  onReactToMessage={reactToMessage}
+                  replyTo={replyTo}
+                  setReplyTo={setReplyTo}
+                  channelId={selectedChannel.id}
+                  filters={{}}
+                />
+              </ScrollArea>
+            </div>
+
+            <div className="flex-shrink-0 mt-auto">
+              <ChatInput
+                message={message}
+                setMessage={setMessage}
+                onSendMessage={handleSendMessage}
+                handleFileChange={handleFileChange}
+                attachments={attachments}
+                handleRemoveAttachment={handleRemoveAttachment}
+                inputRef={inputRef}
                 replyTo={replyTo}
                 setReplyTo={setReplyTo}
-                channelId={selectedChannel.id}
-                filters={{}}
               />
             </div>
-            <ChatInput
-              message={message}
-              setMessage={setMessage}
-              onSendMessage={handleSendMessage}
-              handleFileChange={handleFileChange}
-              attachments={attachments}
-              handleRemoveAttachment={handleRemoveAttachment}
-              inputRef={inputRef}
-              replyTo={replyTo}
-              setReplyTo={setReplyTo}
-            />
           </div>
         </Card>
       ) : !selectedChannel && !isMobile ? (
