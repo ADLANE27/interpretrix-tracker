@@ -68,10 +68,11 @@ Deno.serve(async (req) => {
       throw new Error('At least one language pair is required');
     }
 
-    // Transform languages to the correct format
-    const formattedLanguages = interpreterData.languages.map(lang => 
-      `${lang.source}→${lang.target}`
-    );
+    // Transform languages to the correct format with proper spacing and arrow character
+    const formattedLanguages = interpreterData.languages.map(lang => {
+      // Ensure proper spacing around the arrow
+      return `${lang.source} → ${lang.target}`;
+    });
 
     console.log('Transformed languages:', formattedLanguages);
 
