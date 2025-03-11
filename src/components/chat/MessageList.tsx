@@ -2,12 +2,9 @@
 import React, { useState } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, MessageCircle } from 'lucide-react';
 import { Avatar } from "@/components/ui/avatar";
-import { format, isToday, isYesterday } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
-import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { groupMessages, MessageGroup } from '@/utils/messageGrouping';
 import { MessageTimestamp } from './MessageTimestamp';
 
@@ -30,9 +27,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   setReplyTo,
   channelId,
 }) => {
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [deletedMessageIds, setDeletedMessageIds] = useState<Set<string>>(new Set());
-  const { observeMessage } = useMessageVisibility(channelId);
 
   const getInitials = (name: string) => {
     return name
@@ -41,15 +36,6 @@ export const MessageList: React.FC<MessageListProps> = ({
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const formatDateDisplay = (date: Date) => {
-    if (isToday(date)) {
-      return "Aujourd'hui";
-    } else if (isYesterday(date)) {
-      return "Hier";
-    }
-    return format(date, 'EEEE d MMMM yyyy', { locale: fr });
   };
 
   const handleDeleteMessage = async (messageId: string) => {
@@ -64,18 +50,6 @@ export const MessageList: React.FC<MessageListProps> = ({
       });
       console.error('Failed to delete message:', error);
     }
-  };
-
-  const toggleThread = (messageId: string) => {
-    setExpandedThreads(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(messageId)) {
-        newSet.delete(messageId);
-      } else {
-        newSet.add(messageId);
-      }
-      return newSet;
-    });
   };
 
   const visibleMessages = messages.filter(message => !deletedMessageIds.has(message.id));
@@ -116,7 +90,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
             
             <div className="space-y-1">
-              {messages.map((message, idx) => (
+              {messages.map((message) => (
                 <div key={message.id} className="group/message relative">
                   <div className="text-sm break-words text-gray-900">
                     {message.content}
@@ -159,40 +133,13 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           </div>
         </div>
-
-        {messages[0].id && messages.length > 0 && (
-          <div className="mt-1 ml-12">
-            {messages[0].parent_message_id && expandedThreads.has(messages[0].parent_message_id) && (
-              <div className="space-y-2 pl-4 border-l-2 border-gray-200">
-                {/* Thread replies would go here */}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     );
   };
 
   return (
     <div className="space-y-6">
-      {messageGroups.map((group, index) => {
-        const showDate = index === 0 || 
-          formatDateDisplay(group.date) !== formatDateDisplay(messageGroups[index - 1].date);
-
-        return (
-          <React.Fragment key={group.messages[0].id}>
-            {showDate && (
-              <div className="flex justify-center my-4">
-                <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
-                  {formatDateDisplay(group.date)}
-                </div>
-              </div>
-            )}
-            {renderMessageGroup(group)}
-          </React.Fragment>
-        );
-      })}
+      {messageGroups.map((group) => renderMessageGroup(group))}
     </div>
   );
 };
-

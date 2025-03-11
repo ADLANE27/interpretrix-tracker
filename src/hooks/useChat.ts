@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -190,15 +189,18 @@ export const useChat = (channelId: string) => {
   const optimisticSendMessage = async (content: string, replyToId: string | null | undefined, attachments: File[]) => {
     if (!currentUserId) return null;
 
+    const timestamp = new Date();
+    const optimisticId = `temp-${timestamp.getTime()}`;
+
     const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
+      id: optimisticId,
       content,
       sender: {
         id: currentUserId,
-        name: 'You', // This will be replaced with actual data
+        name: 'You', // This will be replaced when the real message arrives
         avatarUrl: ''
       },
-      timestamp: new Date(),
+      timestamp,
       channelType: 'group',
       attachments: []
     };
@@ -208,9 +210,10 @@ export const useChat = (channelId: string) => {
 
     try {
       await sendMessageToChannel(content, replyToId, attachments);
+      // Don't remove the optimistic message here - let the real-time update handle it
     } catch (error) {
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      // Only remove the optimistic message if there's an error
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
       throw error;
     }
   };
@@ -263,6 +266,40 @@ export const useChat = (channelId: string) => {
       mentions: subscriptionStates.mentions?.status === 'SUBSCRIBED'
     });
   }, [subscriptionStates]);
+
+  useEffect(() => {
+    if (channelId) {
+      const channel = supabase.channel(`chat-${channelId}`)
+        .on('postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `channel_id=eq.${channelId}`
+          },
+          async (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const formattedMessage = await formatMessage(payload.new);
+              if (formattedMessage) {
+                setMessages(prev => {
+                  // Remove any optimistic message with matching content and replace with real message
+                  const withoutOptimistic = prev.filter(msg => 
+                    !(msg.id.startsWith('temp-') && msg.content === formattedMessage.content)
+                  );
+                  return [...withoutOptimistic, formattedMessage];
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
+            }
+          })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [channelId]);
 
   return {
     messages,
