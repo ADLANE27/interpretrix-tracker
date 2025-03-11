@@ -21,6 +21,7 @@ import { useUserManagement } from "./hooks/useUserManagement";
 import { useUserManagementPassword } from "./hooks/useUserManagementPassword";
 import { UserManagementPasswordDialog } from "./components/UserManagementPasswordDialog";
 import { useUserManagementToasts } from "./hooks/useUserManagementToasts";
+import { usePasswordVerification } from "./hooks/usePasswordVerification";
 
 export const UserManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,6 +32,7 @@ export const UserManagement = () => {
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
   const [isAddingInterpreter, setIsAddingInterpreter] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(true);
 
   const {
     users,
@@ -58,6 +60,13 @@ export const UserManagement = () => {
   } = useUserManagementPassword();
 
   const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
+  const { isVerifying, verifyPassword, checkSession } = usePasswordVerification();
+
+  useEffect(() => {
+    if (checkSession()) {
+      setNeedsVerification(false);
+    }
+  }, []);
 
   const handleAddAdmin = async (data: any) => {
     try {
@@ -165,6 +174,13 @@ export const UserManagement = () => {
     }
   };
 
+  const handlePasswordVerify = async (password: string) => {
+    const success = await verifyPassword(password);
+    if (success) {
+      setNeedsVerification(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="p-4 text-red-500">
@@ -173,12 +189,14 @@ export const UserManagement = () => {
     );
   }
 
-  if (isPasswordRequired && !isVerified) {
+  if (needsVerification) {
     return (
       <div className="min-h-screen">
         <UserManagementPasswordDialog
-          isOpen={isPasswordVerifyOpen}
-          onOpenChange={setIsPasswordVerifyOpen}
+          isOpen={true}
+          onOpenChange={(open) => {
+            if (!open) window.location.href = '/admin?tab=interpreters';
+          }}
           onSubmit={handlePasswordVerify}
           onCancel={() => {
             window.location.href = '/admin?tab=interpreters';
