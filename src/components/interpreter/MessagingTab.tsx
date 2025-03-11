@@ -61,7 +61,7 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-120px)] min-h-[700px] relative">
       {/* Channel List */}
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
