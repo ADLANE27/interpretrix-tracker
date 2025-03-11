@@ -65,6 +65,7 @@ export const MessagesTab = () => {
 
       if (error) throw error;
       if (data) {
+        console.log('Fetched channels:', data); // Debug log
         setChannels(data);
         if (data.length > 0 && !selectedChannel) {
           setSelectedChannel(data[0]);
@@ -78,7 +79,11 @@ export const MessagesTab = () => {
         variant: "destructive",
       });
     }
-  }, [selectedChannel]);
+  }, []);
+
+  useEffect(() => {
+    fetchChannels();
+  }, [fetchChannels]);
 
   const {
     messages,
@@ -209,24 +214,6 @@ export const MessagesTab = () => {
   };
 
   const handleChannelCreated = () => {
-    const fetchChannels = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Not authenticated');
-
-        const { data, error } = await supabase
-          .rpc('get_channels_with_display_names', {
-            current_user_id: user.id
-          }) as { data: Channel[] | null; error: any };
-
-        if (error) throw error;
-        if (data) {
-          setChannels(data);
-        }
-      } catch (error) {
-        console.error("Error fetching channels:", error);
-      }
-    };
     fetchChannels();
   };
 
