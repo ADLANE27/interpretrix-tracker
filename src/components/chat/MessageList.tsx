@@ -110,12 +110,12 @@ export const MessageList = React.memo<MessageListProps>(({
       data-message-id={message.id}
       className={cn(
         "group transition-all duration-200",
-        "px-4 py-2",
-        "hover:bg-purple-50/50 dark:hover:bg-gray-800/50",
-        isThreadReply ? "ml-12 border-l-2 border-purple-200/50 dark:border-purple-800/50 pl-6" : "",
+        "px-4 py-2.5",
+        "border-b border-gray-100 dark:border-gray-800",
         message.sender.id === currentUserId 
-          ? "hover:bg-blue-50/50 dark:hover:bg-blue-900/20" 
-          : "hover:bg-purple-50/50 dark:hover:bg-purple-900/20"
+          ? "bg-blue-50/30 dark:bg-blue-900/10 hover:bg-blue-50/50 dark:hover:bg-blue-900/20" 
+          : "bg-purple-50/30 dark:bg-purple-900/10 hover:bg-purple-50/50 dark:hover:bg-purple-900/20",
+        isThreadReply ? "ml-12 border-l-2 border-purple-200/50 dark:border-purple-800/50 pl-6" : "",
       )}
     >
       <div className="flex gap-4 relative">
@@ -150,12 +150,12 @@ export const MessageList = React.memo<MessageListProps>(({
             <span className={cn(
               "font-semibold text-[0.95rem]",
               message.sender.id === currentUserId 
-                ? "text-blue-600 dark:text-blue-400" 
-                : "text-purple-600 dark:text-purple-400"
+                ? "text-blue-700 dark:text-blue-400" 
+                : "text-purple-700 dark:text-purple-400"
             )}>
               {message.sender.name}
             </span>
-            <span className="text-xs text-muted-foreground/70 font-medium">
+            <span className="text-xs text-muted-foreground/60 font-medium">
               {format(message.timestamp, 'HH:mm', { locale: fr })}
             </span>
           </div>
@@ -163,7 +163,7 @@ export const MessageList = React.memo<MessageListProps>(({
           <div className="space-y-3">
             <div className={cn(
               "text-sm break-words leading-relaxed",
-              "text-foreground/90 dark:text-foreground/80",
+              "text-gray-700 dark:text-gray-200",
               "rounded-lg py-1"
             )}>
               {message.content}
@@ -213,7 +213,7 @@ export const MessageList = React.memo<MessageListProps>(({
 
   return (
     <ScrollArea className="h-full px-2">
-      <div className="space-y-3">
+      <div className="divide-y divide-gray-100/50 dark:divide-gray-800/50">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
             {shouldShowDate(message, messages[index - 1]) && (
@@ -267,3 +267,4 @@ export const MessageList = React.memo<MessageListProps>(({
 });
 
 MessageList.displayName = 'MessageList';
+
