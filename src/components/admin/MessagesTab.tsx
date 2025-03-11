@@ -306,7 +306,7 @@ export const MessagesTab = () => {
         messageData.parent_message_id = replyTo.id;
       }
 
-      const { error } = await supabase
+      const { error } } = await supabase
         .from("chat_messages")
         .insert([messageData]);
 
@@ -342,7 +342,7 @@ export const MessagesTab = () => {
         return;
       }
 
-      const { error } = await supabase
+      const { error } } = await supabase
         .from("chat_messages")
         .delete()
         .eq("id", messageId);
@@ -558,7 +558,7 @@ export const MessagesTab = () => {
 
   const handleRename = async (channelId: string, newName: string) => {
     try {
-      const { error } = await supabase
+      const { error } } = await supabase
         .from('chat_channels')
         .update({ name: newName.trim() })
         .eq('id', channelId);
@@ -772,7 +772,7 @@ export const MessagesTab = () => {
                           )}
                         </div>
                       </div>
-                      <div className={`rounded-2xl px-4 py-2.5 ${
+                      <div className={`rounded-2xl px-4 py-3 ${
                         message.sender?.id === currentUserId
                           ? 'bg-primary/10 text-primary-foreground ml-auto'
                           : 'bg-accent/40 text-accent-foreground mr-auto'
@@ -824,7 +824,7 @@ export const MessagesTab = () => {
                                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                                     </span>
                                   </div>
-                                  <div className={`rounded-xl px-3 py-2 text-sm ${
+                                  <div className={`rounded-xl px-4 py-3 text-base ${
                                     reply.sender?.id === currentUserId
                                       ? 'bg-primary/5 text-primary-foreground ml-auto'
                                       : 'bg-accent/30 text-accent-foreground mr-auto'
