@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -37,7 +38,7 @@ export const MessagingTab = () => {
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    handleClearFilters(); // Reset filters when changing channels
+    handleClearFilters();
     if (isMobile) {
       setShowChannels(false);
     }
@@ -61,13 +62,14 @@ export const MessagingTab = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+      {/* Channel List */}
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
           "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
             <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
@@ -103,13 +105,14 @@ export const MessagingTab = () => {
         </Card>
       )}
       
+      {/* Chat Area */}
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
           "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg",
           "lg:col-span-2",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
         )}>
           {isMobile && (
             <Button
