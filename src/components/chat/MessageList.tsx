@@ -28,6 +28,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   channelId,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [deletedMessageIds, setDeletedMessageIds] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
 
   const getInitials = (name: string) => {
@@ -84,6 +85,23 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const handleDeleteMessage = async (messageId: string) => {
+    setDeletedMessageIds(prev => new Set([...prev, messageId]));
+    
+    try {
+      await onDeleteMessage(messageId);
+    } catch (error) {
+      setDeletedMessageIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(messageId);
+        return newSet;
+      });
+      console.error('Failed to delete message:', error);
+    }
+  };
+
+  const visibleMessages = messages.filter(message => !deletedMessageIds.has(message.id));
+
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
       ref={(el) => observeMessage(el)}
@@ -125,7 +143,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {message.sender.id === currentUserId && (
               <button
-                onClick={() => onDeleteMessage(message.id)}
+                onClick={() => handleDeleteMessage(message.id)}
                 className="p-1.5 rounded-full hover:bg-gray-100"
                 aria-label="Supprimer le message"
               >
@@ -153,7 +171,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             />
             {message.sender.id === currentUserId && (
               <button
-                onClick={() => onDeleteMessage(message.id)}
+                onClick={() => handleDeleteMessage(message.id)}
                 className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                 aria-label="Supprimer la pièce jointe"
               >
@@ -168,9 +186,9 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="space-y-6">
-      {messages.map((message, index) => (
+      {visibleMessages.map((message, index) => (
         <React.Fragment key={message.id}>
-          {shouldShowDate(message, messages[index - 1]) && (
+          {shouldShowDate(message, visibleMessages[index - 1]) && (
             <div className="flex justify-center my-4">
               <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
                 {formatMessageDate(message.timestamp)}
@@ -209,4 +227,3 @@ export const MessageList: React.FC<MessageListProps> = ({
     </div>
   );
 };
-
