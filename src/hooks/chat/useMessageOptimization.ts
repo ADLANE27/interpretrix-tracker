@@ -1,12 +1,9 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Message } from "@/types/messaging";
-import { useCallback, useEffect } from "react";
 
 export const useMessageOptimization = (channelId: string) => {
-  const queryClient = useQueryClient();
-  
   const {
     data: messages = [],
     isLoading,
@@ -21,6 +18,15 @@ export const useMessageOptimization = (channelId: string) => {
         .order("created_at", { ascending: true });
 
       if (messagesError) throw messagesError;
+
+      // Get channel type first
+      const { data: channelData, error: channelError } = await supabase
+        .from('chat_channels')
+        .select('channel_type')
+        .eq('id', channelId)
+        .single();
+
+      if (channelError) throw channelError;
 
       const formattedMessages = await Promise.all(
         (messagesData || []).map(async (message) => {
@@ -39,78 +45,16 @@ export const useMessageOptimization = (channelId: string) => {
               avatarUrl: sender.avatar_url || ''
             },
             timestamp: new Date(message.created_at),
-            channelType: 'group'
-          };
+            channelType: channelData.channel_type as "group" | "direct"
+          } satisfies Message;
         })
       );
 
       return formattedMessages;
     },
     staleTime: 30000, // Cache data for 30 seconds
-    cacheTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+    gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes (formerly cacheTime)
   });
-
-  const subscribeToMessages = useCallback(() => {
-    const channel = supabase
-      .channel(`messages-${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `channel_id=eq.${channelId}`
-        },
-        async (payload) => {
-          // Immediately update cache with new message
-          queryClient.setQueryData(['messages', channelId], (oldData: Message[] = []) => {
-            if (payload.eventType === 'DELETE') {
-              return oldData.filter(msg => msg.id !== payload.old.id);
-            }
-
-            // For inserts and updates, fetch sender details
-            const { data: senderData } = await supabase
-              .rpc('get_message_sender_details', {
-                sender_id: payload.new.sender_id
-              });
-
-            const sender = senderData?.[0];
-            const newMessage = {
-              id: payload.new.id,
-              content: payload.new.content,
-              sender: {
-                id: sender.id,
-                name: sender.name,
-                avatarUrl: sender.avatar_url || ''
-              },
-              timestamp: new Date(payload.new.created_at),
-              channelType: 'group'
-            };
-
-            if (payload.eventType === 'INSERT') {
-              return [...oldData, newMessage];
-            }
-
-            // Update
-            return oldData.map(msg => 
-              msg.id === payload.new.id ? newMessage : msg
-            );
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [channelId, queryClient]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToMessages();
-    return () => {
-      unsubscribe();
-    };
-  }, [subscribeToMessages]);
 
   return {
     messages,
