@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -160,6 +159,43 @@ export const useUserManagement = () => {
     }
   };
 
+  const handleUpdateProfile = async (data: Partial<Profile>) => {
+    try {
+      const loadingToast = showLoadingToast(
+        "Mise à jour en cours",
+        "Le profil est en cours de mise à jour..."
+      );
+
+      const { error } = await supabase.functions.invoke('update-interpreter-profile', {
+        body: {
+          ...data,
+          languages: data.languages?.map(lang => ({
+            source: lang.source,
+            target: lang.target
+          }))
+        },
+      });
+
+      if (error) throw error;
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      loadingToast.dismiss();
+
+      showSuccessToast(
+        "Profil mis à jour",
+        "Le profil a été mis à jour avec succès"
+      );
+
+      refetch();
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      showErrorToast(
+        "Impossible de mettre à jour le profil",
+        error.message || "Une erreur est survenue lors de la mise à jour"
+      );
+    }
+  };
+
   const filteredUsers = {
     admins: users.admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
@@ -182,6 +218,7 @@ export const useUserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
+    handleUpdateProfile,
     queryClient,
     refetch,
   };

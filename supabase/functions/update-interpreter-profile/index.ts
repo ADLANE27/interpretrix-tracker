@@ -4,14 +4,38 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 interface UpdateProfileData {
   id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  [key: string]: any; // Allow other profile fields
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  languages?: { source: string; target: string; }[];
+  employment_status?: string;
+  status?: string;
+  phone_number?: string;
+  address?: {
+    street: string;
+    postal_code: string;
+    city: string;
+  } | null;
+  birth_country?: string;
+  nationality?: string;
+  siret_number?: string;
+  vat_number?: string;
+  specializations?: string[];
+  landline_phone?: string;
+  tarif_15min?: number;
+  tarif_5min?: number;
+  booth_number?: string;
+  private_phone?: string;
+  professional_phone?: string;
+  work_hours?: {
+    start_morning: string;
+    end_morning: string;
+    start_afternoon: string;
+    end_afternoon: string;
+  };
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -22,28 +46,47 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const profileData: UpdateProfileData = await req.json();
-    console.log('Updating profile with data:', profileData);
+    console.log('Received profile data:', profileData);
 
-    // First update the interpreter profile to avoid auth issues
+    if (!profileData.id) {
+      throw new Error('Missing interpreter ID');
+    }
+
+    // Transform language pairs to the required format
+    const transformedData = {
+      ...profileData,
+      languages: profileData.languages 
+        ? profileData.languages.map(lang => `${lang.source} → ${lang.target}`)
+        : undefined
+    };
+
+    console.log('Transforming profile data:', transformedData);
+
+    // Remove id from the data to be updated
+    const { id, ...updateData } = transformedData;
+
+    // First update the interpreter profile
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
-      .update(profileData)
-      .eq('id', profileData.id);
+      .update(updateData)
+      .eq('id', id);
 
     if (profileError) {
       console.error('Error updating interpreter profile:', profileError);
       throw profileError;
     }
 
-    // Then update the auth.users email if it has changed
-    const { error: authError } = await supabase.auth.admin.updateUserById(
-      profileData.id,
-      { email: profileData.email }
-    );
+    // Only update auth email if it has changed and is provided
+    if (profileData.email) {
+      const { error: authError } = await supabase.auth.admin.updateUserById(
+        id,
+        { email: profileData.email }
+      );
 
-    if (authError) {
-      console.error('Error updating auth user:', authError);
-      throw authError;
+      if (authError) {
+        console.error('Error updating auth user:', authError);
+        throw authError;
+      }
     }
 
     return new Response(
