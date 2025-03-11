@@ -1,4 +1,3 @@
-
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
@@ -106,7 +105,7 @@ export const MessageListContainer = React.memo(({
           channelId={channelId}
         />
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-[120px]" ref={scrollAreaRef}>
+      <div className="flex-1 overflow-y-auto px-4 pb-[100px]" ref={scrollAreaRef}>
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}
