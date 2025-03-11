@@ -92,7 +92,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
       } ${isThreadReply ? 'ml-8 mt-2' : ''}`}
     >
-      <Avatar className="h-8 w-8 shrink-0">
+      <Avatar className="h-10 w-10 shrink-0 ring-2 ring-purple-200">
         {message.sender.avatarUrl ? (
           <img 
             src={message.sender.avatarUrl} 
@@ -108,10 +108,10 @@ export const MessageList: React.FC<MessageListProps> = ({
       <div className={`flex-1 max-w-[70%] space-y-1 ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
-        <div className={`flex items-center gap-2 text-sm ${
+        <div className={`flex items-center gap-2 ${
           message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
         }`}>
-          <span className="font-medium">{message.sender.name}</span>
+          <span className="font-semibold text-[0.95rem] text-purple-900">{message.sender.name}</span>
           <span className="text-gray-500 text-xs">
             {format(message.timestamp, 'HH:mm', { locale: fr })}
           </span>
@@ -209,3 +209,4 @@ export const MessageList: React.FC<MessageListProps> = ({
     </div>
   );
 };
+
