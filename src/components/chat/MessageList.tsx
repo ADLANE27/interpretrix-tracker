@@ -111,11 +111,11 @@ export const MessageList = React.memo<MessageListProps>(({
       className={cn(
         "group transition-all duration-200",
         "px-4 py-2.5",
-        "border-b border-gray-100 dark:border-gray-800",
+        "border-b-2 border-gray-200 dark:border-gray-700",
         message.sender.id === currentUserId 
           ? "bg-blue-50/30 dark:bg-blue-900/10 hover:bg-blue-50/50 dark:hover:bg-blue-900/20" 
           : "bg-purple-50/30 dark:bg-purple-900/10 hover:bg-purple-50/50 dark:hover:bg-purple-900/20",
-        isThreadReply ? "ml-12 border-l-2 border-purple-200/50 dark:border-purple-800/50 pl-6" : "",
+        isThreadReply ? "ml-12 border-l-4 border-purple-200/50 dark:border-purple-800/50 pl-6" : "",
       )}
     >
       <div className="flex gap-4 relative">
@@ -213,7 +213,7 @@ export const MessageList = React.memo<MessageListProps>(({
 
   return (
     <ScrollArea className="h-full px-2">
-      <div className="divide-y divide-gray-100/50 dark:divide-gray-800/50">
+      <div className="divide-y-2 divide-gray-200 dark:divide-gray-700">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
             {shouldShowDate(message, messages[index - 1]) && (
@@ -267,4 +267,3 @@ export const MessageList = React.memo<MessageListProps>(({
 });
 
 MessageList.displayName = 'MessageList';
-
