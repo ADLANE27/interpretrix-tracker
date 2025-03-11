@@ -83,6 +83,7 @@ export const MessagesTab = () => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [showChannelList, setShowChannelList] = useState(true);
   const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,9 +91,13 @@ export const MessagesTab = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     const fetchChannels = async () => {
