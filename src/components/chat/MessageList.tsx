@@ -20,7 +20,7 @@ interface MessageListProps {
   channelId: string;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({
+export const MessageList = React.memo<MessageListProps>(({
   messages,
   currentUserId,
   onDeleteMessage,
@@ -268,3 +268,4 @@ export const MessageList: React.FC<MessageListProps> = ({
 });
 
 MessageList.displayName = 'MessageList';
+
