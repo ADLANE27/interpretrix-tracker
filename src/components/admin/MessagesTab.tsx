@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil, Search } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -573,27 +573,26 @@ export const MessagesTab = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
       <div className="flex h-full">
         {/* Channel List */}
-        <div 
-          className={`${
-            isMobile 
-              ? showChannelList 
-                ? 'absolute inset-0 z-30 bg-background' 
-                : 'hidden'
-              : 'w-80'
-          } border-r flex flex-col`}
+        <div className={`${
+          isMobile 
+            ? showChannelList 
+              ? 'absolute inset-0 z-30 bg-dark-background' 
+              : 'hidden'
+            : 'w-64'
+          } flex flex-col bg-dark-background text-white`}
         >
-          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Canaux</h2>
+          <div className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Canaux</h2>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowDirectMessageDialog(true)}
-                  className="h-9 w-9 p-0"
+                  className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-dark-card/50"
                 >
                   <UserPlus className="h-5 w-5" />
                 </Button>
@@ -601,23 +600,29 @@ export const MessagesTab = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowCreateDialog(true)}
-                  className="h-9 w-9 p-0"
+                  className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-dark-card/50"
                 >
                   <PlusCircle className="h-5 w-5" />
                 </Button>
               </div>
             </div>
-            <Input
-              placeholder="Rechercher un canal..."
-              className="w-full"
-            />
+            <div className="relative">
+              <Input
+                placeholder="Rechercher un canal..."
+                className="w-full bg-dark-card text-white border-0 placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-gray-500"
+              />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
           </div>
+          
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {channels.map((channel) => (
               <div
                 key={channel.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                className={`flex items-center justify-between p-3 rounded-md cursor-pointer transition-colors ${
+                  selectedChannel?.id === channel.id 
+                    ? 'bg-dark-card text-white' 
+                    : 'text-gray-300 hover:bg-dark-card/50 hover:text-white'
                 }`}
                 onClick={() => {
                   setSelectedChannel(channel);
@@ -689,10 +694,10 @@ export const MessagesTab = () => {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
+        <div className={`flex-1 flex flex-col bg-white ${isMobile && !showChannelList ? 'absolute inset-0 z-20' : ''}`}>
           {selectedChannel ? (
             <>
-              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="p-4 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
                 <div className="flex items-center gap-3">
                   {isMobile && (
                     <Button
@@ -710,46 +715,49 @@ export const MessagesTab = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <Card key={message.id} className="p-4 group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          {message.sender?.avatarUrl && (
-                            <AvatarImage src={message.sender.avatarUrl} />
-                          )}
-                          <AvatarFallback>
+                  <div key={message.id} className="group">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-8 w-8 mt-1">
+                        {message.sender?.avatarUrl ? (
+                          <AvatarImage src={message.sender.avatarUrl} />
+                        ) : (
+                          <AvatarFallback className="bg-blue-100 text-blue-600">
                             {message.sender?.name.substring(0, 2) || '??'}
                           </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(message.created_at), "PPp", { locale: fr })}
-                          </p>
+                        )}
+                      </Avatar>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{message.sender?.name || 'Unknown User'}</span>
+                          <span className="text-xs text-gray-400">
+                            {format(new Date(message.created_at), "HH:mm", { locale: fr })}
+                          </span>
+                        </div>
+                        <div className="text-gray-700">
+                          {renderMessageContent(message.content)}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="sm"
                           onClick={() => handleReply(message)}
-                          className="h-8 w-8"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
                         >
-                          <MessageSquare className="h-4 w-4" />
+                          <MessageCircle className="h-4 w-4" />
                         </Button>
                         {message.sender?.id && (
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="sm"
                             onClick={() => deleteMessage(message.id, message.sender_id)}
-                            className="h-8 w-8"
+                            className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
                     </div>
-                    {renderMessageContent(message.content)}
                     
                     {messageThreads[message.id]?.length > 1 && (
                       <div className="ml-10 mt-2">
@@ -794,12 +802,12 @@ export const MessagesTab = () => {
                         )}
                       </div>
                     )}
-                  </Card>
+                  </div>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t p-4 bg-background safe-area-bottom">
+              <div className="border-t p-4 bg-white">
                 {replyTo && (
                   <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">
@@ -889,7 +897,7 @@ export const MessagesTab = () => {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center">
+            <div className="flex-1 flex items-center justify-center text-gray-500 p-4 text-center">
               <p>Sélectionnez un canal pour commencer à discuter</p>
             </div>
           )}
