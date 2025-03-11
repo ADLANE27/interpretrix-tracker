@@ -1,12 +1,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Message, MessageData } from "@/types/messaging";
-import { useMessageFormatter } from "./useMessageFormatter";
+import { Message } from "@/types/messaging";
 
 export const useMessageOptimization = (channelId: string) => {
-  const { formatMessage } = useMessageFormatter();
-
   const {
     data: messages = [],
     isLoading,
@@ -22,32 +19,41 @@ export const useMessageOptimization = (channelId: string) => {
 
       if (messagesError) throw messagesError;
 
+      // Get channel type first
+      const { data: channelData, error: channelError } = await supabase
+        .from('chat_channels')
+        .select('channel_type')
+        .eq('id', channelId)
+        .single();
+
+      if (channelError) throw channelError;
+
       const formattedMessages = await Promise.all(
         (messagesData || []).map(async (message) => {
-          const messageData: MessageData = {
+          const { data: senderData } = await supabase
+            .rpc('get_message_sender_details', {
+              sender_id: message.sender_id
+            });
+
+          const sender = senderData?.[0];
+          return {
             id: message.id,
             content: message.content,
-            sender_id: message.sender_id,
-            channel_id: channelId,
-            created_at: message.created_at,
-            reactions: message.reactions || {},
-            attachments: message.attachments || [],
-            parent_message_id: message.parent_message_id
-          };
-
-          const formattedMessage = await formatMessage(messageData);
-          if (!formattedMessage) {
-            console.error('Failed to format message:', message);
-            return null;
-          }
-          return formattedMessage;
+            sender: {
+              id: sender.id,
+              name: sender.name,
+              avatarUrl: sender.avatar_url || ''
+            },
+            timestamp: new Date(message.created_at),
+            channelType: channelData.channel_type as "group" | "direct"
+          } satisfies Message;
         })
       );
 
-      return formattedMessages.filter((msg): msg is Message => msg !== null);
+      return formattedMessages;
     },
     staleTime: 30000, // Cache data for 30 seconds
-    gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+    gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes (formerly cacheTime)
   });
 
   return {
