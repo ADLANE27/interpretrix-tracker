@@ -66,7 +66,7 @@ export const MessagingTab = () => {
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
           "relative overflow-hidden",
-          "bg-gradient-to-br from-purple-50/90 to-white dark:from-gray-900/90 dark:to-gray-800",
+          "bg-gradient-to-br from-interpreter-navy/5 to-white dark:from-interpreter-navy/20 dark:to-gray-800",
           "backdrop-blur-xl border-0 shadow-lg",
           "transition-all duration-300 hover:shadow-xl",
           "p-2 sm:p-4 lg:col-span-1",
@@ -78,13 +78,13 @@ export const MessagingTab = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden hover:bg-purple-100/50 dark:hover:bg-gray-700/50"
+                  className="lg:hidden hover:bg-interpreter-navy/10 dark:hover:bg-gray-700/50"
                   onClick={() => setShowChannels(false)}
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
-              <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
+              <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-interpreter-navy to-interpreter-navy/80 dark:from-interpreter-navy/90 dark:to-interpreter-navy/70 bg-clip-text text-transparent">
                 Conversations
               </h2>
             </div>
@@ -99,10 +99,10 @@ export const MessagingTab = () => {
                 "transition-all duration-200",
                 "bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700",
                 "shadow-sm hover:shadow-md",
-                "border border-purple-100 dark:border-gray-700",
+                "border border-interpreter-navy/10 dark:border-gray-700",
                 "rounded-full p-2",
                 "flex items-center justify-center relative",
-                totalUnreadCount > 0 && "text-purple-500"
+                totalUnreadCount > 0 && "text-interpreter-navy"
               )}>
                 <Bell className="h-4 w-4" />
                 {totalUnreadCount > 0 && (
@@ -126,7 +126,7 @@ export const MessagingTab = () => {
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
           "relative overflow-hidden",
-          "bg-gradient-to-br from-white to-purple-50/90 dark:from-gray-800 dark:to-gray-900/90",
+          "bg-gradient-to-br from-white to-orange-50/90 dark:from-gray-800 dark:to-gray-900/90",
           "backdrop-blur-xl border-0 shadow-lg",
           "transition-all duration-300 hover:shadow-xl",
           "p-2 sm:p-4 lg:col-span-2",
@@ -137,7 +137,7 @@ export const MessagingTab = () => {
               variant="ghost"
               size="sm"
               onClick={handleBackToChannels}
-              className="absolute top-2 left-2 z-10 h-8 px-2 hover:bg-purple-100/50 dark:hover:bg-gray-700/50"
+              className="absolute top-2 left-2 z-10 h-8 px-2 hover:bg-interpreter-navy/10 dark:hover:bg-gray-700/50"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Retour
@@ -154,7 +154,7 @@ export const MessagingTab = () => {
       ) : !selectedChannelId && !isMobile ? (
         <Card className={cn(
           "flex items-center justify-center",
-          "bg-gradient-to-br from-white to-purple-50/90 dark:from-gray-800 dark:to-gray-900/90",
+          "bg-gradient-to-br from-white to-orange-50/90 dark:from-gray-800 dark:to-gray-900/90",
           "backdrop-blur-xl border-0 shadow-lg",
           "transition-all duration-300 hover:shadow-xl",
           "p-3 sm:p-4 lg:col-span-2"

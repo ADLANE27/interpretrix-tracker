@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -221,14 +220,14 @@ export const InterpreterChannelList = ({
                   cursor-pointer transition-all duration-200
                   hover:scale-[0.98] active:scale-[0.97]
                   ${selectedChannelId === channel.id 
-                    ? 'bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' 
-                    : 'hover:bg-purple-100/50 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'}
+                    ? 'bg-interpreter-navy/10 dark:bg-interpreter-navy/20 text-interpreter-navy dark:text-blue-300' 
+                    : 'hover:bg-interpreter-navy/5 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'}
                 `}
                 onClick={() => handleChannelSelect(channel.id)}
               >
                 <MessageCircle className={`h-5 w-5 ${
                   selectedChannelId === channel.id 
-                    ? 'text-purple-500' 
+                    ? 'text-interpreter-navy' 
                     : 'text-gray-500'
                 }`} />
                 <div className="flex items-center justify-between flex-1 min-w-0">
