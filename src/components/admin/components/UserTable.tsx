@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -25,6 +24,7 @@ import { Profile } from "@/types/profile";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useInterpreterProfileUpdate } from "@/components/admin/hooks/useInterpreterProfileUpdate";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserTableProps {
   users: UserData[];
@@ -36,7 +36,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const { updateProfile, isSubmitting } = useInterpreterProfileUpdate();
+  const { updateProfile, isSubmitting, setIsSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
