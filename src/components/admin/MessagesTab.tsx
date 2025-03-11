@@ -204,14 +204,14 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh)] gap-3 sm:gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
           "flex flex-col",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-          "transition-all duration-300 hover:shadow-xl rounded-lg",
+          "transition-all duration-300 hover:shadow-xl",
           "dark:from-gray-800 dark:to-gray-900",
-          "p-0 overflow-hidden",
+          "p-0 overflow-hidden border-0",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
@@ -336,10 +336,10 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
         <Card className={cn(
           "flex flex-col",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "transition-all duration-300 rounded-lg",
+          "transition-all duration-300",
           "lg:col-span-2 overflow-hidden",
           "p-0 border-0",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-0 z-50 m-0"
         )}>
           <div className="flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between px-4 h-10 border-b flex-shrink-0">
