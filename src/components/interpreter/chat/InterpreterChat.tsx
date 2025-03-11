@@ -73,6 +73,8 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+
   useEffect(() => {
     onClearFilters();
   }, [channelId, onClearFilters]);
@@ -137,6 +139,21 @@ export const InterpreterChat = ({
   const handleSendMessage = async () => {
     if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}`,
+      content: message,
+      sender: {
+        id: currentUserId,
+        name: 'You',
+        avatarUrl: ''
+      },
+      timestamp: new Date(),
+      channelType: 'group',
+      attachments: []
+    };
+
+    setOptimisticMessages(prev => [...prev, optimisticMessage]);
+
     try {
       await sendMessage(message, replyTo?.id, attachments);
       setMessage('');
@@ -145,8 +162,15 @@ export const InterpreterChat = ({
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
+      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
     } catch (error) {
       console.error('Error sending message:', error);
+      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      toast({
+        title: "Error",
+        description: "Failed to send message",
+        variant: "destructive"
+      });
     }
   };
 
@@ -159,6 +183,10 @@ export const InterpreterChat = ({
   };
 
   const hasActiveFilters = Boolean(filters.userId || filters.keyword || filters.date);
+
+  const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
+    a.timestamp.getTime() - b.timestamp.getTime()
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -210,7 +238,7 @@ export const InterpreterChat = ({
           </div>
         ) : null}
         <MessageListContainer
-          messages={messages}
+          messages={allMessages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}

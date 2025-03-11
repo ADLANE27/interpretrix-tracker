@@ -39,6 +39,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setEmojiPickerOpen(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (message.trim() || attachments.length > 0) {
+        onSendMessage();
+      }
+    }
+  };
+
   return (
     <div className="border-t p-4 bg-background">
       {replyTo && (
@@ -62,12 +71,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
               className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[120px] py-3 px-4 text-base"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  onSendMessage();
-                }
-              }}
+              onKeyDown={handleKeyDown}
             />
           </div>
           <div className="flex items-center gap-1 p-2">
@@ -126,6 +130,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               size="icon"
               className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
               onClick={onSendMessage}
+              disabled={!message.trim() && attachments.length === 0}
             >
               <Send className="h-4 w-4" />
             </Button>
