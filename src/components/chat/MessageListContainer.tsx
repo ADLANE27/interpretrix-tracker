@@ -1,3 +1,4 @@
+
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
@@ -58,9 +59,13 @@ export const MessageListContainer = React.memo(({
 
     if (filters.date) {
       filtered = filtered.filter(msg => {
-        const messageDate = new Date(msg.timestamp).toLocaleDateString();
-        const filterDate = filters.date!.toLocaleDateString();
-        return messageDate === filterDate;
+        const messageDate = new Date(msg.timestamp);
+        const filterDate = new Date(filters.date!);
+        return (
+          messageDate.getFullYear() === filterDate.getFullYear() &&
+          messageDate.getMonth() === filterDate.getMonth() &&
+          messageDate.getDate() === filterDate.getDate()
+        );
       });
     }
 

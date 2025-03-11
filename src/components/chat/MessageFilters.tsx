@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Search, UserSearch, X } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useQuery } from "@tanstack/react-query";
@@ -64,15 +64,15 @@ export const MessageFilters = ({
       />
 
       <Select
-        value={filters.userId || ''}
-        onValueChange={(value) => onFiltersChange({ ...filters, userId: value || undefined })}
+        value={filters.userId || "all"}
+        onValueChange={(value) => onFiltersChange({ ...filters, userId: value === "all" ? undefined : value })}
       >
         <SelectTrigger className="w-[200px]">
           <SelectValue placeholder="Filtrer par utilisateur" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Tous les messages</SelectItem>
-          <SelectItem value="current">Mes messages</SelectItem>
+          <SelectItem value="all">Tous les messages</SelectItem>
+          {currentUserId && <SelectItem value="current">Mes messages</SelectItem>}
           {channelMembers?.filter(member => member.id !== currentUserId).map((member) => (
             <SelectItem key={member.id} value={member.id}>
               {member.name}
