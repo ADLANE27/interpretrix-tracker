@@ -51,32 +51,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="border-t bg-background">
       {replyTo && (
-        <div className="flex items-center gap-2 p-2 text-sm text-gray-500 border-b">
+        <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground border-b">
           <span className="truncate">En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            className="shrink-0"
+            className="shrink-0 h-6 px-2 text-xs"
           >
             Annuler
           </Button>
         </div>
       )}
-      <div className="p-2 sm:p-4">
-        <div className="relative">
+      <div className="p-2 sm:p-3">
+        <div className="relative flex flex-col gap-2">
           <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
-            <div className="flex-1 min-h-[80px] max-h-[160px] flex items-end">
-              <Textarea
-                ref={inputRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Écrivez un message..."
-                className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[80px] max-h-[160px] py-3 px-4 text-base"
-                onKeyDown={handleKeyDown}
-              />
-            </div>
-            <div className="flex items-center gap-1 p-2">
+            <Textarea
+              ref={inputRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Écrivez un message..."
+              className="min-h-[44px] max-h-[120px] py-3 px-4 border-0 focus-visible:ring-0 resize-none shadow-none"
+              onKeyDown={handleKeyDown}
+            />
+            <div className="flex items-center gap-1 p-2 shrink-0">
               <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
                 <PopoverTrigger asChild>
                   <Button 
@@ -99,20 +97,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     locale="fr"
                     previewPosition="none"
                     skinTonePosition="none"
-                    categories={[
-                      'frequent',
-                      'people',
-                      'nature',
-                      'foods',
-                      'activity',
-                      'places',
-                      'objects',
-                      'symbols',
-                      'flags'
-                    ]}
                   />
                 </PopoverContent>
               </Popover>
+              
               <input
                 type="file"
                 ref={fileInputRef}
@@ -138,24 +126,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               </Button>
             </div>
           </div>
+
+          {attachments.length > 0 && (
+            <div className="space-y-1">
+              {attachments.map((file, index) => (
+                <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
+                  <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 hover:text-red-500 shrink-0"
+                    onClick={() => handleRemoveAttachment(index)}
+                  >
+                    Supprimer
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        {attachments.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {attachments.map((file, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-                <span className="text-gray-700 truncate flex-1">{file.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 hover:text-red-500 shrink-0"
-                  onClick={() => handleRemoveAttachment(index)}
-                >
-                  Supprimer
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
