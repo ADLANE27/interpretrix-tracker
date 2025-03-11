@@ -1,103 +1,44 @@
 
-import React from 'react';
-import { FileText, FileImage, File, Download, ExternalLink } from 'lucide-react';
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TRANSLATIONS } from "@/constants/languages";
 
-interface AttachmentProps {
+interface MessageAttachmentProps {
   url: string;
   filename: string;
-  locale?: keyof typeof TRANSLATIONS.download; // Making locale optional with default
+  locale?: string;
 }
 
-export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentProps) => {
-  const fileType = filename.split('.').pop()?.toLowerCase() || '';
-  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType);
-  const isPdf = fileType === 'pdf';
-
-  const handleDownload = () => {
-    window.open(url, '_blank');
+export const MessageAttachment = ({ url, filename, locale = 'fr' }: MessageAttachmentProps) => {
+  const formatFileSize = (bytes: number) => {
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes === 0) return '0 Byte';
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)).toString());
+    return Math.round((bytes / Math.pow(1024, i))) + ' ' + sizes[i];
   };
 
-  if (isImage) {
-    return (
-      <div className="mt-2 max-w-sm">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-2">
-          <div className="flex items-center gap-2 mb-2">
-            <FileImage className="h-5 w-5 text-blue-500" />
-            <span className="text-sm font-medium truncate">{filename}</span>
-          </div>
-          <img 
-            src={url} 
-            alt={filename}
-            className="rounded-md max-h-[300px] object-contain"
-          />
-          <div className="flex justify-end mt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDownload}
-              className="text-xs"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              {TRANSLATIONS.download[locale]}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isPdf) {
-    return (
-      <div className="mt-2">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-red-500" />
-            <span className="text-sm font-medium truncate flex-1">{filename}</span>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.open(url, '_blank')}
-                className="text-xs"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                {TRANSLATIONS.preview[locale]}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDownload}
-                className="text-xs"
-              >
-                <Download className="h-4 w-4 mr-1" />
-                {TRANSLATIONS.download[locale]}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="mt-2">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
-        <div className="flex items-center gap-2">
-          <File className="h-5 w-5 text-gray-500" />
-          <span className="text-sm font-medium truncate flex-1">{filename}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDownload}
-            className="text-xs"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            {TRANSLATIONS.download[locale]}
-          </Button>
-        </div>
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40 hover:bg-background/70 transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate" title={filename}>
+          {filename}
+        </p>
       </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        asChild
+        className="h-8 w-8 p-0"
+      >
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download={filename}
+          className="inline-flex items-center justify-center"
+        >
+          <Download className="h-4 w-4" />
+        </a>
+      </Button>
     </div>
   );
 };

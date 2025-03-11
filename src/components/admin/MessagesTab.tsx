@@ -573,19 +573,19 @@ export const MessagesTab = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background/50 backdrop-blur-sm">
       <div className="flex h-full">
         {/* Channel List */}
         <div 
           className={`${
             isMobile 
               ? showChannelList 
-                ? 'absolute inset-0 z-30 bg-background' 
+                ? 'absolute inset-0 z-30 bg-background/95' 
                 : 'hidden'
               : 'w-80'
-          } border-r flex flex-col`}
+          } border-r border-border/40 flex flex-col`}
         >
-          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="p-4 border-b border-border/40 safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
@@ -616,8 +616,10 @@ export const MessagesTab = () => {
             {channels.map((channel) => (
               <div
                 key={channel.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  selectedChannel?.id === channel.id 
+                    ? 'bg-accent/40 shadow-sm' 
+                    : 'hover:bg-accent/20'
                 }`}
                 onClick={() => {
                   setSelectedChannel(channel);
@@ -689,10 +691,10 @@ export const MessagesTab = () => {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
+        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background/95' : ''}`}>
           {selectedChannel ? (
             <>
-              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="p-4 border-b border-border/40 safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
                   {isMobile && (
                     <Button
@@ -710,71 +712,97 @@ export const MessagesTab = () => {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.map((message) => (
-                  <Card key={message.id} className="p-4 group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          {message.sender?.avatarUrl && (
-                            <AvatarImage src={message.sender.avatarUrl} />
-                          )}
-                          <AvatarFallback>
-                            {message.sender?.name.substring(0, 2) || '??'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(message.created_at), "PPp", { locale: fr })}
-                          </p>
+                  <div 
+                    key={message.id} 
+                    className={`group transition-all duration-200 ${
+                      message.sender?.id === currentUserId 
+                        ? 'ml-auto' 
+                        : 'mr-auto'
+                    }`}
+                  >
+                    <div className={`max-w-[80%] ${
+                      message.sender?.id === currentUserId 
+                        ? 'ml-auto' 
+                        : 'mr-auto'
+                    }`}>
+                      <div className="flex items-center justify-between mb-1 px-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            {message.sender?.avatarUrl && (
+                              <AvatarImage src={message.sender.avatarUrl} />
+                            )}
+                            <AvatarFallback>
+                              {message.sender?.name.substring(0, 2) || '??'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">{message.sender?.name || 'Unknown User'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(message.created_at), "HH:mm", { locale: fr })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleReply(message)}
-                          className="h-8 w-8"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                        {message.sender?.id && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => deleteMessage(message.id, message.sender_id)}
-                            className="h-8 w-8"
+                            onClick={() => handleReply(message)}
+                            className="h-7 w-7"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <MessageSquare className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                          {message.sender?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteMessage(message.id, message.sender_id)}
+                              className="h-7 w-7 text-destructive/70 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-2.5 ${
+                        message.sender?.id === currentUserId
+                          ? 'bg-primary/10 text-primary-foreground ml-auto'
+                          : 'bg-accent/40 text-accent-foreground mr-auto'
+                      }`}>
+                        {renderMessageContent(message.content)}
                       </div>
                     </div>
-                    {renderMessageContent(message.content)}
-                    
+
                     {messageThreads[message.id]?.length > 1 && (
-                      <div className="ml-10 mt-2">
+                      <div className="ml-8 mt-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleThread(message.id)}
-                          className="text-xs text-gray-500 hover:text-gray-700"
+                          className="text-xs text-muted-foreground hover:text-foreground"
                         >
                           {expandedThreads.has(message.id) ? (
-                            <ChevronDown className="h-4 w-4 mr-1" />
+                            <ChevronDown className="h-3.5 w-3.5 mr-1" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 mr-1" />
+                            <ChevronRight className="h-3.5 w-3.5 mr-1" />
                           )}
                           {messageThreads[message.id].length - 1} réponses
                         </Button>
                         
                         {expandedThreads.has(message.id) && (
-                          <div className="space-y-2 mt-2">
+                          <div className="space-y-2 mt-2 pl-2">
                             {messageThreads[message.id]
                               .filter(reply => reply.id !== message.id)
                               .map(reply => (
-                                <Card key={reply.id} className="p-3 bg-accent/50">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Avatar className="h-6 w-6">
+                                <div 
+                                  key={reply.id}
+                                  className={`max-w-[90%] ${
+                                    reply.sender?.id === currentUserId 
+                                      ? 'ml-auto' 
+                                      : 'mr-auto'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 mb-1 px-2">
+                                    <Avatar className="h-5 w-5">
                                       {reply.sender?.avatarUrl && (
                                         <AvatarImage src={reply.sender.avatarUrl} />
                                       )}
@@ -782,26 +810,32 @@ export const MessagesTab = () => {
                                         {reply.sender?.name.substring(0, 2) || '??'}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <span className="text-sm font-medium">{reply.sender?.name}</span>
+                                    <span className="text-xs font-medium">{reply.sender?.name}</span>
                                     <span className="text-xs text-muted-foreground">
                                       {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
                                     </span>
                                   </div>
-                                  {renderMessageContent(reply.content)}
-                                </Card>
+                                  <div className={`rounded-xl px-3 py-2 text-sm ${
+                                    reply.sender?.id === currentUserId
+                                      ? 'bg-primary/5 text-primary-foreground ml-auto'
+                                      : 'bg-accent/30 text-accent-foreground mr-auto'
+                                  }`}>
+                                    {renderMessageContent(reply.content)}
+                                  </div>
+                                </div>
                               ))}
                           </div>
                         )}
                       </div>
                     )}
-                  </Card>
+                  </div>
                 ))}
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t p-4 bg-background safe-area-bottom">
+              <div className="border-t border-border/40 p-4 bg-background/95 backdrop-blur safe-area-bottom">
                 {replyTo && (
-                  <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-accent/30 rounded-lg">
                     <span className="text-sm text-muted-foreground">
                       En réponse à : {replyTo.sender?.name}
                     </span>
@@ -809,7 +843,7 @@ export const MessagesTab = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => setReplyTo(null)}
-                      className="h-6 px-2 text-xs"
+                      className="h-6 px-2 text-xs hover:bg-background/50"
                     >
                       Annuler
                     </Button>
