@@ -341,7 +341,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center justify-between py-2 px-4 border-b">
               {isMobile && (
                 <Button
                   variant="ghost"
