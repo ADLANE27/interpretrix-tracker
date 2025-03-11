@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -39,7 +40,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 bg-white">
+    <div className="border-t p-4 bg-background">
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
           <span>En réponse à : {replyTo.sender.name}</span>
@@ -53,14 +54,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
       <div className="relative">
-        <div className="flex items-end gap-2 bg-white rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[40px] flex items-end">
+        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[120px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
+              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[120px] py-3 px-4 text-base"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
