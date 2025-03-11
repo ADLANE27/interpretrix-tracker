@@ -17,9 +17,9 @@ export const MessageAttachment = ({ url, filename, locale = 'fr' }: MessageAttac
   };
 
   return (
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50 backdrop-blur-sm border border-border/40 hover:bg-background/70 transition-colors">
+    <div className="flex items-center gap-3 p-4 rounded-lg bg-background/95 backdrop-blur-sm border border-border/40 hover:bg-background/90 transition-colors">
       <div className="flex-1 min-w-0">
-        <p className="text-base font-medium truncate" title={filename}>
+        <p className="text-[15px] font-medium truncate text-foreground" title={filename}>
           {filename}
         </p>
       </div>
@@ -27,7 +27,7 @@ export const MessageAttachment = ({ url, filename, locale = 'fr' }: MessageAttac
         size="sm"
         variant="ghost"
         asChild
-        className="h-9 w-9 p-0"
+        className="h-10 w-10 p-0"
       >
         <a
           href={url}
