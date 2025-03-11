@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2, Menu } from 'lucide-react';
+import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2, Menu, Maximize2, Minimize2 } from 'lucide-react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -45,6 +45,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   const [showChannelList, setShowChannelList] = useState(true);
   const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const { toast } = useToast();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
@@ -203,8 +204,15 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
     });
   };
 
+  const toggleFullScreen = () => {
+    setIsFullScreen(prev => !prev);
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[100vh] absolute inset-0">
+    <div className={cn(
+      "grid grid-cols-1 lg:grid-cols-3 h-[100vh]",
+      isFullScreen ? "fixed inset-0 z-50 bg-background" : "absolute inset-0",
+    )}>
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
           "flex flex-col h-full",
@@ -324,18 +332,32 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           isMobile && "fixed inset-0 z-50"
         )}>
           <div className="flex flex-col h-full">
-            <div className="flex items-center h-12 px-3 border-b">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChannelList(true)}
-                  className="mr-2"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-              )}
-              <h2 className="text-base font-semibold">{selectedChannel.display_name}</h2>
+            <div className="flex items-center h-12 px-3 border-b justify-between">
+              <div className="flex items-center">
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowChannelList(true)}
+                    className="mr-2"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                <h2 className="text-base font-semibold">{selectedChannel.display_name}</h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleFullScreen}
+                className="ml-2"
+              >
+                {isFullScreen ? (
+                  <Minimize2 className="h-5 w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" />
+                )}
+              </Button>
             </div>
             
             <div className="flex-1 overflow-hidden">
