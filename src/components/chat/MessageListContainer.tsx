@@ -1,3 +1,4 @@
+
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
@@ -27,11 +28,18 @@ export const MessageListContainer = React.memo(({
   replyTo,
   setReplyTo,
   channelId,
-  filters
+  filters: initialFilters
 }: MessageListContainerProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [filters, setFilters] = React.useState(initialFilters);
+
+  // Reset filters when initial filters change (e.g., component remount)
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
   
   const filteredMessages = useMemo(() => {
+    console.log('Filtering messages with:', filters);
     let filtered = messages;
 
     if (filters.userId) {
@@ -52,8 +60,8 @@ export const MessageListContainer = React.memo(({
 
     if (filters.date) {
       filtered = filtered.filter(msg => {
-        const messageDate = new Date(msg.timestamp).toDateString();
-        const filterDate = filters.date!.toDateString();
+        const messageDate = new Date(msg.timestamp).toLocaleDateString();
+        const filterDate = filters.date!.toLocaleDateString();
         return messageDate === filterDate;
       });
     }
@@ -70,26 +78,29 @@ export const MessageListContainer = React.memo(({
     };
 
     scrollToBottom();
-
     const timeoutId = setTimeout(scrollToBottom, 100);
-
     return () => clearTimeout(timeoutId);
   }, [filteredMessages]);
+
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    console.log('Updating filters to:', newFilters);
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    console.log('Clearing all filters');
+    setFilters({ userId: undefined, keyword: undefined, date: undefined });
+  };
 
   return (
     <div className="h-full overflow-y-auto transition-opacity duration-200">
       <MessageFilters
         filters={filters}
-        onFiltersChange={(newFilters) => {
-          if (typeof filters === 'object') {
-            Object.assign({}, filters, newFilters);
-          }
-        }}
-        onClearFilters={() => {
-        }}
+        onFiltersChange={handleFiltersChange}
+        onClearFilters={handleClearFilters}
         currentUserId={currentUserId}
       />
-      <div className="px-4 pb-6">
+      <div ref={scrollAreaRef} className="px-4 pb-6">
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}
@@ -105,3 +116,4 @@ export const MessageListContainer = React.memo(({
 });
 
 MessageListContainer.displayName = 'MessageListContainer';
+
