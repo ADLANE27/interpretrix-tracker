@@ -23,10 +23,9 @@ import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProf
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
-import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useInterpreterProfileUpdate } from "../hooks/useInterpreterProfileUpdate";
 
 interface UserTableProps {
   users: UserData[];
@@ -36,10 +35,9 @@ interface UserTableProps {
 
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const queryClient = useQueryClient();
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const { updateProfile, isSubmitting, setIsSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
@@ -49,60 +47,14 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const handleUpdateProfile = async (data: Partial<Profile>) => {
     if (!selectedUser) return;
     
-    try {
-      setIsSubmitting(true);
-      
-      // Create a clean profile object without extra fields
-      const profileData = {
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`),
-        employment_status: data.employment_status,
-        status: data.status,
-        phone_number: data.phone_number,
-        address: data.address,
-        birth_country: data.birth_country,
-        nationality: data.nationality,
-        siret_number: data.siret_number,
-        vat_number: data.vat_number,
-        specializations: data.specializations,
-        landline_phone: data.landline_phone,
-        tarif_15min: data.tarif_15min,
-        tarif_5min: data.tarif_5min,
-        booth_number: data.booth_number,
-        professional_phone: data.professional_phone,
-        private_phone: data.private_phone,
-        work_hours: data.work_hours
-      };
-      
-      const { error } = await supabase.functions.invoke('update-interpreter-profile', {
-        body: {
-          id: selectedUser.id,
-          ...profileData
-        }
-      });
+    const success = await updateProfile({
+      id: selectedUser.id,
+      ...data
+    });
 
-      if (error) throw error;
-
-      // Instead of reloading, invalidate the query and show success message
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
+    if (success) {
       setIsEditingInterpreter(false);
-      
-      toast({
-        title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès",
-      });
-      
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+      setSelectedUser(null);
     }
   };
 
@@ -205,7 +157,17 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         </TableBody>
       </Table>
 
-      <Dialog open={isEditingInterpreter} onOpenChange={setIsEditingInterpreter}>
+      <Dialog 
+        open={isEditingInterpreter} 
+        onOpenChange={(open) => {
+          if (!isSubmitting) {
+            setIsEditingInterpreter(open);
+            if (!open) {
+              setSelectedUser(null);
+            }
+          }
+        }}
+      >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Modifier le profil de l'interprète</DialogTitle>

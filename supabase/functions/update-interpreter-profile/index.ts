@@ -2,12 +2,17 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
+interface LanguagePair {
+  source: string;
+  target: string;
+}
+
 interface UpdateProfileData {
   id: string;
   email?: string;
   first_name?: string;
   last_name?: string;
-  languages?: { source: string; target: string; }[];
+  languages?: LanguagePair[];
   employment_status?: string;
   status?: string;
   phone_number?: string;
@@ -52,23 +57,30 @@ Deno.serve(async (req) => {
       throw new Error('Missing interpreter ID');
     }
 
-    // Transform language pairs to the required format
-    const transformedData = {
-      ...profileData,
-      languages: profileData.languages 
-        ? profileData.languages.map(lang => `${lang.source} → ${lang.target}`)
-        : undefined
-    };
+    // Format language pairs to the required format
+    const formattedLanguages = profileData.languages 
+      ? profileData.languages
+          .filter(lang => lang.source && lang.target) // Filter out invalid pairs
+          .map(lang => `${lang.source} → ${lang.target}`)
+      : undefined;
 
-    console.log('Transforming profile data:', transformedData);
+    console.log('Formatted languages:', formattedLanguages);
 
     // Remove id from the data to be updated
-    const { id, ...updateData } = transformedData;
+    const { id, languages, ...updateData } = profileData;
+
+    // Only include languages in the update if they were provided and properly formatted
+    const finalUpdateData = {
+      ...updateData,
+      ...(formattedLanguages ? { languages: formattedLanguages } : {})
+    };
+
+    console.log('Updating profile with data:', finalUpdateData);
 
     // First update the interpreter profile
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
-      .update(updateData)
+      .update(finalUpdateData)
       .eq('id', id);
 
     if (profileError) {
