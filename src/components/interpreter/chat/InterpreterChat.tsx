@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -189,9 +190,9 @@ export const InterpreterChat = ({
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           {isMobile && (
             <Button
               variant="ghost"
@@ -202,7 +203,7 @@ export const InterpreterChat = ({
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col min-w-0 flex-1">
             <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
             {hasActiveFilters && (
               <Badge 
@@ -216,18 +217,18 @@ export const InterpreterChat = ({
               </Badge>
             )}
           </div>
-        </div>
-        <div className="shrink-0">
-          <ChannelMembersPopover 
-            channelId={channelId} 
-            channelName={channel?.name || ''} 
-            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-            userRole="interpreter"
-          />
+          <div className="shrink-0 ml-2">
+            <ChannelMembersPopover 
+              channelId={channelId} 
+              channelName={channel?.name || ''} 
+              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+              userRole="interpreter"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto relative">
         {isLoading ? (
           <div className="p-4">
             <MessageSkeletonList />
@@ -252,7 +253,7 @@ export const InterpreterChat = ({
         )}
       </div>
 
-      <div className="mt-auto border-t bg-background/95 backdrop-blur-sm sticky bottom-0">
+      <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur-sm z-10">
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -268,3 +269,4 @@ export const InterpreterChat = ({
     </div>
   );
 };
+

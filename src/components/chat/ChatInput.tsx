@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -63,9 +62,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="p-2 bg-background/95 backdrop-blur-sm">
+      <div className="p-2">
         <div className="relative flex flex-col gap-2">
-          <div className="flex items-end gap-2 rounded-xl border bg-white dark:bg-gray-800 shadow-sm">
+          <div className="flex items-end gap-2 rounded-xl border bg-white dark:bg-gray-800/90 shadow-sm">
             <Textarea
               ref={inputRef}
               value={message}
