@@ -39,7 +39,6 @@ export const useInterpreterProfileUpdate = () => {
         throw new Error("Invalid language pairs format");
       }
 
-      // Create a clean profile object without extra fields
       const profileData = {
         id: data.id,
         email: data.email,
@@ -70,7 +69,11 @@ export const useInterpreterProfileUpdate = () => {
 
       if (error) throw error;
 
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      // Only invalidate the specific user's data instead of all users
+      await queryClient.invalidateQueries({ 
+        queryKey: ['users'],
+        refetchType: 'active' // Only refetch active queries
+      });
       
       toast({
         title: "Profil mis à jour",
