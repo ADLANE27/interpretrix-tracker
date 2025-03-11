@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { normalizeLanguagePair, formatLanguagePair } from "@/utils/languageFormatting";
 
 interface Interpreter {
   id: string;
@@ -58,18 +59,23 @@ export const PrivateReservationForm = () => {
         console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
       });
 
+      const expectedPair = formatLanguagePair(sourceLang, targetLang);
+      console.log('[PrivateReservationForm] Recherche de la paire:', expectedPair);
+
       const filteredInterpreters = interpreters?.filter(interpreter => {
         return interpreter.languages.some(lang => {
-          const [source, target] = lang.split('→').map(l => l.trim());
-          const matches = source === sourceLang && target === targetLang;
+          const normalizedLang = normalizeLanguagePair(lang);
+          const normalizedExpected = normalizeLanguagePair(expectedPair);
+          const matches = normalizedLang === normalizedExpected;
+
           console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name}:`, {
-            lang,
-            source,
-            target,
-            sourceLang,
-            targetLang,
+            original: lang,
+            normalized: normalizedLang,
+            expectedPair,
+            normalizedExpected,
             matches
           });
+
           return matches;
         });
       }) || [];
@@ -85,6 +91,7 @@ export const PrivateReservationForm = () => {
         description: "Impossible de trouver les interprètes disponibles",
         variant: "destructive",
       });
+      setAvailableInterpreters([]);
     }
   };
 
@@ -296,3 +303,4 @@ export const PrivateReservationForm = () => {
     </Card>
   );
 };
+
