@@ -513,7 +513,7 @@ export const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto">
-            <div className="min-h-full p-4 sm:p-6">
+            <div className="min-h-full p-0">
               <MessagesTab onMenuClick={() => setIsMenuOpen(true)} />
             </div>
           </TabsContent>
