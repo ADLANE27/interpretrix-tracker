@@ -1,4 +1,3 @@
-
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
@@ -33,7 +32,6 @@ export const MessageListContainer = React.memo(({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = React.useState(initialFilters);
 
-  // Reset filters when initial filters change (e.g., component remount)
   useEffect(() => {
     setFilters(initialFilters);
   }, [initialFilters]);
@@ -99,6 +97,7 @@ export const MessageListContainer = React.memo(({
         onFiltersChange={handleFiltersChange}
         onClearFilters={handleClearFilters}
         currentUserId={currentUserId}
+        channelId={channelId}
       />
       <div ref={scrollAreaRef} className="px-4 pb-6">
         <MessageList
@@ -116,4 +115,3 @@ export const MessageListContainer = React.memo(({
 });
 
 MessageListContainer.displayName = 'MessageListContainer';
-
