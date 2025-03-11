@@ -7,6 +7,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
+import { cn } from "@/lib/utils";
 
 interface MessageListProps {
   messages: Message[];
@@ -106,13 +107,19 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div 
       ref={(el) => observeMessage(el)}
       data-message-id={message.id}
-      className={`group hover:bg-gray-50/50 px-4 py-2 transition-colors ${
-        isThreadReply ? 'ml-8' : ''
-      }`}
+      className={cn(
+        "group transition-colors hover:bg-accent/5",
+        "px-4 py-2.5 relative",
+        isThreadReply ? "ml-12 border-l-2 border-accent/10" : "",
+        message.sender.id === currentUserId ? "hover:bg-blue-50/50 dark:hover:bg-blue-950/20" : "hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+      )}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-3 relative">
         <div className="flex-shrink-0">
-          <Avatar className="h-10 w-10 ring-2 ring-purple-200">
+          <Avatar className={cn(
+            "h-9 w-9 ring-2 transition-shadow",
+            message.sender.id === currentUserId ? "ring-blue-200" : "ring-purple-200",
+          )}>
             {message.sender.avatarUrl ? (
               <img 
                 src={message.sender.avatarUrl} 
@@ -120,23 +127,33 @@ export const MessageList: React.FC<MessageListProps> = ({
                 className="h-full w-full object-cover rounded-full"
               />
             ) : (
-              <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium rounded-full">
+              <div className={cn(
+                "w-full h-full flex items-center justify-center text-sm font-medium rounded-full",
+                message.sender.id === currentUserId ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
+              )}>
                 {getInitials(message.sender.name)}
               </div>
             )}
           </Avatar>
         </div>
         
-        <div className="flex-1 max-w-[80%] space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-[0.95rem] text-purple-900">{message.sender.name}</span>
-            <span className="text-gray-500 text-xs">
+        <div className="flex-1 min-w-0 max-w-[85%] space-y-1">
+          <div className="flex items-baseline gap-2">
+            <span className={cn(
+              "font-medium text-[0.95rem]",
+              message.sender.id === currentUserId ? "text-blue-900 dark:text-blue-300" : "text-purple-900 dark:text-purple-300"
+            )}>
+              {message.sender.name}
+            </span>
+            <span className="text-xs text-muted-foreground">
               {format(message.timestamp, 'HH:mm', { locale: fr })}
             </span>
           </div>
           
           <div className="space-y-2">
-            <div className="text-sm break-words text-gray-900">{message.content}</div>
+            <div className="text-sm text-foreground/90 break-words leading-relaxed">
+              {message.content}
+            </div>
             
             {message.attachments && message.attachments.map((attachment, index) => (
               <div key={index} className="relative group/attachment">
@@ -145,38 +162,30 @@ export const MessageList: React.FC<MessageListProps> = ({
                   filename={attachment.filename}
                   locale="fr"
                 />
-                {message.sender.id === currentUserId && (
-                  <button
-                    onClick={() => handleDeleteMessage(message.id)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover/attachment:opacity-100 transition-opacity shadow-sm"
-                    aria-label="Supprimer la pièce jointe"
-                  >
-                    <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-                  </button>
-                )}
               </div>
             ))}
           </div>
         </div>
         
-        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity self-start mt-1">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-0 flex items-center gap-1">
           {message.sender.id === currentUserId && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => handleDeleteMessage(message.id)}
-              className="p-1.5 rounded-full hover:bg-gray-100"
-              aria-label="Supprimer le message"
+              className="h-8 w-8 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
             >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </button>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
           {!isThreadReply && setReplyTo && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(message)}
-              className="p-1.5 rounded-full hover:bg-gray-100"
+              className="h-8 w-8 p-0 rounded-full hover:bg-accent/10"
             >
-              <MessageCircle className="h-4 w-4 text-gray-500" />
+              <MessageCircle className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -186,11 +195,11 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="space-y-6">
-      {visibleMessages.map((message, index) => (
+      {messages.map((message, index) => (
         <React.Fragment key={message.id}>
-          {shouldShowDate(message, visibleMessages[index - 1]) && (
-            <div className="flex justify-center my-4">
-              <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+          {shouldShowDate(message, messages[index - 1]) && (
+            <div className="flex justify-center my-6">
+              <div className="bg-accent/10 text-foreground/70 px-4 py-1.5 rounded-full text-xs font-medium">
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -203,12 +212,12 @@ export const MessageList: React.FC<MessageListProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => toggleThread(message.id)}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 {expandedThreads.has(message.id) ? (
-                  <ChevronDown className="h-4 w-4 mr-1" />
+                  <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 mr-1" />
+                  <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
                 )}
                 {messageThreads[message.id].length - 1} réponses
               </Button>
