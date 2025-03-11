@@ -110,7 +110,7 @@ export const useUserManagement = () => {
 
         return result;
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
         throw error;
       }
     },
@@ -188,7 +188,7 @@ export const useUserManagement = () => {
 
       refetch();
     } catch (error: any) {
-      console.error('Error updating profile:', error);
+      console.error('Erreur lors de la mise à jour du profil:', error);
       showErrorToast(
         "Impossible de mettre à jour le profil",
         error.message || "Une erreur est survenue lors de la mise à jour"

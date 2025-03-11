@@ -54,20 +54,20 @@ export const UserManagement = () => {
       if (error) throw error;
 
       const loadingToast = showLoadingToast(
-        "Administrateur ajouté",
-        "Un email d'invitation va être envoyé..."
+        "Invitation en cours",
+        "L'invitation est en cours d'envoi..."
       );
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       loadingToast.dismiss();
       
       showSuccessToast(
-        "Administrateur ajouté",
-        "Un email d'invitation a été envoyé"
+        "Invitation envoyée",
+        "Un email d'invitation a été envoyé à l'administrateur"
       );
 
       setIsAddAdminOpen(false);
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error: any) {
       showErrorToast("Impossible d'ajouter l'administrateur", error);
     } finally {
@@ -85,20 +85,20 @@ export const UserManagement = () => {
       if (error) throw error;
 
       const loadingToast = showLoadingToast(
-        "Interprète ajouté",
-        "Un email d'invitation va être envoyé..."
+        "Invitation en cours",
+        "L'invitation est en cours d'envoi..."
       );
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       loadingToast.dismiss();
 
       showSuccessToast(
-        "Interprète ajouté",
-        "Un email d'invitation a été envoyé"
+        "Invitation envoyée",
+        "Un email d'invitation a été envoyé à l'interprète"
       );
 
       setIsAddUserOpen(false);
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error: any) {
       showErrorToast("Impossible d'ajouter l'interprète", error);
     } finally {
@@ -108,7 +108,7 @@ export const UserManagement = () => {
 
   const handleResetPassword = async (password: string) => {
     if (!selectedUserId) {
-      showErrorToast("Erreur", new Error("Utilisateur non sélectionné"));
+      showErrorToast("Erreur", new Error("Aucun utilisateur sélectionné"));
       return;
     }
 
@@ -123,20 +123,20 @@ export const UserManagement = () => {
       });
 
       if (error || !data?.success) {
-        throw new Error(error?.message || data?.message || 'Password reset failed');
+        throw new Error(error?.message || data?.message || 'Échec de la réinitialisation du mot de passe');
       }
 
       const loadingToast = showLoadingToast(
-        "Mot de passe mis à jour",
-        "Le mot de passe est en cours de mise à jour..."
+        "Réinitialisation en cours",
+        "Le mot de passe est en cours de réinitialisation..."
       );
 
       await new Promise(resolve => setTimeout(resolve, 1000));
       loadingToast.dismiss();
 
       showSuccessToast(
-        "Mot de passe mis à jour",
-        "Le mot de passe a été mis à jour avec succès"
+        "Mot de passe réinitialisé",
+        "Le mot de passe a été réinitialisé avec succès"
       );
 
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -144,7 +144,7 @@ export const UserManagement = () => {
       setSelectedUserId(null);
 
     } catch (error: any) {
-      showErrorToast("Impossible de réinitialiser le mot de passe", error);
+      showErrorToast("Échec de la réinitialisation", error);
     } finally {
       setIsResettingPassword(false);
     }
