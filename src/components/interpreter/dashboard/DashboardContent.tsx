@@ -1,4 +1,3 @@
-
 import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
@@ -47,7 +46,7 @@ export const DashboardContent = ({
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full w-full">
+    <div className="flex-1 overflow-auto h-[calc(100vh-4rem)] w-full">
       <div className="h-full max-w-none px-0">
         <AnimatePresence mode="wait">
           <motion.div
@@ -67,4 +66,3 @@ export const DashboardContent = ({
     </div>
   );
 };
-
