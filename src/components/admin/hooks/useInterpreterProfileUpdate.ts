@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -69,16 +68,14 @@ export const useInterpreterProfileUpdate = () => {
 
       if (error) throw error;
 
-      // Only invalidate the specific user's data instead of all users
-      await queryClient.invalidateQueries({ 
-        queryKey: ['users'],
-        refetchType: 'active' // Only refetch active queries
-      });
-      
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
       });
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
       
       return true;
     } catch (error: any) {
