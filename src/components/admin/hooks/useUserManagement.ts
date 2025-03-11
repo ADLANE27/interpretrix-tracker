@@ -36,8 +36,6 @@ export const useUserManagement = () => {
         "Utilisateur supprimé",
         "L'utilisateur a été supprimé avec succès"
       );
-
-      // The real-time subscriptions will handle the data update
     } catch (error: any) {
       showErrorToast(
         "Erreur lors de la suppression",
@@ -72,8 +70,6 @@ export const useUserManagement = () => {
         "Profil mis à jour",
         "Le profil a été mis à jour avec succès"
       );
-
-      // The real-time subscription will handle the data update
     } catch (error: any) {
       console.error('Error updating profile:', error);
       showErrorToast(
@@ -93,7 +89,7 @@ export const useUserManagement = () => {
     interpreters: interpreters.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
-      const email = user.email.toLowerCase();
+      const email = (user.email || '').toLowerCase();
       return fullName.includes(searchTerm) || email.includes(searchTerm);
     })
   };

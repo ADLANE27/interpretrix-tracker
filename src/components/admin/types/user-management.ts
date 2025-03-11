@@ -9,6 +9,7 @@ export interface UserData extends Partial<Profile> {
   role: string;
   created_at: string;
   active: boolean;
+  status?: "available" | "busy" | "pause" | "unavailable";
 }
 
 export interface UsersData {
