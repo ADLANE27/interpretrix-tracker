@@ -49,7 +49,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 bg-background">
+    <div className="fixed bottom-0 left-0 right-0 border-t p-4 bg-background/80 backdrop-blur-lg shadow-lg">
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
           <span>En réponse à : {replyTo.sender.name}</span>
@@ -62,15 +62,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="relative">
-        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[120px] flex items-end">
+      <div className="relative max-w-[1200px] mx-auto">
+        <div className="flex items-end gap-2 bg-white dark:bg-gray-800 rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[80px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[120px] py-3 px-4 text-base"
+              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[80px] py-3 px-4 text-base"
               onKeyDown={handleKeyDown}
             />
           </div>
@@ -138,7 +138,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       </div>
       {attachments.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-2 space-y-1 max-w-[1200px] mx-auto">
           {attachments.map((file, index) => (
             <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
               <span className="text-gray-700 truncate flex-1">{file.name}</span>

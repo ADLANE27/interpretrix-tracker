@@ -96,7 +96,7 @@ export const MessageListContainer = React.memo(({
   };
 
   return (
-    <div className="h-full overflow-y-auto transition-opacity duration-200">
+    <div className="h-full overflow-y-auto transition-opacity duration-200 pb-[200px]">
       <MessageFilters
         filters={filters}
         onFiltersChange={handleFiltersChange}
@@ -104,7 +104,7 @@ export const MessageListContainer = React.memo(({
         currentUserId={currentUserId}
         channelId={channelId}
       />
-      <div ref={scrollAreaRef} className="px-4 pb-6">
+      <div ref={scrollAreaRef} className="px-4">
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}

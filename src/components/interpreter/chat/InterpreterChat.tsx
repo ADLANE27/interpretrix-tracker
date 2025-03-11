@@ -189,25 +189,25 @@ export const InterpreterChat = ({
   );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
+    <div className="flex flex-col h-full relative">
+      <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-lg sticky top-0 z-10">
+        <div className="flex items-center gap-3 min-w-0">
           {isMobile && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowChannelList(true)}
-              className="h-9 w-9 p-0"
+              className="h-9 w-9 p-0 flex-shrink-0"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">{channel?.name}</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
             {hasActiveFilters && (
               <Badge 
                 variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
+                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 flex-shrink-0"
                 onClick={onClearFilters}
               >
                 <Filter className="h-3 w-3" />
@@ -236,17 +236,18 @@ export const InterpreterChat = ({
               Connexion en cours...
             </p>
           </div>
-        ) : null}
-        <MessageListContainer
-          messages={allMessages}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-          filters={filters}
-        />
+        ) : (
+          <MessageListContainer
+            messages={allMessages}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReactToMessage={reactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            channelId={channelId}
+            filters={filters}
+          />
+        )}
       </div>
 
       <ChatInput
