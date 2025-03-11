@@ -40,7 +40,13 @@ export const splitLanguagePair = (pair: string): { source: string; target: strin
 /**
  * Validates a language pair format
  */
-export const isValidLanguagePair = (pair: string): boolean => {
-  const normalized = normalizeLanguagePair(pair);
-  return /^[^→]+\s→\s[^→]+$/.test(normalized);
+export const isValidLanguagePair = (pair: { source: string; target: string }): boolean => {
+  return Boolean(
+    pair &&
+    typeof pair === 'object' &&
+    typeof pair.source === 'string' &&
+    typeof pair.target === 'string' &&
+    pair.source.trim() !== '' &&
+    pair.target.trim() !== ''
+  );
 };

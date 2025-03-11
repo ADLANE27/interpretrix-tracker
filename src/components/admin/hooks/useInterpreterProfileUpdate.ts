@@ -5,29 +5,47 @@ import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
 import { useQueryClient } from "@tanstack/react-query";
 import { LanguagePair } from "@/types/languages";
+import { isValidLanguagePair } from "@/utils/languageFormatting";
 
 export const useInterpreterProfileUpdate = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
+  const validateLanguagePairs = (languages: LanguagePair[]) => {
+    return languages.every(lang => 
+      lang && 
+      typeof lang === 'object' && 
+      typeof lang.source === 'string' && 
+      typeof lang.target === 'string' && 
+      lang.source.trim() !== '' && 
+      lang.target.trim() !== ''
+    );
+  };
+
   const formatLanguagePairs = (languages: LanguagePair[]) => {
-    return languages.map(lang => ({
-      source: lang.source || "",
-      target: lang.target || ""
-    }));
+    return languages
+      .filter(lang => isValidLanguagePair(lang))
+      .map(lang => ({
+        source: lang.source.trim(),
+        target: lang.target.trim()
+      }));
   };
 
   const updateProfile = async (data: Partial<Profile> & { id: string }) => {
     try {
       setIsSubmitting(true);
       
+      if (data.languages && !validateLanguagePairs(data.languages)) {
+        throw new Error("Invalid language pairs format");
+      }
+
       // Create a clean profile object without extra fields
       const profileData = {
         id: data.id,
         email: data.email,
         first_name: data.first_name,
         last_name: data.last_name,
-        languages: formatLanguagePairs(data.languages || []),
+        languages: data.languages ? formatLanguagePairs(data.languages) : undefined,
         employment_status: data.employment_status,
         status: data.status,
         phone_number: data.phone_number,

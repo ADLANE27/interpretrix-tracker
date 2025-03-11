@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     console.log('Formatted languages:', formattedLanguages);
 
-    // Remove id from the data to be updated
+    // Remove id and languages from the data to be updated
     const { id, languages, ...updateData } = profileData;
 
     // Only include languages in the update if they were provided and properly formatted
