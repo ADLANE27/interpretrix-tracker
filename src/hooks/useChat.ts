@@ -142,7 +142,7 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId]);
 
-  const { 
+  const {
     subscriptionStates, 
     handleSubscriptionError 
   } = useSubscriptions(
@@ -152,7 +152,11 @@ export const useChat = (channelId: string) => {
     setRetryCount,
     (payload) => {
       // Handle real-time updates directly
-      const handleRealtimeMessage = async (payload: any) => {
+      const handleRealtimeMessage = async (payload: { 
+        eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+        new: MessageData;
+        old: MessageData;
+      }) => {
         const { eventType, new: newRecord, old: oldRecord } = payload;
         
         try {
@@ -165,7 +169,9 @@ export const useChat = (channelId: string) => {
               break;
 
             case 'DELETE':
-              setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
+              if (oldRecord?.id) {
+                setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
+              }
               break;
 
             case 'UPDATE':
