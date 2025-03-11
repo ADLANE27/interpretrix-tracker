@@ -19,6 +19,7 @@ export interface MessageData {
   id: string;
   content: string;
   sender_id: string;
+  channel_id: string;
   created_at: string;
   parent_message_id?: string | null;
   reactions: Record<string, string[]>;
