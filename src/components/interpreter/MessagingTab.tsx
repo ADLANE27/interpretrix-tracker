@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -69,7 +68,7 @@ export const MessagingTab = () => {
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
+          isMobile && "fixed inset-0 z-[35] m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
             <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
@@ -112,7 +111,7 @@ export const MessagingTab = () => {
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg",
           "lg:col-span-2",
-          isMobile && "fixed inset-0 z-[45] m-0 rounded-none" // Changed z-index to be below sidebar
+          isMobile && "fixed inset-0 z-[35] m-0 rounded-none"
         )}>
           {isMobile && (
             <Button
