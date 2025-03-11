@@ -14,8 +14,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { Message } from "@/types/messaging";
 import { useQuery } from "@tanstack/react-query";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useMessageOptimization } from "@/hooks/chat/useMessageOptimization";
-import { useMessageActions } from "@/hooks/chat/useMessageActions";
+import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -81,8 +80,12 @@ export const MessagesTab = () => {
   const {
     messages,
     isLoading,
-    error
-  } = useMessageOptimization(selectedChannel?.id || '');
+    isSubscribed,
+    sendMessage: sendMessageToChannel,
+    deleteMessage,
+    reactToMessage,
+    currentUserId
+  } = useChat(selectedChannel?.id || '');
 
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
@@ -91,16 +94,6 @@ export const MessagesTab = () => {
       return user;
     }
   });
-
-  const {
-    sendMessage: sendMessageToChannel,
-    deleteMessage,
-    reactToMessage
-  } = useMessageActions(
-    selectedChannel?.id || '',
-    currentUser?.id || null,
-    fetchChannels
-  );
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -206,15 +199,11 @@ export const MessagesTab = () => {
     });
   };
 
-  const handleChannelCreated = () => {
-    fetchChannels();
-  };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
@@ -352,7 +341,7 @@ export const MessagesTab = () => {
             <ScrollArea className="flex-1 p-4">
               <MessageListContainer
                 messages={messages}
-                currentUserId={currentUser?.id || null}
+                currentUserId={currentUserId}
                 onDeleteMessage={deleteMessage}
                 onReactToMessage={reactToMessage}
                 replyTo={replyTo}
