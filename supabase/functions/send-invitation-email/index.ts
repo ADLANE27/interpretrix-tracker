@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     let interpreterData: InterpreterData;
     try {
       interpreterData = await req.json();
-      console.log('Received interpreter data:', JSON.stringify(interpreterData, null, 2));
+      console.log('Creating interpreter with data:', JSON.stringify(interpreterData, null, 2));
     } catch (error) {
       console.error('Error parsing request body:', error);
       throw new Error('Invalid request body');
