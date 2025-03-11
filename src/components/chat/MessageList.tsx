@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -108,17 +109,22 @@ export const MessageList: React.FC<MessageListProps> = ({
       ref={(el) => observeMessage(el)}
       data-message-id={message.id}
       className={cn(
-        "group transition-colors hover:bg-accent/5",
+        "group transition-all duration-200",
         "px-4 py-2.5 relative",
-        isThreadReply ? "ml-12 border-l-2 border-accent/10" : "",
-        message.sender.id === currentUserId ? "hover:bg-blue-50/50 dark:hover:bg-blue-950/20" : "hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
+        "hover:bg-accent/5 dark:hover:bg-accent/10",
+        isThreadReply ? "ml-12 border-l-2 border-accent/10 pl-6" : "",
+        message.sender.id === currentUserId 
+          ? "hover:bg-blue-50/50 dark:hover:bg-blue-950/20" 
+          : "hover:bg-gray-50/50 dark:hover:bg-gray-800/50"
       )}
     >
-      <div className="flex gap-3 relative">
-        <div className="flex-shrink-0">
+      <div className="flex gap-4 relative">
+        <div className="flex-shrink-0 pt-0.5">
           <Avatar className={cn(
-            "h-9 w-9 ring-2 transition-shadow",
-            message.sender.id === currentUserId ? "ring-blue-200" : "ring-purple-200",
+            "h-10 w-10 ring-2 transition-shadow",
+            message.sender.id === currentUserId 
+              ? "ring-blue-200 hover:ring-blue-300" 
+              : "ring-purple-200 hover:ring-purple-300"
           )}>
             {message.sender.avatarUrl ? (
               <img 
@@ -129,7 +135,9 @@ export const MessageList: React.FC<MessageListProps> = ({
             ) : (
               <div className={cn(
                 "w-full h-full flex items-center justify-center text-sm font-medium rounded-full",
-                message.sender.id === currentUserId ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
+                message.sender.id === currentUserId 
+                  ? "bg-blue-100 text-blue-600" 
+                  : "bg-purple-100 text-purple-600"
               )}>
                 {getInitials(message.sender.name)}
               </div>
@@ -137,43 +145,53 @@ export const MessageList: React.FC<MessageListProps> = ({
           </Avatar>
         </div>
         
-        <div className="flex-1 min-w-0 max-w-[85%] space-y-1">
-          <div className="flex items-baseline gap-2">
+        <div className="flex-1 min-w-0 max-w-[85%] space-y-1.5">
+          <div className="flex items-center gap-2">
             <span className={cn(
-              "font-medium text-[0.95rem]",
-              message.sender.id === currentUserId ? "text-blue-900 dark:text-blue-300" : "text-purple-900 dark:text-purple-300"
+              "font-semibold text-[0.95rem]",
+              message.sender.id === currentUserId 
+                ? "text-blue-900 dark:text-blue-300" 
+                : "text-purple-900 dark:text-purple-300"
             )}>
               {message.sender.name}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground/70 font-medium">
               {format(message.timestamp, 'HH:mm', { locale: fr })}
             </span>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="text-sm text-foreground/90 break-words leading-relaxed">
               {message.content}
             </div>
             
-            {message.attachments && message.attachments.map((attachment, index) => (
-              <div key={index} className="relative group/attachment">
-                <MessageAttachment
-                  url={attachment.url}
-                  filename={attachment.filename}
-                  locale="fr"
-                />
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="space-y-2">
+                {message.attachments.map((attachment, index) => (
+                  <div key={index} className="group/attachment relative">
+                    <MessageAttachment
+                      url={attachment.url}
+                      filename={attachment.filename}
+                      locale="fr"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
         
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-0 flex items-center gap-1">
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 -top-1 flex items-center gap-1.5">
           {message.sender.id === currentUserId && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => handleDeleteMessage(message.id)}
-              className="h-8 w-8 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
+              className={cn(
+                "h-8 w-8 p-0 rounded-full",
+                "hover:bg-destructive/10 hover:text-destructive",
+                "transition-colors duration-200"
+              )}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -183,7 +201,11 @@ export const MessageList: React.FC<MessageListProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(message)}
-              className="h-8 w-8 p-0 rounded-full hover:bg-accent/10"
+              className={cn(
+                "h-8 w-8 p-0 rounded-full",
+                "hover:bg-accent/20",
+                "transition-colors duration-200"
+              )}
             >
               <MessageCircle className="h-4 w-4" />
             </Button>
@@ -199,7 +221,11 @@ export const MessageList: React.FC<MessageListProps> = ({
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
             <div className="flex justify-center my-6">
-              <div className="bg-accent/10 text-foreground/70 px-4 py-1.5 rounded-full text-xs font-medium">
+              <div className={cn(
+                "bg-accent/5 text-foreground/60 px-4 py-1.5",
+                "rounded-full text-xs font-medium",
+                "shadow-sm border border-accent/10"
+              )}>
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -207,17 +233,21 @@ export const MessageList: React.FC<MessageListProps> = ({
           {renderMessage(message)}
           
           {messageThreads[message.id]?.length > 1 && (
-            <div className="ml-12 mt-2">
+            <div className="ml-14 mt-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => toggleThread(message.id)}
-                className="text-xs text-muted-foreground hover:text-foreground"
+                className={cn(
+                  "text-xs text-muted-foreground",
+                  "hover:text-foreground transition-colors",
+                  "flex items-center gap-1.5"
+                )}
               >
                 {expandedThreads.has(message.id) ? (
-                  <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
+                  <ChevronDown className="h-3.5 w-3.5" />
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                  <ChevronRight className="h-3.5 w-3.5" />
                 )}
                 {messageThreads[message.id].length - 1} réponses
               </Button>
@@ -235,4 +265,6 @@ export const MessageList: React.FC<MessageListProps> = ({
       ))}
     </div>
   );
-};
+});
+
+MessageList.displayName = 'MessageList';
