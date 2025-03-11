@@ -190,20 +190,32 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-3 border-b">
-        <div className="flex items-center gap-2 ml-12 lg:ml-0">
-          <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
-          {hasActiveFilters && (
-            <Badge 
-              variant="secondary"
-              className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
-              onClick={onClearFilters}
+      <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannelList(true)}
+              className="h-8 w-8 p-0 hover:bg-accent"
             >
-              <Filter className="h-3 w-3" />
-              <span className="hidden sm:inline">Filtres actifs</span>
-              <X className="h-3 w-3" />
-            </Badge>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
           )}
+          <div className="flex flex-col">
+            <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
+            {hasActiveFilters && (
+              <Badge 
+                variant="secondary"
+                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs"
+                onClick={onClearFilters}
+              >
+                <Filter className="h-3 w-3" />
+                <span className="hidden sm:inline">Filtres actifs</span>
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+          </div>
         </div>
         <ChannelMembersPopover 
           channelId={channelId} 
@@ -238,17 +250,19 @@ export const InterpreterChat = ({
         )}
       </div>
 
-      <ChatInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        handleFileChange={handleFileChange}
-        attachments={attachments}
-        handleRemoveAttachment={handleRemoveAttachment}
-        inputRef={inputRef}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-      />
+      <div className="mt-auto border-t bg-background/95 backdrop-blur-sm sticky bottom-0">
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+        />
+      </div>
     </div>
   );
 };

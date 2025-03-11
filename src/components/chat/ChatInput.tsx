@@ -49,29 +49,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t bg-background">
+    <div className="w-full">
       {replyTo && (
-        <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground border-b">
+        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground bg-muted/30">
           <span className="truncate">En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            className="shrink-0 h-6 px-2 text-xs"
+            className="ml-auto h-6 px-2 text-xs"
           >
             Annuler
           </Button>
         </div>
       )}
-      <div className="p-2 sm:p-3">
+      <div className="p-2">
         <div className="relative flex flex-col gap-2">
-          <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex items-end gap-2 bg-background rounded-xl border shadow-sm">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="min-h-[44px] max-h-[120px] py-3 px-4 border-0 focus-visible:ring-0 resize-none shadow-none"
+              className="min-h-[44px] max-h-[120px] py-3 px-4 border-0 focus-visible:ring-0 resize-none shadow-none rounded-xl"
               onKeyDown={handleKeyDown}
             />
             <div className="flex items-center gap-1 p-2 shrink-0">
@@ -80,7 +80,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   <Button 
                     variant="ghost" 
                     size="icon"
-                    className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
                   >
                     <Smile className="h-5 w-5" />
                   </Button>
@@ -89,6 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   className="w-auto p-0" 
                   side="top" 
                   align="end"
+                  sideOffset={15}
                 >
                   <Picker
                     data={data}
@@ -111,14 +112,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
               <Button
                 size="icon"
-                className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
+                className="h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white"
                 onClick={onSendMessage}
                 disabled={!message.trim() && attachments.length === 0}
               >
@@ -128,14 +129,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
 
           {attachments.length > 0 && (
-            <div className="space-y-1">
+            <div className="space-y-1 mt-2">
               {attachments.map((file, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-                  <span className="text-gray-700 truncate flex-1">{file.name}</span>
+                <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground truncate flex-1">{file.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 hover:text-red-500 shrink-0"
+                    className="h-6 hover:text-destructive shrink-0"
                     onClick={() => handleRemoveAttachment(index)}
                   >
                     Supprimer
