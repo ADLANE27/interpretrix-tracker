@@ -47,38 +47,40 @@ export const PrivateReservationForm = () => {
           status,
           profile_picture_url,
           languages
-        `)
-        .eq('status', 'available');
+        `);
 
       if (error) {
         console.error('[PrivateReservationForm] Erreur:', error);
         throw error;
       }
 
-      interpreters?.forEach(interpreter => {
-        console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
-      });
-
       const expectedPair = formatLanguagePair(sourceLang, targetLang);
       console.log('[PrivateReservationForm] Recherche de la paire:', expectedPair);
 
-      const filteredInterpreters = interpreters?.filter(interpreter => {
+      let filteredInterpreters = interpreters?.filter(interpreter => {
         return interpreter.languages.some(lang => {
           const normalizedLang = normalizeLanguagePair(lang);
           const normalizedExpected = normalizeLanguagePair(expectedPair);
-          const matches = normalizedLang === normalizedExpected;
-
-          console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name}:`, {
-            original: lang,
-            normalized: normalizedLang,
-            expectedPair,
-            normalizedExpected,
-            matches
-          });
-
-          return matches;
+          return normalizedLang === normalizedExpected;
         });
       }) || [];
+
+      if (startTime && endTime) {
+        const availableInterpreters = [];
+        for (const interpreter of filteredInterpreters) {
+          const isAvailable = await isInterpreterAvailableForScheduledMission(
+            interpreter.id,
+            startTime,
+            endTime,
+            supabase
+          );
+          
+          if (isAvailable) {
+            availableInterpreters.push(interpreter);
+          }
+        }
+        filteredInterpreters = availableInterpreters;
+      }
 
       console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
       setAvailableInterpreters(filteredInterpreters);
@@ -303,4 +305,3 @@ export const PrivateReservationForm = () => {
     </Card>
   );
 };
-

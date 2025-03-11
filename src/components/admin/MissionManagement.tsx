@@ -213,68 +213,22 @@ export const MissionManagement = () => {
         throw error;
       }
 
-      console.log('[MissionManagement] Found all interpreters:', interpreters?.length);
-      
-      if (!interpreters || interpreters.length === 0) {
-        console.log('[MissionManagement] No interpreters found');
-        setAvailableInterpreters([]);
-        return;
-      }
-
-      // Filter interpreters by language match
-      const matchingInterpreters = interpreters.filter(interpreter => {
+      // Filter interpreters by language match first
+      let matchingInterpreters = interpreters?.filter(interpreter => {
         const hasLanguageMatch = interpreter.languages.some(lang => {
           const [source, target] = lang.split('→').map(l => l.trim());
-          const matches = source === sourceLang && target === targetLang;
-          if (matches) {
-            console.log('[MissionManagement] Language match found for interpreter:', {
-              interpreterId: interpreter.id,
-              interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
-              language: `${source} → ${target}`
-            });
-          }
-          return matches;
+          return source === sourceLang && target === targetLang;
         });
-        
-        if (!hasLanguageMatch) {
-          console.log('[MissionManagement] No language match for interpreter:', {
-            interpreterId: interpreter.id,
-            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
-            interpreterLanguages: interpreter.languages
-          });
-        }
         
         return hasLanguageMatch;
-      });
+      }) || [];
 
-      console.log('[MissionManagement] Interpreters matching language criteria:', matchingInterpreters.map(i => ({
-        name: `${i.first_name} ${i.last_name}`,
-        status: i.status,
-        languages: i.languages
-      })));
-      
-      if (matchingInterpreters.length === 0) {
-        console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
-        toast({
-          title: "Aucun interprète trouvé",
-          description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
-        });
-        setAvailableInterpreters([]);
-        return;
-      }
+      // Apply status filtering based on mission type
+      matchingInterpreters = filterInterpretersByMissionType(matchingInterpreters, missionType);
 
-      let filteredInterpreters = matchingInterpreters;
-      
-      // Only filter by status for immediate missions
-      if (missionType === 'immediate') {
-        filteredInterpreters = matchingInterpreters.filter(interpreter => interpreter.status === 'available');
-        console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters.map(i => ({
-          name: `${i.first_name} ${i.last_name}`,
-          status: i.status
-        })));
-      } else if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-        // For scheduled missions, check each interpreter's availability
-        filteredInterpreters = [];
+      // For scheduled missions, also check schedule availability
+      if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        const availableInterpreters = [];
         for (const interpreter of matchingInterpreters) {
           const isAvailable = await isInterpreterAvailableForScheduledMission(
             interpreter.id,
@@ -283,34 +237,32 @@ export const MissionManagement = () => {
             supabase
           );
           
-          console.log('[MissionManagement] Checking scheduled availability:', {
-            interpreterId: interpreter.id,
-            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
-            isAvailable,
-            scheduledStartTime,
-            scheduledEndTime
-          });
-          
           if (isAvailable) {
-            filteredInterpreters.push(interpreter);
+            availableInterpreters.push(interpreter);
           }
         }
+        matchingInterpreters = availableInterpreters;
       }
 
-      const uniqueInterpreters = filteredInterpreters
+      const uniqueInterpreters = matchingInterpreters
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
         )
         .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0));
 
-      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters.map(i => ({
-        name: `${i.first_name} ${i.last_name}`,
-        status: i.status,
-        isSelected: selectedInterpreters.includes(i.id)
-      })));
+      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters);
       
       setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
+
+      if (uniqueInterpreters.length === 0) {
+        toast({
+          title: "Aucun interprète trouvé",
+          description: missionType === 'immediate' 
+            ? "Aucun interprète disponible pour cette combinaison de langues"
+            : "Aucun interprète trouvé pour cette combinaison de langues et ces horaires",
+        });
+      }
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
       toast({
@@ -661,6 +613,14 @@ export const MissionManagement = () => {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const filterInterpretersByMissionType = (interpreters: Interpreter[], missionType: 'immediate' | 'scheduled') => {
+    if (missionType === 'immediate') {
+      return interpreters.filter(interpreter => interpreter.status === 'available');
+    } else {
+      return interpreters;
     }
   };
 
