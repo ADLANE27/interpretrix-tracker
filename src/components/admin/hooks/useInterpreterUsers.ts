@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "../types/user-management";
@@ -40,7 +41,10 @@ export const useInterpreterUsers = () => {
         created_at: interpreter.created_at,
         active: roleMap[interpreter.id] ?? false,
         status: interpreter.status as UserData['status'],
-        languages: interpreter.languages,
+        languages: (interpreter.languages || []).map((lang: string) => {
+          const [source, target] = lang.split('→').map(l => l.trim());
+          return { source, target };
+        }),
         employment_status: interpreter.employment_status,
         phone_number: interpreter.phone_number,
         address: interpreter.address,
