@@ -46,7 +46,7 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
-  connection_status?: "available" | "unavailable" | "pause" | "busy";
+  connection_status?: "available" | "unavailable" | "busy";
 }
 
 const defaultWorkHours: WorkHours = {
@@ -516,7 +516,7 @@ export const AdminDashboard = () => {
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto">
             <div className="min-h-full p-4 sm:p-6">
-              <MessagesTab />
+              <MessagesTab onMenuClick={() => setIsMenuOpen(true)} />
             </div>
           </TabsContent>
 
@@ -546,3 +546,5 @@ export const AdminDashboard = () => {
     </div>
   );
 };
+
+export default Admin;
