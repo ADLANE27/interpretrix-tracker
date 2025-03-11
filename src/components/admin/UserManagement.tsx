@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +39,7 @@ export const UserManagement = () => {
     setSearchQuery,
     handleDeleteUser,
     queryClient,
+    refetch
   } = useUserManagement();
 
   const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
@@ -65,6 +67,7 @@ export const UserManagement = () => {
       );
 
       setIsAddAdminOpen(false);
+      refetch();
     } catch (error: any) {
       showErrorToast("Impossible d'ajouter l'administrateur", error);
     } finally {
@@ -95,6 +98,7 @@ export const UserManagement = () => {
       );
 
       setIsAddUserOpen(false);
+      refetch();
     } catch (error: any) {
       showErrorToast("Impossible d'ajouter l'interprète", error);
     } finally {
