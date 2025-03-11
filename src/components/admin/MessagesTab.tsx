@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -342,6 +343,20 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                 <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
               </div>
             </div>
+
+            <div className="flex-shrink-0">
+              <ChatInput
+                message={message}
+                setMessage={setMessage}
+                onSendMessage={handleSendMessage}
+                handleFileChange={handleFileChange}
+                attachments={attachments}
+                handleRemoveAttachment={handleRemoveAttachment}
+                inputRef={inputRef}
+                replyTo={replyTo}
+                setReplyTo={setReplyTo}
+              />
+            </div>
             
             <div className="flex-1 min-h-0 relative">
               <ScrollArea className="h-full">
@@ -356,20 +371,6 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                   filters={{}}
                 />
               </ScrollArea>
-            </div>
-
-            <div className="flex-shrink-0 mt-auto">
-              <ChatInput
-                message={message}
-                setMessage={setMessage}
-                onSendMessage={handleSendMessage}
-                handleFileChange={handleFileChange}
-                attachments={attachments}
-                handleRemoveAttachment={handleRemoveAttachment}
-                inputRef={inputRef}
-                replyTo={replyTo}
-                setReplyTo={setReplyTo}
-              />
             </div>
           </div>
         </Card>
