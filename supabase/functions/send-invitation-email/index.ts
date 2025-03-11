@@ -39,12 +39,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Starting invitation process...');
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const interpreterData: InterpreterData = await req.json();
-    console.log('Creating interpreter with data:', interpreterData);
+    console.log('Received interpreter data:', JSON.stringify(interpreterData, null, 2));
 
     // Validate required fields
     if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
@@ -56,9 +58,12 @@ Deno.serve(async (req) => {
       `${lang.source}→${lang.target}`
     );
 
+    console.log('Transformed languages:', formattedLanguages);
+
     // 1. Create the user with the provided or generated password
     const password = interpreterData.password || Math.random().toString(36).slice(-12);
     
+    console.log('Creating user account...');
     const { data: authData, error: createError } = await supabase.auth.admin.createUser({
       email: interpreterData.email,
       password: password,
@@ -77,6 +82,7 @@ Deno.serve(async (req) => {
     console.log('User created successfully:', authData);
 
     // 2. Add interpreter role
+    console.log('Adding interpreter role...');
     const { error: roleError } = await supabase
       .from('user_roles')
       .insert({
@@ -93,6 +99,7 @@ Deno.serve(async (req) => {
     }
 
     // 3. Create interpreter profile
+    console.log('Creating interpreter profile...');
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
       .insert({
@@ -126,6 +133,7 @@ Deno.serve(async (req) => {
     }
 
     // 4. Send welcome email
+    console.log('Sending welcome email...');
     const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
       body: {
         email: interpreterData.email,
