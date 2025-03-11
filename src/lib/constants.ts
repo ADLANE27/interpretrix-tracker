@@ -1,4 +1,3 @@
-
 export const LANGUAGES = [
   // All languages in one sorted array
   "Afrikaans", "Albanais", "Allemand (Allemagne)", "Allemand (Autriche)", "Allemand (Suisse)", 
@@ -31,8 +30,7 @@ export const LANGUAGES = [
   "Punjabi (Inde)", "Punjabi (Pakistan)", "Quechua", "Roumain", "Russe", "Samoan", "Santali", 
   "Serbe", "Shona", "Sindhi", "Slovaque", "Somali", "Soninké", "Soussou", "Sundanais", "Suédois", 
   "Swahili", "Sérère", "Tadjik", "Tagalog", "Tahitien", "Tamoul (Inde)", "Tamoul (Sri Lanka)", 
-  "Tamasheq", "Tchéchène", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", "Tshiluba", "Tswana", 
+  "Tamasheq", "Tchétchène", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", "Tshiluba", "Tswana", 
   "Turc", "Turkmène", "Télougou", "Ukrainien", "Vietnamien", "Wolof", "Wu (Shanghaïen)", "Xhosa", 
   "Yoruba", "Zaghawa", "Zoulou", "Éwé"
 ].sort();
-
