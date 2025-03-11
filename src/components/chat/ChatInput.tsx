@@ -48,7 +48,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg">
+    <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg pb-4">
       {replyTo && (
         <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -64,8 +64,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="max-w-[1200px] mx-auto px-4 py-3">
-        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+      <div className="max-w-[1200px] mx-auto px-4 py-2">
+        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-interpreter-navy focus-within:border-interpreter-navy">
           <div className="flex-1 min-h-[44px] flex items-end">
             <Textarea
               ref={inputRef}
@@ -82,7 +82,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-purple-500"
+                  className="h-8 w-8 text-muted-foreground hover:text-interpreter-navy"
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -110,14 +110,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-purple-500"
+              className="h-8 w-8 text-muted-foreground hover:text-interpreter-navy"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white"
+              className="h-8 w-8 bg-interpreter-navy hover:bg-interpreter-navy/90 text-white"
               onClick={onSendMessage}
               disabled={!message.trim() && attachments.length === 0}
             >
