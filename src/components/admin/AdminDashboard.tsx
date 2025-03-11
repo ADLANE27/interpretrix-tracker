@@ -537,9 +537,11 @@ export const AdminDashboard = () => {
           </TabsContent>
         </div>
 
-        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
-          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-        </footer>
+        {activeTab !== "messages" && (
+          <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
+            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+          </footer>
+        )}
       </Tabs>
     </div>
   );

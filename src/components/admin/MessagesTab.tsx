@@ -204,7 +204,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-1rem)] gap-3 sm:gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh)] gap-3 sm:gap-6">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
           "flex flex-col",
