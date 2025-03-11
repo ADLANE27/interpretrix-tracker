@@ -80,7 +80,7 @@ export const MessageListContainer = React.memo(({
   }, [filteredMessages]);
 
   return (
-    <div ref={scrollAreaRef} className="h-full overflow-y-auto px-4 transition-opacity duration-200">
+    <div ref={scrollAreaRef} className="h-full overflow-y-auto px-4 pb-6 transition-opacity duration-200">
       <MessageList
         messages={filteredMessages}
         currentUserId={currentUserId}
