@@ -41,16 +41,31 @@ Deno.serve(async (req) => {
   try {
     console.log('Starting invitation process...');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const interpreterData: InterpreterData = await req.json();
-    console.log('Received interpreter data:', JSON.stringify(interpreterData, null, 2));
+    let interpreterData: InterpreterData;
+    try {
+      interpreterData = await req.json();
+      console.log('Received interpreter data:', JSON.stringify(interpreterData, null, 2));
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+      throw new Error('Invalid request body');
+    }
 
     // Validate required fields
     if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
       throw new Error('Missing required fields: email, first_name, or last_name');
+    }
+
+    if (!interpreterData.languages || interpreterData.languages.length === 0) {
+      throw new Error('At least one language pair is required');
     }
 
     // Transform languages to the correct format
@@ -77,6 +92,10 @@ Deno.serve(async (req) => {
     if (createError) {
       console.error('Error creating user:', createError);
       throw createError;
+    }
+
+    if (!authData?.user) {
+      throw new Error('User creation succeeded but no user data returned');
     }
 
     console.log('User created successfully:', authData);
@@ -145,7 +164,7 @@ Deno.serve(async (req) => {
 
     if (emailError) {
       console.error('Error sending welcome email:', emailError);
-      // Don't block creation if email fails
+      // Don't block creation if email fails, but log it
     }
 
     return new Response(
@@ -172,4 +191,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
