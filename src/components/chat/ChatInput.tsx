@@ -1,8 +1,7 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
-import { Paperclip, Send, Smile } from 'lucide-react';
+import { Paperclip, Send, Smile, X } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -49,38 +48,41 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 border-t p-2 bg-background/95 backdrop-blur-lg shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-          <span>En réponse à : {replyTo.sender.name}</span>
+        <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Replying to {replyTo.sender.name}</span>
+          </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
+            className="h-6 w-6 p-0"
           >
-            Annuler
+            <X className="h-4 w-4" />
           </Button>
         </div>
       )}
-      <div className="relative max-w-[1200px] mx-auto">
-        <div className="flex items-end gap-2 bg-white dark:bg-gray-800 rounded-lg border shadow-sm focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[60px] flex items-end">
+      <div className="max-w-[1200px] mx-auto px-4 py-3">
+        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[44px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-inner min-h-[60px] py-2 px-4 text-base"
+              placeholder="Message..."
+              className="resize-none border-0 focus-visible:ring-0 px-3 py-3 min-h-[44px] text-base bg-transparent"
               onKeyDown={handleKeyDown}
             />
           </div>
-          <div className="flex items-center gap-1 p-2">
+          <div className="flex items-center gap-1 p-1">
             <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
               <PopoverTrigger asChild>
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                  className="h-8 w-8 text-muted-foreground hover:text-purple-500"
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -95,19 +97,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   onEmojiSelect={handleEmojiSelect}
                   theme="light"
                   locale="fr"
-                  previewPosition="none"
-                  skinTonePosition="none"
-                  categories={[
-                    'frequent',
-                    'people',
-                    'nature',
-                    'foods',
-                    'activity',
-                    'places',
-                    'objects',
-                    'symbols',
-                    'flags'
-                  ]}
                 />
               </PopoverContent>
             </Popover>
@@ -121,14 +110,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500"
+              className="h-8 w-8 text-muted-foreground hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
+              className="h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white"
               onClick={onSendMessage}
               disabled={!message.trim() && attachments.length === 0}
             >
@@ -136,24 +125,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             </Button>
           </div>
         </div>
+        {attachments.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-muted/50 rounded">
+                <span className="text-muted-foreground truncate flex-1">{file.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 hover:text-red-500 p-0"
+                  onClick={() => handleRemoveAttachment(index)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      {attachments.length > 0 && (
-        <div className="mt-2 space-y-1 max-w-[1200px] mx-auto">
-          {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-              <span className="text-gray-700 truncate flex-1">{file.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 hover:text-red-500"
-                onClick={() => handleRemoveAttachment(index)}
-              >
-                Supprimer
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

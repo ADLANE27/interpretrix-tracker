@@ -96,15 +96,17 @@ export const MessageListContainer = React.memo(({
   };
 
   return (
-    <div className="h-full overflow-y-auto transition-opacity duration-200 pb-[120px] pr-2">
-      <MessageFilters
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onClearFilters={handleClearFilters}
-        currentUserId={currentUserId}
-        channelId={channelId}
-      />
-      <div ref={scrollAreaRef} className="px-4">
+    <div className="flex flex-col h-full transition-opacity duration-200">
+      <div className="flex-shrink-0 sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b">
+        <MessageFilters
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onClearFilters={handleClearFilters}
+          currentUserId={currentUserId}
+          channelId={channelId}
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 pb-[120px]" ref={scrollAreaRef}>
         <MessageList
           messages={filteredMessages}
           currentUserId={currentUserId}
