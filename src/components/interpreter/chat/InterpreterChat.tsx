@@ -15,6 +15,7 @@ import { Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from 'lucide-react';
 import { useMessageOptimization } from '@/hooks/chat/useMessageOptimization';
+import { MessageSkeletonList } from '@/components/chat/MessageSkeleton';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -198,12 +199,12 @@ export const InterpreterChat = ({
 
       <div className="flex-1 overflow-hidden relative">
         {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
+          <div className="p-4">
+            <MessageSkeletonList />
           </div>
         ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
+          <div className="h-full flex items-center justify-center">
+            <p className="text-lg text-muted-foreground">
               Connexion en cours...
             </p>
           </div>
