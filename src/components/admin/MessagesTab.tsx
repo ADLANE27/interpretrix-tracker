@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2, Bell } from 'lucide-react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { Message } from "@/types/messaging";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMessageOptimization } from "@/hooks/chat/useMessageOptimization";
 import { useMessageActions } from "@/hooks/chat/useMessageActions";
+import { cn } from "@/lib/utils";
 
 interface Channel {
   id: string;
@@ -65,7 +68,7 @@ export const MessagesTab = () => {
 
       if (error) throw error;
       if (data) {
-        console.log('Fetched channels:', data); // Debug log
+        console.log('Fetched channels:', data);
         setChannels(data);
         if (data.length > 0 && !selectedChannel) {
           setSelectedChannel(data[0]);
@@ -218,45 +221,43 @@ export const MessagesTab = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
-      <div className="flex h-full">
-        <div 
-          className={`${
-            isMobile 
-              ? showChannelList 
-                ? 'absolute inset-0 z-30 bg-background' 
-                : 'hidden'
-              : 'w-80'
-          } border-r flex flex-col`}
-        >
-          <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Canaux</h2>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDirectMessageDialog(true)}
-                  className="h-9 w-9 p-0"
-                >
-                  <UserPlus className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCreateDialog(true)}
-                  className="h-9 w-9 p-0"
-                >
-                  <PlusCircle className="h-5 w-5" />
-                </Button>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+      {(!selectedChannel || showChannelList || !isMobile) && (
+        <Card className={cn(
+          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+          "transition-all duration-300 hover:shadow-xl rounded-lg",
+          "dark:from-gray-800 dark:to-gray-900",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+        )}>
+          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
+            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDirectMessageDialog(true)}
+                className="h-9 w-9 p-0"
+              >
+                <UserPlus className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCreateDialog(true)}
+                className="h-9 w-9 p-0"
+              >
+                <PlusCircle className="h-5 w-5" />
+              </Button>
             </div>
+          </div>
+          <div className="mb-4">
             <Input
               placeholder="Rechercher un canal..."
               className="w-full"
             />
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <div className="flex-1 overflow-y-auto space-y-1">
             {channels.map((channel) => (
               <div
                 key={channel.id}
@@ -330,67 +331,72 @@ export const MessagesTab = () => {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
-          {selectedChannel ? (
-            <>
-              <div className="p-4 border-b safe-area-top bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="flex items-center gap-3">
-                  {isMobile && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowChannelList(true)}
-                      className="h-9 w-9 p-0"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                  )}
-                  <h2 className="text-lg font-semibold flex-1">{selectedChannel.display_name}</h2>
-                </div>
-              </div>
-
-              <MessageListContainer
-                messages={messages}
-                currentUserId={currentUser?.id || null}
-                onDeleteMessage={deleteMessage}
-                onReactToMessage={reactToMessage}
-                replyTo={replyTo}
-                setReplyTo={setReplyTo}
-                channelId={selectedChannel.id}
-                filters={{}}
-              />
-
-              <ChatInput
-                message={message}
-                setMessage={setMessage}
-                onSendMessage={handleSendMessage}
-                handleFileChange={handleFileChange}
-                attachments={attachments}
-                handleRemoveAttachment={handleRemoveAttachment}
-                inputRef={inputRef}
-                replyTo={replyTo}
-                setReplyTo={setReplyTo}
-              />
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground p-4 text-center">
-              <p>Sélectionnez un canal pour commencer à discuter</p>
-            </div>
+        </Card>
+      )}
+      
+      {(selectedChannel && (!showChannelList || !isMobile)) ? (
+        <Card className={cn(
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+          "hover:shadow-xl rounded-lg",
+          "lg:col-span-2",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+        )}>
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannelList(true)}
+              className="absolute top-2 left-2 z-10 h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Retour
+            </Button>
           )}
-        </div>
-      </div>
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">{selectedChannel.display_name}</h2>
+            </div>
+            <MessageListContainer
+              messages={messages}
+              currentUserId={currentUser?.id || null}
+              onDeleteMessage={deleteMessage}
+              onReactToMessage={reactToMessage}
+              replyTo={replyTo}
+              setReplyTo={setReplyTo}
+              channelId={selectedChannel.id}
+              filters={{}}
+            />
+            <ChatInput
+              message={message}
+              setMessage={setMessage}
+              onSendMessage={handleSendMessage}
+              handleFileChange={handleFileChange}
+              attachments={attachments}
+              handleRemoveAttachment={handleRemoveAttachment}
+              inputRef={inputRef}
+              replyTo={replyTo}
+              setReplyTo={setReplyTo}
+            />
+          </div>
+        </Card>
+      ) : !selectedChannel && !isMobile ? (
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+          <div className="text-center text-muted-foreground">
+            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+          </div>
+        </Card>
+      ) : null}
 
       <CreateChannelDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
-        onChannelCreated={handleChannelCreated}
+        onChannelCreated={fetchChannels}
       />
       <NewDirectMessageDialog
         isOpen={showDirectMessageDialog}
         onClose={() => setShowDirectMessageDialog(false)}
-        onChannelCreated={handleChannelCreated}
+        onChannelCreated={fetchChannels}
       />
       {selectedChannel && (
         <ChannelMemberManagement
