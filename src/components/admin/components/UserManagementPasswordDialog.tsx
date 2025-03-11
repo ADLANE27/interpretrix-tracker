@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -21,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
+// Define type-safe schema types
 const verifySchema = z.object({
   password: z.string().min(1, "Le mot de passe est requis"),
   confirmPassword: z.string().optional(),
@@ -55,6 +57,7 @@ export const UserManagementPasswordDialog = ({
   const { toast } = useToast();
 
   const schema = mode === 'verify' ? verifySchema : setupSchema;
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -85,7 +88,6 @@ export const UserManagementPasswordDialog = ({
     if (!open && mode === 'verify' && onCancel) {
       onCancel();
     }
-    form.reset();
     onOpenChange(open);
   };
 
