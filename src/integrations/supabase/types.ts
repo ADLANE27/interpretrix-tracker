@@ -1045,6 +1045,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      standardize_language_pair: {
+        Args: {
+          lang_pair: string
+        }
+        Returns: string
+      }
       text_to_bytea: {
         Args: {
           data: string
