@@ -4,6 +4,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import * as bcrypt from 'bcryptjs';
 
+const SESSION_KEY = 'userManagementVerification';
+const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+interface VerificationSession {
+  verified: boolean;
+  expiresAt: number;
+}
+
 export const useUserManagementPassword = () => {
   const [isPasswordRequired, setIsPasswordRequired] = useState(false);
   const [isPasswordSetupOpen, setIsPasswordSetupOpen] = useState(false);
@@ -12,8 +20,40 @@ export const useUserManagementPassword = () => {
   const [isVerified, setIsVerified] = useState(false);
   const { toast } = useToast();
 
+  const checkSessionValidity = () => {
+    const sessionData = sessionStorage.getItem(SESSION_KEY);
+    if (!sessionData) return false;
+
+    try {
+      const session: VerificationSession = JSON.parse(sessionData);
+      if (session.verified && session.expiresAt > Date.now()) {
+        return true;
+      }
+      // Clean up expired session
+      sessionStorage.removeItem(SESSION_KEY);
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const setVerificationSession = () => {
+    const session: VerificationSession = {
+      verified: true,
+      expiresAt: Date.now() + SESSION_DURATION,
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  };
+
   useEffect(() => {
     const checkPassword = async () => {
+      // First check if we have a valid session
+      if (checkSessionValidity()) {
+        setIsPasswordRequired(true);
+        setIsVerified(true);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('admin_settings')
         .select('value')
@@ -49,6 +89,8 @@ export const useUserManagementPassword = () => {
     setIsPasswordRequired(true);
     setIsVerified(true);
     setIsPasswordSetupOpen(false);
+    setVerificationSession();
+    
     toast({
       title: "Mot de passe défini",
       description: "Le mot de passe de gestion des utilisateurs a été défini avec succès.",
@@ -72,6 +114,8 @@ export const useUserManagementPassword = () => {
 
       setIsVerified(true);
       setIsPasswordVerifyOpen(false);
+      setVerificationSession();
+      
       toast({
         title: "Accès accordé",
         description: "Vérification du mot de passe réussie.",
@@ -94,6 +138,8 @@ export const useUserManagementPassword = () => {
     if (error) throw error;
 
     setIsPasswordChangeOpen(false);
+    setVerificationSession();
+    
     toast({
       title: "Mot de passe mis à jour",
       description: "Le mot de passe de gestion des utilisateurs a été mis à jour avec succès.",
