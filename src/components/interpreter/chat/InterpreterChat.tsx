@@ -210,8 +210,7 @@ export const InterpreterChat = ({
     if (channelId) {
       const messagesChannel = supabase
         .channel(`chat-${channelId}`)
-        .on(
-          'postgres_changes',
+        .on('postgres_changes' as never,
           {
             event: '*',
             schema: 'public',
