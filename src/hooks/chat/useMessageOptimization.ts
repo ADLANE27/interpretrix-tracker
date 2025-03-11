@@ -39,7 +39,7 @@ export const useMessageOptimization = (channelId: string) => {
               avatarUrl: sender.avatar_url || ''
             },
             timestamp: new Date(message.created_at),
-            channelType: 'group'
+            channelType: 'group' as const
           };
         })
       );
@@ -47,7 +47,7 @@ export const useMessageOptimization = (channelId: string) => {
       return formattedMessages;
     },
     staleTime: 30000, // Cache data for 30 seconds
-    cacheTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
+    gcTime: 5 * 60 * 1000, // Keep unused data in cache for 5 minutes
   });
 
   const subscribeToMessages = useCallback(() => {
@@ -61,41 +61,45 @@ export const useMessageOptimization = (channelId: string) => {
           table: 'chat_messages',
           filter: `channel_id=eq.${channelId}`
         },
-        async (payload) => {
+        (payload) => {
           // Immediately update cache with new message
-          queryClient.setQueryData(['messages', channelId], (oldData: Message[] = []) => {
-            if (payload.eventType === 'DELETE') {
+          if (payload.eventType === 'DELETE') {
+            queryClient.setQueryData(['messages', channelId], (oldData: Message[] = []) => {
               return oldData.filter(msg => msg.id !== payload.old.id);
-            }
+            });
+            return;
+          }
 
-            // For inserts and updates, fetch sender details
-            const { data: senderData } = await supabase
-              .rpc('get_message_sender_details', {
-                sender_id: payload.new.sender_id
+          // For inserts and updates, fetch sender details first, then update the cache
+          supabase
+            .rpc('get_message_sender_details', {
+              sender_id: payload.new.sender_id
+            })
+            .then(({ data: senderData }) => {
+              const sender = senderData?.[0];
+              const newMessage = {
+                id: payload.new.id,
+                content: payload.new.content,
+                sender: {
+                  id: sender.id,
+                  name: sender.name,
+                  avatarUrl: sender.avatar_url || ''
+                },
+                timestamp: new Date(payload.new.created_at),
+                channelType: 'group' as const
+              };
+
+              queryClient.setQueryData(['messages', channelId], (oldData: Message[] = []) => {
+                if (payload.eventType === 'INSERT') {
+                  return [...oldData, newMessage];
+                }
+
+                // Update
+                return oldData.map(msg => 
+                  msg.id === payload.new.id ? newMessage : msg
+                );
               });
-
-            const sender = senderData?.[0];
-            const newMessage = {
-              id: payload.new.id,
-              content: payload.new.content,
-              sender: {
-                id: sender.id,
-                name: sender.name,
-                avatarUrl: sender.avatar_url || ''
-              },
-              timestamp: new Date(payload.new.created_at),
-              channelType: 'group'
-            };
-
-            if (payload.eventType === 'INSERT') {
-              return [...oldData, newMessage];
-            }
-
-            // Update
-            return oldData.map(msg => 
-              msg.id === payload.new.id ? newMessage : msg
-            );
-          });
+            });
         }
       )
       .subscribe();
