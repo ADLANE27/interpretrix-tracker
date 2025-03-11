@@ -58,7 +58,6 @@ export const InterpreterChat = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [showChannelList, setShowChannelList] = useState(true);
@@ -66,6 +65,8 @@ export const InterpreterChat = ({
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
   ]);
+
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
   const {
     messages: realMessages,
@@ -209,22 +210,15 @@ export const InterpreterChat = ({
     if (channelId) {
       const messagesChannel = supabase
         .channel(`chat-${channelId}`)
-        .on(
-          'postgres_changes',
+        .on('postgres_changes' as never,
           {
             event: '*',
             schema: 'public',
             table: 'chat_messages',
             filter: `channel_id=eq.${channelId}`
           },
-          async (payload: any) => {
+          async (payload: { new: MessagePayload }) => {
             if (!payload.new || !currentUserId) return;
-            
-            if (payload.eventType === 'DELETE') {
-              setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
-              setOptimisticMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
-              return;
-            }
             
             let senderDetails = senderDetailsCache.current.get(payload.new.sender_id);
             
@@ -262,17 +256,14 @@ export const InterpreterChat = ({
 
             setMessages(prevMessages => {
               const filtered = prevMessages.filter(msg => 
-                !msg.id.startsWith('temp-') && msg.id !== formattedMessage.id
+                !msg.id.startsWith('temp-')
               );
-              return [...filtered, formattedMessage];
+              
+              if (!filtered.find(msg => msg.id === formattedMessage.id)) {
+                return [...filtered, formattedMessage];
+              }
+              return filtered;
             });
-            
-            // Remove from optimistic messages if this was our message
-            if (payload.new.sender_id === currentUserId) {
-              setOptimisticMessages(prev => 
-                prev.filter(msg => !msg.id.startsWith('temp-'))
-              );
-            }
           }
         )
         .subscribe();
