@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -67,8 +66,6 @@ export const InterpreterChat = ({
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
   ]);
-
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
   const {
     messages: realMessages,
