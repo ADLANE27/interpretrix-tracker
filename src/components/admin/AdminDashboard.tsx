@@ -150,7 +150,6 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Memoize filter functions for better performance
   const filteredInterpreters = useMemo(() => {
     console.log("[AdminDashboard] Recomputing filtered interpreters");
     return interpreters.filter(interpreter => {
@@ -178,7 +177,6 @@ export const AdminDashboard = () => {
     });
   }, [interpreters, selectedStatus, nameFilter, languageFilter, phoneFilter, birthCountryFilter, employmentStatusFilter, rateSort]);
 
-  // Lazy load realtime subscriptions based on active tab
   useEffect(() => {
     if (activeTab !== "interpreters") return;
 
@@ -547,4 +545,4 @@ export const AdminDashboard = () => {
   );
 };
 
-export default Admin;
+export default AdminDashboard;
