@@ -215,19 +215,17 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-            <div className="flex items-center gap-2">
-              {isMobile && onMenuClick && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onMenuClick}
-                  className="lg:hidden -ml-2"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
-            </div>
+            {isMobile && onMenuClick && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onMenuClick}
+                className="lg:hidden -ml-2"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -247,7 +245,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
               </Button>
             </div>
           </div>
-          <div className="mb-4">
+          <div className="mb-4 px-2">
             <Input
               placeholder="Rechercher un canal..."
               className="w-full"
@@ -341,6 +339,17 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           "p-0 border-0",
           isMobile && "fixed inset-0 z-50 m-0"
         )}>
+          <ChatInput
+            message={message}
+            setMessage={setMessage}
+            onSendMessage={handleSendMessage}
+            handleFileChange={handleFileChange}
+            attachments={attachments}
+            handleRemoveAttachment={handleRemoveAttachment}
+            inputRef={inputRef}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+          />
           <div className="flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between px-4 h-10 border-b flex-shrink-0">
               {isMobile && (
@@ -368,17 +377,6 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                 filters={{}}
               />
             </div>
-            <ChatInput
-              message={message}
-              setMessage={setMessage}
-              onSendMessage={handleSendMessage}
-              handleFileChange={handleFileChange}
-              attachments={attachments}
-              handleRemoveAttachment={handleRemoveAttachment}
-              inputRef={inputRef}
-              replyTo={replyTo}
-              setReplyTo={setReplyTo}
-            />
           </div>
         </Card>
       ) : !selectedChannel && !isMobile ? (
