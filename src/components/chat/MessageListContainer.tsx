@@ -31,6 +31,7 @@ export const MessageListContainer = React.memo(({
 }: MessageListContainerProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = React.useState(initialFilters);
+  const lastMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     setFilters(initialFilters);
@@ -79,10 +80,12 @@ export const MessageListContainer = React.memo(({
       }
     };
 
-    scrollToBottom();
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timeoutId);
-  }, [filteredMessages]);
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.id !== lastMessageRef.current) {
+      scrollToBottom();
+      lastMessageRef.current = lastMessage?.id || null;
+    }
+  }, [messages]);
 
   const handleFiltersChange = (newFilters: typeof filters) => {
     console.log('Updating filters to:', newFilters);
@@ -96,7 +99,7 @@ export const MessageListContainer = React.memo(({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-md border-b">
+      <div className="flex-shrink-0 bg-background/95 backdrop-blur-md border-b z-10">
         <MessageFilters
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -105,17 +108,19 @@ export const MessageListContainer = React.memo(({
           channelId={channelId}
         />
       </div>
-      <div className="flex-1 overflow-hidden" ref={scrollAreaRef}>
-        <MessageList
-          messages={filteredMessages}
-          currentUserId={currentUserId}
-          onDeleteMessage={onDeleteMessage}
-          onReactToMessage={onReactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-        />
-      </div>
+      <ScrollArea className="flex-1">
+        <div className="min-h-full p-4" ref={scrollAreaRef}>
+          <MessageList
+            messages={filteredMessages}
+            currentUserId={currentUserId}
+            onDeleteMessage={onDeleteMessage}
+            onReactToMessage={onReactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            channelId={channelId}
+          />
+        </div>
+      </ScrollArea>
     </div>
   );
 });

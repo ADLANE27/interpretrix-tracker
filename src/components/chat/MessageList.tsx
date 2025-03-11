@@ -8,7 +8,6 @@ import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MessageListProps {
   messages: Message[];
@@ -218,48 +217,46 @@ export const MessageList = React.memo<MessageListProps>(({
   };
 
   return (
-    <ScrollArea className="h-full bg-background">
-      <div className="space-y-1">
-        {messages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
-              <div className="flex justify-center py-2">
-                <div className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
-                  {formatMessageDate(message.timestamp)}
-                </div>
+    <div className="space-y-1">
+      {messages.map((message, index) => (
+        <React.Fragment key={message.id}>
+          {shouldShowDate(message, messages[index - 1]) && (
+            <div className="flex justify-center py-2">
+              <div className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
+                {formatMessageDate(message.timestamp)}
               </div>
-            )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-14 mt-0.5 mb-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
-                >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  )}
-                  {messageThreads[message.id].length - 1} réponses
-                </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-1 mt-1">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
-                  </div>
+            </div>
+          )}
+          {renderMessage(message)}
+          
+          {messageThreads[message.id]?.length > 1 && (
+            <div className="ml-14 mt-0.5 mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleThread(message.id)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+              >
+                {expandedThreads.has(message.id) ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
                 )}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    </ScrollArea>
+                {messageThreads[message.id].length - 1} réponses
+              </Button>
+              
+              {expandedThreads.has(message.id) && (
+                <div className="space-y-1 mt-1">
+                  {messageThreads[message.id]
+                    .filter(reply => reply.id !== message.id)
+                    .map(reply => renderMessage(reply, true))}
+                </div>
+              )}
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
   );
 });
 

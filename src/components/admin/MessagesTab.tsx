@@ -211,7 +211,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   return (
     <div className={cn(
       "grid grid-cols-1 lg:grid-cols-3 h-[100vh]",
-      isFullScreen ? "fixed inset-0 z-50 bg-background" : "absolute inset-0",
+      isFullScreen ? "fixed inset-0 z-[100] bg-background" : "absolute inset-0",
     )}>
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
@@ -329,7 +329,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           "bg-background/95",
           "lg:col-span-2",
           "lg:border-0",
-          isMobile && "fixed inset-0 z-50"
+          isMobile && "fixed inset-0 z-[101]"
         )}>
           <div className="flex flex-col h-full">
             <div className="flex items-center h-12 px-3 border-b justify-between">
