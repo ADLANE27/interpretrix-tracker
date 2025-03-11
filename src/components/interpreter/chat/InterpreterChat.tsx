@@ -191,23 +191,23 @@ export const InterpreterChat = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {isMobile && (
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setShowChannelList(true)}
-              className="h-8 w-8 p-0 hover:bg-accent"
+              className="h-8 w-8 shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
             {hasActiveFilters && (
               <Badge 
                 variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs"
+                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs w-fit"
                 onClick={onClearFilters}
               >
                 <Filter className="h-3 w-3" />
@@ -217,12 +217,14 @@ export const InterpreterChat = ({
             )}
           </div>
         </div>
-        <ChannelMembersPopover 
-          channelId={channelId} 
-          channelName={channel?.name || ''} 
-          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-          userRole="interpreter"
-        />
+        <div className="shrink-0">
+          <ChannelMembersPopover 
+            channelId={channelId} 
+            channelName={channel?.name || ''} 
+            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+            userRole="interpreter"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-hidden relative">

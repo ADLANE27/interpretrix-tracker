@@ -63,15 +63,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="p-2">
+      <div className="p-2 bg-background/95 backdrop-blur-sm">
         <div className="relative flex flex-col gap-2">
-          <div className="flex items-end gap-2 bg-background rounded-xl border shadow-sm">
+          <div className="flex items-end gap-2 rounded-xl border bg-white dark:bg-gray-800 shadow-sm">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="min-h-[44px] max-h-[120px] py-3 px-4 border-0 focus-visible:ring-0 resize-none shadow-none rounded-xl"
+              className="min-h-[44px] max-h-[120px] py-3 px-4 bg-transparent focus-visible:ring-0 resize-none shadow-none rounded-xl"
               onKeyDown={handleKeyDown}
             />
             <div className="flex items-center gap-1 p-2 shrink-0">
