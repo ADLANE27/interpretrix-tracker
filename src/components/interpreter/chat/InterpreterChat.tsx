@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
@@ -190,79 +190,76 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-3 border-b bg-background/95 backdrop-blur-sm sticky top-0 z-20">
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowChannelList(true)}
-            className="h-8 w-8 shrink-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <div className="flex flex-col min-w-0 flex-1">
-          <h2 className="text-base font-semibold truncate">{channel?.name}</h2>
-          {hasActiveFilters && (
-            <Badge 
-              variant="secondary"
-              className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 mt-1 text-xs w-fit"
-              onClick={onClearFilters}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-3">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannelList(true)}
+              className="h-9 w-9 p-0"
             >
-              <Filter className="h-3 w-3" />
-              <span className="hidden sm:inline">Filtres actifs</span>
-              <X className="h-3 w-3" />
-            </Badge>
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
           )}
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">{channel?.name}</h2>
+            {hasActiveFilters && (
+              <Badge 
+                variant="secondary"
+                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80"
+                onClick={onClearFilters}
+              >
+                <Filter className="h-3 w-3" />
+                <span>Filtres actifs</span>
+                <X className="h-3 w-3" />
+              </Badge>
+            )}
+          </div>
         </div>
-        <div className="shrink-0 ml-2">
-          <ChannelMembersPopover 
-            channelId={channelId} 
-            channelName={channel?.name || ''} 
-            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-            userRole="interpreter"
-          />
-        </div>
+        <ChannelMembersPopover 
+          channelId={channelId} 
+          channelName={channel?.name || ''} 
+          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+          userRole="interpreter"
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-[180px]">
+      <div className="flex-1 overflow-hidden relative">
         {isLoading ? (
           <div className="p-4">
             <MessageSkeletonList />
           </div>
         ) : !isSubscribed ? (
           <div className="h-full flex items-center justify-center">
-            <p className="text-base text-muted-foreground">
+            <p className="text-lg text-muted-foreground">
               Connexion en cours...
             </p>
           </div>
-        ) : (
-          <MessageListContainer
-            messages={allMessages}
-            currentUserId={currentUserId}
-            onDeleteMessage={deleteMessage}
-            onReactToMessage={reactToMessage}
-            replyTo={replyTo}
-            setReplyTo={setReplyTo}
-            channelId={channelId}
-            filters={filters}
-          />
-        )}
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-10">
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSendMessage={handleSendMessage}
-          handleFileChange={handleFileChange}
-          attachments={attachments}
-          handleRemoveAttachment={handleRemoveAttachment}
-          inputRef={inputRef}
+        ) : null}
+        <MessageListContainer
+          messages={allMessages}
+          currentUserId={currentUserId}
+          onDeleteMessage={deleteMessage}
+          onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
+          channelId={channelId}
+          filters={filters}
         />
       </div>
+
+      <ChatInput
+        message={message}
+        setMessage={setMessage}
+        onSendMessage={handleSendMessage}
+        handleFileChange={handleFileChange}
+        attachments={attachments}
+        handleRemoveAttachment={handleRemoveAttachment}
+        inputRef={inputRef}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
+      />
     </div>
   );
 };
