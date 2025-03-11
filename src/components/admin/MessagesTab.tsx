@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { Message } from "@/types/messaging";
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useMessageOptimization } from "@/hooks/chat/useMessageOptimization";
+import { useMessageActions } from "@/hooks/chat/useMessageActions";
 
 interface Channel {
   id: string;
@@ -226,10 +227,21 @@ export const MessagesTab = () => {
     }
   });
 
+  const {
+    sendMessage: sendMessageToChannel,
+    deleteMessage,
+    reactToMessage
+  } = useMessageActions(
+    selectedChannel?.id || '',
+    currentUser?.id || null,
+    async () => {
+      await fetchChannels();
+    }
+  );
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
-        {/* Channel List */}
         <div 
           className={`${
             isMobile 
@@ -342,7 +354,6 @@ export const MessagesTab = () => {
           </div>
         </div>
 
-        {/* Chat Area */}
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <>
