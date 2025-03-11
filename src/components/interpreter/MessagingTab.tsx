@@ -54,6 +54,11 @@ export const MessagingTab = () => {
     await refreshMentions();
   };
 
+  const handleBackToChannels = () => {
+    setSelectedChannelId(null);
+    setShowChannels(true);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
@@ -110,7 +115,7 @@ export const MessagingTab = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowChannels(true)}
+              onClick={handleBackToChannels}
               className="absolute top-2 left-2 z-10 h-8 px-2"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -122,6 +127,7 @@ export const MessagingTab = () => {
             filters={filters}
             onFiltersChange={handleFiltersChange}
             onClearFilters={handleClearFilters}
+            onBack={handleBackToChannels}
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (

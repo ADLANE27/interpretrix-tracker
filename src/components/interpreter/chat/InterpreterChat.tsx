@@ -26,13 +26,15 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
+  onBack: () => void;
 }
 
 export const InterpreterChat = ({ 
   channelId, 
   filters, 
   onFiltersChange, 
-  onClearFilters 
+  onClearFilters,
+  onBack 
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -196,7 +198,7 @@ export const InterpreterChat = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowChannelList(true)}
+              onClick={onBack}
               className="h-9 w-9 p-0 flex-shrink-0"
             >
               <ChevronLeft className="h-5 w-5" />
