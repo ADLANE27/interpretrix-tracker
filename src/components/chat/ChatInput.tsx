@@ -48,7 +48,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg pb-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg">
       {replyTo && (
         <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -65,14 +65,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
       <div className="max-w-[1200px] mx-auto px-4 py-3">
-        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-interpreter-navy focus-within:border-interpreter-navy">
-          <div className="flex-1 min-h-[60px] flex items-end">
+        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[44px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Message..."
-              className="resize-none border-0 focus-visible:ring-0 px-3 py-3 min-h-[60px] text-base bg-transparent"
+              className="resize-none border-0 focus-visible:ring-0 px-3 py-3 min-h-[44px] text-base bg-transparent"
               onKeyDown={handleKeyDown}
             />
           </div>
@@ -82,7 +82,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-interpreter-navy"
+                  className="h-8 w-8 text-muted-foreground hover:text-purple-500"
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -110,14 +110,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-interpreter-navy"
+              className="h-8 w-8 text-muted-foreground hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-8 w-8 bg-interpreter-navy hover:bg-interpreter-navy/90 text-white"
+              className="h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white"
               onClick={onSendMessage}
               disabled={!message.trim() && attachments.length === 0}
             >
