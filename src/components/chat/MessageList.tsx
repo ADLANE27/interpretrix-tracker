@@ -94,9 +94,13 @@ export const MessageList: React.FC<MessageListProps> = ({
     >
       <Avatar className="h-8 w-8 shrink-0">
         {message.sender.avatarUrl ? (
-          <img src={message.sender.avatarUrl} alt={message.sender.name} />
+          <img 
+            src={message.sender.avatarUrl} 
+            alt={message.sender.name}
+            className="h-full w-full object-cover rounded-full"
+          />
         ) : (
-          <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium">
+          <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium rounded-full">
             {getInitials(message.sender.name)}
           </div>
         )}
