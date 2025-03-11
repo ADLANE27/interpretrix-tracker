@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
 import { useUserManagementToasts } from "./useUserManagementToasts";
+import { Profile } from "@/types/profile";
 
 export const useUserManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
