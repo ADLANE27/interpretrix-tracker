@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
+import { Message } from "@/types/messaging";
 import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
 import { MentionSuggestions } from "@/components/chat/MentionSuggestions";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -27,20 +28,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface Message {
-  id: string;
-  content: string;
-  created_at: string;
-  channel_id: string;
-  sender_id: string;
-  parent_message_id?: string | null;
-  sender?: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-}
 
 interface Channel {
   id: string;
@@ -939,4 +926,3 @@ export const MessagesTab = () => {
     </div>
   );
 };
-
