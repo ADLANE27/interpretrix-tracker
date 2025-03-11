@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,26 +7,17 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2, Bell } from 'lucide-react';
+import { PlusCircle, Settings, UserPlus, ChevronLeft, Pencil, Trash2 } from 'lucide-react';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MessageListContainer } from "@/components/chat/MessageListContainer";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { Message } from "@/types/messaging";
 import { useQuery } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useMessageOptimization } from "@/hooks/chat/useMessageOptimization";
 import { useMessageActions } from "@/hooks/chat/useMessageActions";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Channel {
   id: string;
@@ -257,80 +247,82 @@ export const MessagesTab = () => {
               className="w-full"
             />
           </div>
-          <div className="flex-1 overflow-y-auto space-y-1">
-            {channels.map((channel) => (
-              <div
-                key={channel.id}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
-                  selectedChannel?.id === channel.id ? 'bg-accent' : ''
-                }`}
-                onClick={() => {
-                  setSelectedChannel(channel);
-                  if (isMobile) setShowChannelList(false);
-                }}
-              >
-                <span className="truncate text-sm font-medium">
-                  {editingChannel?.id === channel.id ? (
-                    <Input
-                      value={editingChannel.name}
-                      onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === 'Enter') {
-                          handleRename(channel.id, editingChannel.name);
-                        } else if (e.key === 'Escape') {
-                          setEditingChannel(null);
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-8"
-                      autoFocus
-                    />
-                  ) : (
-                    channel.display_name
+          <ScrollArea className="flex-1 h-[calc(100vh-450px)]">
+            <div className="space-y-1">
+              {channels.map((channel) => (
+                <div
+                  key={channel.id}
+                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-accent transition-colors ${
+                    selectedChannel?.id === channel.id ? 'bg-accent' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedChannel(channel);
+                    if (isMobile) setShowChannelList(false);
+                  }}
+                >
+                  <span className="truncate text-sm font-medium">
+                    {editingChannel?.id === channel.id ? (
+                      <Input
+                        value={editingChannel.name}
+                        onChange={(e) => setEditingChannel({ ...editingChannel, name: e.target.value })}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter') {
+                            handleRename(channel.id, editingChannel.name);
+                          } else if (e.key === 'Escape') {
+                            setEditingChannel(null);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-8"
+                        autoFocus
+                      />
+                    ) : (
+                      channel.display_name
+                    )}
+                  </span>
+                  {selectedChannel?.id === channel.id && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingChannel({ id: channel.id, name: channel.display_name });
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMemberManagement(true);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setChannelToDelete(channel);
+                          setShowDeleteDialog(true);
+                        }}
+                        className="h-8 w-8 p-0 text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
-                </span>
-                {selectedChannel?.id === channel.id && (
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingChannel({ id: channel.id, name: channel.display_name });
-                      }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Pencil className="h-4 w-4 text-gray-500 hover:text-blue-500" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMemberManagement(true);
-                      }}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setChannelToDelete(channel);
-                        setShowDeleteDialog(true);
-                      }}
-                      className="h-8 w-8 p-0 text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </Card>
       )}
       
@@ -342,31 +334,33 @@ export const MessagesTab = () => {
           "lg:col-span-2",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChannelList(true)}
-              className="absolute top-2 left-2 z-10 h-8 px-2"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Retour
-            </Button>
-          )}
           <div className="flex flex-col h-full">
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChannelList(true)}
+                className="absolute top-4 left-4 z-10 h-9 px-2"
+              >
+                <ChevronLeft className="h-5 w-5 mr-1" />
+                Retour
+              </Button>
+            )}
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">{selectedChannel.display_name}</h2>
+              <h2 className="text-lg font-semibold ml-12 lg:ml-0">{selectedChannel.display_name}</h2>
             </div>
-            <MessageListContainer
-              messages={messages}
-              currentUserId={currentUser?.id || null}
-              onDeleteMessage={deleteMessage}
-              onReactToMessage={reactToMessage}
-              replyTo={replyTo}
-              setReplyTo={setReplyTo}
-              channelId={selectedChannel.id}
-              filters={{}}
-            />
+            <ScrollArea className="flex-1 p-4">
+              <MessageListContainer
+                messages={messages}
+                currentUserId={currentUser?.id || null}
+                onDeleteMessage={deleteMessage}
+                onReactToMessage={reactToMessage}
+                replyTo={replyTo}
+                setReplyTo={setReplyTo}
+                channelId={selectedChannel.id}
+                filters={{}}
+              />
+            </ScrollArea>
             <ChatInput
               message={message}
               setMessage={setMessage}
