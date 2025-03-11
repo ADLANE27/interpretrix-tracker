@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -33,6 +34,7 @@ interface UserTableProps {
 
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const { updateProfile, isSubmitting } = useInterpreterProfileUpdate();
 
@@ -123,7 +125,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                       <DropdownMenuItem onClick={() => handleEditInterpreter(user)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Modifier
-                      DropdownMenuItem>
+                      </DropdownMenuItem>
                     )}
                     <DropdownMenuItem onClick={() => {
                       setSelectedUser(user);
