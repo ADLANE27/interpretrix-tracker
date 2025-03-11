@@ -204,7 +204,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-screen min-h-[500px] relative overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-screen min-h-[500px] relative">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
           "p-2 sm:p-4 shadow-lg border-0 overflow-hidden h-full",
@@ -333,10 +333,11 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300 h-full",
+          "flex flex-col",
+          "p-0 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg",
-          "lg:col-span-2",
+          "lg:col-span-2 h-full",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex flex-col h-full">
@@ -354,7 +355,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
               )}
               <h2 className="text-lg font-semibold w-full text-center">{selectedChannel.display_name}</h2>
             </div>
-            <ScrollArea className="flex-1 p-4">
+            <div className="flex-1 overflow-hidden">
               <MessageListContainer
                 messages={messages}
                 currentUserId={currentUserId}
@@ -365,7 +366,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
                 channelId={selectedChannel.id}
                 filters={{}}
               />
-            </ScrollArea>
+            </div>
             <ChatInput
               message={message}
               setMessage={setMessage}
