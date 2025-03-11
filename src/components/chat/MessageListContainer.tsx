@@ -1,8 +1,8 @@
-
 import React, { useMemo, useEffect, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageList } from "./MessageList";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageFilters } from './MessageFilters';
 
 interface MessageListContainerProps {
   messages: Message[];
@@ -61,7 +61,6 @@ export const MessageListContainer = React.memo(({
     return filtered;
   }, [messages, filters, currentUserId]);
 
-  // Scroll to bottom when new messages arrive or component mounts
   useEffect(() => {
     const scrollToBottom = () => {
       if (scrollAreaRef.current) {
@@ -70,26 +69,37 @@ export const MessageListContainer = React.memo(({
       }
     };
 
-    // Scroll immediately for initial load
     scrollToBottom();
 
-    // Also scroll after a short delay to ensure all content is rendered
     const timeoutId = setTimeout(scrollToBottom, 100);
 
     return () => clearTimeout(timeoutId);
   }, [filteredMessages]);
 
   return (
-    <div ref={scrollAreaRef} className="h-full overflow-y-auto px-4 pb-6 transition-opacity duration-200">
-      <MessageList
-        messages={filteredMessages}
+    <div className="h-full overflow-y-auto transition-opacity duration-200">
+      <MessageFilters
+        filters={filters}
+        onFiltersChange={(newFilters) => {
+          if (typeof filters === 'object') {
+            Object.assign({}, filters, newFilters);
+          }
+        }}
+        onClearFilters={() => {
+        }}
         currentUserId={currentUserId}
-        onDeleteMessage={onDeleteMessage}
-        onReactToMessage={onReactToMessage}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-        channelId={channelId}
       />
+      <div className="px-4 pb-6">
+        <MessageList
+          messages={filteredMessages}
+          currentUserId={currentUserId}
+          onDeleteMessage={onDeleteMessage}
+          onReactToMessage={onReactToMessage}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          channelId={channelId}
+        />
+      </div>
     </div>
   );
 });
