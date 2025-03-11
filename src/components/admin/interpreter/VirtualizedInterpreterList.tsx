@@ -6,7 +6,8 @@ import type { EmploymentStatus } from "@/types/employment";
 
 interface Interpreter {
   id: string;
-  name: string;
+  first_name: string;
+  last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
   employment_status: EmploymentStatus;
   languages: string[];
@@ -53,7 +54,10 @@ export const VirtualizedInterpreterList = ({ interpreters }: VirtualizedInterpre
             }}
           >
             <InterpreterListItem
-              interpreter={interpreters[virtualItem.index]}
+              interpreter={{
+                ...interpreters[virtualItem.index],
+                name: `${interpreters[virtualItem.index].first_name} ${interpreters[virtualItem.index].last_name}`
+              }}
             />
           </div>
         ))}
