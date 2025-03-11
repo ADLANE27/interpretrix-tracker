@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,10 +204,10 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-screen min-h-[500px] relative overflow-hidden">
       {(!selectedChannel || showChannelList || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden",
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden h-full",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
@@ -333,7 +333,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
       
       {(selectedChannel && (!showChannelList || !isMobile)) ? (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300 h-full",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg",
           "lg:col-span-2",
@@ -380,7 +380,7 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
           </div>
         </Card>
       ) : !selectedChannel && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900 h-full">
           <div className="text-center text-muted-foreground">
             <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
           </div>
