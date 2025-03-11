@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useChat } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Menu } from 'lucide-react';
 
 interface Channel {
   id: string;
@@ -28,7 +29,11 @@ interface Channel {
   created_by: string;
 }
 
-export const MessagesTab = () => {
+interface MessagesTabProps {
+  onMenuClick?: () => void;
+}
+
+export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [message, setMessage] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
@@ -210,7 +215,19 @@ export const MessagesTab = () => {
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            <div className="flex items-center gap-2">
+              {isMobile && onMenuClick && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onMenuClick}
+                  className="lg:hidden -ml-2 h-9 w-9"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              )}
+              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
