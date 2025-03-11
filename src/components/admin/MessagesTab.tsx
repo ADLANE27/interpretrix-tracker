@@ -306,7 +306,7 @@ export const MessagesTab = () => {
         messageData.parent_message_id = replyTo.id;
       }
 
-      const { error } } = await supabase
+      const { error } = await supabase
         .from("chat_messages")
         .insert([messageData]);
 
@@ -342,7 +342,7 @@ export const MessagesTab = () => {
         return;
       }
 
-      const { error } } = await supabase
+      const { error } = await supabase
         .from("chat_messages")
         .delete()
         .eq("id", messageId);
@@ -558,7 +558,7 @@ export const MessagesTab = () => {
 
   const handleRename = async (channelId: string, newName: string) => {
     try {
-      const { error } } = await supabase
+      const { error } = await supabase
         .from('chat_channels')
         .update({ name: newName.trim() })
         .eq('id', channelId);
