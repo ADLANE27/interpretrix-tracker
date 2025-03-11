@@ -113,18 +113,29 @@ export const InterpreterProfileForm = ({
   });
 
   const handleSubmit = async (data: InterpreterFormData) => {
-    if (password && password !== confirmPassword) {
-      setPasswordError("Les mots de passe ne correspondent pas");
-      return;
+    setPasswordError("");
+    
+    if (password.trim()) {
+      if (!confirmPassword.trim()) {
+        setPasswordError("Veuillez confirmer le mot de passe");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setPasswordError("Les mots de passe ne correspondent pas");
+        return;
+      }
     }
     
     const submissionData: InterpreterFormData = {
       ...data,
-      password: password || undefined,
+      password: password.trim() || undefined,
       languages: languages
     };
 
     await onSubmit(submissionData);
+    
+    setPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -555,7 +566,7 @@ export const InterpreterProfileForm = ({
                 />
               </div>
 
-              {password && (
+              {password.trim() && (
                 <div className="space-y-2">
                   <Label>Confirmer le mot de passe</Label>
                   <Input
