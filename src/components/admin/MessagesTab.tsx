@@ -46,6 +46,11 @@ export const MessagesTab = ({ onMenuClick }: MessagesTabProps) => {
   const [editingChannel, setEditingChannel] = useState<{id: string, name: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [filters, setFilters] = useState<{
+    userId?: string;
+    keyword?: string;
+    date?: Date;
+  }>({});
   const { toast } = useToast();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
