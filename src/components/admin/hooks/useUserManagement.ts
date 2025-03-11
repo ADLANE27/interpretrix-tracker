@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
-import { Profile } from "@/types/profile";
+import { useUserManagementToasts } from "./useUserManagementToasts";
 
 export const useUserManagement = () => {
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
 
   const {
     data: users = { admins: [], interpreters: [] },
@@ -132,24 +130,31 @@ export const useUserManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
+      const loadingToast = showLoadingToast(
+        "Suppression en cours",
+        "L'utilisateur est en cours de suppression..."
+      );
+
       const { error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Utilisateur supprimé",
-        description: "L'utilisateur a été supprimé avec succès",
-      });
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      loadingToast.dismiss();
+
+      showSuccessToast(
+        "Utilisateur supprimé",
+        "L'utilisateur a été supprimé avec succès"
+      );
 
       refetch();
     } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'utilisateur: " + error.message,
-        variant: "destructive",
-      });
+      showErrorToast(
+        "Erreur lors de la suppression",
+        error
+      );
     }
   };
 
@@ -176,8 +181,6 @@ export const useUserManagement = () => {
     setSearchQuery,
     handleDeleteUser,
     queryClient,
-    isSubmitting,
-    setIsSubmitting,
-    refetch, // Add refetch to the return object
+    refetch,
   };
 };
