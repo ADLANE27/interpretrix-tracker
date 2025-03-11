@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +71,7 @@ export const MessagesTab = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDirectMessageDialog, setShowDirectMessageDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
@@ -556,6 +557,37 @@ export const MessagesTab = () => {
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({});
+  }, []);
+
+  const handleChannelSelect = (channelId: string) => {
+    setSelectedChannelId(channelId);
+    handleClearFilters();
+    if (isMobile) {
+      setShowChannels(false);
+    }
+  };
+
+  const handleMentionClick = async (mention: any) => {
+    try {
+      if (mention.channel_id) {
+        setSelectedChannelId(mention.channel_id);
+        if (isMobile) {
+          setShowChannels(false);
+        }
+      }
+      await markMentionAsRead(mention.mention_id);
+      await refreshMentions();
+    } catch (error) {
+      console.error("Error handling mention click:", error);
+    }
+  };
+
   const handleRename = async (channelId: string, newName: string) => {
     try {
       const { error } = await supabase
@@ -869,7 +901,7 @@ export const MessagesTab = () => {
                         value={newMessage}
                         onChange={handleInput}
                         placeholder="Écrivez un message..."
-                        className="pr-24"
+                        className="min-h-[120px] py-4 px-6 text-base bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 shadow-inner"
                       />
                       {showMentions && (
                         <MentionSuggestions
