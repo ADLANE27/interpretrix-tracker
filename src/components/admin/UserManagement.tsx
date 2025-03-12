@@ -1,7 +1,5 @@
-
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,15 +18,14 @@ import { UserTable } from "./components/UserTable";
 import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
 import { useUserManagementToasts } from "./hooks/useUserManagementToasts";
+import { useInterpreterCreation } from "@/hooks/useInterpreterCreation";
 
 export const UserManagement = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
-  const [isAddingInterpreter, setIsAddingInterpreter] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const {
@@ -43,6 +40,7 @@ export const UserManagement = () => {
   } = useUserManagement();
 
   const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
+  const { createInterpreter, isCreating: isAddingInterpreter } = useInterpreterCreation();
 
   const handleAddAdmin = async (data: any) => {
     try {
@@ -72,73 +70,6 @@ export const UserManagement = () => {
       showErrorToast("Impossible d'ajouter l'administrateur", error);
     } finally {
       setIsAddingAdmin(false);
-    }
-  };
-
-  const handleAddInterpreter = async (data: any) => {
-    try {
-      setIsAddingInterpreter(true);
-      console.log('Creating interpreter with data:', data);
-
-      // Validate required fields
-      if (!data.employment_status) {
-        throw new Error("Le statut professionnel est requis");
-      }
-      if (!data.languages || data.languages.length === 0) {
-        throw new Error("Au moins une paire de langues est requise");
-      }
-      if (typeof data.tarif_15min !== 'number' || data.tarif_15min < 0) {
-        throw new Error("Le tarif pour 15 minutes doit être un nombre positif");
-      }
-      if (typeof data.tarif_5min !== 'number' || data.tarif_5min < 0) {
-        throw new Error("Le tarif pour 5 minutes doit être un nombre positif");
-      }
-
-      // Format the data for the edge function
-      const formattedData = {
-        ...data,
-        password: data.password?.trim() || undefined // Ensure password is string or undefined
-      };
-
-      console.log('Sending formatted data to edge function:', formattedData);
-
-      const { data: response, error } = await supabase.functions.invoke('send-invitation-email', {
-        body: formattedData,
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        throw error;
-      }
-
-      if (!response?.success) {
-        console.error('Invalid response:', response);
-        throw new Error(response?.message || "Erreur lors de la création de l'interprète");
-      }
-
-      const loadingToast = showLoadingToast(
-        "Invitation en cours",
-        "L'invitation est en cours d'envoi..."
-      );
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      loadingToast.dismiss();
-
-      showSuccessToast(
-        "Invitation envoyée",
-        "Un email d'invitation a été envoyé à l'interprète"
-      );
-
-      setIsAddUserOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    } catch (error: any) {
-      console.error('Error creating interpreter:', error);
-      showErrorToast(
-        "Impossible d'ajouter l'interprète",
-        error.message || "Une erreur est survenue lors de la création"
-      );
-    } finally {
-      setIsAddingInterpreter(false);
     }
   };
 
@@ -238,7 +169,7 @@ export const UserManagement = () => {
                 </DialogHeader>
                 <InterpreterProfileForm
                   isEditing={true}
-                  onSubmit={handleAddInterpreter}
+                  onSubmit={createInterpreter}
                   isSubmitting={isAddingInterpreter}
                 />
               </ScrollArea>
