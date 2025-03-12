@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -61,6 +62,7 @@ Deno.serve(async (req) => {
 
     const updateData: Record<string, any> = {};
 
+    // Handle languages separately if provided
     if (profileData.languages) {
       const formattedLanguages = profileData.languages
         .filter(lang => lang.source && lang.target)
@@ -69,9 +71,18 @@ Deno.serve(async (req) => {
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    for (const [key, value] of Object.entries(profileData)) {
-      if (key !== 'id' && key !== 'languages') {
-        updateData[key] = value;
+    // Map only the fields that exist in the database table
+    const allowedFields = [
+      'email', 'first_name', 'last_name', 'employment_status', 'status',
+      'phone_number', 'address', 'birth_country', 'nationality', 'siret_number',
+      'vat_number', 'specializations', 'landline_phone', 'tarif_15min',
+      'tarif_5min', 'booth_number', 'private_phone', 'professional_phone',
+      'work_hours'
+    ];
+
+    for (const field of allowedFields) {
+      if (field in profileData && field !== 'id') {
+        updateData[field] = profileData[field as keyof UpdateProfileData];
       }
     }
 
