@@ -1,34 +1,15 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
+import { Form } from "@/components/ui/form";
+import { PersonalSection } from "./sections/PersonalSection";
+import { ProfessionalSection } from "./sections/ProfessionalSection";
+import { WorkHoursSection } from "./sections/WorkHoursSection";
+import { LanguagesSection } from "./sections/LanguagesSection";
+import { PasswordSection } from "./sections/PasswordSection";
 import { LanguagePair } from "@/types/languages";
-import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
-
-interface Address {
-  street: string;
-  postal_code: string;
-  city: string;
-}
+import { EmploymentStatus } from "@/types/employment";
 
 export interface InterpreterFormData {
   email: string;
@@ -48,7 +29,11 @@ export interface InterpreterFormData {
     end_afternoon: string;
   };
   languages: LanguagePair[];
-  address?: Address;
+  address?: {
+    street: string;
+    postal_code: string;
+    city: string;
+  };
   phone_number?: string;
   birth_country?: string;
   nationality?: string;
@@ -77,12 +62,6 @@ export const InterpreterProfileForm = ({
   const [passwordError, setPasswordError] = useState("");
   const initialLanguages = initialData?.languages || [];
   const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
-
-  useEffect(() => {
-    if (initialData?.languages) {
-      setLanguages(initialData.languages);
-    }
-  }, [initialData]);
 
   const form = useForm<InterpreterFormData>({
     defaultValues: {
@@ -142,449 +121,25 @@ export const InterpreterProfileForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <Card className="border-0 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-2xl">Informations personnelles</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="first_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prénom</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="last_name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="phone_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone mobile</FormLabel>
-                    <FormControl>
-                      <Input type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="landline_phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone fixe</FormLabel>
-                    <FormControl>
-                      <Input type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="booth_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numéro de cabine</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex: C12" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="private_phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone personnel</FormLabel>
-                    <FormControl>
-                      <Input type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="professional_phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone professionnel</FormLabel>
-                    <FormControl>
-                      <Input type="tel" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="address.street"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Rue</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="address.postal_code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Code postal</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="address.city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ville</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="birth_country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pays de naissance</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="nationality"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nationalité</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-2xl">Informations professionnelles</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="employment_status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Statut professionnel</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un statut" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Object.entries(employmentStatusLabels).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="tarif_15min"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tarif (15 minutes)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tarif_5min"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tarif (5 minutes)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0" 
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="siret_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numéro SIRET</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="vat_number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Numéro de TVA</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-none">
-          <CardHeader>
-            <CardTitle>Horaires de travail</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Matin</Label>
-                <div className="flex items-center gap-2">
-                  <FormField
-                    control={form.control}
-                    name="work_hours.start_morning"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <span>à</span>
-                  <FormField
-                    control={form.control}
-                    name="work_hours.end_morning"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Après-midi</Label>
-                <div className="flex items-center gap-2">
-                  <FormField
-                    control={form.control}
-                    name="work_hours.start_afternoon"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <span>à</span>
-                  <FormField
-                    control={form.control}
-                    name="work_hours.end_afternoon"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-none">
-          <CardHeader>
-            <CardTitle className="text-2xl">Langues</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <LanguageSelector
-                languages={languages}
-                onChange={setLanguages}
-                isEditing={true}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
+        <PersonalSection form={form} />
+        <ProfessionalSection form={form} />
+        <WorkHoursSection form={form} />
+        <LanguagesSection languages={languages} onChange={setLanguages} />
+        
         {!initialData && (
-          <Card className="border-0 shadow-none">
-            <CardHeader>
-              <CardTitle className="text-2xl">Mot de passe</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Mot de passe (optionnel)</Label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setPasswordError("");
-                  }}
-                  placeholder="Laissez vide pour générer automatiquement"
-                />
-              </div>
-
-              {password.trim() && (
-                <div className="space-y-2">
-                  <Label>Confirmer le mot de passe</Label>
-                  <Input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-                      setPasswordError("");
-                    }}
-                  />
-                  {passwordError && (
-                    <p className="text-sm font-medium text-destructive">{passwordError}</p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <PasswordSection
+            password={password}
+            confirmPassword={confirmPassword}
+            passwordError={passwordError}
+            onPasswordChange={(value) => {
+              setPassword(value);
+              setPasswordError("");
+            }}
+            onConfirmPasswordChange={(value) => {
+              setConfirmPassword(value);
+              setPasswordError("");
+            }}
+          />
         )}
 
         <Button 
