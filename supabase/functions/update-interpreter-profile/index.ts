@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -70,12 +69,11 @@ Deno.serve(async (req) => {
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    // Include all fields that are present in the request, even if null
-    Object.keys(profileData).forEach(field => {
-      if (field !== 'id' && field !== 'languages') {
-        updateData[field] = profileData[field];
+    for (const [key, value] of Object.entries(profileData)) {
+      if (key !== 'id' && key !== 'languages') {
+        updateData[key] = value;
       }
-    });
+    }
 
     console.log('Updating profile with data:', updateData);
 
@@ -93,7 +91,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Only update auth email if it has changed and is provided
     if (profileData.email) {
       const { error: authError } = await supabase.auth.admin.updateUserById(
         profileData.id,
