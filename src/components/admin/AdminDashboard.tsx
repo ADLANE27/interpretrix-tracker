@@ -23,7 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
-import { EmploymentStatus } from "@/utils/employmentStatus";
+import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
 
 interface WorkHours {
@@ -84,15 +84,6 @@ const AdminDashboard = () => {
     { id: "users", label: "Utilisateurs" },
     { id: "guide", label: "Guide" },
   ];
-
-  const employmentStatusLabels = {
-    "salaried_aft": "Salarié AFTrad",
-    "salaried_aftcom": "Salarié AFTCOM",
-    "salaried_planet": "Salarié PLANET",
-    "permanent_interpreter": "Interprète permanent",
-    "permanent_interpreter_aftcom": "Interprète Permanent AFTcom",
-    "self_employed": "Externe"
-  };
 
   const fetchInterpreters = async () => {
     try {
