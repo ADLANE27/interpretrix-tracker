@@ -160,12 +160,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-4 px-4 bg-[#F1F1F1] min-h-full">
+    <div className="space-y-4 px-4 bg-[#F1F1F1] dark:bg-gray-900 min-h-full pb-20">
       {messages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
             <div className="flex justify-center my-3">
-              <div className="bg-[#E2E2E2] text-[#8A898C] px-3 py-1 rounded-full text-[13px]">
+              <div className="bg-[#E2E2E2] dark:bg-gray-800 text-[#8A898C] px-3 py-1 rounded-full text-[13px]">
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -199,7 +199,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           )}
         </React.Fragment>
       ))}
-      <div ref={messagesEndRef} />
+      <div ref={messagesEndRef} className="h-4" />
     </div>
   );
 };

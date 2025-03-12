@@ -42,7 +42,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-gray-900 z-10">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
           <span>En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
@@ -135,8 +135,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {attachments.length > 0 && (
         <div className="mt-2 space-y-1">
           {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
-              <span className="text-gray-700 truncate flex-1">{file.name}</span>
+            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 dark:bg-gray-800 rounded">
+              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"

@@ -215,18 +215,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative min-h-0 pb-16">
-        {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
-          </div>
-        ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
-              Connexion en cours...
-            </p>
-          </div>
-        ) : null}
+      <div className="flex-1 overflow-y-auto relative min-h-0">
         <MessageList
           messages={filteredMessages()}
           currentUserId={currentUserId}
