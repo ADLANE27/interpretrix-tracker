@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import AdminDashboard from '@/components/admin/AdminDashboard';
 import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
