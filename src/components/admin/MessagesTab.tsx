@@ -797,9 +797,9 @@ export const MessagesTab = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t p-4 bg-background safe-area-bottom">
+              <div className="border-t p-6 bg-background safe-area-bottom">
                 {replyTo && (
-                  <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-accent/50 rounded-lg">
                     <span className="text-sm text-muted-foreground">
                       En réponse à : {replyTo.sender?.name}
                     </span>
@@ -817,14 +817,14 @@ export const MessagesTab = () => {
                   e.preventDefault();
                   sendMessage(e);
                 }}>
-                  <div className="flex items-end gap-2">
+                  <div className="flex items-end gap-3">
                     <div className="flex-1 relative">
                       <Input
                         ref={inputRef}
                         value={newMessage}
                         onChange={handleInput}
                         placeholder="Écrivez un message..."
-                        className="pr-24"
+                        className="min-h-[52px] pr-32 text-base leading-relaxed"
                       />
                       {showMentions && (
                         <MentionSuggestions
@@ -833,7 +833,7 @@ export const MessagesTab = () => {
                           visible={showMentions}
                         />
                       )}
-                      <div className="absolute right-2 bottom-1/2 translate-y-1/2 flex items-center gap-1">
+                      <div className="absolute right-3 bottom-1/2 translate-y-1/2 flex items-center gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
