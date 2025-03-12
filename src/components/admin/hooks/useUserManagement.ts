@@ -169,6 +169,8 @@ export const useUserManagement = () => {
       
       delete (transformedData as any).active;
       
+      console.log('Updating profile with data:', transformedData);
+      
       const { error } = await supabase
         .from('interpreter_profiles')
         .update(transformedData)
@@ -176,8 +178,9 @@ export const useUserManagement = () => {
 
       if (error) throw error;
 
-      // Instead of dispatching a global event, invalidate the users query
+      // Force a complete refetch to ensure we have fresh data
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await refetch();
 
       toast({
         title: "Profil mis à jour",
@@ -185,6 +188,7 @@ export const useUserManagement = () => {
       });
       
     } catch (error: any) {
+      console.error('Profile update error:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
