@@ -24,12 +24,12 @@ const statusConfig = {
 };
 
 const employmentStatusLabels: Record<Profile['employment_status'], string> = {
-  salaried_aft: "Salarié AFTrad",
-  salaried_aftcom: "Salarié AFTCOM",
-  salaried_planet: "Salarié PLANET",
-  permanent_interpreter: "Interprète permanent",
-  permanent_interpreter_aftcom: "Interprète Permanent AFTcom",
-  self_employed: "Externe",
+  salarie_aft: "Salarié AFTrad",
+  salarie_aftcom: "Salarié AFTCOM",
+  salarie_planet: "Salarié PLANET",
+  interprete_permanent: "Interprète Permanent",
+  interprete_permanent_aftcom: "Interprète Permanent AFTCOM",
+  externe: "Externe"
 };
 
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
