@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -53,9 +52,9 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="flex-1 h-[calc(100vh-120px)] w-full overflow-hidden">
-      <div className="container mx-auto p-0 sm:p-4 h-full">
-        <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
+    <div className="h-[calc(100vh-120px)] w-full overflow-hidden bg-background">
+      <div className="container mx-auto h-full p-0 sm:p-4">
+        <Card className="h-full shadow-sm border-0 sm:border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:rounded-lg">
           <div className={cn(
             "flex flex-col gap-3 sm:gap-6 h-full",
             "lg:grid lg:grid-cols-3"
@@ -63,9 +62,8 @@ export const MessagingTab = () => {
             {(!selectedChannelId || showChannels || !isMobile) && (
               <Card className={cn(
                 "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden h-full",
-                "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+                "bg-card/50 backdrop-blur-sm",
                 "transition-all duration-300 hover:shadow-xl rounded-lg",
-                "dark:from-gray-800 dark:to-gray-900",
                 "order-2",
                 isMobile && "h-full"
               )}>
