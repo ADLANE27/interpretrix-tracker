@@ -30,6 +30,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const { updateProfile, isSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
+    // Find the most up-to-date user data
     const fullUserData = users.find(u => u.id === user.id);
     setSelectedUser(fullUserData || user);
     setIsEditingInterpreter(true);

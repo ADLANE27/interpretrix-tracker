@@ -5,7 +5,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
 import { UserData } from "../../types/user-management";
 import { Profile } from "@/types/profile";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 interface InterpreterEditDialogProps {
   isOpen: boolean;
@@ -27,6 +27,15 @@ export const InterpreterEditDialog = ({
       onOpenChange(open);
     }
   }, [isSubmitting, onOpenChange]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset form when dialog closes
+      return () => {
+        // Cleanup
+      };
+    }
+  }, [isOpen]);
 
   return (
     <Dialog 
@@ -50,7 +59,7 @@ export const InterpreterEditDialog = ({
                 initialData={selectedUser}
                 onSubmit={onSubmit}
                 isSubmitting={isSubmitting}
-                key={selectedUser.id} // Force form re-render when user changes
+                key={`${selectedUser.id}-${isOpen}`} // Force form re-render when user or dialog state changes
               />
             </>
           )}

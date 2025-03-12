@@ -36,12 +36,11 @@ export const useInterpreterProfileUpdate = () => {
         throw new Error("Invalid language pairs format");
       }
 
-      // Build update object with ALL provided fields
       const profileData: Record<string, any> = {
         id: data.id
       };
 
-      // Include all fields that are present, even if undefined or null
+      // Include all fields that are present, even if undefined
       Object.entries(data).forEach(([key, value]) => {
         if (key !== 'id') {
           if (key === 'languages' && Array.isArray(value)) {
@@ -51,8 +50,6 @@ export const useInterpreterProfileUpdate = () => {
           }
         }
       });
-      
-      console.log('Updating profile with data:', profileData);
 
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: profileData
@@ -60,14 +57,17 @@ export const useInterpreterProfileUpdate = () => {
 
       if (error) throw error;
 
+      // Update the cache with the new data
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Wait for the cache to be updated before showing success message
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
       });
 
-      // Invalidate and refetch all related queries
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
-      
       return true;
     } catch (error: any) {
       console.error('Error updating profile:', error);
