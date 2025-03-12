@@ -2,6 +2,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
+interface WorkHours {
+  start_morning: string;
+  end_morning: string;
+  start_afternoon: string;
+  end_afternoon: string;
+}
+
 interface Address {
   street: string;
   postal_code: string;
@@ -18,7 +25,7 @@ interface InterpreterData {
   first_name: string;
   last_name: string;
   password?: string;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   languages: LanguagePair[];
   phone_number?: string;
   birth_country?: string;
@@ -29,6 +36,10 @@ interface InterpreterData {
   vat_number?: string;
   specializations?: string[];
   landline_phone?: string;
+  booth_number?: string;
+  private_phone?: string;
+  professional_phone?: string;
+  work_hours?: WorkHours;
   tarif_15min: number;
   tarif_5min: number;
 }
@@ -52,8 +63,9 @@ Deno.serve(async (req) => {
 
     let interpreterData: InterpreterData;
     try {
-      interpreterData = await req.json();
-      console.log('Creating interpreter with data:', JSON.stringify(interpreterData, null, 2));
+      const rawData = await req.json();
+      console.log('Received interpreter data:', JSON.stringify(rawData, null, 2));
+      interpreterData = rawData;
     } catch (error) {
       console.error('Error parsing request body:', error);
       throw new Error('Invalid request body');
@@ -132,13 +144,21 @@ Deno.serve(async (req) => {
         birth_country: interpreterData.birth_country || null,
         nationality: interpreterData.nationality || null,
         address: interpreterData.address || null,
-        phone_interpretation_rate: interpreterData.phone_interpretation_rate || 0,
         siret_number: interpreterData.siret_number || null,
         vat_number: interpreterData.vat_number || null,
         specializations: interpreterData.specializations || [],
         landline_phone: interpreterData.landline_phone || null,
-        password_changed: false,
+        booth_number: interpreterData.booth_number || null,
+        private_phone: interpreterData.private_phone || null,
+        professional_phone: interpreterData.professional_phone || null,
+        work_hours: interpreterData.work_hours || {
+          start_morning: "09:00",
+          end_morning: "13:00",
+          start_afternoon: "14:00",
+          end_afternoon: "17:00"
+        },
         status: 'available',
+        password_changed: false,
         tarif_15min: interpreterData.tarif_15min || 0,
         tarif_5min: interpreterData.tarif_5min || 0
       });
@@ -191,3 +211,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+
