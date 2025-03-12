@@ -2,30 +2,19 @@
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Pencil, MoreHorizontal, Key, Trash, Mail } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { UserData } from "../types/user-management";
-import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
-import { ResetPasswordDialog } from "./ResetPasswordDialog";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useInterpreterProfileUpdate } from "../hooks/useInterpreterProfileUpdate";
+import { UserRow } from "./table/UserRow";
+import { InterpreterEditDialog } from "./dialogs/InterpreterEditDialog";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
 
 interface UserTableProps {
   users: UserData[];
@@ -40,7 +29,6 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const { updateProfile, isSubmitting, setIsSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
-    // Ensure we have all the user data before editing
     const fullUserData = users.find(u => u.id === user.id);
     setSelectedUser(fullUserData || user);
     setIsEditingInterpreter(true);
@@ -51,8 +39,8 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     
     const success = await updateProfile({
       id: selectedUser.id,
-      ...selectedUser, // Keep existing user data
-      ...data // Merge with new data
+      ...selectedUser,
+      ...data
     });
 
     if (success) {
@@ -111,89 +99,34 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>
-                {user.first_name} {user.last_name}
-              </TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.active ? "Actif" : "Inactif"}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {user.role === 'interpreter' && (
-                      <DropdownMenuItem onClick={() => handleEditInterpreter(user)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Modifier
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem onClick={() => {
-                      setSelectedUser(user);
-                      setIsResetPasswordOpen(true);
-                    }}>
-                      <Key className="mr-2 h-4 w-4" />
-                      Réinitialiser le mot de passe
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleSendPasswordReset(user)}
-                      disabled={isSubmitting}
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      Envoyer un lien de réinitialisation
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => onDelete(user.id)}
-                    >
-                      <Trash className="mr-2 h-4 w-4" />
-                      Supprimer
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
+            <UserRow
+              key={user.id}
+              user={user}
+              onEdit={handleEditInterpreter}
+              onResetPasswordClick={(user) => {
+                setSelectedUser(user);
+                setIsResetPasswordOpen(true);
+              }}
+              onSendPasswordReset={handleSendPasswordReset}
+              onDelete={onDelete}
+              isSubmitting={isSubmitting}
+            />
           ))}
         </TableBody>
       </Table>
 
-      <Dialog 
-        open={isEditingInterpreter} 
+      <InterpreterEditDialog
+        isOpen={isEditingInterpreter}
         onOpenChange={(open) => {
-          if (!isSubmitting) {
-            setIsEditingInterpreter(open);
-            if (!open) {
-              setSelectedUser(null);
-            }
+          if (!open) {
+            setSelectedUser(null);
           }
+          setIsEditingInterpreter(open);
         }}
-      >
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[85vh] px-1">
-            {selectedUser && (
-              <>
-                {isSubmitting && (
-                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <LoadingSpinner size="lg" text="Mise à jour du profil..." />
-                  </div>
-                )}
-                <InterpreterProfileForm
-                  isEditing={true}
-                  initialData={selectedUser}
-                  onSubmit={handleUpdateProfile}
-                  isSubmitting={isSubmitting}
-                />
-              </>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+        selectedUser={selectedUser}
+        onSubmit={handleUpdateProfile}
+        isSubmitting={isSubmitting}
+      />
 
       <ResetPasswordDialog
         isOpen={isResetPasswordOpen}
