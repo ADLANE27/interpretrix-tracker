@@ -19,6 +19,7 @@ import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
 import { useUserManagementToasts } from "./hooks/useUserManagementToasts";
 import { useInterpreterCreation } from "@/hooks/useInterpreterCreation";
+import { supabase } from "@/integrations/supabase/client";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
