@@ -54,7 +54,7 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
+    <div className="space-y-4">
       <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
         <div className={cn(
           "flex flex-col gap-3 sm:gap-6 h-full",
