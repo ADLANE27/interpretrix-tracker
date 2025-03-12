@@ -36,7 +36,7 @@ interface Interpreter {
   id: string;
   first_name: string;
   last_name: string;
-  status: "available" | "unavailable" | "pause" | "busy";
+  status: Profile['status'];
   employment_status: EmploymentStatus;
   languages: string[];
   phone_interpretation_rate: number | null;
