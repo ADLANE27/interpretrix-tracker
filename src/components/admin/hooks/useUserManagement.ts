@@ -113,7 +113,7 @@ export const useUserManagement = () => {
 
         return result;
       } catch (error) {
-        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        console.error('Error loading users:', error);
         throw error;
       }
     },

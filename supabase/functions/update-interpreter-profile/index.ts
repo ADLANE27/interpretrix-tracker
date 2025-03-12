@@ -77,13 +77,11 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Handle languages separately if provided
-    if ('languages' in profileData) {
+    // Handle languages separately to ensure proper formatting
+    if ('languages' in profileData && Array.isArray(profileData.languages)) {
       const formattedLanguages = profileData.languages
-        ? profileData.languages
-            .filter(lang => lang.source && lang.target)
-            .map(lang => `${lang.source} → ${lang.target}`)
-        : [];
+        .filter(lang => lang.source && lang.target)
+        .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
       updateData.languages = formattedLanguages;
       console.log('Formatted languages:', formattedLanguages);
     }

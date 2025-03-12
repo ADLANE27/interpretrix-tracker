@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,41 +75,42 @@ export const InterpreterProfileForm = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  
   const initialLanguages = initialData?.languages || [];
   const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
 
-  const defaultValues: InterpreterFormData = {
-    email: initialData?.email || "",
-    first_name: initialData?.first_name || "",
-    last_name: initialData?.last_name || "",
-    active: initialData?.active ?? true,
-    tarif_15min: initialData?.tarif_15min || 0,
-    tarif_5min: initialData?.tarif_5min || 0,
-    employment_status: initialData?.employment_status || "salaried_aft",
-    booth_number: initialData?.booth_number || "",
-    private_phone: initialData?.private_phone || "",
-    professional_phone: initialData?.professional_phone || "",
-    work_hours: initialData?.work_hours || {
-      start_morning: "09:00",
-      end_morning: "13:00",
-      start_afternoon: "14:00",
-      end_afternoon: "17:00"
-    },
-    languages: languages,
-    address: initialData?.address || { street: "", postal_code: "", city: "" },
-    phone_number: initialData?.phone_number || "",
-    birth_country: initialData?.birth_country || "",
-    nationality: initialData?.nationality || "",
-    siret_number: initialData?.siret_number || "",
-    vat_number: initialData?.vat_number || "",
-    specializations: initialData?.specializations || [],
-    landline_phone: initialData?.landline_phone || "",
-    password: "",
-  };
+  useEffect(() => {
+    if (initialData?.languages) {
+      setLanguages(initialData.languages);
+    }
+  }, [initialData]);
 
   const form = useForm<InterpreterFormData>({
-    defaultValues,
+    defaultValues: {
+      email: initialData?.email || "",
+      first_name: initialData?.first_name || "",
+      last_name: initialData?.last_name || "",
+      tarif_15min: initialData?.tarif_15min || 0,
+      tarif_5min: initialData?.tarif_5min || 0,
+      employment_status: initialData?.employment_status || "salaried_aft",
+      booth_number: initialData?.booth_number || "",
+      private_phone: initialData?.private_phone || "",
+      professional_phone: initialData?.professional_phone || "",
+      work_hours: initialData?.work_hours || {
+        start_morning: "09:00",
+        end_morning: "13:00",
+        start_afternoon: "14:00",
+        end_afternoon: "17:00"
+      },
+      languages: languages,
+      address: initialData?.address || { street: "", postal_code: "", city: "" },
+      phone_number: initialData?.phone_number || "",
+      birth_country: initialData?.birth_country || "",
+      nationality: initialData?.nationality || "",
+      siret_number: initialData?.siret_number || "",
+      vat_number: initialData?.vat_number || "",
+      specializations: initialData?.specializations || [],
+      landline_phone: initialData?.landline_phone || "",
+    }
   });
 
   const handleSubmit = async (data: InterpreterFormData) => {
@@ -126,10 +127,10 @@ export const InterpreterProfileForm = ({
       }
     }
     
-    const submissionData: InterpreterFormData = {
+    const submissionData = {
       ...data,
+      languages,
       password: password.trim() || undefined,
-      languages: languages
     };
 
     await onSubmit(submissionData);
