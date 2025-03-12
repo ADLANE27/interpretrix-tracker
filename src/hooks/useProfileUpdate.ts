@@ -53,14 +53,11 @@ export const useProfileUpdate = () => {
 
       if (error) throw error;
 
-      // Show success toast
+      // Show success toast after the update is confirmed
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
       });
-
-      // Trigger background refetch without awaiting
-      queryClient.invalidateQueries({ queryKey: ['users'] });
 
       return { success: true };
     } catch (error: any) {
@@ -76,9 +73,6 @@ export const useProfileUpdate = () => {
         description: "Impossible de mettre à jour le profil: " + error.message,
         variant: "destructive",
       });
-      
-      // Trigger background refetch without awaiting
-      queryClient.invalidateQueries({ queryKey: ['users'] });
       
       return { success: false, error };
     } finally {

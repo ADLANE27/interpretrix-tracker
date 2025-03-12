@@ -125,28 +125,27 @@ export const useUserManagement = () => {
   });
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     console.log("[useUserManagement] Setting up real-time subscriptions");
+    
     const channel = supabase.channel('user-management-changes')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'interpreter_profiles'
       }, () => {
-        console.log('[useUserManagement] Profile changes detected, refetching...');
-        queryClient.invalidateQueries({ queryKey: ['users'] });
+        // Debounce the refetch to prevent cascading updates
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          console.log('[useUserManagement] Profile changes detected, refetching...');
+          queryClient.invalidateQueries({ queryKey: ['users'] });
+        }, 1000); // 1 second debounce
       })
       .subscribe();
 
-    const handleRefetch = () => {
-      console.log('[useUserManagement] Manual refetch triggered');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    };
-
-    window.addEventListener('refetchUserData', handleRefetch);
-
     return () => {
       console.log('[useUserManagement] Cleaning up subscriptions');
-      window.removeEventListener('refetchUserData', handleRefetch);
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -174,55 +173,6 @@ export const useUserManagement = () => {
     }
   };
 
-  const handleUpdateProfile = async (data: Partial<Profile>) => {
-    if (!selectedUser) return;
-    
-    try {
-      setIsSubmitting(true);
-      
-      queryClient.setQueryData(['users'], (oldData: any) => {
-        const updatedInterpreters = oldData.interpreters.map((interpreter: UserData) => {
-          if (interpreter.id === selectedUser.id) {
-            return { ...interpreter, ...data };
-          }
-          return interpreter;
-        });
-        return { ...oldData, interpreters: updatedInterpreters };
-      });
-
-      const transformedData = {
-        ...data,
-        languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
-      };
-
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update(transformedData)
-        .eq('id', selectedUser.id);
-
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      
-      toast({
-        title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès",
-      });
-      
-    } catch (error: any) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const filteredUsers = {
     admins: users.admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
@@ -245,7 +195,6 @@ export const useUserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
-    handleUpdateProfile,
     queryClient,
     isSubmitting,
     setIsSubmitting,
