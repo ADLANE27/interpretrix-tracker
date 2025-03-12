@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -108,7 +107,7 @@ export const InterpreterProfileForm = ({
     
     const submissionData = {
       ...data,
-      languages,
+      languages, // Make sure to include the languages state
       password: password.trim() || undefined,
     };
 
