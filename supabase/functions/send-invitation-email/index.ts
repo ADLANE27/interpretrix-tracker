@@ -1,6 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { Resend } from "npm:resend@2.0.0";
 
 interface Address {
   street: string;
@@ -38,6 +39,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+  
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -125,19 +128,40 @@ Deno.serve(async (req) => {
       throw profileError;
     }
 
-    // 4. Send welcome email
-    const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-      body: {
-        email: interpreterData.email,
-        password: password,
-        role: 'interpreter',
-        first_name: interpreterData.first_name,
-      },
-    });
+    // 4. Send welcome email using Resend
+    try {
+      const emailContent = `
+        <h1>Bienvenue sur Interpretix !</h1>
+        
+        <p>Bonjour ${interpreterData.first_name},</p>
 
-    if (emailError) {
+        <p>Votre compte interprète a été créé avec succès.</p>
+
+        <h2>Vos identifiants de connexion :</h2>
+        <ul>
+          <li>Email: ${interpreterData.email}</li>
+          <li>Mot de passe: ${password}</li>
+        </ul>
+
+        <p><a href="https://interpretix.netlify.app/interpreter/login" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Se connecter</a></p>
+
+        <p>Pour des raisons de sécurité, nous vous recommandons de changer votre mot de passe après votre première connexion.</p>
+
+        <p>Cordialement,<br>L'équipe Interpretix</p>
+      `;
+
+      const emailResponse = await resend.emails.send({
+        from: 'Interpretix <no-reply@aftraduction.com>',
+        to: interpreterData.email,
+        subject: 'Bienvenue sur Interpretix - Vos identifiants de connexion interprète',
+        html: emailContent,
+      });
+
+      console.log('Welcome email sent successfully:', emailResponse);
+
+    } catch (emailError) {
+      // Log the email error but don't throw it - the user has been created successfully
       console.error('Error sending welcome email:', emailError);
-      // Don't block creation if email fails
     }
 
     return new Response(
@@ -164,4 +188,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
