@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
       throw new Error('Missing required fields: email, first_name, or last_name');
     }
 
-    // Transform languages to the correct format
+    // Transform languages to the correct format using proper arrow character
     const formattedLanguages = interpreterData.languages.map(lang => 
-      `${lang.source}→${lang.target}`
+      `${lang.source} → ${lang.target}`
     );
 
     // 1. Create the user with the provided or generated password
