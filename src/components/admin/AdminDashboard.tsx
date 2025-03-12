@@ -23,7 +23,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
-import { Profile } from "@/types/profile";
+import { Profile, EmploymentStatus } from "@/types/profile";
+import { parseLanguageString } from "@/types/languages";
 
 interface WorkHours {
   start_morning?: string;
@@ -90,8 +91,7 @@ export const AdminDashboard = () => {
         }
 
         const languages = (interpreter.languages || []).map((lang: string) => {
-          const [source, target] = lang.split('→').map(l => l.trim());
-          return { source, target };
+          return parseLanguageString(lang);
         });
 
         return {
@@ -541,4 +541,3 @@ export const AdminDashboard = () => {
     </div>
   );
 };
-

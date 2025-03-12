@@ -1,5 +1,6 @@
 
 import { Profile, EmploymentStatus } from "@/types/profile";
+import { LanguagePair } from "@/types/languages";
 
 export interface UserData extends Partial<Profile> {
   id: string;
@@ -9,6 +10,7 @@ export interface UserData extends Partial<Profile> {
   role: string;
   created_at: string;
   active: boolean;
+  languages?: LanguagePair[];
 }
 
 export interface UsersData {
@@ -22,7 +24,7 @@ export interface InterpreterData {
   last_name: string;
   status: Profile["status"];
   employment_status: EmploymentStatus;
-  languages: string[];
+  languages: LanguagePair[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
   birth_country: string | null;
