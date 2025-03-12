@@ -175,7 +175,7 @@ export const useUserManagement = () => {
         .from('interpreter_profiles')
         .update(transformedData)
         .eq('id', selectedUser.id)
-        .select();
+        .select('*');  // Explicitly select all fields
 
       if (error) throw error;
 
@@ -185,8 +185,13 @@ export const useUserManagement = () => {
 
       console.log('Données mises à jour avec succès:', updatedData);
 
-      // Force un rafraîchissement complet des données
+      // Invalider le cache pour forcer un rafraîchissement
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Mettre à jour le state local
+      setSelectedUser(updatedData[0]);
+      
+      // Rafraîchir les données
       await refetch();
 
       toast({

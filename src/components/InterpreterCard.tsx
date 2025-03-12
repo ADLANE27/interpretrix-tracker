@@ -84,6 +84,12 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
         <div className="space-y-2">
           <h4 className="text-sm font-medium uppercase text-muted-foreground">CONTACT</h4>
           <div className="space-y-2">
+            {interpreter.booth_number && (
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>Cabine {interpreter.booth_number}</span>
+              </div>
+            )}
             {interpreter.phone_number && (
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-4 w-4 text-muted-foreground" />
