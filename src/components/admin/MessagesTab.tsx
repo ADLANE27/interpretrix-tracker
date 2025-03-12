@@ -797,6 +797,7 @@ export const MessagesTab = () => {
                 <div ref={messagesEndRef} />
               </div>
 
+              
               <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-area-bottom">
                 {replyTo && (
                   <div className="flex items-center gap-2 p-3 mx-4 mt-4 bg-accent/50 rounded-lg border border-border/50">
@@ -890,6 +891,7 @@ export const MessagesTab = () => {
         </div>
       </div>
 
+      
       <CreateChannelDialog
         isOpen={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
