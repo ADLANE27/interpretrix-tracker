@@ -18,7 +18,7 @@ interface InterpreterData {
   first_name: string;
   last_name: string;
   password?: string;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   languages: LanguagePair[];
   phone_number?: string;
   birth_country?: string;
