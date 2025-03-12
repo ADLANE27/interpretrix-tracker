@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -54,56 +55,55 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-120px)] overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "relative p-2 sm:p-4 lg:col-span-1 border-r border-r-border rounded-none shadow-none h-full overflow-hidden",
+          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+          "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-50 m-0"
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-              <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
-              <MentionsPopover
-                mentions={unreadMentions}
-                totalCount={totalUnreadCount}
-                onMentionClick={handleMentionClick}
-                onMarkAsRead={markMentionAsRead}
-                onDelete={deleteMention}
-              >
-                <div className={cn(
-                  "transition-all duration-200 p-1.5 sm:p-2",
-                  "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                  "border border-gray-100 dark:border-gray-700",
-                  "rounded-lg flex items-center justify-center relative",
-                  totalUnreadCount > 0 && "text-purple-500"
-                )}>
-                  <Bell className="h-4 w-4" />
-                  {totalUnreadCount > 0 && (
-                    <Badge 
-                      variant="destructive"
-                      className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-                    >
-                      {totalUnreadCount}
-                    </Badge>
-                  )}
-                </div>
-              </MentionsPopover>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <InterpreterChannelList 
-                onChannelSelect={handleChannelSelect}
-              />
-            </div>
+          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
+            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+            <MentionsPopover
+              mentions={unreadMentions}
+              totalCount={totalUnreadCount}
+              onMentionClick={handleMentionClick}
+              onMarkAsRead={markMentionAsRead}
+              onDelete={deleteMention}
+            >
+              <div className={cn(
+                "transition-all duration-200 p-1.5 sm:p-2",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
+                "rounded-lg flex items-center justify-center relative",
+                totalUnreadCount > 0 && "text-purple-500"
+              )}>
+                <Bell className="h-4 w-4" />
+                {totalUnreadCount > 0 && (
+                  <Badge 
+                    variant="destructive"
+                    className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
+                  >
+                    {totalUnreadCount}
+                  </Badge>
+                )}
+              </div>
+            </MentionsPopover>
           </div>
+          <InterpreterChannelList 
+            onChannelSelect={handleChannelSelect}
+          />
         </Card>
       )}
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
-          "flex flex-col h-full lg:col-span-2 p-0 shadow-none border-0 overflow-hidden backdrop-blur-sm",
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+          "hover:shadow-xl rounded-lg",
+          "lg:col-span-2",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           {isMobile && (
@@ -134,5 +134,3 @@ export const MessagingTab = () => {
     </div>
   );
 };
-
-export default MessagingTab;

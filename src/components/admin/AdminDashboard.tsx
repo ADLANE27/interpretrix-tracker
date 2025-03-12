@@ -569,7 +569,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto">
-            <div className="min-h-full">
+            <div className="min-h-full p-4 sm:p-6">
               <MessagesTab />
             </div>
           </TabsContent>
@@ -593,11 +593,9 @@ const AdminDashboard = () => {
           </TabsContent>
         </div>
 
-        {activeTab !== 'messages' && (
-          <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
-            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-          </footer>
-        )}
+        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
+          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+        </footer>
       </Tabs>
     </div>
   );

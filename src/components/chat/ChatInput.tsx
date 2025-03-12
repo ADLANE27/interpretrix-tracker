@@ -39,9 +39,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="w-full border-t bg-white dark:bg-gray-900 shadow-lg">
+    <div className="border-t p-4 bg-white">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg">
+        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
           <span>En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
@@ -52,15 +52,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Button>
         </div>
       )}
-      <div className="p-4">
-        <div className="flex items-end gap-2 bg-white dark:bg-gray-900 rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+      <div className="relative">
+        <div className="flex items-end gap-2 bg-white rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
           <div className="flex-1 min-h-[40px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 w-full"
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -132,10 +132,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       </div>
       {attachments.length > 0 && (
-        <div className="px-4 pb-4 space-y-1">
+        <div className="mt-2 space-y-1">
           {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 dark:bg-gray-800 rounded">
-              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
+            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
+              <span className="text-gray-700 truncate flex-1">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
