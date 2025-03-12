@@ -88,6 +88,10 @@ Deno.serve(async (req) => {
         throw new Error('Invalid tarif_5min value');
       }
 
+      if (rawData.password !== undefined && typeof rawData.password !== 'string') {
+        throw new Error('Password must be a string');
+      }
+
       if (Array.isArray(rawData.languages)) {
         interpreterData = {
           ...rawData,
@@ -96,7 +100,10 @@ Deno.serve(async (req) => {
               const [source, target] = lang.split('→');
               return { source: source.trim(), target: target.trim() };
             }
-            return lang;
+            if (typeof lang === 'object' && lang.source && lang.target) {
+              return { source: lang.source.trim(), target: lang.target.trim() };
+            }
+            throw new Error('Invalid language pair format');
           })
         };
       } else {
@@ -111,7 +118,10 @@ Deno.serve(async (req) => {
           success: false,
           error: 'Invalid request data: ' + error.message 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
       );
     }
 
@@ -260,7 +270,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message 
+        error: error.message || 'An unexpected error occurred'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

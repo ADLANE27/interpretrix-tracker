@@ -94,8 +94,16 @@ export const UserManagement = () => {
         throw new Error("Le tarif pour 5 minutes doit être un nombre positif");
       }
 
+      // Format the data for the edge function
+      const formattedData = {
+        ...data,
+        password: data.password?.trim() || undefined // Ensure password is string or undefined
+      };
+
+      console.log('Sending formatted data to edge function:', formattedData);
+
       const { data: response, error } = await supabase.functions.invoke('send-invitation-email', {
-        body: data,
+        body: formattedData,
       });
 
       if (error) {
