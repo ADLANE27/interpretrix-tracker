@@ -40,7 +40,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 bg-white dark:bg-gray-900 mt-auto">
+    <div className="sticky bottom-0 border-t p-4 bg-white dark:bg-gray-900 z-10">
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
           <span>En réponse à : {replyTo.sender.name}</span>
