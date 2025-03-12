@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -54,6 +53,8 @@ interface Interpreter {
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
   connection_status?: Profile['status'];
+  next_mission_source_language?: string | null;
+  next_mission_target_language?: string | null;
 }
 
 const AdminDashboard = () => {
@@ -96,7 +97,9 @@ const AdminDashboard = () => {
           next_mission:interpretation_missions!inner(
             id,
             scheduled_start_time,
-            estimated_duration
+            estimated_duration,
+            source_language,
+            target_language
           ),
           connection:interpreter_connection_status!inner(
             last_seen_at
@@ -139,6 +142,8 @@ const AdminDashboard = () => {
           birth_country: interpreter.birth_country,
           next_mission_start: interpreter.next_mission?.[0]?.scheduled_start_time || null,
           next_mission_duration: interpreter.next_mission?.[0]?.estimated_duration || null,
+          next_mission_source_language: interpreter.next_mission?.[0]?.source_language || null,
+          next_mission_target_language: interpreter.next_mission?.[0]?.target_language || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: interpreter.connection?.[0]?.last_seen_at || null,
@@ -493,6 +498,8 @@ const AdminDashboard = () => {
                         phone_number: interpreter.phone_number,
                         next_mission_start: interpreter.next_mission_start,
                         next_mission_duration: interpreter.next_mission_duration,
+                        next_mission_source_language: interpreter.next_mission_source_language,
+                        next_mission_target_language: interpreter.next_mission_target_language,
                         booth_number: interpreter.booth_number,
                         private_phone: interpreter.private_phone,
                         professional_phone: interpreter.professional_phone,

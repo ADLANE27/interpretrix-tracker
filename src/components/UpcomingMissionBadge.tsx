@@ -9,9 +9,16 @@ import { useEffect, useState } from "react";
 interface UpcomingMissionBadgeProps {
   startTime: string;
   estimatedDuration: number;
+  sourceLang?: string | null;
+  targetLang?: string | null;
 }
 
-export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingMissionBadgeProps) => {
+export const UpcomingMissionBadge = ({ 
+  startTime, 
+  estimatedDuration,
+  sourceLang,
+  targetLang 
+}: UpcomingMissionBadgeProps) => {
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
@@ -40,6 +47,7 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
 
   const getStatusDisplay = () => {
     const status = getMissionStatus();
+    const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
 
     switch (status) {
       case "upcoming":
@@ -47,7 +55,7 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
           text: `Dans ${formatDistanceToNow(missionStartDate, { 
             locale: fr,
             addSuffix: false 
-          })} (${estimatedDuration}min)`,
+          })} (${estimatedDuration}min)${languageInfo}`,
           variant: "secondary" as const
         };
       case "in-progress":
@@ -56,17 +64,17 @@ export const UpcomingMissionBadge = ({ startTime, estimatedDuration }: UpcomingM
           addSuffix: true 
         });
         return {
-          text: `Se termine ${remainingTime}`,
+          text: `Se termine ${remainingTime}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
         return {
-          text: "Dernières minutes",
+          text: `Dernières minutes${languageInfo}`,
           variant: "destructive" as const
         };
       case "ended":
         return {
-          text: `Mission terminée (${format(missionEndDate, 'HH:mm')})`,
+          text: `Mission terminée (${format(missionEndDate, 'HH:mm')})${languageInfo}`,
           variant: "outline" as const
         };
     }

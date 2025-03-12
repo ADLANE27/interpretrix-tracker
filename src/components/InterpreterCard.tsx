@@ -19,6 +19,8 @@ interface InterpreterCardProps {
     phone_number: string | null;
     next_mission_start: string | null;
     next_mission_duration: number | null;
+    next_mission_source_language?: string | null;
+    next_mission_target_language?: string | null;
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
@@ -97,6 +99,8 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
           <UpcomingMissionBadge
             startTime={interpreter.next_mission_start}
             estimatedDuration={interpreter.next_mission_duration || 0}
+            sourceLang={interpreter.next_mission_source_language}
+            targetLang={interpreter.next_mission_target_language}
           />
         )}
         {interpreter.work_hours && (
