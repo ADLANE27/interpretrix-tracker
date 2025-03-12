@@ -150,7 +150,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div key={index} className="relative group max-w-sm">
             <MessageAttachment
               url={attachment.url}
-              filename={attachment.file.name}
+              filename={attachment.filename}
               locale="fr"
             />
           </div>
