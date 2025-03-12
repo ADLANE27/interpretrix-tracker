@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -8,7 +7,6 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
-import { StatusManager } from "./StatusManager";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -111,11 +109,6 @@ export const MessagingTab = () => {
             ) : null}
           </div>
         </Card>
-      </div>
-
-      {/* Status Manager at bottom */}
-      <div className="mt-4">
-        <StatusManager currentStatus="available" onStatusChange={async () => {}} />
       </div>
     </div>
   );
