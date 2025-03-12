@@ -16,12 +16,12 @@ export const LANGUAGES = [
   "Kirghize", "Kirundi", "Konianké", "Konkani", "Krio", "Kurde (Kurmandji)", "Kurde (Sorani)", 
   "Langue des Signes Française (LSF)", "Langue des Signes Québécoise (LSQ)", "Lao", "Letton", "Lingala", 
   "Lituanien", "Macédonien", "Maithili", "Malais", "Malayalam", "Malinké", "Mandarin", "Mandingo", 
-  "Marathi", "Marshallais", "Maya (K'iche')", "Maya (Yucatèque)", "Maori", "Min Nan", "Mina", "Mongol", 
-  "Moore", "Nahuatl", "Navajo", "Ndébélé", "Néerlandais", "Népalais", "Norvégien", "Oromo", "Ouïghour", 
-  "Ourdou", "Ouzbek", "Pachto", "Papiamento", "Persan", "Peul", "Pidgin", "Polonais", "Portugais", 
-  "Punjabi", "Quechua", "Roumain", "Russe", "Samoan", "Santali", "Serbe", "Shona", "Sindhi", "Slovaque", 
-  "Somali", "Soninké", "Soussou", "Sundanais", "Suédois", "Swahili", "Sérère", "Tadjik", "Tagalog", 
-  "Tahitien", "Tamoul", "Tamasheq", "Tchèque", "Teochew", "Thaï", "Tibétain", "Tigrigna", "Tongan", 
-  "Tshiluba", "Tswana", "Turc", "Turkmène", "Télougou", "Ukrainien", "Vietnamien", "Wolof", 
-  "Wu (Shanghaïen)", "Xhosa", "Yoruba", "Zaghawa", "Zoulou", "Éwé"
+  "Marathi", "Marshallais", "Maya (K'iche')", "Maya (Yucatèque)", "Maori", "Min Nan", "Mina", "Moldave",
+  "Mongol", "Moore", "Nahuatl", "Navajo", "Ndébélé", "Néerlandais", "Népalais", "Norvégien", "Oromo", 
+  "Ouïghour", "Ourdou", "Ouzbek", "Pachto", "Papiamento", "Persan", "Peul", "Pidgin", "Polonais", "Portugais", 
+  "Punjabi", "Quechua", "Rohingya", "Romani", "Roumain", "Russe", "Samoan", "Santali", "Serbe", "Shona", 
+  "Sindhi", "Slovaque", "Somali", "Soninké", "Soussou", "Sundanais", "Suédois", "Swahili", "Sérère", 
+  "Tadjik", "Tagalog", "Tahitien", "Tamoul", "Tamasheq", "Tchétchène", "Tchèque", "Teochew", "Thaï", 
+  "Tibétain", "Tigrigna", "Tongan", "Tshiluba", "Tswana", "Turc", "Turkmène", "Télougou", "Ukrainien", 
+  "Vietnamien", "Wolof", "Wu (Shanghaïen)", "Xhosa", "Yoruba", "Zaghawa", "Zoulou", "Éwé"
 ].sort();
