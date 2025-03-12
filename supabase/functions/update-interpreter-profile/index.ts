@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -14,18 +15,18 @@ interface UpdateProfileData {
   languages?: LanguagePair[];
   employment_status?: string;
   status?: string;
-  phone_number?: string;
+  phone_number?: string | null;
   address?: {
     street: string;
     postal_code: string;
     city: string;
   } | null;
-  birth_country?: string;
-  nationality?: string;
-  siret_number?: string;
-  vat_number?: string;
+  birth_country?: string | null;
+  nationality?: string | null;
+  siret_number?: string | null;
+  vat_number?: string | null;
   specializations?: string[];
-  landline_phone?: string;
+  landline_phone?: string | null;
   tarif_15min?: number;
   tarif_5min?: number;
   booth_number?: string;
@@ -36,7 +37,7 @@ interface UpdateProfileData {
     end_morning: string;
     start_afternoon: string;
     end_afternoon: string;
-  };
+  } | null;
 }
 
 Deno.serve(async (req) => {
@@ -64,30 +65,36 @@ Deno.serve(async (req) => {
       const formattedLanguages = profileData.languages
         .filter(lang => lang.source && lang.target)
         .map(lang => `${lang.source} → ${lang.target}`);
-      if (formattedLanguages.length > 0) {
-        updateData.languages = formattedLanguages;
-      }
+      updateData.languages = formattedLanguages;
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    // Add other fields only if they are provided
-    if (profileData.first_name !== undefined) updateData.first_name = profileData.first_name;
-    if (profileData.last_name !== undefined) updateData.last_name = profileData.last_name;
-    if (profileData.employment_status !== undefined) updateData.employment_status = profileData.employment_status;
-    if (profileData.status !== undefined) updateData.status = profileData.status;
-    if (profileData.phone_number !== undefined) updateData.phone_number = profileData.phone_number;
-    if (profileData.address !== undefined) updateData.address = profileData.address;
-    if (profileData.birth_country !== undefined) updateData.birth_country = profileData.birth_country;
-    if (profileData.nationality !== undefined) updateData.nationality = profileData.nationality;
-    if (profileData.siret_number !== undefined) updateData.siret_number = profileData.siret_number;
-    if (profileData.vat_number !== undefined) updateData.vat_number = profileData.vat_number;
-    if (profileData.specializations !== undefined) updateData.specializations = profileData.specializations;
-    if (profileData.landline_phone !== undefined) updateData.landline_phone = profileData.landline_phone;
-    if (profileData.tarif_15min !== undefined) updateData.tarif_15min = profileData.tarif_15min;
-    if (profileData.tarif_5min !== undefined) updateData.tarif_5min = profileData.tarif_5min;
-    if (profileData.work_hours !== undefined) updateData.work_hours = profileData.work_hours;
+    // Add other fields, allowing null values
+    const fieldsToUpdate = [
+      'first_name',
+      'last_name',
+      'employment_status',
+      'status',
+      'phone_number',
+      'address',
+      'birth_country',
+      'nationality',
+      'siret_number',
+      'vat_number',
+      'specializations',
+      'landline_phone',
+      'tarif_15min',
+      'tarif_5min',
+      'work_hours'
+    ];
 
-    // Always include these three fields in the update, even if they're empty strings
+    fieldsToUpdate.forEach(field => {
+      if (profileData[field] !== undefined) {
+        updateData[field] = profileData[field];
+      }
+    });
+
+    // Always include these three fields in the update, with empty strings if null/undefined
     updateData.booth_number = profileData.booth_number ?? '';
     updateData.private_phone = profileData.private_phone ?? '';
     updateData.professional_phone = profileData.professional_phone ?? '';
