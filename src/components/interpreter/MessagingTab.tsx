@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -52,8 +53,8 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="flex-1 h-full w-full overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden">
+    <div className="flex-1 h-[calc(100vh-120px)] w-full overflow-hidden">
+      <div className="container mx-auto p-0 sm:p-4 h-full">
         <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
           <div className={cn(
             "flex flex-col gap-3 sm:gap-6 h-full",
