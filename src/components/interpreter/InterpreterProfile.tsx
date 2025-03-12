@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmploymentStatus, getEmploymentStatusLabel } from "@/utils/employmentStatus";
 
 interface ProfileProps {
   profile: {
@@ -21,7 +22,7 @@ interface ProfileProps {
       source: string;
       target: string;
     }[];
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+    employment_status: EmploymentStatus;
     status: "available" | "busy" | "pause" | "unavailable";
     address: {
       street: string;
@@ -42,25 +43,6 @@ interface ProfileProps {
   onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onProfilePictureDelete: () => Promise<void>;
 }
-
-const getEmploymentStatusLabel = (status: string) => {
-  switch (status) {
-    case "salaried_aft":
-      return "Salarié AFTrad";
-    case "salaried_aftcom":
-      return "Salarié AFTCOM";
-    case "salaried_planet":
-      return "Salarié PLANET";
-    case "permanent_interpreter":
-      return "Interprète permanent";
-    case "permanent_interpreter_aftcom":
-      return "Interprète Permanent AFTcom";
-    case "self_employed":
-      return "Externe";
-    default:
-      return status;
-  }
-};
 
 export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureUpload, onProfilePictureDelete }: ProfileProps) => {
   const [firstName, setFirstName] = useState(profile.first_name);

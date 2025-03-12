@@ -23,6 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
+import { EmploymentStatus } from "@/utils/employmentStatus";
 
 interface WorkHours {
   start_morning?: string;
@@ -36,7 +37,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
+  employment_status: EmploymentStatus;
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
