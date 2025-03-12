@@ -1,4 +1,4 @@
-
+import { EmploymentStatus } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
 
 export interface UserData extends Partial<Profile> {
@@ -9,6 +9,7 @@ export interface UserData extends Partial<Profile> {
   role: string;
   created_at: string;
   active: boolean;
+  employment_status?: EmploymentStatus;
 }
 
 export interface UsersData {
