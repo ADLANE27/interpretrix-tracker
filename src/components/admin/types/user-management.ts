@@ -11,3 +11,7 @@ export interface UserData extends Partial<Profile> {
   active: boolean;
 }
 
+export interface UsersData {
+  admins: UserData[];
+  interpreters: UserData[];
+}
