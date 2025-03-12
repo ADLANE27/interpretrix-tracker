@@ -27,8 +27,8 @@ interface UpdateProfileData {
   vat_number?: string | null;
   specializations?: string[];
   landline_phone?: string | null;
-  tarif_15min?: number;
-  tarif_5min?: number;
+  tarif_15min?: number | null;
+  tarif_5min?: number | null;
   booth_number?: string | null;
   private_phone?: string | null;
   professional_phone?: string | null;
@@ -69,37 +69,16 @@ Deno.serve(async (req) => {
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    // Add other fields, allowing null values
-    const fieldsToUpdate = [
-      'first_name',
-      'last_name',
-      'employment_status',
-      'status',
-      'phone_number',
-      'address',
-      'birth_country',
-      'nationality',
-      'siret_number',
-      'vat_number',
-      'specializations',
-      'landline_phone',
-      'tarif_15min',
-      'tarif_5min',
-      'work_hours',
-      'booth_number',
-      'private_phone',
-      'professional_phone'
-    ];
-
-    fieldsToUpdate.forEach(field => {
-      if (field in profileData) {
+    // Add all fields that are present in the request, even if they are null
+    Object.keys(profileData).forEach(field => {
+      if (field !== 'id' && field !== 'languages' && field in profileData) {
         updateData[field] = profileData[field];
       }
     });
 
     console.log('Updating profile with data:', updateData);
 
-    // First update the interpreter profile
+    // Update the interpreter profile
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
       .update(updateData)
