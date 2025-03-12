@@ -1,15 +1,15 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Globe } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
-import { Profile } from "@/types/profile";
 
 interface InterpreterListItemProps {
   interpreter: {
     id: string;
     name: string;
-    status: Profile["status"];
-    employment_status: Profile["employment_status"];
+    status: "available" | "unavailable" | "pause" | "busy";
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
     next_mission_start?: string | null;
     next_mission_duration?: number | null;

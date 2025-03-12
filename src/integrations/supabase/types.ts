@@ -842,12 +842,6 @@ export type Database = {
           created_by: string
         }[]
       }
-      get_employment_status_label: {
-        Args: {
-          status: Database["public"]["Enums"]["employment_status"]
-        }
-        Returns: string
-      }
       get_full_name_from_metadata: {
         Args: {
           metadata: Json
@@ -1045,12 +1039,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      standardize_language_pair: {
-        Args: {
-          lang_pair: string
-        }
-        Returns: string
-      }
       text_to_bytea: {
         Args: {
           data: string
@@ -1084,7 +1072,6 @@ export type Database = {
         | "salaried_planet"
         | "self_employed"
         | "permanent_interpreter"
-        | "permanent_interpreter_aftcom"
       interpreter_specialization:
         | "medical"
         | "legal"

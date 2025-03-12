@@ -28,6 +28,7 @@ interface Interpreter {
   status: string;
   profile_picture_url: string | null;
   tarif_15min: number;
+  email: string;
 }
 
 interface Creator {
@@ -203,7 +204,8 @@ export const MissionManagement = () => {
           status,
           profile_picture_url,
           languages,
-          tarif_15min
+          tarif_15min,
+          email
         `);
 
       if (error) {
@@ -420,6 +422,59 @@ export const MissionManagement = () => {
       }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
+
+      // Get authentication headers
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session found');
+      }
+
+      // Send notification emails to selected interpreters with better error handling
+      const notificationPromises = selectedInterpreters.map(async (interpreterId) => {
+        const interpreter = availableInterpreters.find(i => i.id === interpreterId);
+        if (!interpreter) return;
+
+        console.log('[MissionManagement] Sending notification to interpreter:', {
+          email: interpreter.email,
+          name: `${interpreter.first_name} ${interpreter.last_name}`
+        });
+
+        try {
+          const { error } = await supabase.functions.invoke('send-mission-notification', {
+            body: JSON.stringify({
+              interpreter: {
+                email: interpreter.email,
+                first_name: interpreter.first_name,
+                role: 'interpreter'
+              },
+              mission: createdMission
+            }),
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
+
+          if (error) {
+            console.error('[MissionManagement] Error sending notification to interpreter:', interpreter.email, error);
+            toast({
+              title: "Erreur d'envoi de notification",
+              description: `Impossible d'envoyer la notification à ${interpreter.first_name} ${interpreter.last_name}`,
+              variant: "destructive",
+            });
+          } else {
+            console.log('[MissionManagement] Notification sent successfully to:', interpreter.email);
+          }
+        } catch (error) {
+          console.error('[MissionManagement] Error invoking send-mission-notification:', error);
+          toast({
+            title: "Erreur d'envoi de notification",
+            description: `Erreur lors de l'envoi de la notification à ${interpreter.first_name} ${interpreter.last_name}`,
+            variant: "destructive",
+          });
+        }
+      });
+
+      await Promise.all(notificationPromises);
 
       toast({
         title: "Mission créée avec succès",

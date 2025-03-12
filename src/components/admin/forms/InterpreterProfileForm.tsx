@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
 import { LanguagePair } from "@/types/languages";
-import { EmploymentStatus } from "@/types/profile";
 
 interface Address {
   street: string;
@@ -34,9 +33,10 @@ export interface InterpreterFormData {
   email: string;
   first_name: string;
   last_name: string;
+  active: boolean;
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: EmploymentStatus;
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   booth_number?: string;
   private_phone?: string;
   professional_phone?: string;
@@ -46,7 +46,7 @@ export interface InterpreterFormData {
     start_afternoon: string;
     end_afternoon: string;
   };
-  languages: { source: string; target: string; }[];
+  languages: LanguagePair[];
   address?: Address;
   phone_number?: string;
   birth_country?: string;
@@ -82,6 +82,7 @@ export const InterpreterProfileForm = ({
     email: initialData?.email || "",
     first_name: initialData?.first_name || "",
     last_name: initialData?.last_name || "",
+    active: initialData?.active ?? true,
     tarif_15min: initialData?.tarif_15min || 0,
     tarif_5min: initialData?.tarif_5min || 0,
     employment_status: initialData?.employment_status || "salaried_aft",
