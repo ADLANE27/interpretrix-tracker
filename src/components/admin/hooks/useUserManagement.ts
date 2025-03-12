@@ -169,35 +169,55 @@ export const useUserManagement = () => {
       
       delete (transformedData as any).active;
       
-      console.log('Données envoyées pour mise à jour:', transformedData);
+      console.log('Data being sent for update:', transformedData);
+      
+      // First verify the current data
+      const { data: currentData, error: checkError } = await supabase
+        .from('interpreter_profiles')
+        .select('*')
+        .eq('id', selectedUser.id)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking current data:', checkError);
+        throw checkError;
+      }
+
+      console.log('Current data in database:', currentData);
       
       const { data: updatedData, error } = await supabase
         .from('interpreter_profiles')
         .update(transformedData)
         .eq('id', selectedUser.id)
-        .select('*');
+        .select();
 
-      if (error) throw error;
-
-      if (!updatedData || updatedData.length === 0) {
-        throw new Error("La mise à jour n'a pas retourné de données");
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
       }
 
-      console.log('Données mises à jour avec succès:', updatedData);
+      if (!updatedData || updatedData.length === 0) {
+        throw new Error("Update didn't return any data");
+      }
+
+      console.log('Successfully updated data:', updatedData[0]);
 
       // Transform the Supabase data back to Profile format
       const transformedProfile: Profile = {
         ...updatedData[0],
-        languages: (updatedData[0].languages || []).map(parseLanguageString)
+        languages: (updatedData[0].languages || []).map(parseLanguageString),
+        status: updatedData[0].status as Profile['status'],
+        work_hours: updatedData[0].work_hours || null,
+        address: updatedData[0].address || null,
       };
 
       // Update local state with properly formatted data
       setSelectedUser(transformedProfile);
       
-      // Invalider le cache pour forcer un rafraîchissement
+      // Invalidate the cache to force a refresh
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      // Rafraîchir les données
+      // Refresh the data
       await refetch();
 
       toast({
@@ -206,7 +226,7 @@ export const useUserManagement = () => {
       });
       
     } catch (error: any) {
-      console.error('Erreur lors de la mise à jour du profil:', error);
+      console.error('Error updating profile:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
