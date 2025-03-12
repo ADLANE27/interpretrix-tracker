@@ -25,6 +25,7 @@ import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { convertLanguagePairsToStrings } from "@/types/languages";
+import { useProfileUpdate } from "@/hooks/useProfileUpdate";
 
 interface UserTableProps {
   users: UserData[];
@@ -35,8 +36,8 @@ interface UserTableProps {
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const { updateProfile, isSubmitting } = useProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
@@ -46,42 +47,9 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const handleUpdateProfile = async (data: Partial<Profile>) => {
     if (!selectedUser) return;
     
-    try {
-      setIsSubmitting(true);
-      
-      // Convert language pairs to string array format
-      const transformedData = {
-        ...data,
-        languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
-      };
-      
-      // Remove any potential active field to prevent schema errors
-      delete (transformedData as any).active;
-      
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update(transformedData)
-        .eq('id', selectedUser.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès",
-      });
-
+    const { success } = await updateProfile(selectedUser.id, data);
+    if (success) {
       setIsEditingInterpreter(false);
-      window.dispatchEvent(new Event('refetchUserData'));
-      
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le profil: " + error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

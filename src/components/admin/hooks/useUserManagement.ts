@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -120,18 +121,34 @@ export const useUserManagement = () => {
         throw error;
       }
     },
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     staleTime: 1000,
   });
 
   useEffect(() => {
+    console.log("[useUserManagement] Setting up real-time subscriptions");
+    const channel = supabase.channel('user-management')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interpreter_profiles'
+      }, () => {
+        console.log('[useUserManagement] Profile changes detected, refetching...');
+        refetch();
+      })
+      .subscribe();
+
     const handleRefetch = () => {
+      console.log('[useUserManagement] Manual refetch triggered');
       refetch();
     };
 
     window.addEventListener('refetchUserData', handleRefetch);
+
     return () => {
+      console.log('[useUserManagement] Cleaning up subscriptions');
       window.removeEventListener('refetchUserData', handleRefetch);
+      supabase.removeChannel(channel);
     };
   }, [refetch]);
 
