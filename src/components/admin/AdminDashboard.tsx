@@ -94,7 +94,7 @@ const AdminDashboard = () => {
         .from("interpreter_profiles")
         .select(`
           *,
-          next_mission:interpretation_missions!inner(
+          next_mission:interpretation_missions!left(
             id,
             scheduled_start_time,
             estimated_duration,
@@ -579,3 +579,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
