@@ -169,16 +169,23 @@ export const useUserManagement = () => {
       
       delete (transformedData as any).active;
       
-      console.log('Updating profile with data:', transformedData);
+      console.log('Données envoyées pour mise à jour:', transformedData);
       
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from('interpreter_profiles')
         .update(transformedData)
-        .eq('id', selectedUser.id);
+        .eq('id', selectedUser.id)
+        .select();
 
       if (error) throw error;
 
-      // Force a complete refetch to ensure we have fresh data
+      if (!updatedData || updatedData.length === 0) {
+        throw new Error("La mise à jour n'a pas retourné de données");
+      }
+
+      console.log('Données mises à jour avec succès:', updatedData);
+
+      // Force un rafraîchissement complet des données
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       await refetch();
 
@@ -188,7 +195,7 @@ export const useUserManagement = () => {
       });
       
     } catch (error: any) {
-      console.error('Profile update error:', error);
+      console.error('Erreur lors de la mise à jour du profil:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
@@ -226,5 +233,7 @@ export const useUserManagement = () => {
     isSubmitting,
     setIsSubmitting,
     refetch,
+    selectedUser,
+    setSelectedUser
   };
 };
