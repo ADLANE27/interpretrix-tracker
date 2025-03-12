@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +100,10 @@ export const useUserManagement = () => {
             specializations: interpreter.specializations || [],
             landline_phone: interpreter.landline_phone,
             tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min
+            tarif_5min: interpreter.tarif_5min,
+            booth_number: interpreter.booth_number || '',
+            private_phone: interpreter.private_phone || '',
+            professional_phone: interpreter.professional_phone || ''
           };
         });
 
