@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -56,16 +55,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
             console.log('[StatusManager] Subscription status:', status);
           });
 
-        // Set up auth state change listener
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
-          if (event === 'SIGNED_OUT') {
-            setStatus('unavailable');
-            setUserId(null);
-          }
-        });
-
         return () => {
-          authListener.subscription.unsubscribe();
           supabase.removeChannel(channel);
         };
       } catch (error) {
@@ -109,16 +99,12 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     setIsLoading(true);
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
-      console.log('[StatusManager] New status:', newStatus);
-
-      // Only update the status field to avoid triggering language validation
-      const { error } = await supabase
-        .from('interpreter_profiles')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
+      
+      // Use RPC call to update status (bypassing trigger)
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId,
+        p_status: newStatus
+      });
 
       if (error) {
         console.error('[StatusManager] Database error:', error);
@@ -140,7 +126,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       console.error('[StatusManager] Error updating status:', error);
       toast({
         title: "Erreur",
-        description: error?.message || "Impossible de mettre à jour votre statut",
+        description: "Impossible de mettre à jour votre statut",
         variant: "destructive",
       });
     } finally {
