@@ -13,139 +13,124 @@ export const useUserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const queryClient = useQueryClient();
 
+  // Separate queries for admins and interpreters
   const {
-    data: users = { admins: [], interpreters: [] },
-    isLoading,
-    error,
-    refetch
+    data: admins = [],
+    isLoading: isLoadingAdmins
   } = useQuery({
-    queryKey: ['users'],
+    queryKey: ['admins'],
     queryFn: async () => {
-      try {
-        const { data: roleCheck, error: roleError } = await supabase
-          .rpc('is_admin');
+      const { data: adminProfiles, error: adminError } = await supabase
+        .from('admin_profiles')
+        .select('*');
 
-        if (roleError) throw roleError;
+      if (adminError) throw adminError;
 
-        if (!roleCheck) {
-          throw new Error("Unauthorized: Only administrators can access this page");
-        }
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('role', 'admin');
 
-        const { data: userRoles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('*');
+      const roleMap = (rolesData || []).reduce((acc: Record<string, boolean>, role) => {
+        acc[role.user_id] = role.active;
+        return acc;
+      }, {});
 
-        if (rolesError) throw rolesError;
+      return (adminProfiles || []).map(admin => ({
+        id: admin.id,
+        email: admin.email,
+        first_name: admin.first_name,
+        last_name: admin.last_name,
+        role: 'admin',
+        created_at: admin.created_at,
+        active: roleMap[admin.id] ?? false
+      }));
+    },
+  });
 
-        const { data: adminProfiles, error: adminError } = await supabase
-          .from('admin_profiles')
-          .select('*');
+  const {
+    data: interpreters = [],
+    isLoading: isLoadingInterpreters
+  } = useQuery({
+    queryKey: ['interpreters'],
+    queryFn: async () => {
+      const { data: interpreterData, error: interpreterError } = await supabase
+        .from('interpreter_profiles')
+        .select('*');
 
-        if (adminError) throw adminError;
+      if (interpreterError) throw interpreterError;
 
-        const { data: interpreterData, error: interpreterError } = await supabase
-          .from('interpreter_profiles')
-          .select('*');
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('role', 'interpreter');
 
-        if (interpreterError) throw interpreterError;
+      const roleMap = (rolesData || []).reduce((acc: Record<string, boolean>, role) => {
+        acc[role.user_id] = role.active;
+        return acc;
+      }, {});
 
-        const roleMap = (userRoles || []).reduce((acc: Record<string, { role: string, active: boolean }>, role) => {
-          acc[role.user_id] = { role: role.role, active: role.active };
-          return acc;
-        }, {});
-
-        const admins: UserData[] = (adminProfiles || []).map(admin => ({
-          id: admin.id,
-          email: admin.email,
-          first_name: admin.first_name,
-          last_name: admin.last_name,
-          role: 'admin',
-          created_at: admin.created_at,
-          active: roleMap[admin.id]?.active ?? false
-        }));
-
-        const interpreters: UserData[] = (interpreterData || []).map(interpreter => {
-          const languages = (interpreter.languages || []).map((lang: string) => {
-            const [source, target] = lang.split('→').map(l => l.trim());
-            return { source, target };
-          });
-
-          let parsedAddress: Profile['address'] = null;
-          if (interpreter.address && typeof interpreter.address === 'object') {
-            const addr = interpreter.address as any;
-            if (addr.street && addr.postal_code && addr.city) {
-              parsedAddress = {
-                street: String(addr.street),
-                postal_code: String(addr.postal_code),
-                city: String(addr.city)
-              };
-            }
-          }
-
-          return {
-            id: interpreter.id,
-            email: interpreter.email,
-            first_name: interpreter.first_name || '',
-            last_name: interpreter.last_name || '',
-            role: 'interpreter',
-            created_at: interpreter.created_at,
-            active: roleMap[interpreter.id]?.active ?? false,
-            languages,
-            employment_status: interpreter.employment_status,
-            status: (interpreter.status || 'available') as Profile['status'],
-            phone_number: interpreter.phone_number,
-            address: parsedAddress,
-            birth_country: interpreter.birth_country,
-            nationality: interpreter.nationality,
-            siret_number: interpreter.siret_number,
-            vat_number: interpreter.vat_number,
-            specializations: interpreter.specializations || [],
-            landline_phone: interpreter.landline_phone,
-            booth_number: interpreter.booth_number || '',
-            private_phone: interpreter.private_phone || '',
-            professional_phone: interpreter.professional_phone || '',
-            tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min
-          };
+      return (interpreterData || []).map(interpreter => {
+        const languages = (interpreter.languages || []).map((lang: string) => {
+          const [source, target] = lang.split('→').map(l => l.trim());
+          return { source, target };
         });
 
-        const result: UsersData = {
-          admins: admins.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-          interpreters: interpreters.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        };
+        let parsedAddress: Profile['address'] = null;
+        if (interpreter.address && typeof interpreter.address === 'object') {
+          const addr = interpreter.address as any;
+          if (addr.street && addr.postal_code && addr.city) {
+            parsedAddress = {
+              street: String(addr.street),
+              postal_code: String(addr.postal_code),
+              city: String(addr.city)
+            };
+          }
+        }
 
-        return result;
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        throw error;
-      }
+        return {
+          id: interpreter.id,
+          email: interpreter.email,
+          first_name: interpreter.first_name || '',
+          last_name: interpreter.last_name || '',
+          role: 'interpreter',
+          created_at: interpreter.created_at,
+          active: roleMap[interpreter.id] ?? false,
+          languages,
+          employment_status: interpreter.employment_status,
+          status: (interpreter.status || 'available') as Profile['status'],
+          phone_number: interpreter.phone_number,
+          address: parsedAddress,
+          birth_country: interpreter.birth_country,
+          nationality: interpreter.nationality,
+          siret_number: interpreter.siret_number,
+          vat_number: interpreter.vat_number,
+          specializations: interpreter.specializations || [],
+          landline_phone: interpreter.landline_phone,
+          booth_number: interpreter.booth_number || '',
+          private_phone: interpreter.private_phone || '',
+          professional_phone: interpreter.professional_phone || '',
+          tarif_15min: interpreter.tarif_15min,
+          tarif_5min: interpreter.tarif_5min
+        };
+      });
     },
-    refetchOnWindowFocus: false,
-    staleTime: 1000,
   });
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    console.log("[useUserManagement] Setting up real-time subscriptions");
-    
-    const channel = supabase.channel('user-management-changes')
+    // Set up real-time subscription only for interpreter profile changes
+    const channel = supabase.channel('interpreter-updates')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'interpreter_profiles'
-      }, () => {
-        // Debounce the refetch to prevent cascading updates
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          console.log('[useUserManagement] Profile changes detected, refetching...');
-          queryClient.invalidateQueries({ queryKey: ['users'] });
-        }, 1000); // 1 second debounce
+      }, (payload) => {
+        // Only invalidate interpreters query
+        queryClient.invalidateQueries({ queryKey: ['interpreters'] });
       })
       .subscribe();
 
     return () => {
-      console.log('[useUserManagement] Cleaning up subscriptions');
-      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
@@ -174,13 +159,13 @@ export const useUserManagement = () => {
   };
 
   const filteredUsers = {
-    admins: users.admins.filter(user => {
+    admins: admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const email = (user.email || '').toLowerCase();
       return fullName.includes(searchTerm) || email.includes(searchTerm);
     }),
-    interpreters: users.interpreters.filter(user => {
+    interpreters: interpreters.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const email = user.email.toLowerCase();
@@ -190,15 +175,13 @@ export const useUserManagement = () => {
 
   return {
     users: filteredUsers,
-    isLoading,
-    error,
+    isLoading: isLoadingAdmins || isLoadingInterpreters,
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
     queryClient,
     isSubmitting,
     setIsSubmitting,
-    refetch,
     selectedUser,
     setSelectedUser
   };

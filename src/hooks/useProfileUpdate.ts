@@ -26,23 +26,18 @@ export const useProfileUpdate = () => {
       delete (transformedData as any).active;
       
       // Store previous data before optimistic update
-      previousData = queryClient.getQueryData(['users']);
+      previousData = queryClient.getQueryData(['interpreters']);
       
-      // Perform optimistic update
-      queryClient.setQueryData(['users'], (oldData: any) => {
+      // Perform optimistic update only for interpreters
+      queryClient.setQueryData(['interpreters'], (oldData: any) => {
         if (!oldData) return oldData;
         
-        const updatedInterpreters = oldData.interpreters?.map((interpreter: any) => {
+        return oldData.map((interpreter: any) => {
           if (interpreter.id === userId) {
             return { ...interpreter, ...transformedData };
           }
           return interpreter;
         });
-        
-        return {
-          ...oldData,
-          interpreters: updatedInterpreters || oldData.interpreters,
-        };
       });
 
       // Perform actual update
@@ -53,10 +48,11 @@ export const useProfileUpdate = () => {
 
       if (error) throw error;
 
-      // Show success toast after the update is confirmed
+      // Show success toast with shorter duration
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
+        duration: 3000, // 3 seconds
       });
 
       return { success: true };
@@ -65,18 +61,18 @@ export const useProfileUpdate = () => {
       
       // Revert optimistic update on error
       if (previousData) {
-        queryClient.setQueryData(['users'], previousData);
+        queryClient.setQueryData(['interpreters'], previousData);
       }
       
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
         variant: "destructive",
+        duration: 5000, // 5 seconds
       });
       
       return { success: false, error };
     } finally {
-      // Make sure we reset the submitting state
       setIsSubmitting(false);
     }
   }, [isSubmitting, queryClient, toast]);
