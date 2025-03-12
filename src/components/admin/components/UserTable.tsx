@@ -26,7 +26,8 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const { updateProfile, isSubmitting, setIsSubmitting } = useInterpreterProfileUpdate();
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+  const { updateProfile, isSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
     const fullUserData = users.find(u => u.id === user.id);
@@ -51,7 +52,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
   const handleSendPasswordReset = async (user: UserData) => {
     try {
-      setIsSubmitting(true);
+      setIsSubmittingReset(true);
       const { error } = await supabase.functions.invoke('send-password-reset-email', {
         body: { 
           user_id: user.id,
@@ -74,7 +75,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingReset(false);
     }
   };
 
@@ -109,7 +110,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
               }}
               onSendPasswordReset={handleSendPasswordReset}
               onDelete={onDelete}
-              isSubmitting={isSubmitting}
+              isSubmitting={isSubmittingReset || isSubmitting}
             />
           ))}
         </TableBody>
@@ -135,7 +136,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           await onResetPassword(selectedUser?.id || '', password);
           setIsResetPasswordOpen(false);
         }}
-        isSubmitting={isSubmitting}
+        isSubmitting={isSubmittingReset}
         userData={selectedUser ? {
           email: selectedUser.email || '',
           first_name: selectedUser.first_name || '',
