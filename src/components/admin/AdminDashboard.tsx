@@ -157,7 +157,7 @@ const AdminDashboard = () => {
           next_mission_target_language: nextReservation?.target_language || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
-          last_seen_at: interpreter.connection?.[0]?.last_seen_at || null,
+          last_seen_at: null,
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
