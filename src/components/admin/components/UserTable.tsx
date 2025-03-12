@@ -67,11 +67,15 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
 
       toast({
         title: "Profil mis à jour",
-        description: "Le profil a été mis à jour avec succès",
+        description: "Le profil a été mis à jour. La page va se recharger...",
       });
 
       setIsEditingInterpreter(false);
-      window.dispatchEvent(new Event('refetchUserData'));
+      
+      // Set a small delay before refresh to allow the toast to be seen
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
       
     } catch (error: any) {
       console.error('Profile update error:', error);

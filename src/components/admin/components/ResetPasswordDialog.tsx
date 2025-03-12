@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface ResetPasswordDialogProps {
   isOpen: boolean;
@@ -61,7 +63,17 @@ export const ResetPasswordDialog = ({
           }
         }
 
+        toast({
+          title: "Succès",
+          description: "Le mot de passe a été mis à jour. La page va se recharger...",
+        });
+
         resetForm();
+        
+        // Set a small delay before refresh to allow the toast to be seen
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } catch (error) {
         // Error is handled by parent component
         resetForm();
