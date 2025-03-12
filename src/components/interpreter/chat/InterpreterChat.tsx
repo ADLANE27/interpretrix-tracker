@@ -215,7 +215,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto relative min-h-0">
+      <div className="flex-1 overflow-y-auto relative min-h-0 mb-[120px]">
         <MessageList
           messages={filteredMessages()}
           currentUserId={currentUserId}
@@ -227,17 +227,19 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <ChatInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        handleFileChange={handleFileChange}
-        attachments={attachments}
-        handleRemoveAttachment={handleRemoveAttachment}
-        inputRef={inputRef}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-      />
+      <div className="absolute bottom-0 left-0 right-0">
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+        />
+      </div>
     </div>
   );
 };
