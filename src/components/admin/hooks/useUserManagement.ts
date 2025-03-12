@@ -16,7 +16,9 @@ export const useUserManagement = () => {
   // Separate queries for admins and interpreters
   const {
     data: admins = [],
-    isLoading: isLoadingAdmins
+    isLoading: isLoadingAdmins,
+    error: adminsError,
+    refetch: refetchAdmins
   } = useQuery({
     queryKey: ['admins'],
     queryFn: async () => {
@@ -50,7 +52,9 @@ export const useUserManagement = () => {
 
   const {
     data: interpreters = [],
-    isLoading: isLoadingInterpreters
+    isLoading: isLoadingInterpreters,
+    error: interpretersError,
+    refetch: refetchInterpreters
   } = useQuery({
     queryKey: ['interpreters'],
     queryFn: async () => {
@@ -173,9 +177,17 @@ export const useUserManagement = () => {
     })
   };
 
+  const error = adminsError || interpretersError;
+  const refetch = () => {
+    refetchAdmins();
+    refetchInterpreters();
+  };
+
   return {
     users: filteredUsers,
     isLoading: isLoadingAdmins || isLoadingInterpreters,
+    error,
+    refetch,
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
