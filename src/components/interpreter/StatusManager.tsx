@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +23,40 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       setStatus(currentStatus);
     }
   }, [currentStatus]);
+
+  // Subscribe to status changes
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setStatus('unavailable');
+      }
+    });
+
+    const channel = supabase.channel('interpreter-status')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: `id=eq.${(async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          return user?.id;
+        })()}`
+      }, async payload => {
+        console.log('[StatusManager] Status update received:', payload);
+        const newStatus = payload.new.status;
+        if (isValidStatus(newStatus)) {
+          setStatus(newStatus);
+        }
+      })
+      .subscribe(status => {
+        console.log('[StatusManager] Status subscription status:', status);
+      });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const isValidStatus = (status: string): status is Status => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);

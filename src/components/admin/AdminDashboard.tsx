@@ -87,6 +87,75 @@ const AdminDashboard = () => {
     { id: "guide", label: "Guide" },
   ];
 
+  useEffect(() => {
+    console.log("[AdminDashboard] Setting up real-time subscriptions");
+    const channels: RealtimeChannel[] = [];
+
+    // Channel for interpreter profile changes (status updates)
+    const interpreterChannel = supabase.channel('admin-interpreter-profiles')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'interpreter_profiles'
+      }, async payload => {
+        console.log(`[AdminDashboard] Interpreter profiles changed:`, payload);
+        await fetchInterpreters();
+      })
+      .subscribe(status => {
+        console.log(`[AdminDashboard] Interpreter profiles subscription status:`, status);
+      });
+    
+    channels.push(interpreterChannel);
+
+    // Channel for private reservations changes
+    const reservationsChannel = supabase.channel('admin-private-reservations')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'private_reservations'
+      }, async payload => {
+        console.log(`[AdminDashboard] Private reservations changed:`, payload);
+        await fetchInterpreters();
+      })
+      .subscribe(status => {
+        console.log(`[AdminDashboard] Private reservations subscription status:`, status);
+      });
+    
+    channels.push(reservationsChannel);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("[AdminDashboard] Tab became visible, refreshing data");
+        fetchInterpreters();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleConnectionState = () => {
+      const connectionState = supabase.getChannels().length > 0;
+      console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
+      if (!connectionState) {
+        console.log("[AdminDashboard] Attempting to reconnect...");
+        channels.forEach(channel => channel.subscribe());
+      }
+    };
+
+    const connectionCheckInterval = setInterval(handleConnectionState, 30000);
+
+    // Initial fetch
+    fetchInterpreters();
+
+    return () => {
+      console.log("[AdminDashboard] Cleaning up subscriptions");
+      channels.forEach(channel => {
+        supabase.removeChannel(channel);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(connectionCheckInterval);
+    };
+  }, []);
+
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
@@ -176,66 +245,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
-  useEffect(() => {
-    console.log("[AdminDashboard] Setting up real-time subscriptions");
-    const channels: RealtimeChannel[] = [];
-    const setupChannel = (channelName: string, table: string) => {
-      const channel = supabase.channel(`admin-${channelName}`).on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: table
-      }, async payload => {
-        console.log(`[AdminDashboard] ${table} changed:`, payload);
-        await fetchInterpreters();
-      }).subscribe(status => {
-        console.log(`[AdminDashboard] ${channelName} subscription status:`, status);
-        if (status === 'SUBSCRIBED') {
-          console.log(`[AdminDashboard] Successfully subscribed to ${channelName}`);
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error(`[AdminDashboard] Error in ${channelName} channel`);
-          setTimeout(() => {
-            channel.subscribe();
-          }, 5000);
-        }
-      });
-      channels.push(channel);
-      return channel;
-    };
-    setupChannel('interpreter-profiles', 'interpreter_profiles');
-    setupChannel('missions', 'interpretation_missions');
-    setupChannel('user-roles', 'user_roles');
-    setupChannel('mission-notifications', 'mission_notifications');
-    setupChannel('chat-messages', 'chat_messages');
-    setupChannel('message-mentions', 'message_mentions');
-    setupChannel('channel-members', 'channel_members');
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log("[AdminDashboard] Tab became visible, refreshing data");
-        fetchInterpreters();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    const handleConnectionState = () => {
-      const connectionState = supabase.getChannels().length > 0;
-      console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
-      if (!connectionState) {
-        console.log("[AdminDashboard] Attempting to reconnect...");
-        channels.forEach(channel => channel.subscribe());
-      }
-    };
-    const connectionCheckInterval = setInterval(handleConnectionState, 30000);
-    fetchInterpreters();
-    return () => {
-      console.log("[AdminDashboard] Cleaning up subscriptions");
-      channels.forEach(channel => {
-        supabase.removeChannel(channel);
-      });
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(connectionCheckInterval);
-    };
-  }, []);
 
   const resetAllFilters = () => {
     setSelectedStatus(null);
