@@ -78,11 +78,35 @@ export const UserManagement = () => {
   const handleAddInterpreter = async (data: any) => {
     try {
       setIsAddingInterpreter(true);
-      const { error } = await supabase.functions.invoke('send-invitation-email', {
+      console.log('Creating interpreter with data:', data);
+
+      // Validate required fields
+      if (!data.employment_status) {
+        throw new Error("Le statut professionnel est requis");
+      }
+      if (!data.languages || data.languages.length === 0) {
+        throw new Error("Au moins une paire de langues est requise");
+      }
+      if (typeof data.tarif_15min !== 'number' || data.tarif_15min < 0) {
+        throw new Error("Le tarif pour 15 minutes doit être un nombre positif");
+      }
+      if (typeof data.tarif_5min !== 'number' || data.tarif_5min < 0) {
+        throw new Error("Le tarif pour 5 minutes doit être un nombre positif");
+      }
+
+      const { data: response, error } = await supabase.functions.invoke('send-invitation-email', {
         body: data,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      if (!response?.success) {
+        console.error('Invalid response:', response);
+        throw new Error(response?.message || "Erreur lors de la création de l'interprète");
+      }
 
       const loadingToast = showLoadingToast(
         "Invitation en cours",
@@ -100,7 +124,11 @@ export const UserManagement = () => {
       setIsAddUserOpen(false);
       queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error: any) {
-      showErrorToast("Impossible d'ajouter l'interprète", error);
+      console.error('Error creating interpreter:', error);
+      showErrorToast(
+        "Impossible d'ajouter l'interprète",
+        error.message || "Une erreur est survenue lors de la création"
+      );
     } finally {
       setIsAddingInterpreter(false);
     }

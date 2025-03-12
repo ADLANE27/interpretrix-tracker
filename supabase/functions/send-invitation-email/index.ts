@@ -68,13 +68,33 @@ Deno.serve(async (req) => {
       const rawData = await req.json();
       console.log('Received raw data:', JSON.stringify(rawData, null, 2));
 
+      if (!rawData.email || !rawData.first_name || !rawData.last_name) {
+        throw new Error('Missing required fields: email, first_name, or last_name');
+      }
+
+      if (!rawData.employment_status) {
+        throw new Error('Missing required field: employment_status');
+      }
+
+      if (!rawData.languages || !Array.isArray(rawData.languages) || rawData.languages.length === 0) {
+        throw new Error('At least one language pair is required');
+      }
+
+      if (typeof rawData.tarif_15min !== 'number' || rawData.tarif_15min < 0) {
+        throw new Error('Invalid tarif_15min value');
+      }
+
+      if (typeof rawData.tarif_5min !== 'number' || rawData.tarif_5min < 0) {
+        throw new Error('Invalid tarif_5min value');
+      }
+
       if (Array.isArray(rawData.languages)) {
         interpreterData = {
           ...rawData,
           languages: rawData.languages.map((lang: any) => {
             if (typeof lang === 'string') {
               const [source, target] = lang.split('→');
-              return { source, target };
+              return { source: source.trim(), target: target.trim() };
             }
             return lang;
           })
@@ -87,30 +107,13 @@ Deno.serve(async (req) => {
     } catch (error) {
       console.error('Error parsing request body:', error);
       return new Response(
-        JSON.stringify({ error: 'Invalid request body' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid request data: ' + error.message 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
-
-    if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, first_name, or last_name' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    if (!interpreterData.languages || interpreterData.languages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'At least one language pair is required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    const formattedLanguages = interpreterData.languages.map(lang => 
-      `${lang.source}→${lang.target}`
-    );
-
-    console.log('Transformed languages:', formattedLanguages);
 
     const password = interpreterData.password || Math.random().toString(36).slice(-12);
     
@@ -128,14 +131,20 @@ Deno.serve(async (req) => {
     if (createError) {
       console.error('Error creating user:', createError);
       return new Response(
-        JSON.stringify({ error: createError.message }),
+        JSON.stringify({ 
+          success: false,
+          error: createError.message 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
     if (!authData?.user) {
       return new Response(
-        JSON.stringify({ error: 'User creation succeeded but no user data returned' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'User creation succeeded but no user data returned' 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -166,7 +175,9 @@ Deno.serve(async (req) => {
         last_name: interpreterData.last_name,
         email: interpreterData.email,
         employment_status: interpreterData.employment_status,
-        languages: formattedLanguages,
+        languages: interpreterData.languages.map(lang => 
+          `${lang.source}→${lang.target}`
+        ),
         phone_number: interpreterData.phone_number || null,
         birth_country: interpreterData.birth_country || null,
         nationality: interpreterData.nationality || null,
@@ -234,6 +245,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ 
+        success: true,
         message: 'Interpreter created successfully',
         user: authData.user 
       }),
@@ -246,7 +258,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in send-invitation-email:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
