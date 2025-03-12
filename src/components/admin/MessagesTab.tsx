@@ -797,9 +797,9 @@ export const MessagesTab = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="border-t p-4 md:p-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-area-bottom">
+              <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-area-bottom">
                 {replyTo && (
-                  <div className="flex items-center gap-2 mb-4 px-4 py-2.5 bg-accent/50 rounded-lg border border-border/50">
+                  <div className="flex items-center gap-2 p-3 mx-4 mt-4 bg-accent/50 rounded-lg border border-border/50">
                     <span className="text-sm text-muted-foreground">
                       En réponse à : {replyTo.sender?.name}
                     </span>
@@ -816,71 +816,67 @@ export const MessagesTab = () => {
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   sendMessage(e);
-                }}>
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1 relative">
-                      <Input
-                        ref={inputRef}
-                        value={newMessage}
-                        onChange={handleInput}
-                        placeholder="Écrivez un message..."
-                        className="min-h-[56px] pr-36 pl-4 text-base leading-relaxed shadow-sm border-input/75 hover:border-purple-400/75 focus-visible:ring-purple-500/50"
+                }} className="p-4">
+                  <div className="relative">
+                    <Input
+                      ref={inputRef}
+                      value={newMessage}
+                      onChange={handleInput}
+                      placeholder="Écrivez un message..."
+                      className="min-h-[64px] pr-36 pl-4 text-base leading-relaxed shadow-sm border-input/75 hover:border-purple-400/75 focus-visible:ring-purple-500/50"
+                    />
+                    {showMentions && (
+                      <MentionSuggestions
+                        suggestions={suggestions}
+                        onSelect={handleMentionSelect}
+                        visible={showMentions}
                       />
-                      {showMentions && (
-                        <MentionSuggestions
-                          suggestions={suggestions}
-                          onSelect={handleMentionSelect}
-                          visible={showMentions}
-                        />
-                      )}
-                      <div className="absolute right-3 bottom-1/2 translate-y-1/2 flex items-center gap-2.5">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 hover:bg-accent transition-colors"
-                            >
-                              <Smile className="h-5 w-5" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" side="top" align="end">
-                            <Picker
-                              data={data}
-                              onEmojiSelect={(emoji: any) => {
-                                handleEmojiSelect(emoji);
-                              }}
-                              locale="fr"
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          multiple
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 hover:bg-accent transition-colors"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isUploading}
-                        >
-                          <Paperclip className="h-5 w-5" />
-                        </Button>
-                        <Button
-                          type="submit"
-                          size="icon"
-                          className="h-9 w-9"
-                          disabled={!newMessage.trim() || isUploading}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    )}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2.5">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 hover:bg-accent/80 transition-colors rounded-full"
+                          >
+                            <Smile className="h-5 w-5 text-muted-foreground" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" side="top" align="end">
+                          <Picker
+                            data={data}
+                            onEmojiSelect={handleEmojiSelect}
+                            locale="fr"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        multiple
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 hover:bg-accent/80 transition-colors rounded-full"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        <Paperclip className="h-5 w-5 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="h-9 w-9 bg-purple-500 hover:bg-purple-600 rounded-full"
+                        disabled={!newMessage.trim() || isUploading}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </form>
