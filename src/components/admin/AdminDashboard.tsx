@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -89,12 +90,24 @@ const AdminDashboard = () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
       const { data, error } = await supabase
-        .from("interpreters_with_next_mission")
-        .select();
+        .from("interpreter_profiles")  // Changed from interpreters_with_next_mission to interpreter_profiles
+        .select(`
+          *,
+          next_mission:interpretation_missions!inner(
+            id,
+            scheduled_start_time,
+            estimated_duration
+          )
+        `);
 
       if (error) throw error;
 
-      const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
+      // Remove duplicates based on interpreter ID
+      const uniqueInterpreters = Array.from(new Map(
+        (data || []).map(item => [item.id, item])
+      ).values());
+
+      const mappedInterpreters: Interpreter[] = uniqueInterpreters.map(interpreter => {
         let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, any>;
@@ -121,8 +134,8 @@ const AdminDashboard = () => {
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
           phone_number: interpreter.phone_number,
           birth_country: interpreter.birth_country,
-          next_mission_start: interpreter.next_mission_start,
-          next_mission_duration: interpreter.next_mission_duration,
+          next_mission_start: interpreter.next_mission?.[0]?.scheduled_start_time || null,
+          next_mission_duration: interpreter.next_mission?.[0]?.estimated_duration || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: interpreter.last_seen_at,
