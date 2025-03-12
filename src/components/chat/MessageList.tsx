@@ -150,18 +150,9 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div key={index} className="relative group max-w-sm">
             <MessageAttachment
               url={attachment.url}
-              filename={attachment.filename}
+              filename={attachment.file.name}
               locale="fr"
             />
-            {message.sender.id === currentUserId && (
-              <button
-                onClick={() => onDeleteMessage(message.id)}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                aria-label="Supprimer la pièce jointe"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </button>
-            )}
           </div>
         ))}
       </div>
@@ -169,12 +160,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-4 px-4">
+    <div className="space-y-4 px-4 bg-[#F1F1F1] min-h-full">
       {messages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
             <div className="flex justify-center my-3">
-              <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-[13px]">
+              <div className="bg-[#E2E2E2] text-[#8A898C] px-3 py-1 rounded-full text-[13px]">
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -206,9 +197,9 @@ export const MessageList: React.FC<MessageListProps> = ({
               )}
             </div>
           )}
-          <div ref={messagesEndRef} />
         </React.Fragment>
       ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 };
