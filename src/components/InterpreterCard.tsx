@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -30,6 +31,13 @@ interface InterpreterCardProps {
   };
 }
 
+const statusLabels = {
+  available: 'Disponible',
+  busy: 'En appel',
+  pause: 'En pause',
+  unavailable: 'Indisponible',
+};
+
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
   const parsedLanguages = interpreter.languages
     .map(lang => {
@@ -45,10 +53,17 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
         <div className="flex items-center space-x-2">
           <Badge variant="secondary">{employmentStatusLabels[interpreter.employment_status]}</Badge>
           <Badge
-            className={`text-white ${interpreter.status === 'available' ? 'bg-green-500' : interpreter.status === 'busy' ? 'bg-red-500' : interpreter.status === 'pause' ? 'bg-yellow-500' : 'bg-gray-500'
-              }`}
+            className={`text-white ${
+              interpreter.status === 'available'
+                ? 'bg-green-500'
+                : interpreter.status === 'busy'
+                ? 'bg-red-500'
+                : interpreter.status === 'pause'
+                ? 'bg-yellow-500'
+                : 'bg-gray-500'
+            }`}
           >
-            {interpreter.status}
+            {statusLabels[interpreter.status]}
           </Badge>
         </div>
         <div className="flex items-center space-x-2">
