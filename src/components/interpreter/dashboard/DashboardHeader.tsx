@@ -1,9 +1,9 @@
+
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "../ThemeToggle";
 import { StatusManager } from "../StatusManager";
 import { Profile } from "@/types/profile";
-import { HowToUseGuide } from "../HowToUseGuide";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
