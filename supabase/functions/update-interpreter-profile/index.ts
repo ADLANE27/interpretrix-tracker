@@ -1,7 +1,6 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
-import { LanguagePair } from '../_shared/types.ts';
+import { LanguagePair, isValidLanguagePair } from '../_shared/types.ts';
 
 interface UpdateProfileData {
   id: string;
@@ -68,24 +67,22 @@ Deno.serve(async (req) => {
       'phone_number', 'address', 'birth_country', 'nationality', 'siret_number',
       'vat_number', 'specializations', 'landline_phone', 'tarif_15min',
       'tarif_5min', 'booth_number', 'private_phone', 'professional_phone',
-      'work_hours', 'languages'  // Added languages to allowed fields
+      'work_hours', 'languages'
     ];
 
-    // Process languages before other fields
+    // Process languages first, with validation and proper formatting
     if ('languages' in profileData && Array.isArray(profileData.languages)) {
-      const formattedLanguages = profileData.languages
-        .filter((lang): lang is LanguagePair => (
-          Boolean(lang) && 
-          typeof lang === 'object' && 
-          typeof lang.source === 'string' && 
-          typeof lang.target === 'string' &&
-          lang.source.trim() !== '' && 
-          lang.target.trim() !== ''
-        ))
+      const validLanguages = profileData.languages
+        .filter(isValidLanguagePair)
         .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
       
-      console.log('Formatted languages:', formattedLanguages);
-      updateData.languages = formattedLanguages;
+      console.log('Formatted languages:', validLanguages);
+      
+      if (validLanguages.length > 0) {
+        updateData.languages = validLanguages;
+      } else {
+        console.warn('No valid language pairs found in update data');
+      }
     }
 
     // Process all other fields
@@ -150,4 +147,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
