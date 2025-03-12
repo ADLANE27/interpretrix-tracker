@@ -17,13 +17,11 @@ export const useProfileUpdate = () => {
     setIsSubmitting(true);
     
     try {
-      // Transform the data
       const transformedData = {
         ...data,
         languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
       };
       
-      // Remove any potential active field
       delete (transformedData as any).active;
       
       // Start optimistic update
@@ -43,7 +41,6 @@ export const useProfileUpdate = () => {
         };
       });
 
-      // Trigger the update
       const { error } = await supabase
         .from('interpreter_profiles')
         .update(transformedData)
@@ -56,8 +53,7 @@ export const useProfileUpdate = () => {
         description: "Le profil a été mis à jour avec succès",
       });
 
-      // Refresh the data to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
 
       return { success: true };
     } catch (error: any) {
@@ -68,8 +64,7 @@ export const useProfileUpdate = () => {
         variant: "destructive",
       });
       
-      // Revert optimistic update on error
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       
       return { success: false, error };
     } finally {
