@@ -118,6 +118,8 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
+      console.log("[AdminDashboard] Raw data:", data); // Debug log
+
       const uniqueInterpreters = Array.from(new Map(
         (data || []).map(item => [item.id, item])
       ).values());
@@ -134,23 +136,31 @@ const AdminDashboard = () => {
           };
         }
 
-        let nextMissionStart = null;
-        let nextMissionDuration = null;
-        let nextMissionSourceLang = null;
-        let nextMissionTargetLang = null;
-
         const now = new Date();
 
+        // Find next scheduled mission
         const upcomingMission = interpreter.next_mission?.find(mission => 
           mission?.scheduled_start_time && new Date(mission.scheduled_start_time) > now
         );
 
+        // Find next private reservation with 'scheduled' status
         const upcomingReservation = interpreter.private_reservations?.find(reservation => 
           reservation?.start_time && 
           new Date(reservation.start_time) > now && 
           reservation.status === 'scheduled'
         );
 
+        console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name}:`, {
+          upcomingMission,
+          upcomingReservation
+        }); // Debug log
+
+        let nextMissionStart = null;
+        let nextMissionDuration = null;
+        let nextMissionSourceLang = null;
+        let nextMissionTargetLang = null;
+
+        // Compare dates to determine which comes first
         if (upcomingMission && upcomingReservation) {
           const missionDate = new Date(upcomingMission.scheduled_start_time);
           const reservationDate = new Date(upcomingReservation.start_time);
@@ -177,6 +187,13 @@ const AdminDashboard = () => {
           nextMissionSourceLang = upcomingMission.source_language;
           nextMissionTargetLang = upcomingMission.target_language;
         }
+
+        console.log(`[AdminDashboard] Next mission for ${interpreter.first_name} ${interpreter.last_name}:`, {
+          nextMissionStart,
+          nextMissionDuration,
+          nextMissionSourceLang,
+          nextMissionTargetLang
+        }); // Debug log
 
         return {
           id: interpreter.id || "",
@@ -633,4 +650,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-
