@@ -31,13 +31,21 @@ interface UserTableProps {
   users: UserData[];
   onDelete: (id: string) => void;
   onResetPassword: (id: string, password: string) => void;
+  isSubmitting: boolean;
+  setIsSubmitting: (value: boolean) => void;
 }
 
-export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
+export const UserTable = ({ 
+  users, 
+  onDelete, 
+  onResetPassword,
+  isSubmitting,
+  setIsSubmitting 
+}: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const { updateProfile, isSubmitting } = useProfileUpdate();
+  const { updateProfile } = useProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);

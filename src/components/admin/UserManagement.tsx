@@ -212,6 +212,8 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
           />
         </div>
 
@@ -227,6 +229,8 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
           />
         </div>
       </div>
