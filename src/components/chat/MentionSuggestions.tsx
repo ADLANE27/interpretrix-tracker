@@ -3,6 +3,7 @@ import React from 'react';
 import { Command, CommandGroup, CommandItem, CommandList, CommandInput } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Languages } from 'lucide-react';
+import { LANGUAGES } from '@/lib/constants';
 
 interface MemberSuggestion {
   id: string;
@@ -29,10 +30,20 @@ export const MentionSuggestions = ({
   onSelect, 
   visible 
 }: MentionSuggestionsProps) => {
-  if (!visible || !Array.isArray(suggestions) || suggestions.length === 0) return null;
+  if (!visible) return null;
+
+  // Convert standardized languages to suggestions format
+  const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
+    name: lang,
+    type: 'language'
+  }));
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
-  const languageSuggestions = suggestions.filter((s): s is LanguageSuggestion => 'type' in s && s.type === 'language');
+  const languageSuggestions = standardLanguageSuggestions;
+
+  if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
+    return null;
+  }
 
   return (
     <div className="absolute bottom-full mb-1 w-64 z-50">
@@ -70,21 +81,19 @@ export const MentionSuggestions = ({
               </CommandGroup>
             )}
 
-            {languageSuggestions.length > 0 && (
-              <CommandGroup heading="Langues">
-                {languageSuggestions.map((lang) => (
-                  <CommandItem
-                    key={lang.name}
-                    value={lang.name.toLowerCase()}
-                    onSelect={() => onSelect(lang)}
-                    className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
-                  >
-                    <Languages className="h-4 w-4" />
-                    <div className="font-medium">{lang.name}</div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
+            <CommandGroup heading="Langues">
+              {languageSuggestions.map((lang) => (
+                <CommandItem
+                  key={lang.name}
+                  value={lang.name.toLowerCase()}
+                  onSelect={() => onSelect(lang)}
+                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
+                >
+                  <Languages className="h-4 w-4" />
+                  <div className="font-medium">{lang.name}</div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </ScrollArea>
         </CommandList>
       </Command>
