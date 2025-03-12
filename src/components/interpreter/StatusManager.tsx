@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -26,36 +27,36 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   // Subscribe to status changes
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setStatus('unavailable');
-      }
-    });
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const channel = supabase.channel('interpreter-status')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${(async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          return user?.id;
-        })()}`
-      }, async payload => {
-        console.log('[StatusManager] Status update received:', payload);
-        const newStatus = payload.new.status;
-        if (isValidStatus(newStatus)) {
-          setStatus(newStatus);
-        }
-      })
-      .subscribe(status => {
-        console.log('[StatusManager] Status subscription status:', status);
-      });
+      console.log('[StatusManager] Setting up subscription for user:', user.id);
 
-    return () => {
-      authListener.subscription.unsubscribe();
-      supabase.removeChannel(channel);
+      const channel = supabase.channel('interpreter-status')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${user.id}`
+        }, async payload => {
+          console.log('[StatusManager] Status update received:', payload);
+          const newStatus = payload.new.status;
+          if (isValidStatus(newStatus)) {
+            setStatus(newStatus);
+          }
+        })
+        .subscribe(status => {
+          console.log('[StatusManager] Status subscription status:', status);
+        });
+
+      return () => {
+        console.log('[StatusManager] Cleaning up subscription');
+        supabase.removeChannel(channel);
+      };
     };
+
+    setupSubscription();
   }, []);
 
   const isValidStatus = (status: string): status is Status => {
