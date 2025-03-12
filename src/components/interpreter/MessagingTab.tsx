@@ -55,8 +55,8 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full">
-      <div className="container mx-auto p-0 sm:p-4 h-full">
+    <div className="flex-1 h-full">
+      <div className="container mx-auto p-0 sm:p-4 h-full pt-[180px] md:pt-[140px]">
         <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
           <div className={cn(
             "flex flex-col gap-3 sm:gap-6 h-full",
@@ -103,7 +103,7 @@ export const MessagingTab = () => {
                 "transition-all duration-300 hover:shadow-xl rounded-lg",
                 "dark:from-gray-800 dark:to-gray-900",
                 "order-2",
-                isMobile && "fixed inset-x-0 bottom-0 z-30 m-0 rounded-none h-[calc(100vh-180px)] overflow-y-auto"
+                isMobile && "h-full"
               )}>
                 <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
                   <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
