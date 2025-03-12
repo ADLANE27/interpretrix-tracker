@@ -46,6 +46,7 @@ export const UserTable = ({
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const { updateProfile } = useProfileUpdate();
+  const { toast } = useToast();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
@@ -64,6 +65,13 @@ export const UserTable = ({
   const handleSendPasswordReset = async (user: UserData) => {
     try {
       setIsSubmitting(true);
+      
+      // Start optimistic UI update
+      toast({
+        title: "Envoi en cours",
+        description: "Envoi de l'email de réinitialisation...",
+      });
+
       const { error } = await supabase.functions.invoke('send-password-reset-email', {
         body: { 
           user_id: user.id,
@@ -80,6 +88,7 @@ export const UserTable = ({
         description: "L'email de réinitialisation du mot de passe a été envoyé",
       });
     } catch (error: any) {
+      console.error('Error sending password reset:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer l'email: " + error.message,

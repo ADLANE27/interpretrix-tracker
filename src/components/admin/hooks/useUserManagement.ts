@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -127,20 +126,20 @@ export const useUserManagement = () => {
 
   useEffect(() => {
     console.log("[useUserManagement] Setting up real-time subscriptions");
-    const channel = supabase.channel('user-management')
+    const channel = supabase.channel('user-management-changes')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'interpreter_profiles'
       }, () => {
         console.log('[useUserManagement] Profile changes detected, refetching...');
-        refetch();
+        queryClient.invalidateQueries({ queryKey: ['users'] });
       })
       .subscribe();
 
     const handleRefetch = () => {
       console.log('[useUserManagement] Manual refetch triggered');
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     };
 
     window.addEventListener('refetchUserData', handleRefetch);
@@ -150,7 +149,7 @@ export const useUserManagement = () => {
       window.removeEventListener('refetchUserData', handleRefetch);
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [queryClient]);
 
   const handleDeleteUser = async (userId: string) => {
     try {
@@ -165,7 +164,7 @@ export const useUserManagement = () => {
         description: "L'utilisateur a été supprimé avec succès",
       });
 
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -181,109 +180,30 @@ export const useUserManagement = () => {
     try {
       setIsSubmitting(true);
       
-      console.log('Incoming profile data:', data);
-      
+      queryClient.setQueryData(['users'], (oldData: any) => {
+        const updatedInterpreters = oldData.interpreters.map((interpreter: UserData) => {
+          if (interpreter.id === selectedUser.id) {
+            return { ...interpreter, ...data };
+          }
+          return interpreter;
+        });
+        return { ...oldData, interpreters: updatedInterpreters };
+      });
+
       const transformedData = {
         ...data,
         languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
-        work_hours: data.work_hours ? {
-          start_morning: data.work_hours.start_morning,
-          end_morning: data.work_hours.end_morning,
-          start_afternoon: data.work_hours.start_afternoon,
-          end_afternoon: data.work_hours.end_afternoon
-        } : null,
-        address: data.address ? {
-          street: data.address.street,
-          postal_code: data.address.postal_code,
-          city: data.address.city
-        } : null,
-        booth_number: data.booth_number === '' ? null : data.booth_number,
-        private_phone: data.private_phone === '' ? null : data.private_phone,
-        professional_phone: data.professional_phone === '' ? null : data.professional_phone,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        phone_number: data.phone_number,
-        employment_status: data.employment_status,
-        status: data.status,
-        birth_country: data.birth_country,
-        nationality: data.nationality,
-        siret_number: data.siret_number,
-        vat_number: data.vat_number,
-        specializations: data.specializations,
-        landline_phone: data.landline_phone,
-        tarif_15min: data.tarif_15min,
-        tarif_5min: data.tarif_5min
-      };
-      
-      console.log('Complete transformed data:', transformedData);
-
-      const cleanedData = Object.fromEntries(
-        Object.entries(transformedData)
-          .filter(([key, value]) => value !== undefined && key !== 'active')
-      );
-      
-      console.log('Cleaned data being sent for update:', cleanedData);
-
-      const { data: currentData, error: checkError } = await supabase
-        .from('interpreter_profiles')
-        .select('*')
-        .eq('id', selectedUser.id)
-        .single();
-
-      if (checkError) {
-        console.error('Error checking current data:', checkError);
-        throw checkError;
-      }
-
-      console.log('Current data in database:', currentData);
-      
-      const { data: updatedData, error } = await supabase
-        .from('interpreter_profiles')
-        .update(cleanedData)
-        .eq('id', selectedUser.id)
-        .select('*');
-
-      if (error) {
-        console.error('Error updating profile:', error);
-        throw error;
-      }
-
-      if (!updatedData || updatedData.length === 0) {
-        throw new Error("Update didn't return any data");
-      }
-
-      console.log('Successfully updated data:', updatedData[0]);
-
-      const transformedProfile: Profile = {
-        ...updatedData[0],
-        languages: (updatedData[0].languages || []).map(parseLanguageString),
-        status: updatedData[0].status as Profile['status'],
-        work_hours: updatedData[0].work_hours && typeof updatedData[0].work_hours === 'object' ? {
-          start_morning: String((updatedData[0].work_hours as Record<string, unknown>).start_morning || '09:00'),
-          end_morning: String((updatedData[0].work_hours as Record<string, unknown>).end_morning || '13:00'),
-          start_afternoon: String((updatedData[0].work_hours as Record<string, unknown>).start_afternoon || '14:00'),
-          end_afternoon: String((updatedData[0].work_hours as Record<string, unknown>).end_afternoon || '17:00')
-        } : null,
-        address: updatedData[0].address && typeof updatedData[0].address === 'object' ? {
-          street: String((updatedData[0].address as Record<string, unknown>).street || ''),
-          postal_code: String((updatedData[0].address as Record<string, unknown>).postal_code || ''),
-          city: String((updatedData[0].address as Record<string, unknown>).city || '')
-        } : null,
-        employment_status: updatedData[0].employment_status,
-        specializations: updatedData[0].specializations || [],
-        profile_picture_url: updatedData[0].profile_picture_url || null,
-        booth_number: updatedData[0].booth_number,
-        private_phone: updatedData[0].private_phone,
-        professional_phone: updatedData[0].professional_phone,
-        password_changed: updatedData[0].password_changed || false,
       };
 
-      setSelectedUser(transformedProfile);
-      
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
-      await refetch();
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(transformedData)
+        .eq('id', selectedUser.id);
 
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
@@ -296,6 +216,8 @@ export const useUserManagement = () => {
         description: "Impossible de mettre à jour le profil: " + error.message,
         variant: "destructive",
       });
+      
+      queryClient.invalidateQueries({ queryKey: ['users'] });
     } finally {
       setIsSubmitting(false);
     }

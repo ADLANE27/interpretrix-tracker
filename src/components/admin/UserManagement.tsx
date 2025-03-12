@@ -26,6 +26,7 @@ export const UserManagement = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const {
     users,
@@ -34,7 +35,6 @@ export const UserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
-    queryClient,
     isSubmitting,
     setIsSubmitting,
     refetch
@@ -53,6 +53,12 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
       
+      // Start optimistic UI update
+      toast({
+        title: "Mise à jour en cours",
+        description: "Le mot de passe est en cours de mise à jour...",
+      });
+
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
@@ -69,10 +75,7 @@ export const UserManagement = () => {
         description: "Le mot de passe a été mis à jour avec succès",
       });
 
-      // First invalidate the query cache
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      
-      // Reset state
       setIsResetPasswordOpen(false);
       setSelectedUserId(null);
 
