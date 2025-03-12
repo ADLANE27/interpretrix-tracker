@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -175,12 +176,13 @@ export const useUserManagement = () => {
 
       if (error) throw error;
 
+      // Instead of dispatching a global event, invalidate the users query
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+
       toast({
         title: "Profil mis à jour",
         description: "Le profil a été mis à jour avec succès",
       });
-
-      window.dispatchEvent(new Event('refetchUserData'));
       
     } catch (error: any) {
       toast({
