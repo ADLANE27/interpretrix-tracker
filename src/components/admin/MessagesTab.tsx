@@ -458,16 +458,85 @@ export const MessagesTab = () => {
     fetchChannels();
   };
 
-  const renderMessageContent = (content: string) => {
-    try {
-      const data = JSON.parse(content);
-      if (data.type === 'attachment' && data.file) {
-        return <MessageAttachment url={data.file.url} filename={data.file.name} />;
-      }
-    } catch (e) {
-      return <p className="ml-10">{content}</p>;
-    }
-    return <p className="ml-10">{content}</p>;
+  const currentUser = supabase.auth.user();
+
+  const renderMessageContent = (message: Message) => {
+    const isCurrentUser = message.sender?.id === currentUser?.id;
+
+    return (
+      <Card 
+        key={message.id} 
+        className={`border-0 shadow-none bg-transparent p-0 mb-2 group`}
+      >
+        <div className={`flex gap-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
+          {!isCurrentUser && (
+            <Avatar className="h-8 w-8">
+              {message.sender?.avatarUrl && (
+                <AvatarImage src={message.sender.avatarUrl} />
+              )}
+              <AvatarFallback>
+                {message.sender?.name?.substring(0, 2) || '??'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          
+          <div className={`flex-1 max-w-[75%] space-y-1 ${
+            isCurrentUser ? 'items-end' : 'items-start'
+          }`}>
+            {!isCurrentUser && (
+              <span className="text-xs font-medium text-gray-600 ml-1">
+                {message.sender?.name}
+              </span>
+            )}
+            
+            <div className={`group relative ${
+              isCurrentUser 
+                ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl ml-auto' 
+                : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm'
+            } px-3 py-2 break-words`}>
+              <div className="text-[15px]">
+                {(() => {
+                  try {
+                    const data = JSON.parse(message.content);
+                    if (data.type === 'attachment' && data.file) {
+                      return <MessageAttachment url={data.file.url} filename={data.file.name} />;
+                    }
+                  } catch (e) {
+                    return message.content;
+                  }
+                  return message.content;
+                })()}
+              </div>
+              
+              <div className="absolute right-2 bottom-1 flex items-center gap-1">
+                <span className="text-[11px] text-gray-500">
+                  {format(new Date(message.created_at), 'HH:mm')}
+                </span>
+              </div>
+            </div>
+
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteMessage(message.id, message.sender_id)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleReply(message)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+              >
+                <MessageSquare className="h-4 w-4 text-gray-500" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
   };
 
   const handleDeleteChannel = async () => {
@@ -708,94 +777,8 @@ export const MessagesTab = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => (
-                  <Card key={message.id} className="p-4 group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          {message.sender?.avatarUrl && (
-                            <AvatarImage src={message.sender.avatarUrl} />
-                          )}
-                          <AvatarFallback>
-                            {message.sender?.name.substring(0, 2) || '??'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-sm">{message.sender?.name || 'Unknown User'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(message.created_at), "PPp", { locale: fr })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleReply(message)}
-                          className="h-8 w-8"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                        {message.sender?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMessage(message.id, message.sender_id)}
-                            className="h-8 w-8"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    {renderMessageContent(message.content)}
-                    
-                    {messageThreads[message.id]?.length > 1 && (
-                      <div className="ml-10 mt-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleThread(message.id)}
-                          className="text-xs text-gray-500 hover:text-gray-700"
-                        >
-                          {expandedThreads.has(message.id) ? (
-                            <ChevronDown className="h-4 w-4 mr-1" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 mr-1" />
-                          )}
-                          {messageThreads[message.id].length - 1} réponses
-                        </Button>
-                        
-                        {expandedThreads.has(message.id) && (
-                          <div className="space-y-2 mt-2">
-                            {messageThreads[message.id]
-                              .filter(reply => reply.id !== message.id)
-                              .map(reply => (
-                                <Card key={reply.id} className="p-3 bg-accent/50">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Avatar className="h-6 w-6">
-                                      {reply.sender?.avatarUrl && (
-                                        <AvatarImage src={reply.sender.avatarUrl} />
-                                      )}
-                                      <AvatarFallback>
-                                        {reply.sender?.name.substring(0, 2) || '??'}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-sm font-medium">{reply.sender?.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {format(new Date(reply.created_at), "HH:mm", { locale: fr })}
-                                    </span>
-                                  </div>
-                                  {renderMessageContent(reply.content)}
-                                </Card>
-                              ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Card>
-                ))}
+              <div className="flex-1 overflow-y-auto bg-[#F1F1F1] p-4 space-y-4">
+                {messages.map((message) => renderMessageContent(message))}
                 <div ref={messagesEndRef} />
               </div>
 
