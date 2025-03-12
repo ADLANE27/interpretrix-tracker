@@ -25,6 +25,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
 import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
+import { useTabPersistence } from "@/hooks/useTabPersistence";
 
 interface WorkHours {
   start_morning?: string;
@@ -73,7 +74,6 @@ const AdminDashboard = () => {
   } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState("interpreters");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
 
@@ -86,6 +86,8 @@ const AdminDashboard = () => {
     { id: "users", label: "Utilisateurs" },
     { id: "guide", label: "Guide" },
   ];
+
+  const { activeTab, setActiveTab } = useTabPersistence("interpreters");
 
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");

@@ -70,6 +70,10 @@ export const ResetPasswordDialog = ({
 
         resetForm();
         
+        // Preserve current tab before refreshing
+        const currentTab = localStorage.getItem('adminActiveTab') || 'users';
+        localStorage.setItem('adminActiveTab', currentTab);
+        
         // Set a small delay before refresh to allow the toast to be seen
         setTimeout(() => {
           window.location.reload();
