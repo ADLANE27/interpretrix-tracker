@@ -55,14 +55,52 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+    <div className={cn(
+      "flex flex-col gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative",
+      "lg:grid lg:grid-cols-3"
+    )}>
+      {(selectedChannelId && (!showChannels || !isMobile)) ? (
+        <Card className={cn(
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+          "hover:shadow-xl rounded-lg order-1",
+          "lg:col-span-2",
+          isMobile && "fixed inset-0 z-40 m-0 rounded-none"
+        )}>
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChannels(true)}
+              className="absolute top-2 left-2 z-10 h-8 px-2"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Retour
+            </Button>
+          )}
+          <InterpreterChat 
+            channelId={selectedChannelId}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+          />
+        </Card>
+      ) : !selectedChannelId && !isMobile ? (
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900 order-1">
+          <div className="text-center text-muted-foreground">
+            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+          </div>
+        </Card>
+      ) : null}
+
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
           "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          "order-2",
+          isMobile && "fixed inset-x-0 bottom-0 z-40 m-0 rounded-none max-h-[70vh] overflow-y-auto"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
             <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
@@ -97,40 +135,6 @@ export const MessagingTab = () => {
           />
         </Card>
       )}
-      
-      {(selectedChannelId && (!showChannels || !isMobile)) ? (
-        <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
-          "lg:col-span-2",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
-        )}>
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChannels(true)}
-              className="absolute top-2 left-2 z-10 h-8 px-2"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Retour
-            </Button>
-          )}
-          <InterpreterChat 
-            channelId={selectedChannelId}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onClearFilters={handleClearFilters}
-          />
-        </Card>
-      ) : !selectedChannelId && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
-          <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
-          </div>
-        </Card>
-      ) : null}
     </div>
   );
 };
