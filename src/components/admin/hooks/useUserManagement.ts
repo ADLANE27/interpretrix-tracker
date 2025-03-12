@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
 import { Profile } from "@/types/profile";
-import { convertLanguagePairsToStrings } from "@/types/languages";
+import { convertLanguagePairsToStrings, parseLanguageString } from "@/types/languages";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
@@ -175,7 +175,7 @@ export const useUserManagement = () => {
         .from('interpreter_profiles')
         .update(transformedData)
         .eq('id', selectedUser.id)
-        .select('*');  // Explicitly select all fields
+        .select('*');
 
       if (error) throw error;
 
@@ -185,11 +185,17 @@ export const useUserManagement = () => {
 
       console.log('Données mises à jour avec succès:', updatedData);
 
+      // Transform the Supabase data back to Profile format
+      const transformedProfile: Profile = {
+        ...updatedData[0],
+        languages: (updatedData[0].languages || []).map(parseLanguageString)
+      };
+
+      // Update local state with properly formatted data
+      setSelectedUser(transformedProfile);
+      
       // Invalider le cache pour forcer un rafraîchissement
       await queryClient.invalidateQueries({ queryKey: ['users'] });
-      
-      // Mettre à jour le state local
-      setSelectedUser(updatedData[0]);
       
       // Rafraîchir les données
       await refetch();
