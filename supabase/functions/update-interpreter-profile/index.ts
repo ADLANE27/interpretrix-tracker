@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    // Add other fields only if they are provided and not empty
+    // Add other fields only if they are provided
     if (profileData.first_name !== undefined) updateData.first_name = profileData.first_name;
     if (profileData.last_name !== undefined) updateData.last_name = profileData.last_name;
     if (profileData.employment_status !== undefined) updateData.employment_status = profileData.employment_status;
@@ -85,13 +85,12 @@ Deno.serve(async (req) => {
     if (profileData.landline_phone !== undefined) updateData.landline_phone = profileData.landline_phone;
     if (profileData.tarif_15min !== undefined) updateData.tarif_15min = profileData.tarif_15min;
     if (profileData.tarif_5min !== undefined) updateData.tarif_5min = profileData.tarif_5min;
-
-    // Special handling for the three problematic fields - only update if they have a value
-    if (profileData.booth_number) updateData.booth_number = profileData.booth_number;
-    if (profileData.private_phone) updateData.private_phone = profileData.private_phone;
-    if (profileData.professional_phone) updateData.professional_phone = profileData.professional_phone;
-    
     if (profileData.work_hours !== undefined) updateData.work_hours = profileData.work_hours;
+
+    // Always include these three fields in the update, even if they're empty strings
+    updateData.booth_number = profileData.booth_number ?? '';
+    updateData.private_phone = profileData.private_phone ?? '';
+    updateData.professional_phone = profileData.professional_phone ?? '';
 
     console.log('Updating profile with data:', updateData);
 
@@ -143,3 +142,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+

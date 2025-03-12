@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -46,12 +45,9 @@ export const useInterpreterProfileUpdate = () => {
           if (key === 'languages' && Array.isArray(value)) {
             profileData.languages = formatLanguagePairs(value as LanguagePair[]);
           } else {
-            // Explicitly handle the special fields we want to persist
+            // Always include these three fields, even if they're empty strings
             if (['booth_number', 'private_phone', 'professional_phone'].includes(key)) {
-              // Only include if value is not empty string
-              if (value !== undefined && value !== '') {
-                profileData[key] = value;
-              }
+              profileData[key] = value || ''; // Convert undefined/null to empty string
             } else {
               profileData[key] = value;
             }
