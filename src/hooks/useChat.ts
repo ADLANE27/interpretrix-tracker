@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -45,13 +44,12 @@ export const useChat = (channelId: string) => {
 
       const channelType = channelData.channel_type as 'group' | 'direct';
 
-      // Modified query to ensure proper ordering and limit
+      // Modified query to remove the limit
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true })
-        .limit(100); // Increased limit to ensure we get recent messages
+        .order('created_at', { ascending: true });
 
       if (messagesError) {
         console.error('[Chat] Error fetching messages:', messagesError);
