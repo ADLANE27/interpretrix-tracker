@@ -53,6 +53,8 @@ const getEmploymentStatusLabel = (status: string) => {
       return "Salarié PLANET";
     case "permanent_interpreter":
       return "Interprète permanent";
+    case "permanent_interpreter_aftcom":
+      return "Interprète Permanent AFTcom";
     case "self_employed":
       return "Externe";
     default:
