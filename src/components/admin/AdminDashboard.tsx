@@ -90,13 +90,16 @@ const AdminDashboard = () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
       const { data, error } = await supabase
-        .from("interpreter_profiles")  // Changed from interpreters_with_next_mission to interpreter_profiles
+        .from("interpreter_profiles")
         .select(`
           *,
           next_mission:interpretation_missions!inner(
             id,
             scheduled_start_time,
             estimated_duration
+          ),
+          connection:interpreter_connection_status!inner(
+            last_seen_at
           )
         `);
 
@@ -138,7 +141,7 @@ const AdminDashboard = () => {
           next_mission_duration: interpreter.next_mission?.[0]?.estimated_duration || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
-          last_seen_at: interpreter.last_seen_at,
+          last_seen_at: interpreter.connection?.[0]?.last_seen_at || null,
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
