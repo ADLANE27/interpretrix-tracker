@@ -33,7 +33,6 @@ export interface InterpreterFormData {
   email: string;
   first_name: string;
   last_name: string;
-  active: boolean;
   tarif_15min: number;
   tarif_5min: number;
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
@@ -82,7 +81,6 @@ export const InterpreterProfileForm = ({
     email: initialData?.email || "",
     first_name: initialData?.first_name || "",
     last_name: initialData?.last_name || "",
-    active: initialData?.active ?? true,
     tarif_15min: initialData?.tarif_15min || 0,
     tarif_5min: initialData?.tarif_5min || 0,
     employment_status: initialData?.employment_status || "salaried_aft",

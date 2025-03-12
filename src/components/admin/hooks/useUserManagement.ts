@@ -153,6 +153,40 @@ export const useUserManagement = () => {
     }
   };
 
+  const handleUpdateProfile = async (data: InterpreterFormData, interpreterId: string) => {
+    try {
+      setIsSubmitting(true);
+      
+      const transformedData = {
+        ...data,
+        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+      };
+      
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(transformedData)
+        .eq('id', interpreterId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil a été mis à jour avec succès",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredUsers = {
     admins: users.admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
@@ -178,6 +212,7 @@ export const useUserManagement = () => {
     queryClient,
     isSubmitting,
     setIsSubmitting,
-    refetch, // Add refetch to the return object
+    refetch,
+    handleUpdateProfile,
   };
 };
