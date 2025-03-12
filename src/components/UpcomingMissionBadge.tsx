@@ -1,4 +1,3 @@
-
 import { Clock } from "lucide-react";
 import { formatDistanceToNow, isAfter, isBefore, addMinutes, format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -22,7 +21,6 @@ export const UpcomingMissionBadge = ({
   const [now, setNow] = useState(() => new Date());
   
   useEffect(() => {
-    // Update time every minute
     const interval = setInterval(() => {
       setNow(new Date());
     }, 60000);
@@ -39,7 +37,6 @@ export const UpcomingMissionBadge = ({
     } else if (isAfter(now, missionEndDate)) {
       return "ended";
     } else {
-      // Mission is in progress
       const minutesLeft = Math.round((missionEndDate.getTime() - now.getTime()) / (1000 * 60));
       return minutesLeft <= 15 ? "ending-soon" : "in-progress";
     }
@@ -49,14 +46,12 @@ export const UpcomingMissionBadge = ({
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
     const timeRange = `${format(missionStartDate, 'HH:mm')}-${format(missionEndDate, 'HH:mm')}`;
+    const missionDate = format(missionStartDate, 'd MMMM yyyy', { locale: fr });
 
     switch (status) {
       case "upcoming":
         return {
-          text: `Dans ${formatDistanceToNow(missionStartDate, { 
-            locale: fr,
-            addSuffix: false 
-          })} ${timeRange}${languageInfo}`,
+          text: `${missionDate} ${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
       case "in-progress":
