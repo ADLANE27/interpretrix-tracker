@@ -39,8 +39,10 @@ export const MentionSuggestions = ({
       <Command
         className="border rounded-lg shadow-md"
         filter={(value, search) => {
-          if (value.toLowerCase().includes(search.toLowerCase())) return 1
-          return 0
+          // Improved search to handle diacritics and case
+          const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return normalizedValue.includes(normalizedSearch) ? 1 : 0;
         }}
       >
         <CommandInput placeholder="Rechercher..." className="border-b" />
