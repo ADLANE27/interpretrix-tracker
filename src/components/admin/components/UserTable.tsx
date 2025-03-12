@@ -118,6 +118,17 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     }
   };
 
+  const handleCloseEditDialog = () => {
+    const currentTab = localStorage.getItem('adminActiveTab') || 'users';
+    localStorage.setItem('adminActiveTab', currentTab);
+    
+    setIsEditingInterpreter(false);
+    
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
+
   if (users.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -188,7 +199,13 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         </TableBody>
       </Table>
 
-      <Dialog open={isEditingInterpreter} onOpenChange={setIsEditingInterpreter}>
+      <Dialog 
+        open={isEditingInterpreter} 
+        onOpenChange={(open) => {
+          if (!open) handleCloseEditDialog();
+          else setIsEditingInterpreter(true);
+        }}
+      >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
