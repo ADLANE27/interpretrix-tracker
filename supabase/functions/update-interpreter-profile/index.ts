@@ -36,7 +36,6 @@ interface UpdateProfileData {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -70,18 +69,30 @@ Deno.serve(async (req) => {
       'work_hours', 'languages'
     ];
 
-    // Process languages first, with validation and proper formatting
-    if ('languages' in profileData && Array.isArray(profileData.languages)) {
-      const validLanguages = profileData.languages
-        .filter(isValidLanguagePair)
-        .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
+    // Process languages with detailed logging
+    if ('languages' in profileData) {
+      console.log('Processing languages:', profileData.languages);
       
-      console.log('Formatted languages:', validLanguages);
-      
-      if (validLanguages.length > 0) {
-        updateData.languages = validLanguages;
+      if (!Array.isArray(profileData.languages)) {
+        console.warn('Languages is not an array:', profileData.languages);
       } else {
-        console.warn('No valid language pairs found in update data');
+        const validLanguages = profileData.languages
+          .filter(lang => {
+            const isValid = isValidLanguagePair(lang);
+            if (!isValid) {
+              console.warn('Invalid language pair:', lang);
+            }
+            return isValid;
+          })
+          .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
+        
+        console.log('Validated languages:', validLanguages);
+        
+        if (validLanguages.length > 0) {
+          updateData.languages = validLanguages;
+        } else {
+          console.warn('No valid language pairs found in update data');
+        }
       }
     }
 
