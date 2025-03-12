@@ -14,7 +14,8 @@ export const useMessageFormatter = () => {
       
       // Check if the mentioned language exists in our standardized list
       const matchedLanguage = LANGUAGES.find(lang => 
-        lang.toLowerCase() === cleanedMention.toLowerCase()
+        lang.toLowerCase() === cleanedMention.toLowerCase() ||
+        lang.toLowerCase().startsWith(cleanedMention.toLowerCase())
       );
       
       if (matchedLanguage) {

@@ -42,7 +42,11 @@ export const MentionSuggestions = ({
           // Improved search to handle diacritics and case
           const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          return normalizedValue.includes(normalizedSearch) ? 1 : 0;
+          
+          // Check if value starts with or contains the search term
+          if (normalizedValue.startsWith(normalizedSearch)) return 1;
+          if (normalizedValue.includes(normalizedSearch)) return 0.5;
+          return 0;
         }}
       >
         <CommandInput placeholder="Rechercher..." className="border-b" />
