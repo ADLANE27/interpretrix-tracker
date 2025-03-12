@@ -1,10 +1,7 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
-
-interface LanguagePair {
-  source: string;
-  target: string;
-}
+import { LanguagePair } from '../_shared/types.ts';
 
 interface UpdateProfileData {
   id: string;
@@ -40,13 +37,19 @@ interface UpdateProfileData {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing required environment variables');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const profileData: UpdateProfileData = await req.json();
@@ -60,30 +63,36 @@ Deno.serve(async (req) => {
     }
 
     const updateData: Record<string, any> = {};
-
-    // Map only the fields that exist in the database table
     const allowedFields = [
       'email', 'first_name', 'last_name', 'employment_status', 'status',
       'phone_number', 'address', 'birth_country', 'nationality', 'siret_number',
       'vat_number', 'specializations', 'landline_phone', 'tarif_15min',
       'tarif_5min', 'booth_number', 'private_phone', 'professional_phone',
-      'work_hours'
+      'work_hours', 'languages'  // Added languages to allowed fields
     ];
 
-    // Process all fields, including null values
-    for (const field of allowedFields) {
-      if (field in profileData) {
-        updateData[field] = profileData[field as keyof UpdateProfileData];
-      }
-    }
-
-    // Handle languages separately to ensure proper formatting
+    // Process languages before other fields
     if ('languages' in profileData && Array.isArray(profileData.languages)) {
       const formattedLanguages = profileData.languages
-        .filter(lang => lang.source && lang.target)
+        .filter((lang): lang is LanguagePair => (
+          Boolean(lang) && 
+          typeof lang === 'object' && 
+          typeof lang.source === 'string' && 
+          typeof lang.target === 'string' &&
+          lang.source.trim() !== '' && 
+          lang.target.trim() !== ''
+        ))
         .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
-      updateData.languages = formattedLanguages;
+      
       console.log('Formatted languages:', formattedLanguages);
+      updateData.languages = formattedLanguages;
+    }
+
+    // Process all other fields
+    for (const field of allowedFields) {
+      if (field !== 'languages' && field in profileData) {
+        updateData[field] = profileData[field as keyof UpdateProfileData];
+      }
     }
 
     console.log('Updating profile with data:', updateData);
@@ -141,3 +150,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+
