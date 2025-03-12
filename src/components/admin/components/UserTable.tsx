@@ -1,4 +1,3 @@
-
 import {
   Table,
   TableBody,
@@ -21,65 +20,74 @@ import { useState } from "react";
 import { UserData } from "../types/user-management";
 import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
+import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
-import { useProfileUpdate } from "@/hooks/useProfileUpdate";
+import { convertLanguagePairsToStrings } from "@/types/languages";
 
 interface UserTableProps {
   users: UserData[];
   onDelete: (id: string) => void;
   onResetPassword: (id: string, password: string) => void;
-  isSubmitting: boolean;
-  setIsSubmitting: (value: boolean) => void;
 }
 
-export const UserTable = ({ 
-  users, 
-  onDelete, 
-  onResetPassword,
-  isSubmitting,
-  setIsSubmitting 
-}: UserTableProps) => {
+export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const { updateProfile } = useProfileUpdate();
-  const { toast } = useToast();
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
     setIsEditingInterpreter(true);
   };
 
-  const handleCloseEditDialog = () => {
-    setIsEditingInterpreter(false);
-    setSelectedUser(null);
-  };
-
-  const handleCloseResetDialog = () => {
-    setIsResetPasswordOpen(false);
-    setSelectedUser(null);
-  };
-
   const handleUpdateProfile = async (data: Partial<Profile>) => {
     if (!selectedUser) return;
     
-    const { success } = await updateProfile(selectedUser.id, data);
-    if (success) {
-      handleCloseEditDialog();
+    try {
+      setIsSubmitting(true);
+      
+      // Convert language pairs to string array format
+      const transformedData = {
+        ...data,
+        languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
+      };
+      
+      // Remove any potential active field to prevent schema errors
+      delete (transformedData as any).active;
+      
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(transformedData)
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil a été mis à jour avec succès",
+      });
+
+      setIsEditingInterpreter(false);
+      window.dispatchEvent(new Event('refetchUserData'));
+      
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSendPasswordReset = async (user: UserData) => {
     try {
       setIsSubmitting(true);
-      
-      toast({
-        title: "Envoi en cours",
-        description: "Envoi de l'email de réinitialisation...",
-      });
-
       const { error } = await supabase.functions.invoke('send-password-reset-email', {
         body: { 
           user_id: user.id,
@@ -96,7 +104,6 @@ export const UserTable = ({
         description: "L'email de réinitialisation du mot de passe a été envoyé",
       });
     } catch (error: any) {
-      console.error('Error sending password reset:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer l'email: " + error.message,
@@ -177,14 +184,7 @@ export const UserTable = ({
         </TableBody>
       </Table>
 
-      <Dialog 
-        open={isEditingInterpreter} 
-        onOpenChange={(open) => {
-          if (!open) {
-            handleCloseEditDialog();
-          }
-        }}
-      >
+      <Dialog open={isEditingInterpreter} onOpenChange={setIsEditingInterpreter}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
@@ -204,15 +204,10 @@ export const UserTable = ({
 
       <ResetPasswordDialog
         isOpen={isResetPasswordOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            handleCloseResetDialog();
-          }
-        }}
+        onOpenChange={setIsResetPasswordOpen}
         onSubmit={async (password) => {
-          if (!selectedUser?.id) return;
-          await onResetPassword(selectedUser.id, password);
-          handleCloseResetDialog();
+          await onResetPassword(selectedUser?.id || '', password);
+          setIsResetPasswordOpen(false);
         }}
         isSubmitting={isSubmitting}
         userData={selectedUser ? {

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +19,6 @@ import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 import { UserTable } from "./components/UserTable";
 import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
-import { useQueryClient } from "@tanstack/react-query"; // Added this import
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
@@ -26,7 +26,6 @@ export const UserManagement = () => {
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const {
     users,
@@ -35,6 +34,7 @@ export const UserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
+    queryClient,
     isSubmitting,
     setIsSubmitting,
     refetch
@@ -53,12 +53,6 @@ export const UserManagement = () => {
     try {
       setIsSubmitting(true);
       
-      // Start optimistic UI update
-      toast({
-        title: "Mise à jour en cours",
-        description: "Le mot de passe est en cours de mise à jour...",
-      });
-
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
           userId: selectedUserId,
@@ -75,7 +69,10 @@ export const UserManagement = () => {
         description: "Le mot de passe a été mis à jour avec succès",
       });
 
+      // First invalidate the query cache
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Reset state
       setIsResetPasswordOpen(false);
       setSelectedUserId(null);
 
@@ -215,8 +212,6 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
-            isSubmitting={isSubmitting}
-            setIsSubmitting={setIsSubmitting}
           />
         </div>
 
@@ -232,8 +227,6 @@ export const UserManagement = () => {
               setSelectedUserId(id);
               setIsResetPasswordOpen(true);
             }}
-            isSubmitting={isSubmitting}
-            setIsSubmitting={setIsSubmitting}
           />
         </div>
       </div>

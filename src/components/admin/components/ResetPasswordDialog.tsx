@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +44,26 @@ export const ResetPasswordDialog = ({
     if (password === confirmPassword) {
       try {
         await onSubmit(password);
+
+        // Send email notification if we have user data
+        if (userData) {
+          const { error: emailError } = await supabase.functions.invoke('send-password-reset-email', {
+            body: {
+              email: userData.email,
+              first_name: userData.first_name,
+              role: userData.role,
+              user_id: userData.id
+            }
+          });
+
+          if (emailError) {
+            console.error('Error sending password reset email:', emailError);
+          }
+        }
+
         resetForm();
       } catch (error) {
+        // Error is handled by parent component
         resetForm();
       }
     }
