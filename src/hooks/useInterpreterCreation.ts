@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { validatePassword } from '@/utils/validation/passwordValidation';
 import { InterpreterFormData } from '@/components/admin/forms/InterpreterProfileForm';
 import { useUserManagementToasts } from '@/components/admin/hooks/useUserManagementToasts';
+import { formatLanguageString } from '@/types/languages';
 
 export const useInterpreterCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -27,20 +28,21 @@ export const useInterpreterCreation = () => {
         throw new Error("Le tarif pour 5 minutes doit être un nombre positif");
       }
 
-      // Validate password if provided
-      const passwordValidation = validatePassword(data.password);
-      if (!passwordValidation.isValid) {
-        throw new Error(passwordValidation.error);
+      // Only validate password if it's provided
+      if (data.password) {
+        const passwordValidation = validatePassword(data.password);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.error);
+        }
       }
 
       // Format the data for the edge function
       const formattedData = {
         ...data,
-        password: data.password?.trim() || undefined,
-        languages: data.languages.map(lang => ({
-          source: lang.source.trim(),
-          target: lang.target.trim()
-        }))
+        // Only include password if it's a non-empty string
+        password: data.password && typeof data.password === 'string' ? data.password.trim() : undefined,
+        // Format language pairs to match database requirements "source → target"
+        languages: data.languages.map(lang => formatLanguageString(lang))
       };
 
       console.log('Creating interpreter with formatted data:', formattedData);
