@@ -55,7 +55,7 @@ export const MessagingTab = () => {
 
   return (
     <div className={cn(
-      "flex flex-col gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative mt-20",
+      "flex flex-col gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative mt-[180px]",
       "lg:grid lg:grid-cols-3 lg:mt-6"
     )}>
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
@@ -64,7 +64,7 @@ export const MessagingTab = () => {
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg order-1",
           "lg:col-span-2",
-          isMobile && "fixed inset-0 z-40 m-0 rounded-none mt-16"
+          isMobile && "fixed inset-0 z-30 m-0 rounded-none mt-[180px]"
         )}>
           {isMobile && (
             <Button
@@ -99,7 +99,7 @@ export const MessagingTab = () => {
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
           "order-2",
-          isMobile && "fixed inset-x-0 bottom-0 z-40 m-0 rounded-none max-h-[70vh] overflow-y-auto pt-16"
+          isMobile && "fixed inset-x-0 bottom-0 z-30 m-0 rounded-none max-h-[calc(100vh-180px)] overflow-y-auto"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
             <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
