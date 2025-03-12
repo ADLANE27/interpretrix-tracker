@@ -1,6 +1,6 @@
 
 import { Button } from "@/components/ui/button";
-import { Check, Clock, Coffee, Phone, X } from "lucide-react";
+import { Clock, Coffee, Phone, X } from "lucide-react";
 
 interface StatusFilterProps {
   selectedStatus: string | null;

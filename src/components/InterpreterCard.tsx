@@ -57,12 +57,12 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
           <Badge
             className={`text-white ${
               interpreter.status === 'available'
-                ? 'bg-green-500'
+                ? 'bg-interpreter-available'
                 : interpreter.status === 'busy'
-                ? 'bg-red-500'
+                ? 'bg-interpreter-busy'
                 : interpreter.status === 'pause'
-                ? 'bg-yellow-500'
-                : 'bg-gray-500'
+                ? 'bg-interpreter-pause'
+                : 'bg-interpreter-unavailable'
             }`}
           >
             {statusLabels[interpreter.status]}
