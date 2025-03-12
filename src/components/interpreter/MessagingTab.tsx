@@ -69,34 +69,6 @@ export const MessagingTab = () => {
               "order-2",
               isMobile && "h-full"
             )}>
-              <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-                <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
-                <MentionsPopover
-                  mentions={unreadMentions}
-                  totalCount={totalUnreadCount}
-                  onMentionClick={handleMentionClick}
-                  onMarkAsRead={markMentionAsRead}
-                  onDelete={deleteMention}
-                >
-                  <div className={cn(
-                    "transition-all duration-200 p-1.5 sm:p-2",
-                    "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                    "border border-gray-100 dark:border-gray-700",
-                    "rounded-lg flex items-center justify-center relative",
-                    totalUnreadCount > 0 && "text-purple-500"
-                  )}>
-                    <Bell className="h-4 w-4" />
-                    {totalUnreadCount > 0 && (
-                      <Badge 
-                        variant="destructive"
-                        className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-                      >
-                        {totalUnreadCount}
-                      </Badge>
-                    )}
-                  </div>
-                </MentionsPopover>
-              </div>
               <InterpreterChannelList 
                 onChannelSelect={handleChannelSelect}
               />
