@@ -60,13 +60,16 @@ export const InterpreterProfileForm = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const initialLanguages = initialData?.languages?.map(lang => {
+
+  // Fix typing issue by properly handling string or LanguagePair types
+  const initialLanguages = (initialData?.languages || []).map((lang): LanguagePair => {
     if (typeof lang === 'string') {
-      const [source, target] = lang.split('→').map(l => l.trim());
+      const [source = '', target = ''] = lang.split('→').map(l => l.trim());
       return { source, target };
     }
-    return lang;
-  }) || [];
+    return lang as LanguagePair;
+  });
+
   const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
 
   const form = useForm<InterpreterFormData>({
