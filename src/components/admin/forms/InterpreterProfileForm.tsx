@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,13 @@ export const InterpreterProfileForm = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const initialLanguages = initialData?.languages || [];
+  const initialLanguages = initialData?.languages?.map(lang => {
+    if (typeof lang === 'string') {
+      const [source, target] = lang.split('→').map(l => l.trim());
+      return { source, target };
+    }
+    return lang;
+  }) || [];
   const [languages, setLanguages] = useState<LanguagePair[]>(initialLanguages);
 
   const form = useForm<InterpreterFormData>({
@@ -105,9 +112,17 @@ export const InterpreterProfileForm = ({
       }
     }
     
+    // Make sure languages are properly formatted
+    const formattedLanguages = languages.filter(lang => 
+      lang && typeof lang.source === 'string' && 
+      typeof lang.target === 'string' && 
+      lang.source.trim() !== '' && 
+      lang.target.trim() !== ''
+    );
+    
     const submissionData = {
       ...data,
-      languages, // Make sure to include the languages state
+      languages: formattedLanguages,
       password: password.trim() || undefined,
     };
 

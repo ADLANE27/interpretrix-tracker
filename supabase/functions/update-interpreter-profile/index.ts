@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const profileData: UpdateProfileData = await req.json();
-    console.log('Received profile data:', profileData);
+    console.log('Received profile data:', JSON.stringify(profileData, null, 2));
 
     if (!profileData.id) {
       return new Response(
@@ -70,30 +70,29 @@ Deno.serve(async (req) => {
     ];
 
     // Process languages with detailed logging
-    if ('languages' in profileData) {
-      console.log('Processing languages:', profileData.languages);
+    if (profileData.languages && Array.isArray(profileData.languages)) {
+      console.log('Processing languages array:', profileData.languages);
       
-      if (!Array.isArray(profileData.languages)) {
-        console.warn('Languages is not an array:', profileData.languages);
-      } else {
-        const validLanguages = profileData.languages
-          .filter(lang => {
-            const isValid = isValidLanguagePair(lang);
-            if (!isValid) {
-              console.warn('Invalid language pair:', lang);
-            }
-            return isValid;
-          })
-          .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
-        
-        console.log('Validated languages:', validLanguages);
-        
-        if (validLanguages.length > 0) {
-          updateData.languages = validLanguages;
-        } else {
-          console.warn('No valid language pairs found in update data');
-        }
-      }
+      const validLanguages = profileData.languages
+        .filter((lang): lang is LanguagePair => {
+          if (!lang || typeof lang !== 'object') {
+            console.warn('Invalid language pair structure:', lang);
+            return false;
+          }
+          
+          if (!lang.source || !lang.target || 
+              typeof lang.source !== 'string' || 
+              typeof lang.target !== 'string') {
+            console.warn('Language pair missing source or target:', lang);
+            return false;
+          }
+          
+          return true;
+        })
+        .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
+      
+      console.log('Validated languages:', validLanguages);
+      updateData.languages = validLanguages;
     }
 
     // Process all other fields
