@@ -1,14 +1,9 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
-
-function isValidChannelType(type: string): type is 'group' | 'direct' {
-  return type === 'group' || type === 'direct';
-}
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -44,14 +39,20 @@ export const useChat = (channelId: string) => {
 
       const channelType = channelData.channel_type as 'group' | 'direct';
 
+      // Modified query to ensure proper ordering and limit
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(100); // Increased limit to ensure we get recent messages
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error('[Chat] Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      console.log('[Chat] Retrieved messages:', messagesData?.length);
 
       const formattedMessages: Message[] = [];
       const senderDetailsPromises = messagesData?.map(async (message) => {
@@ -150,7 +151,7 @@ export const useChat = (channelId: string) => {
     currentUserId,
     retryCount,
     setRetryCount,
-    fetchMessages
+    fetchMessages // Pass fetchMessages to ensure it's called when subscription receives updates
   );
 
   const { 
@@ -164,7 +165,6 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
-  // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -173,7 +173,6 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  // Fetch messages when channel changes or when component mounts
   useEffect(() => {
     if (channelId) {
       console.log('[Chat] Initial messages fetch for channel:', channelId);
@@ -181,7 +180,6 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId, fetchMessages]);
 
-  // Update subscription status
   useEffect(() => {
     setSubscriptionStatus({
       messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
