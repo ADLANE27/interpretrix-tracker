@@ -164,31 +164,48 @@ export const useUserManagement = () => {
       const transformedData = {
         ...data,
         languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
+        work_hours: data.work_hours ? {
+          start_morning: data.work_hours.start_morning,
+          end_morning: data.work_hours.end_morning,
+          start_afternoon: data.work_hours.start_afternoon,
+          end_afternoon: data.work_hours.end_afternoon
+        } : null,
+        address: data.address ? {
+          street: data.address.street,
+          postal_code: data.address.postal_code,
+          city: data.address.city
+        } : null,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        phone_number: data.phone_number,
+        employment_status: data.employment_status,
+        status: data.status,
+        birth_country: data.birth_country,
+        nationality: data.nationality,
+        siret_number: data.siret_number,
+        vat_number: data.vat_number,
+        specializations: data.specializations,
+        landline_phone: data.landline_phone,
+        booth_number: data.booth_number,
+        private_phone: data.private_phone,
+        professional_phone: data.professional_phone,
+        tarif_15min: data.tarif_15min,
+        tarif_5min: data.tarif_5min
       };
       
-      delete (transformedData as any).active;
+      const cleanedData = Object.fromEntries(
+        Object.entries(transformedData)
+          .filter(([key, value]) => value !== undefined && key !== 'active')
+      );
       
-      console.log('Data being sent for update:', transformedData);
-      
-      // First verify the current data
-      const { data: currentData, error: checkError } = await supabase
-        .from('interpreter_profiles')
-        .select('*')
-        .eq('id', selectedUser.id)
-        .single();
-
-      if (checkError) {
-        console.error('Error checking current data:', checkError);
-        throw checkError;
-      }
-
-      console.log('Current data in database:', currentData);
+      console.log('Data being sent for update:', cleanedData);
       
       const { data: updatedData, error } = await supabase
         .from('interpreter_profiles')
-        .update(transformedData)
+        .update(cleanedData)
         .eq('id', selectedUser.id)
-        .select();
+        .select('*');
 
       if (error) {
         console.error('Error updating profile:', error);
@@ -201,7 +218,6 @@ export const useUserManagement = () => {
 
       console.log('Successfully updated data:', updatedData[0]);
 
-      // Transform the Supabase data back to Profile format with proper type checking
       const transformedProfile: Profile = {
         ...updatedData[0],
         languages: (updatedData[0].languages || []).map(parseLanguageString),
@@ -217,15 +233,19 @@ export const useUserManagement = () => {
           postal_code: String((updatedData[0].address as Record<string, unknown>).postal_code || ''),
           city: String((updatedData[0].address as Record<string, unknown>).city || '')
         } : null,
+        employment_status: updatedData[0].employment_status,
+        specializations: updatedData[0].specializations || [],
+        profile_picture_url: updatedData[0].profile_picture_url || null,
+        booth_number: updatedData[0].booth_number || null,
+        private_phone: updatedData[0].private_phone || null,
+        professional_phone: updatedData[0].professional_phone || null,
+        password_changed: updatedData[0].password_changed || false,
       };
 
-      // Update local state with properly formatted data
       setSelectedUser(transformedProfile);
       
-      // Invalidate the cache to force a refresh
       await queryClient.invalidateQueries({ queryKey: ['users'] });
       
-      // Refresh the data
       await refetch();
 
       toast({
@@ -276,4 +296,3 @@ export const useUserManagement = () => {
     setSelectedUser
   };
 };
-
