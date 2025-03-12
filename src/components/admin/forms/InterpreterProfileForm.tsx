@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,7 @@ export interface InterpreterFormData {
 interface InterpreterProfileFormProps {
   isEditing: boolean;
   onSubmit: (data: InterpreterFormData) => Promise<void>;
-  initialData?: Partial<InterpreterFormData>;
+  initialData?: Partial<InterpreterFormData> & { languages?: (string | LanguagePair)[] };
   isSubmitting: boolean;
 }
 
