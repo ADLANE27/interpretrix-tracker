@@ -40,7 +40,9 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
   const { updateProfile, isSubmitting, setIsSubmitting } = useInterpreterProfileUpdate();
 
   const handleEditInterpreter = (user: UserData) => {
-    setSelectedUser(user);
+    // Ensure we have all the user data before editing
+    const fullUserData = users.find(u => u.id === user.id);
+    setSelectedUser(fullUserData || user);
     setIsEditingInterpreter(true);
   };
 
@@ -49,7 +51,8 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     
     const success = await updateProfile({
       id: selectedUser.id,
-      ...data
+      ...selectedUser, // Keep existing user data
+      ...data // Merge with new data
     });
 
     if (success) {
