@@ -161,6 +161,8 @@ export const useUserManagement = () => {
     try {
       setIsSubmitting(true);
       
+      console.log('Incoming profile data:', data);
+      
       const transformedData = {
         ...data,
         languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
@@ -175,6 +177,9 @@ export const useUserManagement = () => {
           postal_code: data.address.postal_code,
           city: data.address.city
         } : null,
+        booth_number: data.booth_number,
+        private_phone: data.private_phone,
+        professional_phone: data.professional_phone,
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
@@ -187,19 +192,31 @@ export const useUserManagement = () => {
         vat_number: data.vat_number,
         specializations: data.specializations,
         landline_phone: data.landline_phone,
-        booth_number: data.booth_number,
-        private_phone: data.private_phone,
-        professional_phone: data.professional_phone,
         tarif_15min: data.tarif_15min,
         tarif_5min: data.tarif_5min
       };
       
+      console.log('Complete transformed data:', transformedData);
+
       const cleanedData = Object.fromEntries(
         Object.entries(transformedData)
           .filter(([key, value]) => value !== undefined && key !== 'active')
       );
       
-      console.log('Data being sent for update:', cleanedData);
+      console.log('Cleaned data being sent for update:', cleanedData);
+
+      const { data: currentData, error: checkError } = await supabase
+        .from('interpreter_profiles')
+        .select('*')
+        .eq('id', selectedUser.id)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking current data:', checkError);
+        throw checkError;
+      }
+
+      console.log('Current data in database:', currentData);
       
       const { data: updatedData, error } = await supabase
         .from('interpreter_profiles')
@@ -236,16 +253,15 @@ export const useUserManagement = () => {
         employment_status: updatedData[0].employment_status,
         specializations: updatedData[0].specializations || [],
         profile_picture_url: updatedData[0].profile_picture_url || null,
-        booth_number: updatedData[0].booth_number || null,
-        private_phone: updatedData[0].private_phone || null,
-        professional_phone: updatedData[0].professional_phone || null,
+        booth_number: updatedData[0].booth_number,
+        private_phone: updatedData[0].private_phone,
+        professional_phone: updatedData[0].professional_phone,
         password_changed: updatedData[0].password_changed || false,
       };
 
       setSelectedUser(transformedProfile);
       
       await queryClient.invalidateQueries({ queryKey: ['users'] });
-      
       await refetch();
 
       toast({
