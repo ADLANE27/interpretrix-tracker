@@ -48,6 +48,7 @@ export const UpcomingMissionBadge = ({
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
+    const timeRange = `${format(missionStartDate, 'HH:mm')}-${format(missionEndDate, 'HH:mm')}`;
 
     switch (status) {
       case "upcoming":
@@ -55,7 +56,7 @@ export const UpcomingMissionBadge = ({
           text: `Dans ${formatDistanceToNow(missionStartDate, { 
             locale: fr,
             addSuffix: false 
-          })} (${estimatedDuration}min)${languageInfo}`,
+          })} ${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
       case "in-progress":
@@ -64,17 +65,17 @@ export const UpcomingMissionBadge = ({
           addSuffix: true 
         });
         return {
-          text: `Se termine ${remainingTime}${languageInfo}`,
+          text: `Se termine ${remainingTime} ${timeRange}${languageInfo}`,
           variant: "default" as const
         };
       case "ending-soon":
         return {
-          text: `Dernières minutes${languageInfo}`,
+          text: `Dernières minutes ${timeRange}${languageInfo}`,
           variant: "destructive" as const
         };
       case "ended":
         return {
-          text: `Mission terminée (${format(missionEndDate, 'HH:mm')})${languageInfo}`,
+          text: `Mission terminée ${timeRange}${languageInfo}`,
           variant: "outline" as const
         };
     }
