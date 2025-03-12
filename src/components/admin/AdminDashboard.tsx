@@ -101,10 +101,20 @@ const AdminDashboard = () => {
             source_language,
             target_language
           ),
+          private_reservations!left(
+            id,
+            start_time,
+            duration_minutes,
+            source_language,
+            target_language,
+            status
+          ),
           connection:interpreter_connection_status!inner(
             last_seen_at
           )
-        `);
+        `)
+        .order('next_mission(scheduled_start_time)', { ascending: true })
+        .order('private_reservations(start_time)', { ascending: true });
 
       if (error) throw error;
 
@@ -124,6 +134,50 @@ const AdminDashboard = () => {
           };
         }
 
+        let nextMissionStart = null;
+        let nextMissionDuration = null;
+        let nextMissionSourceLang = null;
+        let nextMissionTargetLang = null;
+
+        const now = new Date();
+
+        const upcomingMission = interpreter.next_mission?.find(mission => 
+          mission?.scheduled_start_time && new Date(mission.scheduled_start_time) > now
+        );
+
+        const upcomingReservation = interpreter.private_reservations?.find(reservation => 
+          reservation?.start_time && 
+          new Date(reservation.start_time) > now && 
+          reservation.status === 'scheduled'
+        );
+
+        if (upcomingMission && upcomingReservation) {
+          const missionDate = new Date(upcomingMission.scheduled_start_time);
+          const reservationDate = new Date(upcomingReservation.start_time);
+
+          if (reservationDate < missionDate) {
+            nextMissionStart = upcomingReservation.start_time;
+            nextMissionDuration = upcomingReservation.duration_minutes;
+            nextMissionSourceLang = upcomingReservation.source_language;
+            nextMissionTargetLang = upcomingReservation.target_language;
+          } else {
+            nextMissionStart = upcomingMission.scheduled_start_time;
+            nextMissionDuration = upcomingMission.estimated_duration;
+            nextMissionSourceLang = upcomingMission.source_language;
+            nextMissionTargetLang = upcomingMission.target_language;
+          }
+        } else if (upcomingReservation) {
+          nextMissionStart = upcomingReservation.start_time;
+          nextMissionDuration = upcomingReservation.duration_minutes;
+          nextMissionSourceLang = upcomingReservation.source_language;
+          nextMissionTargetLang = upcomingReservation.target_language;
+        } else if (upcomingMission) {
+          nextMissionStart = upcomingMission.scheduled_start_time;
+          nextMissionDuration = upcomingMission.estimated_duration;
+          nextMissionSourceLang = upcomingMission.source_language;
+          nextMissionTargetLang = upcomingMission.target_language;
+        }
+
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
@@ -139,10 +193,10 @@ const AdminDashboard = () => {
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
           phone_number: interpreter.phone_number,
           birth_country: interpreter.birth_country,
-          next_mission_start: interpreter.next_mission?.[0]?.scheduled_start_time || null,
-          next_mission_duration: interpreter.next_mission?.[0]?.estimated_duration || null,
-          next_mission_source_language: interpreter.next_mission?.[0]?.source_language || null,
-          next_mission_target_language: interpreter.next_mission?.[0]?.target_language || null,
+          next_mission_start: nextMissionStart,
+          next_mission_duration: nextMissionDuration,
+          next_mission_source_language: nextMissionSourceLang,
+          next_mission_target_language: nextMissionTargetLang,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: interpreter.connection?.[0]?.last_seen_at || null,
@@ -579,3 +633,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
