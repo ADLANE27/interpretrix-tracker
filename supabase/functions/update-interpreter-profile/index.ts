@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -79,10 +78,12 @@ Deno.serve(async (req) => {
     }
 
     // Handle languages separately if provided
-    if (profileData.languages) {
+    if ('languages' in profileData) {
       const formattedLanguages = profileData.languages
-        .filter(lang => lang.source && lang.target)
-        .map(lang => `${lang.source} → ${lang.target}`);
+        ? profileData.languages
+            .filter(lang => lang.source && lang.target)
+            .map(lang => `${lang.source} → ${lang.target}`)
+        : [];
       updateData.languages = formattedLanguages;
       console.log('Formatted languages:', formattedLanguages);
     }
