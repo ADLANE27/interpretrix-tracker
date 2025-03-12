@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -207,16 +206,16 @@ export const useUserManagement = () => {
         ...updatedData[0],
         languages: (updatedData[0].languages || []).map(parseLanguageString),
         status: updatedData[0].status as Profile['status'],
-        work_hours: updatedData[0].work_hours ? {
-          start_morning: String(updatedData[0].work_hours.start_morning || '09:00'),
-          end_morning: String(updatedData[0].work_hours.end_morning || '13:00'),
-          start_afternoon: String(updatedData[0].work_hours.start_afternoon || '14:00'),
-          end_afternoon: String(updatedData[0].work_hours.end_afternoon || '17:00')
+        work_hours: updatedData[0].work_hours && typeof updatedData[0].work_hours === 'object' ? {
+          start_morning: String((updatedData[0].work_hours as Record<string, unknown>).start_morning || '09:00'),
+          end_morning: String((updatedData[0].work_hours as Record<string, unknown>).end_morning || '13:00'),
+          start_afternoon: String((updatedData[0].work_hours as Record<string, unknown>).start_afternoon || '14:00'),
+          end_afternoon: String((updatedData[0].work_hours as Record<string, unknown>).end_afternoon || '17:00')
         } : null,
-        address: updatedData[0].address ? {
-          street: String(updatedData[0].address.street || ''),
-          postal_code: String(updatedData[0].address.postal_code || ''),
-          city: String(updatedData[0].address.city || '')
+        address: updatedData[0].address && typeof updatedData[0].address === 'object' ? {
+          street: String((updatedData[0].address as Record<string, unknown>).street || ''),
+          postal_code: String((updatedData[0].address as Record<string, unknown>).postal_code || ''),
+          city: String((updatedData[0].address as Record<string, unknown>).city || '')
         } : null,
       };
 
@@ -277,3 +276,4 @@ export const useUserManagement = () => {
     setSelectedUser
   };
 };
+
