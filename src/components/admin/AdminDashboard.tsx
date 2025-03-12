@@ -52,7 +52,7 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
-  connection_status?: "available" | "unavailable" | "pause" | "busy";
+  connection_status?: Profile['status'];
 }
 
 const AdminDashboard = () => {
