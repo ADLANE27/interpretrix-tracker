@@ -89,6 +89,14 @@ export const AdminDashboard = () => {
           };
         }
 
+        const languages = (interpreter.languages || []).map((lang: string) => {
+          if (typeof lang === 'string') {
+            const [source, target] = lang.split('→').map(l => l.trim());
+            return { source, target };
+          }
+          return lang;
+        });
+
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
@@ -101,8 +109,8 @@ export const AdminDashboard = () => {
                   interpreter.status === "busy") 
                   ? interpreter.status 
                   : "unavailable" as const,
-          employment_status: interpreter.employment_status || "salaried_aft",
-          languages: interpreter.languages || [],
+          employment_status: interpreter.employment_status as EmploymentStatus || "salaried_aft",
+          languages,
           profile_picture_url: null,
           password_changed: false,
           tarif_15min: interpreter.tarif_15min || 0,

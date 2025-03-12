@@ -1,3 +1,4 @@
+
 import { Profile, EmploymentStatus } from "@/types/profile";
 
 export interface UserData extends Partial<Profile> {
