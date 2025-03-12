@@ -28,7 +28,7 @@ interface InterpreterData {
   last_name: string;
   password?: string;
   employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
-  languages: LanguagePair[];
+  languages: string[];
   phone_number?: string;
   birth_country?: string;
   nationality?: string;
@@ -81,9 +81,30 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Validate language format
+      if (!Array.isArray(rawData.languages) || rawData.languages.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, message: 'At least one language pair is required' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
+      // Ensure each language pair is properly formatted
+      const languageFormatRegex = /^[^→]+\s→\s[^→]+$/;
+      const invalidLanguages = rawData.languages.filter(lang => !languageFormatRegex.test(lang));
+      if (invalidLanguages.length > 0) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: `Invalid language pair format. Each pair must be in the format "Source → Target". Invalid pairs: ${invalidLanguages.join(', ')}` 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+
       interpreterData = {
         ...rawData,
-        languages: Array.isArray(rawData.languages) ? rawData.languages : [],
+        languages: rawData.languages,
         email: rawData.email.trim().toLowerCase(),
         first_name: rawData.first_name.trim(),
         last_name: rawData.last_name.trim(),
@@ -159,9 +180,7 @@ Deno.serve(async (req) => {
           last_name: interpreterData.last_name,
           email: interpreterData.email,
           employment_status: interpreterData.employment_status,
-          languages: interpreterData.languages.map(lang => 
-            `${lang.source}→${lang.target}`
-          ),
+          languages: interpreterData.languages,
           phone_number: interpreterData.phone_number || null,
           birth_country: interpreterData.birth_country || null,
           nationality: interpreterData.nationality || null,

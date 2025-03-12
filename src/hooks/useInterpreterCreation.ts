@@ -4,11 +4,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { validatePassword } from '@/utils/validation/passwordValidation';
 import { InterpreterFormData } from '@/components/admin/forms/InterpreterProfileForm';
 import { useUserManagementToasts } from '@/components/admin/hooks/useUserManagementToasts';
-import { formatLanguageString } from '@/types/languages';
+import { LanguagePair } from '@/types/languages';
 
 export const useInterpreterCreation = () => {
   const [isCreating, setIsCreating] = useState(false);
   const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
+
+  const formatLanguagePair = (langPair: LanguagePair): string => {
+    return `${langPair.source.trim()} → ${langPair.target.trim()}`;
+  };
 
   const createInterpreter = async (data: InterpreterFormData) => {
     try {
@@ -28,7 +32,8 @@ export const useInterpreterCreation = () => {
         first_name: data.first_name,
         last_name: data.last_name,
         employment_status: data.employment_status,
-        languages: data.languages.map(lang => formatLanguageString(lang)),
+        // Format each language pair with proper arrow and spacing
+        languages: data.languages.map(formatLanguagePair),
         phone_number: data.phone_number || null,
         address: data.address || null,
         booth_number: data.booth_number || null,
