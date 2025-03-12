@@ -101,6 +101,9 @@ export const useUserManagement = () => {
             vat_number: interpreter.vat_number,
             specializations: interpreter.specializations || [],
             landline_phone: interpreter.landline_phone,
+            booth_number: interpreter.booth_number || '',
+            private_phone: interpreter.private_phone || '',
+            professional_phone: interpreter.professional_phone || '',
             tarif_15min: interpreter.tarif_15min,
             tarif_5min: interpreter.tarif_5min
           };
@@ -177,9 +180,9 @@ export const useUserManagement = () => {
           postal_code: data.address.postal_code,
           city: data.address.city
         } : null,
-        booth_number: data.booth_number,
-        private_phone: data.private_phone,
-        professional_phone: data.professional_phone,
+        booth_number: data.booth_number === '' ? null : data.booth_number,
+        private_phone: data.private_phone === '' ? null : data.private_phone,
+        professional_phone: data.professional_phone === '' ? null : data.professional_phone,
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
