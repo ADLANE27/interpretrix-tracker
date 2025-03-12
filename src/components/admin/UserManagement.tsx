@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +18,7 @@ import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 import { UserTable } from "./components/UserTable";
 import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
+import { useQueryClient } from "@tanstack/react-query"; // Added this import
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
