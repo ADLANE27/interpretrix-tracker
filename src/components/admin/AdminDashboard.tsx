@@ -90,11 +90,8 @@ export const AdminDashboard = () => {
         }
 
         const languages = (interpreter.languages || []).map((lang: string) => {
-          if (typeof lang === 'string') {
-            const [source, target] = lang.split('→').map(l => l.trim());
-            return { source, target };
-          }
-          return lang;
+          const [source, target] = lang.split('→').map(l => l.trim());
+          return { source, target };
         });
 
         return {
@@ -544,3 +541,4 @@ export const AdminDashboard = () => {
     </div>
   );
 };
+
