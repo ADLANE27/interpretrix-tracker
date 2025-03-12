@@ -1,4 +1,3 @@
-
 import { TableCell, TableRow } from "@/components/ui/table";
 import { UserData } from "../../types/user-management";
 import { UserActions } from "./UserActions";
@@ -28,11 +27,15 @@ export const UserRow = memo(({
   const { updateProfile, isSubmitting: interpreterIsSubmitting } = useInterpreterProfileUpdate();
 
   const handleProfileUpdate = async (data: Partial<Profile>) => {
-    await updateProfile({
+    const success = await updateProfile({
       ...data,
       id: user.id,
-      languages: data.languages || [],  // Ensure languages is always an array
+      languages: data.languages || []
     });
+    
+    if (success) {
+      setIsDialogOpen(false);
+    }
   };
 
   return (
@@ -58,10 +61,7 @@ export const UserRow = memo(({
       <InterpreterEditDialog
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        selectedUser={{
-          ...user,
-          languages: user.languages || [],  // Ensure languages is always an array when passing to dialog
-        }}
+        selectedUser={user}
         onSubmit={handleProfileUpdate}
         isSubmitting={isSubmitting || interpreterIsSubmitting}
       />
