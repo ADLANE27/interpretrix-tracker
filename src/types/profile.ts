@@ -1,4 +1,3 @@
-
 export type EmploymentStatus = 
   | "salaried_aft" 
   | "salaried_aftcom" 
@@ -44,3 +43,4 @@ export interface Profile {
     end_afternoon: string;
   } | null;
 }
+

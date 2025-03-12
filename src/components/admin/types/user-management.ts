@@ -41,3 +41,4 @@ export interface InterpreterData {
     end_afternoon: string;
   } | null;
 }
+

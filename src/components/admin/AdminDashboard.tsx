@@ -23,6 +23,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
+import { Profile } from "@/types/profile";
 
 interface WorkHours {
   start_morning?: string;
@@ -31,25 +32,9 @@ interface WorkHours {
   end_afternoon?: string;
 }
 
-interface Interpreter {
-  id: string;
-  first_name: string;
-  last_name: string;
-  status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
-  languages: string[];
-  phone_interpretation_rate: number | null;
-  phone_number: string | null;
-  birth_country: string | null;
+interface Interpreter extends Profile {
   next_mission_start: string | null;
   next_mission_duration: number | null;
-  tarif_15min: number | null;
-  tarif_5min: number | null;
-  last_seen_at: string | null;
-  booth_number?: string | null;
-  private_phone?: string | null;
-  professional_phone?: string | null;
-  work_hours?: WorkHours | null;
   connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
 
@@ -108,6 +93,8 @@ export const AdminDashboard = () => {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
+          email: interpreter.email || "",
+          phone_number: interpreter.phone_number,
           status: (interpreter.status === "available" ||
                   interpreter.status === "unavailable" ||
                   interpreter.status === "pause" ||
@@ -116,18 +103,23 @@ export const AdminDashboard = () => {
                   : "unavailable" as const,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
-          phone_interpretation_rate: interpreter.phone_interpretation_rate,
-          phone_number: interpreter.phone_number,
+          profile_picture_url: null,
+          password_changed: false,
+          tarif_15min: interpreter.tarif_15min || 0,
+          tarif_5min: interpreter.tarif_5min || 0,
           birth_country: interpreter.birth_country,
-          next_mission_start: interpreter.next_mission_start,
-          next_mission_duration: interpreter.next_mission_duration,
-          tarif_15min: interpreter.tarif_15min,
-          tarif_5min: interpreter.tarif_5min || null,
-          last_seen_at: interpreter.last_seen_at,
+          nationality: null,
+          address: null,
+          siret_number: null,
+          vat_number: null,
+          specializations: [],
+          landline_phone: interpreter.landline_phone,
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
-          work_hours: workHours
+          work_hours: workHours,
+          next_mission_start: interpreter.next_mission_start,
+          next_mission_duration: interpreter.next_mission_duration,
         };
       });
 
