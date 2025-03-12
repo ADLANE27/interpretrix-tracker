@@ -3,8 +3,7 @@ export type EmploymentStatus =
   | "salaried_aftcom" 
   | "salaried_planet" 
   | "self_employed" 
-  | "permanent_interpreter"
-  | "permanent_interpreter_aftcom";
+  | "permanent_interpreter";
 
 export interface Profile {
   id: string;
@@ -43,4 +42,3 @@ export interface Profile {
     end_afternoon: string;
   } | null;
 }
-
