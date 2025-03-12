@@ -54,7 +54,7 @@ interface Interpreter {
   connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
 
-export const AdminDashboard = () => {
+const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [nameFilter, setNameFilter] = useState("");
@@ -83,6 +83,15 @@ export const AdminDashboard = () => {
     { id: "users", label: "Utilisateurs" },
     { id: "guide", label: "Guide" },
   ];
+
+  const employmentStatusLabels = {
+    "salaried_aft": "Salarié AFTrad",
+    "salaried_aftcom": "Salarié AFTCOM",
+    "salaried_planet": "Salarié PLANET",
+    "permanent_interpreter": "Interprète permanent",
+    "permanent_interpreter_aftcom": "Interprète Permanent AFTcom",
+    "self_employed": "Externe"
+  };
 
   const fetchInterpreters = async () => {
     try {
@@ -423,12 +432,11 @@ export const AdminDashboard = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous les statuts</SelectItem>
-                          <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                          <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                          <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                          <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                          <SelectItem value="permanent_interpreter_aftcom">Interprète Permanent AFTcom</SelectItem>
-                          <SelectItem value="self_employed">Externe</SelectItem>
+                          {Object.entries(employmentStatusLabels).map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -546,3 +554,5 @@ export const AdminDashboard = () => {
     </div>
   );
 };
+
+export default AdminDashboard;
