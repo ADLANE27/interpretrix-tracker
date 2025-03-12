@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -54,10 +55,10 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-120px)] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-full min-h-[calc(100vh-120px)] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "relative p-2 sm:p-4 lg:col-span-1 border-r border-r-border/50 rounded-none shadow-none",
+          "relative p-2 sm:p-4 lg:col-span-1 border-r border-r-border rounded-none shadow-none",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm h-full",
           "dark:from-gray-800 dark:to-gray-900",
           isMobile && "fixed inset-0 z-50 m-0"
