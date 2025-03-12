@@ -29,9 +29,9 @@ interface UpdateProfileData {
   landline_phone?: string | null;
   tarif_15min?: number;
   tarif_5min?: number;
-  booth_number?: string;
-  private_phone?: string;
-  professional_phone?: string;
+  booth_number?: string | null;
+  private_phone?: string | null;
+  professional_phone?: string | null;
   work_hours?: {
     start_morning: string;
     end_morning: string;
@@ -85,19 +85,17 @@ Deno.serve(async (req) => {
       'landline_phone',
       'tarif_15min',
       'tarif_5min',
-      'work_hours'
+      'work_hours',
+      'booth_number',
+      'private_phone',
+      'professional_phone'
     ];
 
     fieldsToUpdate.forEach(field => {
-      if (profileData[field] !== undefined) {
+      if (field in profileData) {
         updateData[field] = profileData[field];
       }
     });
-
-    // Always include these three fields in the update, with empty strings if null/undefined
-    updateData.booth_number = profileData.booth_number ?? '';
-    updateData.private_phone = profileData.private_phone ?? '';
-    updateData.professional_phone = profileData.professional_phone ?? '';
 
     console.log('Updating profile with data:', updateData);
 
@@ -149,4 +147,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
