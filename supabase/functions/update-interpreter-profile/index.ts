@@ -62,15 +62,6 @@ Deno.serve(async (req) => {
 
     const updateData: Record<string, any> = {};
 
-    // Handle languages separately if provided
-    if (profileData.languages) {
-      const formattedLanguages = profileData.languages
-        .filter(lang => lang.source && lang.target)
-        .map(lang => `${lang.source} → ${lang.target}`);
-      updateData.languages = formattedLanguages;
-      console.log('Formatted languages:', formattedLanguages);
-    }
-
     // Map only the fields that exist in the database table
     const allowedFields = [
       'email', 'first_name', 'last_name', 'employment_status', 'status',
@@ -80,10 +71,20 @@ Deno.serve(async (req) => {
       'work_hours'
     ];
 
+    // Process all fields, including null values
     for (const field of allowedFields) {
-      if (field in profileData && field !== 'id') {
+      if (field in profileData) {
         updateData[field] = profileData[field as keyof UpdateProfileData];
       }
+    }
+
+    // Handle languages separately if provided
+    if (profileData.languages) {
+      const formattedLanguages = profileData.languages
+        .filter(lang => lang.source && lang.target)
+        .map(lang => `${lang.source} → ${lang.target}`);
+      updateData.languages = formattedLanguages;
+      console.log('Formatted languages:', formattedLanguages);
     }
 
     console.log('Updating profile with data:', updateData);
@@ -92,7 +93,8 @@ Deno.serve(async (req) => {
       .from('interpreter_profiles')
       .update(updateData)
       .eq('id', profileData.id)
-      .select();
+      .select('*')
+      .single();
 
     if (profileError) {
       console.error('Error updating interpreter profile:', profileError);
