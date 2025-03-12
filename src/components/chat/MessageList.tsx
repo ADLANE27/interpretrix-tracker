@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const getInitials = (name: string) => {
     return name
@@ -88,37 +89,42 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div 
       ref={(el) => observeMessage(el)}
       data-message-id={message.id}
-      className={`flex gap-3 ${
+      className={`flex gap-2 mb-1 ${
         message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-      } ${isThreadReply ? 'ml-8 mt-2' : ''}`}
+      } ${isThreadReply ? 'ml-8 mt-1' : ''}`}
     >
-      <Avatar className="h-8 w-8 shrink-0">
-        {message.sender.avatarUrl ? (
-          <img src={message.sender.avatarUrl} alt={message.sender.name} />
-        ) : (
-          <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium">
+      {message.sender.id !== currentUserId && (
+        <Avatar className="h-8 w-8 shrink-0">
+          <AvatarImage 
+            src={message.sender.avatarUrl} 
+            alt={message.sender.name}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
             {getInitials(message.sender.name)}
-          </div>
-        )}
-      </Avatar>
-      <div className={`flex-1 max-w-[70%] space-y-1 ${
+          </AvatarFallback>
+        </Avatar>
+      )}
+      <div className={`flex-1 max-w-[75%] space-y-1 ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
-        <div className={`flex items-center gap-2 text-sm ${
-          message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-        }`}>
-          <span className="font-medium">{message.sender.name}</span>
-          <span className="text-gray-500 text-xs">
-            {format(message.timestamp, 'HH:mm', { locale: fr })}
+        {!isThreadReply && message.sender.id !== currentUserId && (
+          <span className="text-xs font-medium text-gray-600 ml-1">
+            {message.sender.name}
           </span>
-        </div>
+        )}
         <div className={`group relative ${
           message.sender.id === currentUserId 
-            ? 'bg-purple-50 text-purple-900' 
-            : 'bg-gray-50 text-gray-900'
-        } rounded-lg px-4 py-2`}>
-          <div className="text-sm break-words">{message.content}</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl' 
+            : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm'
+        } px-3 py-2 break-words`}>
+          <div className="text-[15px]">{message.content}</div>
+          <div className="absolute right-2 bottom-1 flex items-center gap-1">
+            <span className="text-[11px] text-gray-500">
+              {format(message.timestamp, 'HH:mm')}
+            </span>
+          </div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
             {message.sender.id === currentUserId && (
               <button
                 onClick={() => onDeleteMessage(message.id)}
@@ -141,7 +147,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
         {message.attachments && message.attachments.map((attachment, index) => (
-          <div key={index} className="relative group">
+          <div key={index} className="relative group max-w-sm">
             <MessageAttachment
               url={attachment.url}
               filename={attachment.filename}
@@ -163,12 +169,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 px-4">
       {messages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
-            <div className="flex justify-center my-4">
-              <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+            <div className="flex justify-center my-3">
+              <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-[13px]">
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -176,7 +182,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           {renderMessage(message)}
           
           {messageThreads[message.id]?.length > 1 && (
-            <div className="ml-12 mt-2">
+            <div className="ml-12 mt-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -192,7 +198,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               </Button>
               
               {expandedThreads.has(message.id) && (
-                <div className="space-y-2 mt-2">
+                <div className="space-y-1 mt-1">
                   {messageThreads[message.id]
                     .filter(reply => reply.id !== message.id)
                     .map(reply => renderMessage(reply, true))}
@@ -200,6 +206,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               )}
             </div>
           )}
+          <div ref={messagesEndRef} />
         </React.Fragment>
       ))}
     </div>
