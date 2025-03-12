@@ -4,11 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
 import { Profile } from "@/types/profile";
+import { convertLanguagePairsToStrings } from "@/types/languages";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const queryClient = useQueryClient();
 
   const {
@@ -153,6 +155,45 @@ export const useUserManagement = () => {
     }
   };
 
+  const handleUpdateProfile = async (data: Partial<Profile>) => {
+    if (!selectedUser) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      const transformedData = {
+        ...data,
+        languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
+      };
+      
+      delete (transformedData as any).active;
+      
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(transformedData)
+        .eq('id', selectedUser.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil a été mis à jour avec succès",
+      });
+
+      setIsEditingInterpreter(false);
+      window.dispatchEvent(new Event('refetchUserData'));
+      
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredUsers = {
     admins: users.admins.filter(user => {
       const searchTerm = searchQuery.toLowerCase().trim();
@@ -175,9 +216,10 @@ export const useUserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
+    handleUpdateProfile,
     queryClient,
     isSubmitting,
     setIsSubmitting,
-    refetch, // Add refetch to the return object
+    refetch,
   };
 };

@@ -24,6 +24,7 @@ import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
 import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { convertLanguagePairsToStrings } from "@/types/languages";
 
 interface UserTableProps {
   users: UserData[];
@@ -48,10 +49,14 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
     try {
       setIsSubmitting(true);
       
+      // Convert language pairs to string array format
       const transformedData = {
         ...data,
-        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+        languages: data.languages ? convertLanguagePairsToStrings(data.languages) : undefined,
       };
+      
+      // Remove any potential active field to prevent schema errors
+      delete (transformedData as any).active;
       
       const { error } = await supabase
         .from('interpreter_profiles')
@@ -69,6 +74,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
       window.dispatchEvent(new Event('refetchUserData'));
       
     } catch (error: any) {
+      console.error('Profile update error:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le profil: " + error.message,
