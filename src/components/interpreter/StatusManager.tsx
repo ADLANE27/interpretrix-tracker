@@ -111,18 +111,21 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       console.log('[StatusManager] Attempting status update for user:', userId);
       console.log('[StatusManager] New status:', newStatus);
 
-      const { data, error } = await supabase
+      // Only update the status field to avoid triggering language validation
+      const { error } = await supabase
         .from('interpreter_profiles')
-        .update({ status: newStatus })
-        .eq('id', userId)
-        .select();
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
 
       if (error) {
         console.error('[StatusManager] Database error:', error);
         throw error;
       }
 
-      console.log('[StatusManager] Update successful:', data);
+      console.log('[StatusManager] Status update successful');
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
