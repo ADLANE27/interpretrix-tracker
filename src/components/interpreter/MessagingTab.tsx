@@ -52,7 +52,7 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-120px)] w-full overflow-hidden bg-background">
+    <div className="h-screen w-full overflow-hidden bg-background">
       <div className="container mx-auto h-full p-0 sm:p-4">
         <Card className="h-full shadow-sm border-0 sm:border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:rounded-lg">
           <div className={cn(
