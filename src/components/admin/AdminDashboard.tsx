@@ -94,31 +94,20 @@ const AdminDashboard = () => {
         .from("interpreter_profiles")
         .select(`
           *,
-          next_mission:interpretation_missions!left(
-            id,
-            scheduled_start_time,
-            estimated_duration,
-            source_language,
-            target_language
-          ),
           private_reservations!left(
             id,
             start_time,
+            end_time,
             duration_minutes,
             source_language,
             target_language,
             status
-          ),
-          connection:interpreter_connection_status!inner(
-            last_seen_at
           )
-        `)
-        .order('next_mission(scheduled_start_time)', { ascending: true })
-        .order('private_reservations(start_time)', { ascending: true });
+        `);
 
       if (error) throw error;
 
-      console.log("[AdminDashboard] Raw data:", data); // Debug log
+      console.log("[AdminDashboard] Raw data:", data);
 
       const uniqueInterpreters = Array.from(new Map(
         (data || []).map(item => [item.id, item])
@@ -138,62 +127,14 @@ const AdminDashboard = () => {
 
         const now = new Date();
 
-        // Find next scheduled mission
-        const upcomingMission = interpreter.next_mission?.find(mission => 
-          mission?.scheduled_start_time && new Date(mission.scheduled_start_time) > now
-        );
-
-        // Find next private reservation with 'scheduled' status
-        const upcomingReservation = interpreter.private_reservations?.find(reservation => 
+        // Find next scheduled private reservation
+        const nextReservation = interpreter.private_reservations?.find(reservation => 
           reservation?.start_time && 
           new Date(reservation.start_time) > now && 
           reservation.status === 'scheduled'
         );
 
-        console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name}:`, {
-          upcomingMission,
-          upcomingReservation
-        }); // Debug log
-
-        let nextMissionStart = null;
-        let nextMissionDuration = null;
-        let nextMissionSourceLang = null;
-        let nextMissionTargetLang = null;
-
-        // Compare dates to determine which comes first
-        if (upcomingMission && upcomingReservation) {
-          const missionDate = new Date(upcomingMission.scheduled_start_time);
-          const reservationDate = new Date(upcomingReservation.start_time);
-
-          if (reservationDate < missionDate) {
-            nextMissionStart = upcomingReservation.start_time;
-            nextMissionDuration = upcomingReservation.duration_minutes;
-            nextMissionSourceLang = upcomingReservation.source_language;
-            nextMissionTargetLang = upcomingReservation.target_language;
-          } else {
-            nextMissionStart = upcomingMission.scheduled_start_time;
-            nextMissionDuration = upcomingMission.estimated_duration;
-            nextMissionSourceLang = upcomingMission.source_language;
-            nextMissionTargetLang = upcomingMission.target_language;
-          }
-        } else if (upcomingReservation) {
-          nextMissionStart = upcomingReservation.start_time;
-          nextMissionDuration = upcomingReservation.duration_minutes;
-          nextMissionSourceLang = upcomingReservation.source_language;
-          nextMissionTargetLang = upcomingReservation.target_language;
-        } else if (upcomingMission) {
-          nextMissionStart = upcomingMission.scheduled_start_time;
-          nextMissionDuration = upcomingMission.estimated_duration;
-          nextMissionSourceLang = upcomingMission.source_language;
-          nextMissionTargetLang = upcomingMission.target_language;
-        }
-
-        console.log(`[AdminDashboard] Next mission for ${interpreter.first_name} ${interpreter.last_name}:`, {
-          nextMissionStart,
-          nextMissionDuration,
-          nextMissionSourceLang,
-          nextMissionTargetLang
-        }); // Debug log
+        console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name} next reservation:`, nextReservation);
 
         return {
           id: interpreter.id || "",
@@ -210,10 +151,10 @@ const AdminDashboard = () => {
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
           phone_number: interpreter.phone_number,
           birth_country: interpreter.birth_country,
-          next_mission_start: nextMissionStart,
-          next_mission_duration: nextMissionDuration,
-          next_mission_source_language: nextMissionSourceLang,
-          next_mission_target_language: nextMissionTargetLang,
+          next_mission_start: nextReservation?.start_time || null,
+          next_mission_duration: nextReservation?.duration_minutes || null,
+          next_mission_source_language: nextReservation?.source_language || null,
+          next_mission_target_language: nextReservation?.target_language || null,
           tarif_15min: interpreter.tarif_15min,
           tarif_5min: interpreter.tarif_5min || null,
           last_seen_at: interpreter.connection?.[0]?.last_seen_at || null,
