@@ -36,7 +36,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
@@ -427,6 +427,7 @@ export const AdminDashboard = () => {
                           <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
                           <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
                           <SelectItem value="self_employed">Externe</SelectItem>
+                          <SelectItem value="permanent_interpreter_aftcom">Interprète permanent AFTCOM</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

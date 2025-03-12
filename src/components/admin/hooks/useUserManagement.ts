@@ -180,7 +180,6 @@ export const useUserManagement = () => {
         description: "Le profil a été mis à jour avec succès",
       });
 
-      setIsEditingInterpreter(false);
       window.dispatchEvent(new Event('refetchUserData'));
       
     } catch (error: any) {
