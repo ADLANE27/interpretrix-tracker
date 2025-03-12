@@ -103,7 +103,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
-        p_status: newStatus
+        p_status: newStatus as string
       });
 
       if (error) {
