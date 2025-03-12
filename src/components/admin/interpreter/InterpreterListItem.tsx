@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Globe } from "lucide-react";
@@ -9,7 +8,7 @@ interface InterpreterListItemProps {
     id: string;
     name: string;
     status: "available" | "unavailable" | "pause" | "busy";
-    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
     languages: string[];
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
