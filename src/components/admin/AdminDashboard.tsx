@@ -24,6 +24,7 @@ import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
 import { EmploymentStatus } from "@/utils/employmentStatus";
+import { Profile } from "@/types/profile";
 
 interface WorkHours {
   start_morning?: string;
