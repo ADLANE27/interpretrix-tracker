@@ -189,7 +189,15 @@ export const MessagesTab = () => {
         .eq('channel_id', channelId)
         .order("created_at", { ascending: true });
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error("Error fetching messages:", messagesError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch messages",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const messagesWithSenders = await Promise.all(
         (messagesData || []).map(async (message) => {
