@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
@@ -55,11 +54,11 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 h-full min-h-[calc(100vh-120px)] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-120px)] relative overflow-hidden">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "relative p-2 sm:p-4 lg:col-span-1 border-r border-r-border rounded-none shadow-none",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm h-full",
+          "relative p-2 sm:p-4 lg:col-span-1 border-r border-r-border rounded-none shadow-none h-full",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "dark:from-gray-800 dark:to-gray-900",
           isMobile && "fixed inset-0 z-50 m-0"
         )}>
@@ -99,10 +98,8 @@ export const MessagingTab = () => {
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "flex flex-col h-full lg:col-span-2 p-0 shadow-none border-0 overflow-hidden backdrop-blur-sm",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
-          "lg:col-span-2",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           {isMobile && (
