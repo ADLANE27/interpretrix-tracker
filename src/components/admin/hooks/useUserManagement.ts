@@ -157,12 +157,14 @@ export const useUserManagement = () => {
   const handleUpdateProfile = async (data: InterpreterFormData, interpreterId: string) => {
     try {
       setIsSubmitting(true);
-      
+    
       const transformedData = {
         ...data,
-        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`),
+        address: data.address ? JSON.stringify(data.address) : null,
+        work_hours: data.work_hours ? JSON.stringify(data.work_hours) : null
       };
-      
+    
       const { error } = await supabase
         .from('interpreter_profiles')
         .update(transformedData)
@@ -176,7 +178,7 @@ export const useUserManagement = () => {
       });
 
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      
+    
     } catch (error: any) {
       toast({
         title: "Erreur",
