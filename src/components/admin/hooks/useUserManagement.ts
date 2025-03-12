@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
 import { Profile } from "@/types/profile";
+import { InterpreterFormData } from "../forms/InterpreterProfileForm";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
