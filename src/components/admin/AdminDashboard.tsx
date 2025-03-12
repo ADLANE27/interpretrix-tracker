@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,6 @@ const AdminDashboard = () => {
 
       if (error) throw error;
 
-      // Remove duplicates based on interpreter ID
       const uniqueInterpreters = Array.from(new Map(
         (data || []).map(item => [item.id, item])
       ).values());
@@ -261,27 +260,36 @@ const AdminDashboard = () => {
   };
 
   const filteredInterpreters = interpreters.filter(interpreter => {
-    const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-    const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
+    const matchesName = nameFilter === "" || 
+      `${interpreter.first_name} ${interpreter.last_name}`
+        .toLowerCase()
+        .includes(nameFilter.toLowerCase());
     const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
-      const [source, target] = lang.split(" → ");
+      const [source, target] = lang.split('→').map(l => l.trim());
       return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
-             (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
+             target?.toLowerCase().includes(languageFilter.toLowerCase());
     });
-    const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
-    const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
-    const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
-    return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
+    const matchesPhone = phoneFilter === "" || 
+      (interpreter.phone_number && 
+       interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
+    const matchesBirthCountry = birthCountryFilter === "all" || 
+      interpreter.birth_country === birthCountryFilter;
+    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
+      interpreter.employment_status === employmentStatusFilter;
+
+    return matchesStatus && 
+           matchesName && 
+           matchesLanguage && 
+           matchesPhone && 
+           matchesBirthCountry && 
+           matchesEmploymentStatus;
   }).sort((a, b) => {
     if (rateSort === "rate-asc") {
-      const rateA = a.tarif_15min ?? 0;
-      const rateB = b.tarif_15min ?? 0;
-      return rateA - rateB;
+      return (a.tarif_15min || 0) - (b.tarif_15min || 0);
     }
-    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-    return nameA.localeCompare(nameB);
+    return `${a.first_name} ${a.last_name}`
+      .localeCompare(`${b.first_name} ${b.last_name}`);
   });
 
   const handleTabChange = (value: string) => {
