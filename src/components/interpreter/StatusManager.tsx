@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -100,7 +101,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
-      // Use RPC call to update status (bypassing trigger)
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
         p_status: newStatus

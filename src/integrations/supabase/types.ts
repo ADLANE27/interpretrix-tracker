@@ -1057,6 +1057,13 @@ export type Database = {
         }
         Returns: string
       }
+      update_interpreter_status: {
+        Args: {
+          p_interpreter_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
       urlencode:
         | {
             Args: {
