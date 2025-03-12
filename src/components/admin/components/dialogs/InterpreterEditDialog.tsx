@@ -2,7 +2,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
+import { InterpreterProfileForm } from "../../forms/InterpreterProfileForm";
 import { UserData } from "../../types/user-management";
 import { Profile } from "@/types/profile";
 import { useCallback, useEffect } from "react";
@@ -59,7 +59,7 @@ export const InterpreterEditDialog = ({
                 initialData={selectedUser}
                 onSubmit={onSubmit}
                 isSubmitting={isSubmitting}
-                key={`${selectedUser.id}-${isOpen}`} // Force form re-render when user or dialog state changes
+                key={`${selectedUser.id}-${isOpen}`}
               />
             </>
           )}

@@ -1,10 +1,11 @@
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { UserData } from "../../types/user-management";
 import { UserActions } from "./UserActions";
-import { memo } from "react";
-import { useState } from "react";
-import { useInterpreterProfileUpdate } from "@/hooks/interpreter-profile-update";
-import { InterpreterEditDialog } from "@/components/dialogs/interpreter-edit-dialog";
+import { memo, useState } from "react";
+import { useInterpreterProfileUpdate } from "../../hooks/useInterpreterProfileUpdate";
+import { InterpreterEditDialog } from "../dialogs/InterpreterEditDialog";
+import { Profile } from "@/types/profile";
 
 interface UserRowProps {
   user: UserData;
