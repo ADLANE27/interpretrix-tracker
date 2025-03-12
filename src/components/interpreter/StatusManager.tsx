@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +16,7 @@ interface StatusManagerProps {
 export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerProps = {}) => {
   const [status, setStatus] = useState<Status>(currentStatus || "available");
   const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Update local state when prop changes
@@ -24,38 +26,54 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     }
   }, [currentStatus]);
 
-  // Subscribe to status changes
+  // Get current user ID and set up real-time subscription
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setStatus('unavailable');
-      }
-    });
-
-    const channel = supabase.channel('interpreter-status')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'interpreter_profiles',
-        filter: `id=eq.${(async () => {
-          const { data: { user } } = await supabase.auth.getUser();
-          return user?.id;
-        })()}`
-      }, async payload => {
-        console.log('[StatusManager] Status update received:', payload);
-        const newStatus = payload.new.status;
-        if (isValidStatus(newStatus)) {
-          setStatus(newStatus);
+    const setupSubscription = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.error('[StatusManager] No authenticated user found');
+          return;
         }
-      })
-      .subscribe(status => {
-        console.log('[StatusManager] Status subscription status:', status);
-      });
 
-    return () => {
-      authListener.subscription.unsubscribe();
-      supabase.removeChannel(channel);
+        setUserId(user.id);
+
+        // Set up real-time subscription only after we have the user ID
+        const channel = supabase.channel('interpreter-status')
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'interpreter_profiles',
+            filter: `id=eq.${user.id}`
+          }, payload => {
+            console.log('[StatusManager] Status update received:', payload);
+            const newStatus = payload.new.status;
+            if (isValidStatus(newStatus)) {
+              setStatus(newStatus);
+            }
+          })
+          .subscribe(status => {
+            console.log('[StatusManager] Subscription status:', status);
+          });
+
+        // Set up auth state change listener
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
+          if (event === 'SIGNED_OUT') {
+            setStatus('unavailable');
+            setUserId(null);
+          }
+        });
+
+        return () => {
+          authListener.subscription.unsubscribe();
+          supabase.removeChannel(channel);
+        };
+      } catch (error) {
+        console.error('[StatusManager] Error setting up subscription:', error);
+      }
     };
+
+    setupSubscription();
   }, []);
 
   const isValidStatus = (status: string): status is Status => {
@@ -86,21 +104,17 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (status === newStatus) return; // Prevent unnecessary updates
+    if (status === newStatus || !userId) return;
     
     setIsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      console.log('[StatusManager] Attempting status update for user:', user.id);
+      console.log('[StatusManager] Attempting status update for user:', userId);
       console.log('[StatusManager] New status:', newStatus);
 
-      // Update database first
       const { data, error } = await supabase
         .from('interpreter_profiles')
         .update({ status: newStatus })
-        .eq('id', user.id)
+        .eq('id', userId)
         .select();
 
       if (error) {
@@ -110,7 +124,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
       console.log('[StatusManager] Update successful:', data);
 
-      // Then call the parent's onStatusChange if provided
       if (onStatusChange) {
         await onStatusChange(newStatus);
       }
