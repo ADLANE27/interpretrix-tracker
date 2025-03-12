@@ -1,6 +1,8 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface WorkHours {
   start_morning: string;
@@ -66,12 +68,10 @@ Deno.serve(async (req) => {
       const rawData = await req.json();
       console.log('Received raw data:', JSON.stringify(rawData, null, 2));
 
-      // Ensure languages array is properly formatted
       if (Array.isArray(rawData.languages)) {
         interpreterData = {
           ...rawData,
           languages: rawData.languages.map((lang: any) => {
-            // Handle both string format "source→target" and object format {source, target}
             if (typeof lang === 'string') {
               const [source, target] = lang.split('→');
               return { source, target };
@@ -92,7 +92,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate required fields
     if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: email, first_name, or last_name' }),
@@ -107,14 +106,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Transform languages to the correct format for storage
     const formattedLanguages = interpreterData.languages.map(lang => 
       `${lang.source}→${lang.target}`
     );
 
     console.log('Transformed languages:', formattedLanguages);
 
-    // Create the user with the provided or generated password
     const password = interpreterData.password || Math.random().toString(36).slice(-12);
     
     console.log('Creating user account...');
@@ -145,7 +142,6 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', authData);
 
-    // 2. Add interpreter role
     console.log('Adding interpreter role...');
     const { error: roleError } = await supabase
       .from('user_roles')
@@ -157,12 +153,10 @@ Deno.serve(async (req) => {
 
     if (roleError) {
       console.error('Error setting interpreter role:', roleError);
-      // Clean up created user if role assignment fails
       await supabase.auth.admin.deleteUser(authData.user.id);
       throw roleError;
     }
 
-    // 3. Create interpreter profile
     console.log('Creating interpreter profile...');
     const { error: profileError } = await supabase
       .from('interpreter_profiles')
@@ -198,26 +192,44 @@ Deno.serve(async (req) => {
 
     if (profileError) {
       console.error('Error creating interpreter profile:', profileError);
-      // Clean up user and role if profile creation fails
       await supabase.from('user_roles').delete().eq('user_id', authData.user.id);
       await supabase.auth.admin.deleteUser(authData.user.id);
       throw profileError;
     }
 
-    // 4. Send welcome email
     console.log('Sending welcome email...');
-    const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
-      body: {
-        email: interpreterData.email,
-        password: password,
-        role: 'interpreter',
-        first_name: interpreterData.first_name,
-      },
-    });
+    try {
+      const emailContent = `
+        <h1>Bienvenue sur Interpretix !</h1>
+        
+        <p>Bonjour ${interpreterData.first_name},</p>
 
-    if (emailError) {
+        <p>Votre compte interprète a été créé avec succès.</p>
+
+        <h2>Vos identifiants de connexion :</h2>
+        <ul>
+          <li>Email: ${interpreterData.email}</li>
+          <li>Mot de passe: ${password}</li>
+        </ul>
+
+        <p><a href="https://interpretix.netlify.app/interpreter/login" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Se connecter</a></p>
+
+        <p>Pour des raisons de sécurité, nous vous recommandons de changer votre mot de passe après votre première connexion.</p>
+
+        <p>Cordialement,<br>L'équipe Interpretix</p>
+      `;
+
+      const emailResponse = await resend.emails.send({
+        from: 'Interpretix <no-reply@aftraduction.com>',
+        to: interpreterData.email,
+        subject: `Bienvenue sur Interpretix - Vos identifiants de connexion interprète`,
+        html: emailContent,
+      });
+
+      console.log('Email sent successfully:', emailResponse);
+
+    } catch (emailError) {
       console.error('Error sending welcome email:', emailError);
-      // Don't block creation if email fails, but log it
     }
 
     return new Response(
