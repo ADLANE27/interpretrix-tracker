@@ -55,14 +55,14 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative mt-4">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
           "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
           "transition-all duration-300 hover:shadow-xl rounded-lg",
           "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-x-0 top-[140px] bottom-0 m-4 z-40"
         )}>
           <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
             <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
@@ -104,7 +104,7 @@ export const MessagingTab = () => {
           "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
           "hover:shadow-xl rounded-lg",
           "lg:col-span-2",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          isMobile && "fixed inset-x-0 top-[140px] bottom-0 m-4 z-40"
         )}>
           {isMobile && (
             <Button
