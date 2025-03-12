@@ -202,13 +202,22 @@ export const useUserManagement = () => {
 
       console.log('Successfully updated data:', updatedData[0]);
 
-      // Transform the Supabase data back to Profile format
+      // Transform the Supabase data back to Profile format with proper type checking
       const transformedProfile: Profile = {
         ...updatedData[0],
         languages: (updatedData[0].languages || []).map(parseLanguageString),
         status: updatedData[0].status as Profile['status'],
-        work_hours: updatedData[0].work_hours || null,
-        address: updatedData[0].address || null,
+        work_hours: updatedData[0].work_hours ? {
+          start_morning: String(updatedData[0].work_hours.start_morning || '09:00'),
+          end_morning: String(updatedData[0].work_hours.end_morning || '13:00'),
+          start_afternoon: String(updatedData[0].work_hours.start_afternoon || '14:00'),
+          end_afternoon: String(updatedData[0].work_hours.end_afternoon || '17:00')
+        } : null,
+        address: updatedData[0].address ? {
+          street: String(updatedData[0].address.street || ''),
+          postal_code: String(updatedData[0].address.postal_code || ''),
+          city: String(updatedData[0].address.city || '')
+        } : null,
       };
 
       // Update local state with properly formatted data
