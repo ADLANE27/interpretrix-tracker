@@ -36,7 +36,7 @@ export interface InterpreterFormData {
   active: boolean;
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   booth_number?: string;
   private_phone?: string;
   professional_phone?: string;
@@ -64,6 +64,15 @@ interface InterpreterProfileFormProps {
   initialData?: Partial<InterpreterFormData>;
   isSubmitting: boolean;
 }
+
+const employmentStatuses = [
+  { value: "salaried_aft", label: "Salarié AFTrad" },
+  { value: "salaried_aftcom", label: "Salarié AFTCOM" },
+  { value: "salaried_planet", label: "Salarié PLANET" },
+  { value: "permanent_interpreter", label: "Interprète permanent" },
+  { value: "permanent_interpreter_aftcom", label: "Interprète Permanent AFTcom" },
+  { value: "self_employed", label: "Externe" }
+];
 
 export const InterpreterProfileForm = ({ 
   isEditing,
@@ -349,11 +358,11 @@ export const InterpreterProfileForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
-                      <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
-                      <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
-                      <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
-                      <SelectItem value="self_employed">Externe</SelectItem>
+                      {employmentStatuses.map(status => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -9,7 +9,7 @@ export interface Profile {
     source: string;
     target: string;
   }[];
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   status: "available" | "busy" | "pause" | "unavailable";
   address: {
     street: string;
