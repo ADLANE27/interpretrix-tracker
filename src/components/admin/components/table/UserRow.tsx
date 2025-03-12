@@ -2,6 +2,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { UserData } from "../../types/user-management";
 import { UserActions } from "./UserActions";
+import { memo } from "react";
 
 interface UserRowProps {
   user: UserData;
@@ -12,7 +13,7 @@ interface UserRowProps {
   isSubmitting: boolean;
 }
 
-export const UserRow = ({
+export const UserRow = memo(({
   user,
   onEdit,
   onResetPasswordClick,
@@ -39,4 +40,6 @@ export const UserRow = ({
       </TableCell>
     </TableRow>
   );
-};
+});
+
+UserRow.displayName = 'UserRow';

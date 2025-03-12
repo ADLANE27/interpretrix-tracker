@@ -41,10 +41,10 @@ export const useInterpreterProfileUpdate = () => {
         id: data.id
       };
 
-      // Include all fields that are present, even if undefined
+      // Include all fields that are present, even if undefined or null
       Object.entries(data).forEach(([key, value]) => {
-        if (key !== 'id' && typeof value !== 'undefined') {
-          if (key === 'languages') {
+        if (key !== 'id') {
+          if (key === 'languages' && Array.isArray(value)) {
             profileData.languages = formatLanguagePairs(value as LanguagePair[]);
           } else {
             profileData[key] = value;
@@ -84,7 +84,6 @@ export const useInterpreterProfileUpdate = () => {
 
   return {
     updateProfile,
-    isSubmitting,
-    setIsSubmitting
+    isSubmitting
   };
 };
