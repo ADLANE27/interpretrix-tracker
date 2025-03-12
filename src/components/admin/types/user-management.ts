@@ -1,3 +1,4 @@
+
 import { EmploymentStatus } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
 
@@ -16,3 +17,4 @@ export interface UsersData {
   admins: UserData[];
   interpreters: UserData[];
 }
+
