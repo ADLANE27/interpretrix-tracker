@@ -1,14 +1,14 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
-import { Badge } from "@/components/ui/badge";
+import { StatusManager } from "./StatusManager";
 
 export const MessagingTab = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -54,62 +54,69 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="flex-1 h-full w-full overflow-hidden">
-      <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
-        <div className={cn(
-          "flex flex-col gap-3 sm:gap-6 h-full",
-          "lg:grid lg:grid-cols-3"
-        )}>
-          {(!selectedChannelId || showChannels || !isMobile) && (
-            <Card className={cn(
-              "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden h-full",
-              "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-              "transition-all duration-300 hover:shadow-xl rounded-lg",
-              "dark:from-gray-800 dark:to-gray-900",
-              "order-2",
-              isMobile && "h-full"
-            )}>
-              <InterpreterChannelList 
-                onChannelSelect={handleChannelSelect}
-              />
-            </Card>
-          )}
+    <div className="flex-1 h-full w-full overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden">
+        <Card className="shadow-sm border-0 sm:border bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full sm:rounded-xl">
+          <div className={cn(
+            "flex flex-col gap-3 sm:gap-6 h-full",
+            "lg:grid lg:grid-cols-3"
+          )}>
+            {(!selectedChannelId || showChannels || !isMobile) && (
+              <Card className={cn(
+                "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden h-full",
+                "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+                "transition-all duration-300 hover:shadow-xl rounded-lg",
+                "dark:from-gray-800 dark:to-gray-900",
+                "order-2",
+                isMobile && "h-full"
+              )}>
+                <InterpreterChannelList 
+                  onChannelSelect={handleChannelSelect}
+                />
+              </Card>
+            )}
 
-          {(selectedChannelId && (!showChannels || !isMobile)) ? (
-            <Card className={cn(
-              "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
-              "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-              "hover:shadow-xl rounded-lg order-1",
-              "lg:col-span-2",
-              isMobile && "fixed inset-0 z-30 m-0 rounded-none"
-            )}>
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChannels(true)}
-                  className="absolute top-2 left-2 z-10 h-8 px-2"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Retour
-                </Button>
-              )}
-              <InterpreterChat 
-                channelId={selectedChannelId}
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                onClearFilters={handleClearFilters}
-              />
-            </Card>
-          ) : !selectedChannelId && !isMobile ? (
-            <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900 order-1">
-              <div className="text-center text-muted-foreground">
-                <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
-              </div>
-            </Card>
-          ) : null}
-        </div>
-      </Card>
+            {(selectedChannelId && (!showChannels || !isMobile)) ? (
+              <Card className={cn(
+                "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+                "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+                "hover:shadow-xl rounded-lg order-1",
+                "lg:col-span-2",
+                isMobile && "fixed inset-0 z-30 m-0 rounded-none"
+              )}>
+                {isMobile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowChannels(true)}
+                    className="absolute top-2 left-2 z-10 h-8 px-2"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Retour
+                  </Button>
+                )}
+                <InterpreterChat 
+                  channelId={selectedChannelId}
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  onClearFilters={handleClearFilters}
+                />
+              </Card>
+            ) : !selectedChannelId && !isMobile ? (
+              <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900 order-1">
+                <div className="text-center text-muted-foreground">
+                  <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+                </div>
+              </Card>
+            ) : null}
+          </div>
+        </Card>
+      </div>
+
+      {/* Status Manager at bottom */}
+      <div className="mt-4">
+        <StatusManager currentStatus="available" onStatusChange={async () => {}} />
+      </div>
     </div>
   );
 };
