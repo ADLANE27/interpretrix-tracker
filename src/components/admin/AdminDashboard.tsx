@@ -36,7 +36,7 @@ interface Interpreter {
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: Profile['employment_status'];
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
@@ -422,12 +422,12 @@ export const AdminDashboard = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous les statuts</SelectItem>
-                          <SelectItem value="salarie_aft">Salarié AFTrad</SelectItem>
-                          <SelectItem value="salarie_aftcom">Salarié AFTCOM</SelectItem>
-                          <SelectItem value="salarie_planet">Salarié PLANET</SelectItem>
-                          <SelectItem value="interprete_permanent">Interprète Permanent</SelectItem>
-                          <SelectItem value="interprete_permanent_aftcom">Interprète Permanent AFTCOM</SelectItem>
-                          <SelectItem value="externe">Externe</SelectItem>
+                          <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                          <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                          <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                          <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                          <SelectItem value="permanent_interpreter_aftcom">Interprète Permanent AFTcom</SelectItem>
+                          <SelectItem value="self_employed">Externe</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

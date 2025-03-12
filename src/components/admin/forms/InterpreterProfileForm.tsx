@@ -36,7 +36,7 @@ export interface InterpreterFormData {
   active: boolean;
   tarif_15min: number;
   tarif_5min: number;
-  employment_status: "salarie_aft" | "salarie_aftcom" | "salarie_planet" | "interprete_permanent" | "interprete_permanent_aftcom" | "externe";
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
   booth_number?: string;
   private_phone?: string;
   professional_phone?: string;
@@ -66,12 +66,12 @@ interface InterpreterProfileFormProps {
 }
 
 const employmentStatuses = [
-  { value: "salarie_aft", label: "Salarié AFTrad" },
-  { value: "salarie_aftcom", label: "Salarié AFTCOM" },
-  { value: "salarie_planet", label: "Salarié PLANET" },
-  { value: "interprete_permanent", label: "Interprète Permanent" },
-  { value: "interprete_permanent_aftcom", label: "Interprète Permanent AFTCOM" },
-  { value: "externe", label: "Externe" }
+  { value: "salaried_aft", label: "Salarié AFTrad" },
+  { value: "salaried_aftcom", label: "Salarié AFTCOM" },
+  { value: "salaried_planet", label: "Salarié PLANET" },
+  { value: "permanent_interpreter", label: "Interprète permanent" },
+  { value: "permanent_interpreter_aftcom", label: "Interprète Permanent AFTcom" },
+  { value: "self_employed", label: "Externe" }
 ];
 
 export const InterpreterProfileForm = ({ 
@@ -94,7 +94,7 @@ export const InterpreterProfileForm = ({
     active: initialData?.active ?? true,
     tarif_15min: initialData?.tarif_15min || 0,
     tarif_5min: initialData?.tarif_5min || 0,
-    employment_status: initialData?.employment_status || "salarie_aft",
+    employment_status: initialData?.employment_status || "salaried_aft",
     booth_number: initialData?.booth_number || "",
     private_phone: initialData?.private_phone || "",
     professional_phone: initialData?.professional_phone || "",
