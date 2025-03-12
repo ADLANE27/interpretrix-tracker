@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+
 import { Card } from "@/components/ui/card";
 import { Globe } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
@@ -33,32 +33,35 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     .filter(lang => lang.source && lang.target);
 
   return (
-    <Card className="p-3 hover:shadow-md transition-shadow">
+    <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <Badge className={statusConfig[interpreter.status].color}>
+          <div className={`px-3 py-1 rounded-full text-sm ${statusConfig[interpreter.status].color}`}>
             {statusConfig[interpreter.status].label}
-          </Badge>
+          </div>
           <span className="font-medium truncate">{interpreter.name}</span>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
           <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-gray-500" />
+            <Globe className="h-4 w-4 text-muted-foreground" />
             <div className="flex flex-wrap gap-1">
               {parsedLanguages.map((lang, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs">
-                    {lang.source} → {lang.target}
-                  </Badge>
+                <div
+                  key={index}
+                  className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-center gap-1"
+                >
+                  <span>{lang.source}</span>
+                  <span className="text-blue-400">→</span>
+                  <span>{lang.target}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <Badge variant="outline">
+          <div className="text-sm text-muted-foreground">
             {employmentStatusLabels[interpreter.employment_status]}
-          </Badge>
+          </div>
 
           {interpreter.next_mission_start && (
             <UpcomingMissionBadge
