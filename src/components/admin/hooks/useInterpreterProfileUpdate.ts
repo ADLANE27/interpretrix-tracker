@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -38,29 +39,32 @@ export const useInterpreterProfileUpdate = () => {
         throw new Error("Invalid language pairs format");
       }
 
-      const profileData = {
-        id: data.id,
-        email: data.email,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        languages: data.languages ? formatLanguagePairs(data.languages) : undefined,
-        employment_status: data.employment_status,
-        status: data.status,
-        phone_number: data.phone_number,
-        address: data.address,
-        birth_country: data.birth_country,
-        nationality: data.nationality,
-        siret_number: data.siret_number,
-        vat_number: data.vat_number,
-        specializations: data.specializations,
-        landline_phone: data.landline_phone,
-        tarif_15min: data.tarif_15min,
-        tarif_5min: data.tarif_5min,
-        booth_number: data.booth_number,
-        professional_phone: data.professional_phone,
-        private_phone: data.private_phone,
-        work_hours: data.work_hours
+      // Only include fields that have values (not undefined)
+      const profileData: Record<string, any> = {
+        id: data.id
       };
+
+      // Only include fields that are present and not undefined
+      if (data.email !== undefined) profileData.email = data.email;
+      if (data.first_name !== undefined) profileData.first_name = data.first_name;
+      if (data.last_name !== undefined) profileData.last_name = data.last_name;
+      if (data.languages !== undefined) profileData.languages = formatLanguagePairs(data.languages);
+      if (data.employment_status !== undefined) profileData.employment_status = data.employment_status;
+      if (data.status !== undefined) profileData.status = data.status;
+      if (data.phone_number !== undefined) profileData.phone_number = data.phone_number;
+      if (data.address !== undefined) profileData.address = data.address;
+      if (data.birth_country !== undefined) profileData.birth_country = data.birth_country;
+      if (data.nationality !== undefined) profileData.nationality = data.nationality;
+      if (data.siret_number !== undefined) profileData.siret_number = data.siret_number;
+      if (data.vat_number !== undefined) profileData.vat_number = data.vat_number;
+      if (data.specializations !== undefined) profileData.specializations = data.specializations;
+      if (data.landline_phone !== undefined) profileData.landline_phone = data.landline_phone;
+      if (data.tarif_15min !== undefined) profileData.tarif_15min = data.tarif_15min;
+      if (data.tarif_5min !== undefined) profileData.tarif_5min = data.tarif_5min;
+      if (data.booth_number !== undefined) profileData.booth_number = data.booth_number;
+      if (data.professional_phone !== undefined) profileData.professional_phone = data.professional_phone;
+      if (data.private_phone !== undefined) profileData.private_phone = data.private_phone;
+      if (data.work_hours !== undefined) profileData.work_hours = data.work_hours;
       
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: profileData
