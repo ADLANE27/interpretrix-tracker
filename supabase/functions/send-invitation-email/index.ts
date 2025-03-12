@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
 import { Resend } from "npm:resend@2.0.0";
@@ -53,8 +52,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Starting invitation process...');
-    
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -71,83 +68,37 @@ Deno.serve(async (req) => {
 
       // Basic validation
       if (!rawData.email?.trim()) {
-        throw new Error('Email is required');
+        return new Response(
+          JSON.stringify({ success: false, message: 'Email is required' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
 
       if (!rawData.first_name?.trim() || !rawData.last_name?.trim()) {
-        throw new Error('First name and last name are required');
+        return new Response(
+          JSON.stringify({ success: false, message: 'First name and last name are required' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
 
-      if (!rawData.employment_status || 
-          !['salaried_aft', 'salaried_aftcom', 'salaried_planet', 'self_employed', 'permanent_interpreter', 'permanent_interpreter_aftcom']
-            .includes(rawData.employment_status)) {
-        throw new Error('Invalid employment status');
-      }
+      interpreterData = {
+        ...rawData,
+        languages: Array.isArray(rawData.languages) ? rawData.languages : [],
+        email: rawData.email.trim().toLowerCase(),
+        first_name: rawData.first_name.trim(),
+        last_name: rawData.last_name.trim(),
+        tarif_15min: Number(rawData.tarif_15min) || 0,
+        tarif_5min: Number(rawData.tarif_5min) || 0
+      };
 
-      if (!Array.isArray(rawData.languages) || rawData.languages.length === 0) {
-        throw new Error('At least one language pair is required');
-      }
-
-      if (typeof rawData.tarif_15min !== 'number' || rawData.tarif_15min < 0) {
-        throw new Error('Invalid tarif_15min value');
-      }
-
-      if (typeof rawData.tarif_5min !== 'number' || rawData.tarif_5min < 0) {
-        throw new Error('Invalid tarif_5min value');
-      }
-
-      // Password validation
-      if (rawData.password !== undefined) {
-        if (typeof rawData.password !== 'string') {
-          throw new Error('Password must be a string');
-        }
-        if (rawData.password.length < 8) {
-          throw new Error('Password must be at least 8 characters long');
-        }
-        // Add more password validation as needed
-      }
-
-      // Process and validate language pairs
-      if (Array.isArray(rawData.languages)) {
-        interpreterData = {
-          ...rawData,
-          languages: rawData.languages.map((lang: any) => {
-            try {
-              if (typeof lang === 'string') {
-                const [source, target] = lang.split('→').map(l => l.trim());
-                if (!source || !target) {
-                  throw new Error('Invalid language pair format');
-                }
-                return { source, target };
-              }
-              if (typeof lang === 'object' && lang.source && lang.target) {
-                return { 
-                  source: lang.source.trim(), 
-                  target: lang.target.trim() 
-                };
-              }
-              throw new Error('Invalid language pair format');
-            } catch (error) {
-              throw new Error(`Invalid language pair format: ${JSON.stringify(lang)}`);
-            }
-          })
-        };
-      } else {
-        throw new Error('Languages must be an array');
-      }
-
-      console.log('Processed interpreter data:', JSON.stringify(interpreterData, null, 2));
     } catch (error) {
       console.error('Error parsing/validating request body:', error);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Invalid request data: ' + error.message 
+          message: 'Invalid request data: ' + error.message 
         }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400 
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
@@ -156,7 +107,7 @@ Deno.serve(async (req) => {
     
     console.log('Creating user account...');
 
-    // Start a transaction
+    // Create the user account
     const { data: authData, error: createError } = await supabase.auth.admin.createUser({
       email: interpreterData.email,
       password: password,
@@ -170,10 +121,7 @@ Deno.serve(async (req) => {
     if (createError) {
       console.error('Error creating user:', createError);
       return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: createError.message 
-        }),
+        JSON.stringify({ success: false, message: createError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
@@ -301,7 +249,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: error.message || 'An unexpected error occurred'
+        message: error.message || 'An unexpected error occurred'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
