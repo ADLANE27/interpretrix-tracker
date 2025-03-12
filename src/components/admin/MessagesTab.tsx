@@ -89,6 +89,15 @@ export const MessagesTab = () => {
   const mentionStartRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const currentUser = useRef<any>(null);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUser.current = user;
+    };
+    getCurrentUser();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -458,10 +467,8 @@ export const MessagesTab = () => {
     fetchChannels();
   };
 
-  const currentUser = supabase.auth.user();
-
   const renderMessageContent = (message: Message) => {
-    const isCurrentUser = message.sender?.id === currentUser?.id;
+    const isCurrentUser = message.sender?.id === currentUser.current?.id;
 
     return (
       <Card 
