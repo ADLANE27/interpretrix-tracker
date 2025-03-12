@@ -54,13 +54,14 @@ Deno.serve(async (req) => {
     console.log('Received profile data:', profileData);
 
     if (!profileData.id) {
-      throw new Error('Missing interpreter ID');
+      return new Response(
+        JSON.stringify({ error: 'Missing interpreter ID' }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
-    // Build update object only with provided fields
     const updateData: Record<string, any> = {};
 
-    // Format language pairs if provided
     if (profileData.languages) {
       const formattedLanguages = profileData.languages
         .filter(lang => lang.source && lang.target)
@@ -69,24 +70,27 @@ Deno.serve(async (req) => {
       console.log('Formatted languages:', formattedLanguages);
     }
 
-    // Add all fields that are present in the request, even if they are null
+    // Include all fields that are present in the request, even if null
     Object.keys(profileData).forEach(field => {
-      if (field !== 'id' && field !== 'languages' && field in profileData) {
+      if (field !== 'id' && field !== 'languages') {
         updateData[field] = profileData[field];
       }
     });
 
     console.log('Updating profile with data:', updateData);
 
-    // Update the interpreter profile
-    const { error: profileError } = await supabase
+    const { data, error: profileError } = await supabase
       .from('interpreter_profiles')
       .update(updateData)
-      .eq('id', profileData.id);
+      .eq('id', profileData.id)
+      .select();
 
     if (profileError) {
       console.error('Error updating interpreter profile:', profileError);
-      throw profileError;
+      return new Response(
+        JSON.stringify({ error: profileError.message }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
     // Only update auth email if it has changed and is provided
@@ -98,31 +102,33 @@ Deno.serve(async (req) => {
 
       if (authError) {
         console.error('Error updating auth user:', authError);
-        throw authError;
+        return new Response(
+          JSON.stringify({ error: authError.message }), 
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
     }
 
     return new Response(
       JSON.stringify({ 
-        success: true,
-        message: 'Profile updated successfully' 
+        success: true, 
+        message: 'Profile updated successfully',
+        data 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
-      },
+      }
     );
 
   } catch (error) {
     console.error('Error in update-interpreter-profile:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message 
-      }),
+      JSON.stringify({ error: error.message }), 
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
-      },
+      }
     );
   }
 });
