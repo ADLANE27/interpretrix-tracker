@@ -25,10 +25,7 @@ export const useInterpreterProfileUpdate = () => {
   const formatLanguagePairs = (languages: LanguagePair[]) => {
     return languages
       .filter(lang => isValidLanguagePair(lang))
-      .map(lang => ({
-        source: lang.source.trim(),
-        target: lang.target.trim()
-      }));
+      .map(lang => `${lang.source.trim()} → ${lang.target.trim()}`);
   };
 
   const updateProfile = async (data: Partial<Profile> & { id: string }) => {
@@ -66,6 +63,8 @@ export const useInterpreterProfileUpdate = () => {
       if (data.private_phone !== undefined) profileData.private_phone = data.private_phone;
       if (data.work_hours !== undefined) profileData.work_hours = data.work_hours;
       
+      console.log('Updating profile with data:', profileData);
+
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: profileData
       });
@@ -77,9 +76,8 @@ export const useInterpreterProfileUpdate = () => {
         description: "Le profil a été mis à jour avec succès",
       });
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Invalidate and refetch queries instead of reloading the page
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
       
       return true;
     } catch (error: any) {
