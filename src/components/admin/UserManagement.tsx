@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,17 +18,16 @@ import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 import { UserTable } from "./components/UserTable";
 import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
-import { useUserManagementToasts } from "./hooks/useUserManagementToasts";
-import { useInterpreterCreation } from "@/hooks/useInterpreterCreation";
-import { supabase } from "@/integrations/supabase/client";
+import { useUserManagementPassword } from "./hooks/useUserManagementPassword";
+import { UserManagementPasswordDialog } from "./components/UserManagementPasswordDialog";
+import { useEffect } from "react";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const { toast } = useToast();
 
   const {
     users,
@@ -37,51 +37,37 @@ export const UserManagement = () => {
     setSearchQuery,
     handleDeleteUser,
     queryClient,
+    isSubmitting,
+    setIsSubmitting,
     refetch
   } = useUserManagement();
 
-  const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
-  const { createInterpreter, isCreating: isAddingInterpreter } = useInterpreterCreation();
-
-  const handleAddAdmin = async (data: any) => {
-    try {
-      setIsAddingAdmin(true);
-      const { error } = await supabase.functions.invoke('send-admin-invitation', {
-        body: data,
-      });
-      
-      if (error) throw error;
-
-      const loadingToast = showLoadingToast(
-        "Invitation en cours",
-        "L'invitation est en cours d'envoi..."
-      );
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      loadingToast.dismiss();
-      
-      showSuccessToast(
-        "Invitation envoyée",
-        "Un email d'invitation a été envoyé à l'administrateur"
-      );
-
-      setIsAddAdminOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    } catch (error: any) {
-      showErrorToast("Impossible d'ajouter l'administrateur", error);
-    } finally {
-      setIsAddingAdmin(false);
-    }
-  };
+  const {
+    isPasswordRequired,
+    isPasswordSetupOpen,
+    setIsPasswordSetupOpen,
+    isPasswordVerifyOpen,
+    setIsPasswordVerifyOpen,
+    isPasswordChangeOpen,
+    setIsPasswordChangeOpen,
+    isVerified,
+    handlePasswordSetup,
+    handlePasswordVerify,
+    handlePasswordChange,
+  } = useUserManagementPassword();
 
   const handleResetPassword = async (password: string) => {
     if (!selectedUserId) {
-      showErrorToast("Erreur", new Error("Aucun utilisateur sélectionné"));
+      toast({
+        title: "Erreur",
+        description: "Utilisateur non sélectionné",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
-      setIsResettingPassword(true);
+      setIsSubmitting(true);
       
       const { data, error } = await supabase.functions.invoke('reset-user-password', {
         body: { 
@@ -91,32 +77,42 @@ export const UserManagement = () => {
       });
 
       if (error || !data?.success) {
-        throw new Error(error?.message || data?.message || 'Échec de la réinitialisation du mot de passe');
+        throw new Error(error?.message || data?.message || 'Password reset failed');
       }
 
-      const loadingToast = showLoadingToast(
-        "Réinitialisation en cours",
-        "Le mot de passe est en cours de réinitialisation..."
-      );
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Le mot de passe a été mis à jour avec succès",
+      });
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      loadingToast.dismiss();
-
-      showSuccessToast(
-        "Mot de passe réinitialisé",
-        "Le mot de passe a été réinitialisé avec succès"
-      );
-
+      // First invalidate the query cache
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      
+      // Reset state
       setIsResetPasswordOpen(false);
       setSelectedUserId(null);
 
     } catch (error: any) {
-      showErrorToast("Échec de la réinitialisation", error);
+      console.error('Password reset error:', error);
+      toast({
+        title: "Erreur",
+        description: error.message === 'Request timeout'
+          ? "La requête a pris trop de temps. Veuillez réessayer."
+          : "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
+        variant: "destructive",
+      });
     } finally {
-      setIsResettingPassword(false);
+      setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      setSelectedUserId(null);
+      setIsResetPasswordOpen(false);
+      setIsSubmitting(false);
+    };
+  }, []);
 
   if (error) {
     return (
@@ -126,14 +122,50 @@ export const UserManagement = () => {
     );
   }
 
+  if (isPasswordRequired && !isVerified) {
+    return (
+      <div className="min-h-screen">
+        <UserManagementPasswordDialog
+          isOpen={isPasswordVerifyOpen}
+          onOpenChange={setIsPasswordVerifyOpen}
+          onSubmit={handlePasswordVerify}
+          onCancel={() => {
+            window.location.href = '/admin?tab=interpreters';
+          }}
+          mode="verify"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-full px-4 sm:px-6">
+      <UserManagementPasswordDialog
+        isOpen={isPasswordSetupOpen}
+        onOpenChange={setIsPasswordSetupOpen}
+        onSubmit={handlePasswordSetup}
+        mode="setup"
+      />
+
+      <UserManagementPasswordDialog
+        isOpen={isPasswordChangeOpen}
+        onOpenChange={setIsPasswordChangeOpen}
+        onSubmit={handlePasswordChange}
+        mode="change"
+      />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <UserCog className="h-6 w-6" />
           <h2 className="text-2xl font-bold">Gestion des utilisateurs</h2>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => setIsPasswordChangeOpen(true)}
+          >
+            Modifier le mot de passe
+          </Button>
           <Dialog open={isAddAdminOpen} onOpenChange={setIsAddAdminOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -148,8 +180,27 @@ export const UserManagement = () => {
                 </DialogDescription>
               </DialogHeader>
               <AdminCreationForm
-                onSubmit={handleAddAdmin}
-                isSubmitting={isAddingAdmin}
+                onSubmit={async (data) => {
+                  try {
+                    const { error } = await supabase.functions.invoke('send-admin-invitation', {
+                      body: data,
+                    });
+                    if (error) throw error;
+                    toast({
+                      title: "Administrateur ajouté",
+                      description: "Un email d'invitation a été envoyé",
+                    });
+                    setIsAddAdminOpen(false);
+                    refetch();
+                  } catch (error: any) {
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible d'ajouter l'administrateur: " + error.message,
+                      variant: "destructive",
+                    });
+                  }
+                }}
+                isSubmitting={isSubmitting}
               />
             </DialogContent>
           </Dialog>
@@ -170,8 +221,27 @@ export const UserManagement = () => {
                 </DialogHeader>
                 <InterpreterProfileForm
                   isEditing={true}
-                  onSubmit={createInterpreter}
-                  isSubmitting={isAddingInterpreter}
+                  onSubmit={async (data) => {
+                    try {
+                      const { error } = await supabase.functions.invoke('send-invitation-email', {
+                        body: data,
+                      });
+                      if (error) throw error;
+                      toast({
+                        title: "Interprète ajouté",
+                        description: "Un email d'invitation a été envoyé",
+                      });
+                      setIsAddUserOpen(false);
+                      refetch();
+                    } catch (error: any) {
+                      toast({
+                        title: "Erreur",
+                        description: "Impossible d'ajouter l'interprète: " + error.message,
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  isSubmitting={isSubmitting}
                 />
               </ScrollArea>
             </DialogContent>
@@ -225,13 +295,7 @@ export const UserManagement = () => {
         isOpen={isResetPasswordOpen}
         onOpenChange={setIsResetPasswordOpen}
         onSubmit={handleResetPassword}
-        isSubmitting={isResettingPassword}
-        userData={selectedUserId ? {
-          email: users.admins.concat(users.interpreters).find(u => u.id === selectedUserId)?.email || '',
-          first_name: users.admins.concat(users.interpreters).find(u => u.id === selectedUserId)?.first_name || '',
-          role: users.admins.concat(users.interpreters).find(u => u.id === selectedUserId)?.role as 'admin' | 'interpreter' || 'interpreter',
-          id: selectedUserId
-        } : undefined}
+        isSubmitting={isSubmitting}
       />
     </div>
   );

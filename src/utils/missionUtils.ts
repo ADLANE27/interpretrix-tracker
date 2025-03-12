@@ -1,3 +1,4 @@
+
 import { format, isWithinInterval, addMinutes } from 'date-fns';
 
 export const hasTimeOverlap = (
@@ -27,19 +28,6 @@ export const hasTimeOverlap = (
     console.error('[missionUtils] Error in hasTimeOverlap:', error);
     return true;
   }
-};
-
-export const filterInterpretersByMissionType = (
-  interpreters: any[],
-  missionType: 'immediate' | 'scheduled'
-): any[] => {
-  if (missionType === 'immediate') {
-    // For immediate missions, only show available interpreters
-    return interpreters.filter(interpreter => interpreter.status === 'available');
-  }
-  
-  // For scheduled missions, show all interpreters regardless of current status
-  return interpreters;
 };
 
 export const isInterpreterAvailableForScheduledMission = async (

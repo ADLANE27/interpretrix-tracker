@@ -13,12 +13,14 @@ interface SubscriptionStates {
   mentions?: SubscriptionState;
 }
 
+type SubscriptionStatus = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
+
 export const useSubscriptions = (
   channelId: string,
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  onMessageChange: (payload: any) => void
+  fetchMessages: () => Promise<void>
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
@@ -54,12 +56,14 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
 
+      // Create a new channel with a unique name
       const channelName = `chat-${channelId}-${Date.now()}`;
       console.log('[Chat] Creating new channel:', channelName);
       
       try {
         channelRef.current = supabase.channel(channelName);
 
+        // Set up message changes subscription
         channelRef.current
           .on('postgres_changes',
             {
@@ -68,24 +72,40 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            (payload) => {
+            async (payload) => {
               if (!isSubscribed) return;
               console.log('[Chat] Message change received:', payload);
-              onMessageChange(payload);
+              await fetchMessages();
             }
           );
 
-        const channel = await channelRef.current.subscribe((status) => {
-          console.log('[Chat] Subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            setSubscriptionStates({
-              messages: { status: 'SUBSCRIBED' },
-              ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
-            });
-          }
-        });
+        // Set up mentions subscription if there's a current user
+        if (currentUserId) {
+          channelRef.current
+            .on('postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'message_mentions',
+                filter: `channel_id=eq.${channelId}`
+              },
+              async (payload) => {
+                if (!isSubscribed) return;
+                console.log('[Chat] Mention change received:', payload);
+                await fetchMessages();
+              }
+            );
+        }
 
+        // Subscribe to the channel and subscribe() returns the channel instance
+        const channel = await channelRef.current.subscribe();
         console.log('[Chat] Channel subscribed:', channel);
+
+        // After successful subscription, update states
+        setSubscriptionStates({
+          messages: { status: 'SUBSCRIBED' },
+          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+        });
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
         handleSubscriptionError(error as Error, 'messages');
@@ -94,6 +114,7 @@ export const useSubscriptions = (
 
     setupSubscriptions();
 
+    // Cleanup function
     return () => {
       console.log('[Chat] Cleaning up subscriptions');
       isSubscribed = false;
@@ -106,7 +127,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, onMessageChange, retryCount, setRetryCount]);
+  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]);
 
   return {
     subscriptionStates,

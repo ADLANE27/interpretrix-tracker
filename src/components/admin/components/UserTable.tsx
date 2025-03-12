@@ -1,19 +1,28 @@
-
 import {
   Table,
   TableBody,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Pencil, MoreHorizontal, Key, Trash, Mail } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { UserData } from "../types/user-management";
+import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProfileForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
-import { useInterpreterProfileUpdate } from "../hooks/useInterpreterProfileUpdate";
-import { UserRow } from "./table/UserRow";
-import { InterpreterEditDialog } from "./dialogs/InterpreterEditDialog";
+import { useNavigate } from "react-router-dom";
 import { ResetPasswordDialog } from "./ResetPasswordDialog";
 
 interface UserTableProps {
@@ -24,36 +33,55 @@ interface UserTableProps {
 
 export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
-  const { updateProfile, isSubmitting } = useInterpreterProfileUpdate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   const handleEditInterpreter = (user: UserData) => {
-    // Find the most up-to-date user data
-    const fullUserData = users.find(u => u.id === user.id);
-    setSelectedUser(fullUserData || user);
+    setSelectedUser(user);
     setIsEditingInterpreter(true);
   };
 
   const handleUpdateProfile = async (data: Partial<Profile>) => {
     if (!selectedUser) return;
     
-    const success = await updateProfile({
-      id: selectedUser.id,
-      ...selectedUser,
-      ...data
-    });
+    try {
+      setIsSubmitting(true);
+      
+      const transformedData = {
+        ...data,
+        languages: data.languages?.map(lang => `${lang.source}→${lang.target}`)
+      };
+      
+      const { error } = await supabase
+        .from('interpreter_profiles')
+        .update(transformedData)
+        .eq('id', selectedUser.id);
 
-    if (success) {
+      if (error) throw error;
+
+      toast({
+        title: "Profil mis à jour",
+        description: "Le profil a été mis à jour avec succès",
+      });
+
       setIsEditingInterpreter(false);
-      setSelectedUser(null);
+      window.dispatchEvent(new Event('refetchUserData'));
+      
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le profil: " + error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSendPasswordReset = async (user: UserData) => {
     try {
-      setIsSubmittingReset(true);
+      setIsSubmitting(true);
       const { error } = await supabase.functions.invoke('send-password-reset-email', {
         body: { 
           user_id: user.id,
@@ -76,7 +104,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         variant: "destructive",
       });
     } finally {
-      setIsSubmittingReset(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -101,34 +129,72 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <UserRow
-              key={user.id}
-              user={user}
-              onEdit={handleEditInterpreter}
-              onResetPasswordClick={(user) => {
-                setSelectedUser(user);
-                setIsResetPasswordOpen(true);
-              }}
-              onSendPasswordReset={handleSendPasswordReset}
-              onDelete={onDelete}
-              isSubmitting={isSubmittingReset || isSubmitting}
-            />
+            <TableRow key={user.id}>
+              <TableCell>
+                {user.first_name} {user.last_name}
+              </TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>{user.active ? "Actif" : "Inactif"}</TableCell>
+              <TableCell className="text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {user.role === 'interpreter' && (
+                      <DropdownMenuItem onClick={() => handleEditInterpreter(user)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Modifier
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => {
+                      setSelectedUser(user);
+                      setIsResetPasswordOpen(true);
+                    }}>
+                      <Key className="mr-2 h-4 w-4" />
+                      Réinitialiser le mot de passe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleSendPasswordReset(user)}
+                      disabled={isSubmitting}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Envoyer un lien de réinitialisation
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => onDelete(user.id)}
+                    >
+                      <Trash className="mr-2 h-4 w-4" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      <InterpreterEditDialog
-        isOpen={isEditingInterpreter}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedUser(null);
-          }
-          setIsEditingInterpreter(open);
-        }}
-        selectedUser={selectedUser}
-        onSubmit={handleUpdateProfile}
-        isSubmitting={isSubmitting}
-      />
+      <Dialog open={isEditingInterpreter} onOpenChange={setIsEditingInterpreter}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le profil de l'interprète</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[85vh] px-1">
+            {selectedUser && (
+              <InterpreterProfileForm
+                isEditing={true}
+                initialData={selectedUser}
+                onSubmit={handleUpdateProfile}
+                isSubmitting={isSubmitting}
+              />
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       <ResetPasswordDialog
         isOpen={isResetPasswordOpen}
@@ -137,7 +203,7 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           await onResetPassword(selectedUser?.id || '', password);
           setIsResetPasswordOpen(false);
         }}
-        isSubmitting={isSubmittingReset}
+        isSubmitting={isSubmitting}
         userData={selectedUser ? {
           email: selectedUser.email || '',
           first_name: selectedUser.first_name || '',

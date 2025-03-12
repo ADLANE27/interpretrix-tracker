@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
-import { useUserManagementToasts } from "./useUserManagementToasts";
 import { Profile } from "@/types/profile";
 
 export const useUserManagement = () => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
-  const { showSuccessToast, showErrorToast, showLoadingToast } = useUserManagementToasts();
 
   const {
     data: users = { admins: [], interpreters: [] },
@@ -99,10 +100,7 @@ export const useUserManagement = () => {
             specializations: interpreter.specializations || [],
             landline_phone: interpreter.landline_phone,
             tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min,
-            booth_number: interpreter.booth_number || '',
-            private_phone: interpreter.private_phone || '',
-            professional_phone: interpreter.professional_phone || ''
+            tarif_5min: interpreter.tarif_5min
           };
         });
 
@@ -113,7 +111,7 @@ export const useUserManagement = () => {
 
         return result;
       } catch (error) {
-        console.error('Error loading users:', error);
+        console.error('Error fetching users:', error);
         throw error;
       }
     },
@@ -134,68 +132,24 @@ export const useUserManagement = () => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const loadingToast = showLoadingToast(
-        "Suppression en cours",
-        "L'utilisateur est en cours de suppression..."
-      );
-
       const { error } = await supabase.functions.invoke('delete-user', {
         body: { userId },
       });
 
       if (error) throw error;
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      loadingToast.dismiss();
-
-      showSuccessToast(
-        "Utilisateur supprimé",
-        "L'utilisateur a été supprimé avec succès"
-      );
-
-      refetch();
-    } catch (error: any) {
-      showErrorToast(
-        "Erreur lors de la suppression",
-        error
-      );
-    }
-  };
-
-  const handleUpdateProfile = async (data: Partial<Profile>) => {
-    try {
-      const loadingToast = showLoadingToast(
-        "Mise à jour en cours",
-        "Le profil est en cours de mise à jour..."
-      );
-
-      const { error } = await supabase.functions.invoke('update-interpreter-profile', {
-        body: {
-          ...data,
-          languages: data.languages?.map(lang => ({
-            source: lang.source,
-            target: lang.target
-          }))
-        },
+      toast({
+        title: "Utilisateur supprimé",
+        description: "L'utilisateur a été supprimé avec succès",
       });
 
-      if (error) throw error;
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      loadingToast.dismiss();
-
-      showSuccessToast(
-        "Profil mis à jour",
-        "Le profil a été mis à jour avec succès"
-      );
-
       refetch();
     } catch (error: any) {
-      console.error('Erreur lors de la mise à jour du profil:', error);
-      showErrorToast(
-        "Impossible de mettre à jour le profil",
-        error.message || "Une erreur est survenue lors de la mise à jour"
-      );
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'utilisateur: " + error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -221,8 +175,9 @@ export const useUserManagement = () => {
     searchQuery,
     setSearchQuery,
     handleDeleteUser,
-    handleUpdateProfile,
     queryClient,
-    refetch,
+    isSubmitting,
+    setIsSubmitting,
+    refetch, // Add refetch to the return object
   };
 };

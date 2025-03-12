@@ -10,8 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { normalizeLanguagePair, formatLanguagePair } from "@/utils/languageFormatting";
-import { isInterpreterAvailableForScheduledMission } from "@/utils/missionUtils";
 
 interface Interpreter {
   id: string;
@@ -48,40 +46,33 @@ export const PrivateReservationForm = () => {
           status,
           profile_picture_url,
           languages
-        `);
+        `)
+        .eq('status', 'available');
 
       if (error) {
         console.error('[PrivateReservationForm] Erreur:', error);
         throw error;
       }
 
-      const expectedPair = formatLanguagePair(sourceLang, targetLang);
-      console.log('[PrivateReservationForm] Recherche de la paire:', expectedPair);
+      interpreters?.forEach(interpreter => {
+        console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
+      });
 
-      let filteredInterpreters = interpreters?.filter(interpreter => {
+      const filteredInterpreters = interpreters?.filter(interpreter => {
         return interpreter.languages.some(lang => {
-          const normalizedLang = normalizeLanguagePair(lang);
-          const normalizedExpected = normalizeLanguagePair(expectedPair);
-          return normalizedLang === normalizedExpected;
+          const [source, target] = lang.split('→').map(l => l.trim());
+          const matches = source === sourceLang && target === targetLang;
+          console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name}:`, {
+            lang,
+            source,
+            target,
+            sourceLang,
+            targetLang,
+            matches
+          });
+          return matches;
         });
       }) || [];
-
-      if (startTime && endTime) {
-        const availableInterpreters = [];
-        for (const interpreter of filteredInterpreters) {
-          const isAvailable = await isInterpreterAvailableForScheduledMission(
-            interpreter.id,
-            startTime,
-            endTime,
-            supabase
-          );
-          
-          if (isAvailable) {
-            availableInterpreters.push(interpreter);
-          }
-        }
-        filteredInterpreters = availableInterpreters;
-      }
 
       console.log('[PrivateReservationForm] Interprètes trouvés:', filteredInterpreters);
       setAvailableInterpreters(filteredInterpreters);
@@ -94,7 +85,6 @@ export const PrivateReservationForm = () => {
         description: "Impossible de trouver les interprètes disponibles",
         variant: "destructive",
       });
-      setAvailableInterpreters([]);
     }
   };
 

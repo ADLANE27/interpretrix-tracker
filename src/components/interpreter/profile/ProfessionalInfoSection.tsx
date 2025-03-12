@@ -11,11 +11,10 @@ import {
 } from "@/components/ui/select";
 import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
 import { LanguagePair } from "@/types/languages";
-import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
 
 export interface ProfessionalInfoSectionProps {
-  employmentStatus: EmploymentStatus;
-  onEmploymentStatusChange: (status: EmploymentStatus) => void;
+  employmentStatus: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  onEmploymentStatusChange: (status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter") => void;
   languages: LanguagePair[];
   onLanguagesChange: (languages: LanguagePair[]) => void;
   tarif5min: number;
@@ -74,11 +73,11 @@ export const ProfessionalInfoSection = ({
               <SelectValue placeholder="Sélectionnez un statut" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(employmentStatusLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+              <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+              <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+              <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+              <SelectItem value="self_employed">Auto-entrepreneur</SelectItem>
             </SelectContent>
           </Select>
         </div>

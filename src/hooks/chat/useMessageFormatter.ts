@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 
@@ -16,7 +15,6 @@ export const useMessageFormatter = () => {
     }
 
     try {
-      // Get sender details
       const { data: senderDetails, error: senderError } = await supabase
         .rpc('get_message_sender_details', {
           sender_id: messageData.sender_id
@@ -29,18 +27,6 @@ export const useMessageFormatter = () => {
       }
 
       const typedSenderDetails = senderDetails as SenderDetails;
-
-      // Get channel type
-      const { data: channelData, error: channelError } = await supabase
-        .from('chat_channels')
-        .select('channel_type')
-        .eq('id', messageData.channel_id)
-        .single();
-
-      if (channelError) {
-        console.error('Error fetching channel type:', channelError);
-        return null;
-      }
 
       let parsedReactions: Record<string, string[]> = {};
       try {
@@ -81,8 +67,7 @@ export const useMessageFormatter = () => {
         },
         timestamp: new Date(messageData.created_at),
         reactions: parsedReactions,
-        attachments: parsedAttachments,
-        channelType: channelData.channel_type as "group" | "direct"
+        attachments: parsedAttachments
       };
     } catch (error) {
       console.error('Error formatting message:', error);

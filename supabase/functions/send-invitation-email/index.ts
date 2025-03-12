@@ -1,15 +1,6 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
-import { Resend } from "npm:resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-interface WorkHours {
-  start_morning: string;
-  end_morning: string;
-  start_afternoon: string;
-  end_afternoon: string;
-}
 
 interface Address {
   street: string;
@@ -27,8 +18,8 @@ interface InterpreterData {
   first_name: string;
   last_name: string;
   password?: string;
-  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter" | "permanent_interpreter_aftcom";
-  languages: string[];
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+  languages: LanguagePair[];
   phone_number?: string;
   birth_country?: string;
   nationality?: string;
@@ -38,10 +29,6 @@ interface InterpreterData {
   vat_number?: string;
   specializations?: string[];
   landline_phone?: string;
-  booth_number?: string;
-  private_phone?: string;
-  professional_phone?: string;
-  work_hours?: WorkHours;
   tarif_15min: number;
   tarif_5min: number;
 }
@@ -52,83 +39,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase configuration');
-    }
-
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let interpreterData: InterpreterData;
-    try {
-      const rawData = await req.json();
-      console.log('Received raw data:', JSON.stringify(rawData, null, 2));
+    const interpreterData: InterpreterData = await req.json();
+    console.log('Creating interpreter with data:', interpreterData);
 
-      // Basic validation
-      if (!rawData.email?.trim()) {
-        return new Response(
-          JSON.stringify({ success: false, message: 'Email is required' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      if (!rawData.first_name?.trim() || !rawData.last_name?.trim()) {
-        return new Response(
-          JSON.stringify({ success: false, message: 'First name and last name are required' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      // Validate language format
-      if (!Array.isArray(rawData.languages) || rawData.languages.length === 0) {
-        return new Response(
-          JSON.stringify({ success: false, message: 'At least one language pair is required' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      // Ensure each language pair is properly formatted
-      const languageFormatRegex = /^[^→]+\s→\s[^→]+$/;
-      const invalidLanguages = rawData.languages.filter(lang => !languageFormatRegex.test(lang));
-      if (invalidLanguages.length > 0) {
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            message: `Invalid language pair format. Each pair must be in the format "Source → Target". Invalid pairs: ${invalidLanguages.join(', ')}` 
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-        );
-      }
-
-      interpreterData = {
-        ...rawData,
-        languages: rawData.languages,
-        email: rawData.email.trim().toLowerCase(),
-        first_name: rawData.first_name.trim(),
-        last_name: rawData.last_name.trim(),
-        tarif_15min: Number(rawData.tarif_15min) || 0,
-        tarif_5min: Number(rawData.tarif_5min) || 0
-      };
-
-    } catch (error) {
-      console.error('Error parsing/validating request body:', error);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          message: 'Invalid request data: ' + error.message 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
+    // Validate required fields
+    if (!interpreterData.email || !interpreterData.first_name || !interpreterData.last_name) {
+      throw new Error('Missing required fields: email, first_name, or last_name');
     }
 
-    // Generate a secure random password if none provided
-    const password = interpreterData.password || generateSecurePassword();
-    
-    console.log('Creating user account...');
+    // Transform languages to the correct format
+    const formattedLanguages = interpreterData.languages.map(lang => 
+      `${lang.source}→${lang.target}`
+    );
 
-    // Create the user account
+    // 1. Create the user with the provided or generated password
+    const password = interpreterData.password || Math.random().toString(36).slice(-12);
+    
     const { data: authData, error: createError } = await supabase.auth.admin.createUser({
       email: interpreterData.email,
       password: password,
@@ -141,134 +71,91 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error('Error creating user:', createError);
-      return new Response(
-        JSON.stringify({ success: false, message: createError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    if (!authData?.user) {
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'User creation succeeded but no user data returned' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-      );
+      throw createError;
     }
 
     console.log('User created successfully:', authData);
 
-    try {
-      console.log('Adding interpreter role...');
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: 'interpreter',
-          active: true,
-        });
+    // 2. Add interpreter role
+    const { error: roleError } = await supabase
+      .from('user_roles')
+      .insert({
+        user_id: authData.user.id,
+        role: 'interpreter',
+        active: true,
+      });
 
-      if (roleError) throw roleError;
-
-      console.log('Creating interpreter profile...');
-      const { error: profileError } = await supabase
-        .from('interpreter_profiles')
-        .insert({
-          id: authData.user.id,
-          first_name: interpreterData.first_name,
-          last_name: interpreterData.last_name,
-          email: interpreterData.email,
-          employment_status: interpreterData.employment_status,
-          languages: interpreterData.languages,
-          phone_number: interpreterData.phone_number || null,
-          birth_country: interpreterData.birth_country || null,
-          nationality: interpreterData.nationality || null,
-          address: interpreterData.address || null,
-          siret_number: interpreterData.siret_number || null,
-          vat_number: interpreterData.vat_number || null,
-          specializations: interpreterData.specializations || [],
-          landline_phone: interpreterData.landline_phone || null,
-          booth_number: interpreterData.booth_number || null,
-          private_phone: interpreterData.private_phone || null,
-          professional_phone: interpreterData.professional_phone || null,
-          work_hours: interpreterData.work_hours || {
-            start_morning: "09:00",
-            end_morning: "13:00",
-            start_afternoon: "14:00",
-            end_afternoon: "17:00"
-          },
-          status: 'available',
-          password_changed: false,
-          tarif_15min: interpreterData.tarif_15min || 0,
-          tarif_5min: interpreterData.tarif_5min || 0
-        });
-
-      if (profileError) throw profileError;
-
-      console.log('Sending welcome email...');
-      try {
-        const emailContent = `
-          <h1>Bienvenue sur Interpretix !</h1>
-          
-          <p>Bonjour ${interpreterData.first_name},</p>
-
-          <p>Votre compte interprète a été créé avec succès.</p>
-
-          <h2>Vos identifiants de connexion :</h2>
-          <ul>
-            <li>Email: ${interpreterData.email}</li>
-            <li>Mot de passe: ${password}</li>
-          </ul>
-
-          <p><a href="https://interpretix.netlify.app/interpreter/login" style="display: inline-block; background-color: #1A1F2C; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Se connecter</a></p>
-
-          <p>Pour des raisons de sécurité, nous vous recommandons de changer votre mot de passe après votre première connexion.</p>
-
-          <p>Cordialement,<br>L'équipe Interpretix</p>
-        `;
-
-        const emailResponse = await resend.emails.send({
-          from: 'Interpretix <no-reply@aftraduction.com>',
-          to: interpreterData.email,
-          subject: `Bienvenue sur Interpretix - Vos identifiants de connexion interprète`,
-          html: emailContent,
-        });
-
-        console.log('Email sent successfully:', emailResponse);
-
-      } catch (emailError) {
-        console.error('Error sending welcome email:', emailError);
-        // Don't throw here, as the user is already created
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          message: 'Interpreter created successfully',
-          user: authData.user 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        },
-      );
-
-    } catch (error) {
-      // If anything fails after user creation, clean up by deleting the user
-      if (authData?.user?.id) {
-        console.log('Rolling back user creation...');
-        await supabase.auth.admin.deleteUser(authData.user.id);
-      }
-      throw error;
+    if (roleError) {
+      console.error('Error setting interpreter role:', roleError);
+      // Clean up created user if role assignment fails
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw roleError;
     }
+
+    // 3. Create interpreter profile
+    const { error: profileError } = await supabase
+      .from('interpreter_profiles')
+      .insert({
+        id: authData.user.id,
+        first_name: interpreterData.first_name,
+        last_name: interpreterData.last_name,
+        email: interpreterData.email,
+        employment_status: interpreterData.employment_status,
+        languages: formattedLanguages,
+        phone_number: interpreterData.phone_number || null,
+        birth_country: interpreterData.birth_country || null,
+        nationality: interpreterData.nationality || null,
+        address: interpreterData.address || null,
+        phone_interpretation_rate: interpreterData.phone_interpretation_rate || 0,
+        siret_number: interpreterData.siret_number || null,
+        vat_number: interpreterData.vat_number || null,
+        specializations: interpreterData.specializations || [],
+        landline_phone: interpreterData.landline_phone || null,
+        password_changed: false,
+        status: 'available',
+        tarif_15min: interpreterData.tarif_15min || 0,
+        tarif_5min: interpreterData.tarif_5min || 0
+      });
+
+    if (profileError) {
+      console.error('Error creating interpreter profile:', profileError);
+      // Clean up user and role if profile creation fails
+      await supabase.from('user_roles').delete().eq('user_id', authData.user.id);
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw profileError;
+    }
+
+    // 4. Send welcome email
+    const { error: emailError } = await supabase.functions.invoke('send-welcome-email', {
+      body: {
+        email: interpreterData.email,
+        password: password,
+        role: 'interpreter',
+        first_name: interpreterData.first_name,
+      },
+    });
+
+    if (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Don't block creation if email fails
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        message: 'Interpreter created successfully',
+        user: authData.user 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      },
+    );
 
   } catch (error) {
     console.error('Error in send-invitation-email:', error);
     return new Response(
       JSON.stringify({ 
-        success: false,
-        message: error.message || 'An unexpected error occurred'
+        error: error.message 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -278,26 +165,3 @@ Deno.serve(async (req) => {
   }
 });
 
-function generateSecurePassword(): string {
-  const length = 12;
-  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  let password = "";
-  
-  // Ensure at least one uppercase, one lowercase, one number, and one special character
-  password += getRandomChar("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-  password += getRandomChar("abcdefghijklmnopqrstuvwxyz");
-  password += getRandomChar("0123456789");
-  password += getRandomChar("!@#$%^&*");
-  
-  // Fill the rest randomly
-  for (let i = password.length; i < length; i++) {
-    password += charset.charAt(Math.floor(Math.random() * charset.length));
-  }
-  
-  // Shuffle the password
-  return password.split('').sort(() => Math.random() - 0.5).join('');
-}
-
-function getRandomChar(charset: string): string {
-  return charset.charAt(Math.floor(Math.random() * charset.length));
-}

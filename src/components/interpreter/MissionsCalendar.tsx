@@ -143,22 +143,29 @@ export const MissionsCalendar = ({ missions: initialMissions }: MissionsCalendar
   const scheduledMissions = missions.filter(mission => {
     const isAccepted = mission.status === 'accepted';
     const hasScheduledTime = mission.scheduled_start_time !== null;
+    console.log(`[MissionsCalendar] Mission ${mission.id} - accepted: ${isAccepted}, hasScheduledTime: ${hasScheduledTime}`);
     return isAccepted && hasScheduledTime;
   });
 
   const missionsForSelectedDate = scheduledMissions.filter((mission) => {
     if (!selectedDate || !mission.scheduled_start_time) return false;
     
-    const missionDate = mission.scheduled_start_time.split('T')[0];
-    const selectedDateStr = selectedDate.toISOString().split('T')[0];
-    return missionDate === selectedDateStr;
+    const missionDate = new Date(mission.scheduled_start_time);
+    const selectedDayStart = startOfDay(selectedDate);
+    const missionDayStart = startOfDay(missionDate);
+    
+    const matches = selectedDayStart.getTime() === missionDayStart.getTime();
+    console.log(`[MissionsCalendar] Checking mission ${mission.id} for date ${selectedDate.toISOString()} - matches: ${matches}`);
+    
+    return matches;
   });
 
   const datesWithMissions = scheduledMissions
     .map((mission) => {
       if (!mission.scheduled_start_time) return null;
-      const [year, month, day] = mission.scheduled_start_time.split('T')[0].split('-');
-      return new Date(Number(year), Number(month) - 1, Number(day));
+      const date = startOfDay(new Date(mission.scheduled_start_time));
+      console.log(`[MissionsCalendar] Mission ${mission.id} date: ${date.toISOString()}`);
+      return date;
     })
     .filter((date): date is Date => date !== null);
 

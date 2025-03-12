@@ -1,10 +1,10 @@
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft, Menu } from "lucide-react";
+import { Bell, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -32,13 +32,12 @@ export const MessagingTab = () => {
     setFilters(newFilters);
   };
 
-  const handleClearFilters = useCallback(() => {
+  const handleClearFilters = () => {
     setFilters({});
-  }, []);
+  };
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
-    handleClearFilters();
     if (isMobile) {
       setShowChannels(false);
     }
@@ -55,39 +54,18 @@ export const MessagingTab = () => {
     await refreshMentions();
   };
 
-  const handleBackToChannels = () => {
-    setSelectedChannelId(null);
-    setShowChannels(true);
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-120px)] min-h-[700px] relative">
-      {/* Channel List */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "relative overflow-hidden",
-          "bg-gradient-to-br from-interpreter-navy/5 to-white dark:from-interpreter-navy/20 dark:to-gray-800",
-          "backdrop-blur-xl border-0 shadow-lg",
-          "transition-all duration-300 hover:shadow-xl",
-          "p-2 sm:p-4 lg:col-span-1",
-          isMobile && "fixed inset-0 z-[35] m-0"
+          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
+          "transition-all duration-300 hover:shadow-xl rounded-lg",
+          "dark:from-gray-800 dark:to-gray-900",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          <div className="flex items-center justify-between mb-4 px-2">
-            <div className="flex items-center gap-2">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="lg:hidden hover:bg-interpreter-navy/10 dark:hover:bg-gray-700/50"
-                  onClick={() => setShowChannels(false)}
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-              <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-interpreter-navy to-interpreter-navy/80 dark:from-interpreter-navy/90 dark:to-interpreter-navy/70 bg-clip-text text-transparent">
-                Conversations
-              </h2>
-            </div>
+          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
+            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -96,13 +74,11 @@ export const MessagingTab = () => {
               onDelete={deleteMention}
             >
               <div className={cn(
-                "transition-all duration-200",
-                "bg-white/80 dark:bg-gray-800/80 hover:bg-white dark:hover:bg-gray-700",
-                "shadow-sm hover:shadow-md",
-                "border border-interpreter-navy/10 dark:border-gray-700",
-                "rounded-full p-2",
-                "flex items-center justify-center relative",
-                totalUnreadCount > 0 && "text-interpreter-navy"
+                "transition-all duration-200 p-1.5 sm:p-2",
+                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                "border border-gray-100 dark:border-gray-700",
+                "rounded-lg flex items-center justify-center relative",
+                totalUnreadCount > 0 && "text-purple-500"
               )}>
                 <Bell className="h-4 w-4" />
                 {totalUnreadCount > 0 && (
@@ -122,22 +98,20 @@ export const MessagingTab = () => {
         </Card>
       )}
       
-      {/* Chat Area */}
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
-          "relative overflow-hidden",
-          "bg-gradient-to-br from-white to-orange-50/90 dark:from-gray-800 dark:to-gray-900/90",
-          "backdrop-blur-xl border-0 shadow-lg",
-          "transition-all duration-300 hover:shadow-xl",
-          "p-2 sm:p-4 lg:col-span-2",
-          isMobile && "fixed inset-0 z-[45] m-0"
+          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
+          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
+          "hover:shadow-xl rounded-lg",
+          "lg:col-span-2",
+          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           {isMobile && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleBackToChannels}
-              className="absolute top-2 left-2 z-10 h-8 px-2 hover:bg-interpreter-navy/10 dark:hover:bg-gray-700/50"
+              onClick={() => setShowChannels(true)}
+              className="absolute top-2 left-2 z-10 h-8 px-2"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Retour
@@ -148,21 +122,12 @@ export const MessagingTab = () => {
             filters={filters}
             onFiltersChange={handleFiltersChange}
             onClearFilters={handleClearFilters}
-            onBack={handleBackToChannels}
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
-        <Card className={cn(
-          "flex items-center justify-center",
-          "bg-gradient-to-br from-white to-orange-50/90 dark:from-gray-800 dark:to-gray-900/90",
-          "backdrop-blur-xl border-0 shadow-lg",
-          "transition-all duration-300 hover:shadow-xl",
-          "p-3 sm:p-4 lg:col-span-2"
-        )}>
+        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
           <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">
-              Sélectionnez une conversation pour commencer à discuter
-            </p>
+            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
           </div>
         </Card>
       ) : null}

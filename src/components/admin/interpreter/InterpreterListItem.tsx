@@ -3,15 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Globe } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
-import { employmentStatusLabels } from "@/types/employment";
-import type { EmploymentStatus } from "@/types/employment";
 
 interface InterpreterListItemProps {
   interpreter: {
     id: string;
     name: string;
     status: "available" | "unavailable" | "pause" | "busy";
-    employment_status: EmploymentStatus;
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
@@ -23,6 +21,14 @@ const statusConfig = {
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   pause: { color: "bg-interpreter-pause text-white", label: "En pause" },
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
+};
+
+const employmentStatusLabels: Record<string, string> = {
+  salaried_aft: "Salarié AFTrad",
+  salaried_aftcom: "Salarié AFTCOM",
+  salaried_planet: "Salarié PLANET",
+  permanent_interpreter: "Interprète permanent",
+  self_employed: "Externe",
 };
 
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {

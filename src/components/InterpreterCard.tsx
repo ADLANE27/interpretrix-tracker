@@ -9,8 +9,6 @@ import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 import { Profile } from "@/types/profile";
-import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
-import { WorkHours } from "@/types/workHours";
 
 interface Mission {
   scheduled_start_time: string;
@@ -43,12 +41,19 @@ interface DatabaseMission {
 
 type InterpreterStatus = "available" | "unavailable" | "pause" | "busy";
 
+interface WorkHours {
+  start_morning: string;
+  end_morning: string;
+  start_afternoon: string;
+  end_afternoon: string;
+}
+
 interface InterpreterCardProps {
   interpreter: {
     id: string;
     name: string;
     status: InterpreterStatus;
-    employment_status: EmploymentStatus;
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "permanent_interpreter" | "self_employed";
     languages: string[];
     tarif_15min?: number | null;
     tarif_5min?: number | null;
@@ -58,7 +63,7 @@ interface InterpreterCardProps {
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
-    work_hours?: WorkHours | null;
+    work_hours?: Partial<WorkHours> | null;
   };
 }
 
@@ -67,6 +72,14 @@ const statusConfig = {
   unavailable: { color: "bg-interpreter-unavailable text-white", label: "Indisponible" },
   pause: { color: "bg-interpreter-pause text-white", label: "En pause" },
   busy: { color: "bg-interpreter-busy text-white", label: "En appel" },
+};
+
+const employmentStatusLabels: Record<string, string> = {
+  salaried_aft: "Salarié AFTrad",
+  salaried_aftcom: "Salarié AFTCOM",
+  salaried_planet: "Salarié PLANET",
+  permanent_interpreter: "Interprète permanent",
+  self_employed: "Externe",
 };
 
 const isValidStatus = (status: string): status is InterpreterStatus => {

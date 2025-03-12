@@ -4,7 +4,6 @@ import { PersonalInfoSection } from "./profile/PersonalInfoSection";
 import { ProfessionalInfoSection } from "./profile/ProfessionalInfoSection";
 import { ThemeToggle } from "./ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
-import { EmploymentStatus } from "@/types/employment";
 
 interface ExtendedProfile {
   id: string;
@@ -14,7 +13,7 @@ interface ExtendedProfile {
   phone_number: string | null;
   landline_phone: string | null;
   nationality: string | null;
-  employment_status: EmploymentStatus;
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: { source: string; target: string; }[];
   address: {
     street: string;

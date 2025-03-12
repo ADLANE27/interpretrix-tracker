@@ -56,11 +56,11 @@ export const PrivateReservationList = ({
       }
 
       if (startDateFilter) {
-        query = query.gte('start_time', `${startDateFilter}T00:00:00Z`);
+        query = query.gte('start_time', `${startDateFilter}T00:00:00`);
       }
 
       if (endDateFilter) {
-        query = query.lte('start_time', `${endDateFilter}T23:59:59Z`);
+        query = query.lte('start_time', `${endDateFilter}T23:59:59`);
       }
 
       const { data, error } = await query;

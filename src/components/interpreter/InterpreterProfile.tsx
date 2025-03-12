@@ -9,18 +9,55 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Profile } from "@/types/profile";
-import { employmentStatusLabels } from "@/types/employment";
 
 interface ProfileProps {
-  profile: Profile;
+  profile: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string | null;
+    languages: {
+      source: string;
+      target: string;
+    }[];
+    employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
+    status: "available" | "busy" | "pause" | "unavailable";
+    address: {
+      street: string;
+      postal_code: string;
+      city: string;
+    } | null;
+    birth_country: string | null;
+    nationality: string | null;
+    siret_number: string | null;
+    vat_number: string | null;
+    profile_picture_url: string | null;
+    tarif_5min: number;
+    tarif_15min: number;
+    specializations: string[];
+    landline_phone: string | null;
+  };
   onProfileUpdate: () => Promise<void>;
   onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onProfilePictureDelete: () => Promise<void>;
 }
 
-const getEmploymentStatusLabel = (status: Profile["employment_status"]) => {
-  return employmentStatusLabels[status] || status;
+const getEmploymentStatusLabel = (status: string) => {
+  switch (status) {
+    case "salaried_aft":
+      return "Salarié AFTrad";
+    case "salaried_aftcom":
+      return "Salarié AFTCOM";
+    case "salaried_planet":
+      return "Salarié PLANET";
+    case "permanent_interpreter":
+      return "Interprète permanent";
+    case "self_employed":
+      return "Externe";
+    default:
+      return status;
+  }
 };
 
 export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureUpload, onProfilePictureDelete }: ProfileProps) => {

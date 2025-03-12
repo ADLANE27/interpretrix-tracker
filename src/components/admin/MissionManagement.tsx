@@ -28,7 +28,6 @@ interface Interpreter {
   status: string;
   profile_picture_url: string | null;
   tarif_15min: number;
-  email: string;
 }
 
 interface Creator {
@@ -204,8 +203,7 @@ export const MissionManagement = () => {
           status,
           profile_picture_url,
           languages,
-          tarif_15min,
-          email
+          tarif_15min
         `);
 
       if (error) {
@@ -213,22 +211,68 @@ export const MissionManagement = () => {
         throw error;
       }
 
-      // Filter interpreters by language match first
-      let matchingInterpreters = interpreters?.filter(interpreter => {
+      console.log('[MissionManagement] Found all interpreters:', interpreters?.length);
+      
+      if (!interpreters || interpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found');
+        setAvailableInterpreters([]);
+        return;
+      }
+
+      // Filter interpreters by language match
+      const matchingInterpreters = interpreters.filter(interpreter => {
         const hasLanguageMatch = interpreter.languages.some(lang => {
           const [source, target] = lang.split('→').map(l => l.trim());
-          return source === sourceLang && target === targetLang;
+          const matches = source === sourceLang && target === targetLang;
+          if (matches) {
+            console.log('[MissionManagement] Language match found for interpreter:', {
+              interpreterId: interpreter.id,
+              interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+              language: `${source} → ${target}`
+            });
+          }
+          return matches;
         });
         
+        if (!hasLanguageMatch) {
+          console.log('[MissionManagement] No language match for interpreter:', {
+            interpreterId: interpreter.id,
+            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+            interpreterLanguages: interpreter.languages
+          });
+        }
+        
         return hasLanguageMatch;
-      }) || [];
+      });
 
-      // Apply status filtering based on mission type
-      matchingInterpreters = filterInterpretersByMissionType(matchingInterpreters, missionType);
+      console.log('[MissionManagement] Interpreters matching language criteria:', matchingInterpreters.map(i => ({
+        name: `${i.first_name} ${i.last_name}`,
+        status: i.status,
+        languages: i.languages
+      })));
+      
+      if (matchingInterpreters.length === 0) {
+        console.log('[MissionManagement] No interpreters found for languages:', { sourceLang, targetLang });
+        toast({
+          title: "Aucun interprète trouvé",
+          description: `Aucun interprète ${missionType === 'immediate' ? 'disponible' : 'trouvé'} pour la combinaison ${sourceLang} → ${targetLang}`,
+        });
+        setAvailableInterpreters([]);
+        return;
+      }
 
-      // For scheduled missions, also check schedule availability
-      if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
-        const availableInterpreters = [];
+      let filteredInterpreters = matchingInterpreters;
+      
+      // Only filter by status for immediate missions
+      if (missionType === 'immediate') {
+        filteredInterpreters = matchingInterpreters.filter(interpreter => interpreter.status === 'available');
+        console.log('[MissionManagement] Filtered to available interpreters:', filteredInterpreters.map(i => ({
+          name: `${i.first_name} ${i.last_name}`,
+          status: i.status
+        })));
+      } else if (missionType === 'scheduled' && scheduledStartTime && scheduledEndTime) {
+        // For scheduled missions, check each interpreter's availability
+        filteredInterpreters = [];
         for (const interpreter of matchingInterpreters) {
           const isAvailable = await isInterpreterAvailableForScheduledMission(
             interpreter.id,
@@ -237,32 +281,34 @@ export const MissionManagement = () => {
             supabase
           );
           
+          console.log('[MissionManagement] Checking scheduled availability:', {
+            interpreterId: interpreter.id,
+            interpreterName: `${interpreter.first_name} ${interpreter.last_name}`,
+            isAvailable,
+            scheduledStartTime,
+            scheduledEndTime
+          });
+          
           if (isAvailable) {
-            availableInterpreters.push(interpreter);
+            filteredInterpreters.push(interpreter);
           }
         }
-        matchingInterpreters = availableInterpreters;
       }
 
-      const uniqueInterpreters = matchingInterpreters
+      const uniqueInterpreters = filteredInterpreters
         .filter((interpreter, index, self) =>
           index === self.findIndex((t) => t.id === interpreter.id)
         )
         .sort((a, b) => (a.tarif_15min ?? 0) - (b.tarif_15min ?? 0));
 
-      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters);
+      console.log('[MissionManagement] Final filtered and sorted interpreters:', uniqueInterpreters.map(i => ({
+        name: `${i.first_name} ${i.last_name}`,
+        status: i.status,
+        isSelected: selectedInterpreters.includes(i.id)
+      })));
       
       setAvailableInterpreters(uniqueInterpreters);
       setSelectedInterpreters([]);
-
-      if (uniqueInterpreters.length === 0) {
-        toast({
-          title: "Aucun interprète trouvé",
-          description: missionType === 'immediate' 
-            ? "Aucun interprète disponible pour cette combinaison de langues"
-            : "Aucun interprète trouvé pour cette combinaison de langues et ces horaires",
-        });
-      }
     } catch (error) {
       console.error('[MissionManagement] Error in findAvailableInterpreters:', error);
       toast({
@@ -374,59 +420,6 @@ export const MissionManagement = () => {
       }
 
       console.log('[MissionManagement] Mission created successfully:', createdMission);
-
-      // Get authentication headers
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No active session found');
-      }
-
-      // Send notification emails to selected interpreters with better error handling
-      const notificationPromises = selectedInterpreters.map(async (interpreterId) => {
-        const interpreter = availableInterpreters.find(i => i.id === interpreterId);
-        if (!interpreter) return;
-
-        console.log('[MissionManagement] Sending notification to interpreter:', {
-          email: interpreter.email,
-          name: `${interpreter.first_name} ${interpreter.last_name}`
-        });
-
-        try {
-          const { error } = await supabase.functions.invoke('send-mission-notification', {
-            body: JSON.stringify({
-              interpreter: {
-                email: interpreter.email,
-                first_name: interpreter.first_name,
-                role: 'interpreter'
-              },
-              mission: createdMission
-            }),
-            headers: {
-              Authorization: `Bearer ${session.access_token}`
-            }
-          });
-
-          if (error) {
-            console.error('[MissionManagement] Error sending notification to interpreter:', interpreter.email, error);
-            toast({
-              title: "Erreur d'envoi de notification",
-              description: `Impossible d'envoyer la notification à ${interpreter.first_name} ${interpreter.last_name}`,
-              variant: "destructive",
-            });
-          } else {
-            console.log('[MissionManagement] Notification sent successfully to:', interpreter.email);
-          }
-        } catch (error) {
-          console.error('[MissionManagement] Error invoking send-mission-notification:', error);
-          toast({
-            title: "Erreur d'envoi de notification",
-            description: `Erreur lors de l'envoi de la notification à ${interpreter.first_name} ${interpreter.last_name}`,
-            variant: "destructive",
-          });
-        }
-      });
-
-      await Promise.all(notificationPromises);
 
       toast({
         title: "Mission créée avec succès",
@@ -613,14 +606,6 @@ export const MissionManagement = () => {
       });
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const filterInterpretersByMissionType = (interpreters: Interpreter[], missionType: 'immediate' | 'scheduled') => {
-    if (missionType === 'immediate') {
-      return interpreters.filter(interpreter => interpreter.status === 'available');
-    } else {
-      return interpreters;
     }
   };
 

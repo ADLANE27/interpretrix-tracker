@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
 import { Input } from "@/components/ui/input";
@@ -23,16 +23,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
-import { EmploymentStatus, employmentStatusLabels } from "@/types/employment";
-import { WorkHours } from "@/types/workHours";
-import { VirtualizedInterpreterList } from "./interpreter/VirtualizedInterpreterList";
+
+interface WorkHours {
+  start_morning?: string;
+  end_morning?: string;
+  start_afternoon?: string;
+  end_afternoon?: string;
+}
 
 interface Interpreter {
   id: string;
   first_name: string;
   last_name: string;
   status: "available" | "unavailable" | "pause" | "busy";
-  employment_status: EmploymentStatus;
+  employment_status: "salaried_aft" | "salaried_aftcom" | "salaried_planet" | "self_employed" | "permanent_interpreter";
   languages: string[];
   phone_interpretation_rate: number | null;
   phone_number: string | null;
@@ -46,15 +50,8 @@ interface Interpreter {
   private_phone?: string | null;
   professional_phone?: string | null;
   work_hours?: WorkHours | null;
-  connection_status?: "available" | "unavailable" | "busy";
+  connection_status?: "available" | "unavailable" | "pause" | "busy";
 }
-
-const defaultWorkHours: WorkHours = {
-  start_morning: "09:00",
-  end_morning: "13:00",
-  start_afternoon: "14:00",
-  end_afternoon: "17:00"
-};
 
 export const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
@@ -96,19 +93,15 @@ export const AdminDashboard = () => {
       if (error) throw error;
 
       const mappedInterpreters: Interpreter[] = (data || []).map(interpreter => {
-        let workHours: WorkHours | null = null;
+        let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
           const hours = interpreter.work_hours as Record<string, any>;
-          if (hours.start_morning && hours.end_morning && hours.start_afternoon && hours.end_afternoon) {
-            workHours = {
-              start_morning: hours.start_morning,
-              end_morning: hours.end_morning,
-              start_afternoon: hours.start_afternoon,
-              end_afternoon: hours.end_afternoon
-            };
-          } else {
-            workHours = defaultWorkHours;
-          }
+          workHours = {
+            start_morning: hours.start_morning || '',
+            end_morning: hours.end_morning || '',
+            start_afternoon: hours.start_afternoon || '',
+            end_afternoon: hours.end_afternoon || ''
+          };
         }
 
         return {
@@ -150,39 +143,9 @@ export const AdminDashboard = () => {
     }
   };
 
-  const filteredInterpreters = useMemo(() => {
-    console.log("[AdminDashboard] Recomputing filtered interpreters");
-    return interpreters.filter(interpreter => {
-      const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
-      const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-      const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
-        const [source, target] = lang.split(" → ");
-        return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
-               (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
-      });
-      const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
-      const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
-      const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
-      return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
-    }).sort((a, b) => {
-      if (rateSort === "rate-asc") {
-        const rateA = a.tarif_15min ?? 0;
-        const rateB = b.tarif_15min ?? 0;
-        return rateA - rateB;
-      }
-      const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-      const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  }, [interpreters, selectedStatus, nameFilter, languageFilter, phoneFilter, birthCountryFilter, employmentStatusFilter, rateSort]);
-
   useEffect(() => {
-    if (activeTab !== "interpreters") return;
-
-    console.log("[AdminDashboard] Setting up real-time subscriptions for interpreters tab");
+    console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
-    
     const setupChannel = (channelName: string, table: string) => {
       const channel = supabase.channel(`admin-${channelName}`).on('postgres_changes', {
         event: '*',
@@ -206,7 +169,6 @@ export const AdminDashboard = () => {
       channels.push(channel);
       return channel;
     };
-
     setupChannel('interpreter-profiles', 'interpreter_profiles');
     setupChannel('missions', 'interpretation_missions');
     setupChannel('user-roles', 'user_roles');
@@ -239,9 +201,9 @@ export const AdminDashboard = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(connectionCheckInterval);
     };
-  }, [activeTab]);
+  }, []);
 
-  const resetAllFilters = useCallback(() => {
+  const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
     setLanguageFilter("all");
@@ -253,7 +215,7 @@ export const AdminDashboard = () => {
       title: "Filtres réinitialisés",
       description: "Tous les filtres ont été réinitialisés"
     });
-  }, [toast]);
+  };
 
   const handleLogout = async () => {
     try {
@@ -274,6 +236,30 @@ export const AdminDashboard = () => {
       });
     }
   };
+
+  const filteredInterpreters = interpreters.filter(interpreter => {
+    const isNotAdmin = !`${interpreter.first_name} ${interpreter.last_name}`.includes("Adlane Admin");
+    const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
+    const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
+    const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
+      const [source, target] = lang.split(" → ");
+      return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
+             (target && target.toLowerCase().includes(languageFilter.toLowerCase()));
+    });
+    const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
+    const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
+    const matchesEmploymentStatus = employmentStatusFilter === "all" || interpreter.employment_status === employmentStatusFilter;
+    return isNotAdmin && matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
+  }).sort((a, b) => {
+    if (rateSort === "rate-asc") {
+      const rateA = a.tarif_15min ?? 0;
+      const rateB = b.tarif_15min ?? 0;
+      return rateA - rateB;
+    }
+    const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
+    const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -436,11 +422,11 @@ export const AdminDashboard = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tous les statuts</SelectItem>
-                          {Object.entries(employmentStatusLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="salaried_aft">Salarié AFTrad</SelectItem>
+                          <SelectItem value="salaried_aftcom">Salarié AFTCOM</SelectItem>
+                          <SelectItem value="salaried_planet">Salarié PLANET</SelectItem>
+                          <SelectItem value="permanent_interpreter">Interprète permanent</SelectItem>
+                          <SelectItem value="self_employed">Externe</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -470,9 +456,12 @@ export const AdminDashboard = () => {
                 </CollapsibleContent>
               </Collapsible>
 
-              {viewMode === "grid" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                  {filteredInterpreters.map(interpreter => (
+              <div className={viewMode === "grid" 
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+                : "space-y-2"
+              }>
+                {filteredInterpreters.map(interpreter => (
+                  viewMode === "grid" ? (
                     <InterpreterCard
                       key={interpreter.id}
                       interpreter={{
@@ -492,11 +481,22 @@ export const AdminDashboard = () => {
                         work_hours: interpreter.work_hours
                       }}
                     />
-                  ))}
-                </div>
-              ) : (
-                <VirtualizedInterpreterList interpreters={filteredInterpreters} />
-              )}
+                  ) : (
+                    <InterpreterListItem
+                      key={interpreter.id}
+                      interpreter={{
+                        id: interpreter.id,
+                        name: `${interpreter.first_name} ${interpreter.last_name}`,
+                        status: interpreter.status || "unavailable",
+                        employment_status: interpreter.employment_status,
+                        languages: interpreter.languages,
+                        next_mission_start: interpreter.next_mission_start,
+                        next_mission_duration: interpreter.next_mission_duration,
+                      }}
+                    />
+                  )
+                ))}
+              </div>
             </div>
           </TabsContent>
 
@@ -513,8 +513,8 @@ export const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto">
-            <div className="min-h-full p-0">
-              <MessagesTab onMenuClick={() => setIsMenuOpen(true)} />
+            <div className="min-h-full p-4 sm:p-6">
+              <MessagesTab />
             </div>
           </TabsContent>
 
@@ -537,14 +537,10 @@ export const AdminDashboard = () => {
           </TabsContent>
         </div>
 
-        {activeTab !== "messages" && (
-          <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
-            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-          </footer>
-        )}
+        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-background/95 backdrop-blur-sm">
+          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+        </footer>
       </Tabs>
     </div>
   );
 };
-
-export default AdminDashboard;

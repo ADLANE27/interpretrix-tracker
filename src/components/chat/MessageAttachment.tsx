@@ -22,7 +22,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
   if (isImage) {
     return (
       <div className="mt-2 max-w-sm">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-md p-3">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-2">
           <div className="flex items-center gap-2 mb-2">
             <FileImage className="h-5 w-5 text-blue-500" />
             <span className="text-sm font-medium truncate">{filename}</span>
@@ -30,16 +30,16 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
           <img 
             src={url} 
             alt={filename}
-            className="rounded-md max-h-[300px] object-contain bg-gray-50"
+            className="rounded-md max-h-[300px] object-contain"
           />
-          <div className="flex justify-end mt-3">
+          <div className="flex justify-end mt-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleDownload}
-              className="text-sm"
+              className="text-xs"
             >
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-1" />
               {TRANSLATIONS.download[locale]}
             </Button>
           </div>
@@ -51,8 +51,8 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
   if (isPdf) {
     return (
       <div className="mt-2">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-md p-4">
-          <div className="flex items-center gap-3">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
+          <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-red-500" />
             <span className="text-sm font-medium truncate flex-1">{filename}</span>
             <div className="flex gap-2">
@@ -60,18 +60,18 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
                 variant="ghost"
                 size="sm"
                 onClick={() => window.open(url, '_blank')}
-                className="text-sm"
+                className="text-xs"
               >
-                <ExternalLink className="h-4 w-4 mr-2" />
+                <ExternalLink className="h-4 w-4 mr-1" />
                 {TRANSLATIONS.preview[locale]}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleDownload}
-                className="text-sm"
+                className="text-xs"
               >
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 mr-1" />
                 {TRANSLATIONS.download[locale]}
               </Button>
             </div>
@@ -83,17 +83,17 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
 
   return (
     <div className="mt-2">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-md p-4">
-        <div className="flex items-center gap-3">
+      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
+        <div className="flex items-center gap-2">
           <File className="h-5 w-5 text-gray-500" />
           <span className="text-sm font-medium truncate flex-1">{filename}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleDownload}
-            className="text-sm"
+            className="text-xs"
           >
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="h-4 w-4 mr-1" />
             {TRANSLATIONS.download[locale]}
           </Button>
         </div>

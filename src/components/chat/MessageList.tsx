@@ -7,7 +7,6 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
-import { cn } from "@/lib/utils";
 
 interface MessageListProps {
   messages: Message[];
@@ -19,17 +18,7 @@ interface MessageListProps {
   channelId: string;
 }
 
-const USER_COLORS = [
-  { bg: "bg-purple-50/40 hover:bg-purple-50/60", border: "border-purple-200", text: "text-purple-700" },
-  { bg: "bg-blue-50/40 hover:bg-blue-50/60", border: "border-blue-200", text: "text-blue-700" },
-  { bg: "bg-green-50/40 hover:bg-green-50/60", border: "border-green-200", text: "text-green-700" },
-  { bg: "bg-orange-50/40 hover:bg-orange-50/60", border: "border-orange-200", text: "text-orange-700" },
-  { bg: "bg-pink-50/40 hover:bg-pink-50/60", border: "border-pink-200", text: "text-pink-700" },
-  { bg: "bg-cyan-50/40 hover:bg-cyan-50/60", border: "border-cyan-200", text: "text-cyan-700" },
-  { bg: "bg-indigo-50/40 hover:bg-indigo-50/60", border: "border-indigo-200", text: "text-indigo-700" },
-];
-
-export const MessageList = React.memo<MessageListProps>(({
+export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
   onDeleteMessage,
@@ -39,7 +28,6 @@ export const MessageList = React.memo<MessageListProps>(({
   channelId,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [deletedMessageIds, setDeletedMessageIds] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
 
   const getInitials = (name: string) => {
@@ -96,133 +84,91 @@ export const MessageList = React.memo<MessageListProps>(({
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
-  const handleDeleteMessage = async (messageId: string) => {
-    setDeletedMessageIds(prev => new Set([...prev, messageId]));
-    
-    try {
-      await onDeleteMessage(messageId);
-    } catch (error) {
-      setDeletedMessageIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(messageId);
-        return newSet;
-      });
-      console.error('Failed to delete message:', error);
-    }
-  };
-
-  const visibleMessages = messages.filter(message => !deletedMessageIds.has(message.id));
-
-  const getUserColor = (userId: string) => {
-    const colorIndex = Math.abs(userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % USER_COLORS.length;
-    return USER_COLORS[colorIndex];
-  };
-
-  const renderMessage = (message: Message, isThreadReply = false) => {
-    const isCurrentUser = message.sender.id === currentUserId;
-    
-    return (
-      <div 
-        ref={(el) => observeMessage(el)}
-        data-message-id={message.id}
-        className={cn(
-          "group flex gap-3",
-          "px-3 py-1.5",
-          isThreadReply ? "ml-8" : ""
-        )}
-      >
-        {!isCurrentUser && (
-          <div className="flex-shrink-0 pt-0.5">
-            <Avatar className="h-8 w-8 ring-2 ring-background/10">
-              {message.sender.avatarUrl ? (
-                <img 
-                  src={message.sender.avatarUrl} 
-                  alt={message.sender.name}
-                  className="h-full w-full object-cover rounded-full"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-sm font-medium rounded-full bg-muted">
-                  {getInitials(message.sender.name)}
-                </div>
-              )}
-            </Avatar>
+  const renderMessage = (message: Message, isThreadReply = false) => (
+    <div 
+      ref={(el) => observeMessage(el)}
+      data-message-id={message.id}
+      className={`flex gap-3 ${
+        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+      } ${isThreadReply ? 'ml-8 mt-2' : ''}`}
+    >
+      <Avatar className="h-8 w-8 shrink-0">
+        {message.sender.avatarUrl ? (
+          <img src={message.sender.avatarUrl} alt={message.sender.name} />
+        ) : (
+          <div className="bg-purple-100 text-purple-600 w-full h-full flex items-center justify-center text-sm font-medium">
+            {getInitials(message.sender.name)}
           </div>
         )}
-        
-        <div className={cn(
-          "flex flex-col gap-1 max-w-[80%]",
-          isCurrentUser ? "ml-auto" : ""
-        )}>
-          {!isCurrentUser && (
-            <span className="text-xs text-muted-foreground ml-1">
-              {message.sender.name}
-            </span>
-          )}
-          
-          <div className={cn(
-            "rounded-2xl px-4 py-2",
-            "break-words relative group",
-            isCurrentUser ? 
-              "bg-primary text-primary-foreground ml-auto" : 
-              "bg-muted text-muted-foreground"
-          )}>
-            <div className="text-sm leading-relaxed">
-              {message.content}
-            </div>
-            
-            {message.attachments && message.attachments.length > 0 && (
-              <div className="space-y-1.5 mt-2">
-                {message.attachments.map((attachment, index) => (
-                  <div key={index} className="group/attachment">
-                    <MessageAttachment
-                      url={attachment.url}
-                      filename={attachment.filename}
-                      locale="fr"
-                    />
-                  </div>
-                ))}
-              </div>
+      </Avatar>
+      <div className={`flex-1 max-w-[70%] space-y-1 ${
+        message.sender.id === currentUserId ? 'items-end' : 'items-start'
+      }`}>
+        <div className={`flex items-center gap-2 text-sm ${
+          message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+        }`}>
+          <span className="font-medium">{message.sender.name}</span>
+          <span className="text-gray-500 text-xs">
+            {format(message.timestamp, 'HH:mm', { locale: fr })}
+          </span>
+        </div>
+        <div className={`group relative ${
+          message.sender.id === currentUserId 
+            ? 'bg-purple-50 text-purple-900' 
+            : 'bg-gray-50 text-gray-900'
+        } rounded-lg px-4 py-2`}>
+          <div className="text-sm break-words">{message.content}</div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {message.sender.id === currentUserId && (
+              <button
+                onClick={() => onDeleteMessage(message.id)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+                aria-label="Supprimer le message"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </button>
             )}
-            
-            <div className="text-xs opacity-70 mt-1 text-right">
-              {format(message.timestamp, 'HH:mm', { locale: fr })}
-            </div>
+            {!isThreadReply && setReplyTo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyTo(message)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+              >
+                <MessageCircle className="h-4 w-4 text-gray-500" />
+              </Button>
+            )}
           </div>
         </div>
-        
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity self-start flex items-center gap-1">
-          {message.sender.id === currentUserId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteMessage(message.id)}
-              className="h-8 w-8 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-          {!isThreadReply && setReplyTo && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyTo(message)}
-              className="h-8 w-8 p-0 rounded-full hover:bg-muted/50"
-            >
-              <MessageCircle className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        {message.attachments && message.attachments.map((attachment, index) => (
+          <div key={index} className="relative group">
+            <MessageAttachment
+              url={attachment.url}
+              filename={attachment.filename}
+              locale="fr"
+            />
+            {message.sender.id === currentUserId && (
+              <button
+                onClick={() => onDeleteMessage(message.id)}
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                aria-label="Supprimer la pièce jointe"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </button>
+            )}
+          </div>
+        ))}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-6">
       {messages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, messages[index - 1]) && (
-            <div className="flex justify-center py-2">
-              <div className="bg-muted/50 text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
+            <div className="flex justify-center my-4">
+              <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
                 {formatMessageDate(message.timestamp)}
               </div>
             </div>
@@ -230,23 +176,23 @@ export const MessageList = React.memo<MessageListProps>(({
           {renderMessage(message)}
           
           {messageThreads[message.id]?.length > 1 && (
-            <div className="ml-14 mt-0.5 mb-1">
+            <div className="ml-12 mt-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => toggleThread(message.id)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+                className="text-xs text-gray-500 hover:text-gray-700"
               >
                 {expandedThreads.has(message.id) ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4 mr-1" />
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-4 w-4 mr-1" />
                 )}
                 {messageThreads[message.id].length - 1} réponses
               </Button>
               
               {expandedThreads.has(message.id) && (
-                <div className="space-y-1 mt-1">
+                <div className="space-y-2 mt-2">
                   {messageThreads[message.id]
                     .filter(reply => reply.id !== message.id)
                     .map(reply => renderMessage(reply, true))}
@@ -258,6 +204,4 @@ export const MessageList = React.memo<MessageListProps>(({
       ))}
     </div>
   );
-});
-
-MessageList.displayName = 'MessageList';
+};

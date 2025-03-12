@@ -1,3 +1,4 @@
+
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -12,14 +13,13 @@ export interface Message {
   parent_message_id?: string | null;
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
-  channelType: "group" | "direct";
+  channelType?: 'group' | 'direct';
 }
 
 export interface MessageData {
   id: string;
   content: string;
   sender_id: string;
-  channel_id: string;
   created_at: string;
   parent_message_id?: string | null;
   reactions: Record<string, string[]>;

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -179,6 +180,11 @@ export const AdminMissionsCalendar = () => {
         </Card>
 
         <Card className="p-4">
+          <h3 className="font-semibold mb-4">
+            {selectedDate
+              ? formatDateTimeDisplay(selectedDate.toISOString())
+              : "Sélectionnez une date"}
+          </h3>
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
             {visibleMissions.length === 0 ? (
               <p className="text-sm text-gray-500">

@@ -12,7 +12,3 @@ verify_jwt = true
 
 [functions.send-password-reset-email]
 verify_jwt = true
-
-[functions.send-mission-notification]
-verify_jwt = true
-

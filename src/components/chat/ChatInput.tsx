@@ -1,8 +1,7 @@
-
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
-import { Paperclip, Send, Smile, X } from 'lucide-react';
+import { Paperclip, Send, Smile } from 'lucide-react';
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -39,42 +38,35 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setEmojiPickerOpen(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (message.trim() || attachments.length > 0) {
-        onSendMessage();
-      }
-    }
-  };
-
   return (
-    <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t shadow-lg z-50">
+    <div className="border-t p-4 bg-white">
       {replyTo && (
-        <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Replying to {replyTo.sender.name}</span>
-          </div>
+        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
+          <span>En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            className="h-6 w-6 p-0"
           >
-            <X className="h-4 w-4" />
+            Annuler
           </Button>
         </div>
       )}
-      <div className="max-w-[1200px] mx-auto px-4 py-4">
-        <div className="flex items-end gap-2 bg-background rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
-          <div className="flex-1 min-h-[48px] flex items-end">
+      <div className="relative">
+        <div className="flex items-end gap-2 bg-white rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[40px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Message..."
-              className="resize-none border-0 focus-visible:ring-0 px-4 py-3 min-h-[48px] text-base bg-transparent"
-              onKeyDown={handleKeyDown}
+              placeholder="Écrivez un message..."
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  onSendMessage();
+                }
+              }}
             />
           </div>
           <div className="flex items-center gap-1 p-2">
@@ -83,7 +75,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-9 w-9 text-muted-foreground hover:text-purple-500"
+                  className="h-8 w-8 text-gray-500 hover:text-purple-500"
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -98,6 +90,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   onEmojiSelect={handleEmojiSelect}
                   theme="light"
                   locale="fr"
+                  previewPosition="none"
+                  skinTonePosition="none"
+                  categories={[
+                    'frequent',
+                    'people',
+                    'nature',
+                    'foods',
+                    'activity',
+                    'places',
+                    'objects',
+                    'symbols',
+                    'flags'
+                  ]}
                 />
               </PopoverContent>
             </Popover>
@@ -111,39 +116,38 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-muted-foreground hover:text-purple-500"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-9 w-9 bg-purple-500 hover:bg-purple-600 text-white"
+              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
               onClick={onSendMessage}
-              disabled={!message.trim() && attachments.length === 0}
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
-        {attachments.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {attachments.map((file, index) => (
-              <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-muted/50 rounded">
-                <span className="text-muted-foreground truncate flex-1">{file.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 hover:text-red-500 p-0"
-                  onClick={() => handleRemoveAttachment(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+      {attachments.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {attachments.map((file, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
+              <span className="text-gray-700 truncate flex-1">{file.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 hover:text-red-500"
+                onClick={() => handleRemoveAttachment(index)}
+              >
+                Supprimer
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

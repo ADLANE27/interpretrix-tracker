@@ -216,20 +216,15 @@ export const InterpreterChannelList = ({
               <div
                 key={channel.id}
                 className={`
-                  group relative flex items-center gap-3 p-3 rounded-xl
+                  flex items-center gap-3 p-3 rounded-lg 
                   cursor-pointer transition-all duration-200
-                  hover:scale-[0.98] active:scale-[0.97]
                   ${selectedChannelId === channel.id 
-                    ? 'bg-interpreter-navy/10 dark:bg-interpreter-navy/20 text-interpreter-navy dark:text-blue-300' 
-                    : 'hover:bg-interpreter-navy/5 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'}
+                    ? 'bg-interpreter-navy text-white' 
+                    : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
                 `}
                 onClick={() => handleChannelSelect(channel.id)}
               >
-                <MessageCircle className={`h-5 w-5 ${
-                  selectedChannelId === channel.id 
-                    ? 'text-interpreter-navy' 
-                    : 'text-gray-500'
-                }`} />
+                <MessageCircle className={`h-5 w-5 ${selectedChannelId === channel.id ? 'text-white' : 'text-interpreter-navy'}`} />
                 <div className="flex items-center justify-between flex-1 min-w-0">
                   {editingChannel?.id === channel.id ? (
                     <Input
@@ -250,11 +245,11 @@ export const InterpreterChannelList = ({
                   ) : (
                     <span className="font-medium truncate">{channel.display_name}</span>
                   )}
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2">
                     {unreadMentions[channel.id] > 0 && (
                       <Badge 
                         variant="destructive" 
-                        className="animate-pulse shadow-lg"
+                        className="animate-pulse"
                       >
                         <Bell className="h-3 w-3 mr-1" />
                         {unreadMentions[channel.id]}
@@ -266,9 +261,9 @@ export const InterpreterChannelList = ({
                         e.stopPropagation();
                         console.log("Settings clicked for channel:", channel.id);
                       }}
-                      className="p-1.5 rounded-full hover:bg-purple-200/50 dark:hover:bg-gray-700/50 transition-colors"
+                      className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
-                      <Settings className="h-4 w-4 text-gray-500 hover:text-purple-500" />
+                      <Settings className="h-4 w-4 text-gray-500 hover:text-blue-500" />
                     </button>
                     {channel.channel_type === 'direct' && (
                       <button
@@ -280,7 +275,7 @@ export const InterpreterChannelList = ({
                             channelName: channel.display_name
                           });
                         }}
-                        className="p-1.5 rounded-full hover:bg-red-200/50 dark:hover:bg-red-900/50 transition-colors"
+                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
                       >
                         <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                       </button>

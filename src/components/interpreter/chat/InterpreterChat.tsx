@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
-import { MessageListContainer } from "@/components/chat/MessageListContainer";
+import { MessageList } from "@/components/chat/MessageList";
 import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -10,12 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { Badge } from "@/components/ui/badge";
-import { Filter, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft } from 'lucide-react';
-import { useMessageOptimization } from '@/hooks/chat/useMessageOptimization';
-import { MessageSkeletonList } from '@/components/chat/MessageSkeleton';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -26,15 +20,13 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
-  onBack: () => void;
 }
 
 export const InterpreterChat = ({ 
   channelId, 
   filters, 
   onFiltersChange, 
-  onClearFilters,
-  onBack 
+  onClearFilters 
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -55,15 +47,14 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
-  const [showChannelList, setShowChannelList] = useState(true);
+
+  const [chatMembers, setChatMembers] = useState([
+    { id: 'current', name: 'Mes messages' },
+  ]);
 
   const {
     messages,
     isLoading,
-    error
-  } = useMessageOptimization(channelId);
-
-  const {
     isSubscribed,
     subscriptionStatus,
     sendMessage,
@@ -75,11 +66,35 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+  const filteredMessages = useCallback(() => {
+    let filtered = messages;
 
-  useEffect(() => {
-    onClearFilters();
-  }, [channelId, onClearFilters]);
+    if (filters.userId) {
+      filtered = filtered.filter(msg => {
+        if (filters.userId === 'current') {
+          return msg.sender.id === currentUserId;
+        }
+        return msg.sender.id === filters.userId;
+      });
+    }
+
+    if (filters.keyword) {
+      const keywordLower = filters.keyword.toLowerCase();
+      filtered = filtered.filter(msg =>
+        msg.content.toLowerCase().includes(keywordLower)
+      );
+    }
+
+    if (filters.date) {
+      filtered = filtered.filter(msg => {
+        const messageDate = new Date(msg.timestamp).toDateString();
+        const filterDate = filters.date!.toDateString();
+        return messageDate === filterDate;
+      });
+    }
+
+    return filtered;
+  }, [messages, filters, currentUserId]);
 
   const { toast } = useToast();
 
@@ -102,16 +117,22 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
+              // Play sound for mention
               await playNotificationSound();
+              
+              // Show toast notification
               toast({
                 title: "💬 Nouvelle mention",
                 description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
               });
+
+              // Show browser notification
               showNotification("Nouvelle mention", {
                 body: "Quelqu'un vous a mentionné dans un message",
                 tag: 'chat-mention',
               });
+              
               markMentionsAsRead();
             }
           }
@@ -141,21 +162,6 @@ export const InterpreterChat = ({
   const handleSendMessage = async () => {
     if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
-    const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
-      content: message,
-      sender: {
-        id: currentUserId,
-        name: 'You',
-        avatarUrl: ''
-      },
-      timestamp: new Date(),
-      channelType: 'group',
-      attachments: []
-    };
-
-    setOptimisticMessages(prev => [...prev, optimisticMessage]);
-
     try {
       await sendMessage(message, replyTo?.id, attachments);
       setMessage('');
@@ -164,15 +170,8 @@ export const InterpreterChat = ({
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
-      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
     } catch (error) {
       console.error('Error sending message:', error);
-      setOptimisticMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive"
-      });
     }
   };
 
@@ -184,41 +183,30 @@ export const InterpreterChat = ({
     });
   };
 
-  const hasActiveFilters = Boolean(filters.userId || filters.keyword || filters.date);
+  useEffect(() => {
+    const uniqueMembers = new Map();
+    
+    if (currentUserId) {
+      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
+    }
 
-  const allMessages = [...messages, ...optimisticMessages].sort((a, b) => 
-    a.timestamp.getTime() - b.timestamp.getTime()
-  );
+    messages.forEach(msg => {
+      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
+        uniqueMembers.set(msg.sender.id, {
+          id: msg.sender.id,
+          name: msg.sender.name,
+          avatarUrl: msg.sender.avatarUrl
+        });
+      }
+    });
+
+    setChatMembers(Array.from(uniqueMembers.values()));
+  }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex items-center justify-between p-4 border-b bg-background/80 backdrop-blur-lg sticky top-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onBack}
-              className="h-9 w-9 p-0 flex-shrink-0"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
-            {hasActiveFilters && (
-              <Badge 
-                variant="secondary"
-                className="flex items-center gap-1 cursor-pointer hover:bg-secondary/80 flex-shrink-0"
-                onClick={onClearFilters}
-              >
-                <Filter className="h-3 w-3" />
-                <span>Filtres actifs</span>
-                <X className="h-3 w-3" />
-              </Badge>
-            )}
-          </div>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">{channel?.name}</h2>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
@@ -227,29 +215,27 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto p-3 relative">
         {isLoading ? (
-          <div className="p-4">
-            <MessageSkeletonList />
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
-          <div className="h-full flex items-center justify-center">
-            <p className="text-lg text-muted-foreground">
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold">
               Connexion en cours...
             </p>
           </div>
-        ) : (
-          <MessageListContainer
-            messages={allMessages}
-            currentUserId={currentUserId}
-            onDeleteMessage={deleteMessage}
-            onReactToMessage={reactToMessage}
-            replyTo={replyTo}
-            setReplyTo={setReplyTo}
-            channelId={channelId}
-            filters={filters}
-          />
-        )}
+        ) : null}
+        <MessageList
+          messages={filteredMessages()}
+          currentUserId={currentUserId}
+          onDeleteMessage={deleteMessage}
+          onReactToMessage={reactToMessage}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          channelId={channelId}
+        />
       </div>
 
       <ChatInput

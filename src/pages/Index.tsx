@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { InterpreterDashboard } from "@/components/InterpreterDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
@@ -23,6 +24,7 @@ const Index = () => {
           return;
         }
 
+        // Get user's roles from the user_roles table
         const { data: role, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
@@ -37,6 +39,7 @@ const Index = () => {
             description: "Impossible de vérifier vos permissions. Veuillez vous reconnecter.",
             variant: "destructive",
           });
+          // Sign out user if we can't verify their role
           await supabase.auth.signOut();
           setLoading(false);
           return;
@@ -81,37 +84,27 @@ const Index = () => {
   if (!userRole) {
     return (
       <div className="min-h-screen flex flex-col justify-between">
-        <div className="flex items-start justify-center flex-1">
+        <div className="flex items-center justify-center flex-1">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center w-full pt-4 space-y-16 px-4"
+            className="flex flex-col items-center justify-center space-y-4 px-4"
           >
-            <motion.img 
-              src="/lovable-uploads/3737b103-faab-4bfc-a201-b1728b56f682.png" 
-              alt="Interpretix Logo" 
-              className="w-[500px] md:w-[600px] max-w-[90vw]"
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.5 }}
-            />
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  to="/admin/login" 
-                  className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-                >
-                  Espace Administrateur
-                </Link>
-                <Link 
-                  to="/interpreter/login" 
-                  className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-                >
-                  Espace Interprète
-                </Link>
-              </div>
+            <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link 
+                to="/admin/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
+              >
+                Espace Administrateur
+              </Link>
+              <Link 
+                to="/interpreter/login" 
+                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
+              >
+                Espace Interprète
+              </Link>
             </div>
           </motion.div>
         </div>

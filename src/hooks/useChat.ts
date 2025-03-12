@@ -5,7 +5,6 @@ import { Message, MessageData, Attachment, isAttachment } from '@/types/messagin
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
-import { useToast } from './use-toast';
 
 function isValidChannelType(type: string): type is 'group' | 'direct' {
   return type === 'group' || type === 'direct';
@@ -21,7 +20,6 @@ export const useChat = (channelId: string) => {
     mentions: boolean;
   }>({ messages: false, mentions: false });
 
-  const { toast } = useToast();
   const { formatMessage } = useMessageFormatter();
 
   const fetchMessages = useCallback(async () => {
@@ -50,7 +48,8 @@ export const useChat = (channelId: string) => {
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(50);
 
       if (messagesError) throw messagesError;
 
@@ -151,89 +150,12 @@ export const useChat = (channelId: string) => {
     currentUserId,
     retryCount,
     setRetryCount,
-    (payload) => {
-      // Handle real-time updates directly
-      const handleRealtimeMessage = async (payload: any) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload;
-        
-        try {
-          switch (eventType) {
-            case 'INSERT':
-              const formattedMessage = await formatMessage(newRecord);
-              if (formattedMessage) {
-                setMessages(prev => [...prev, formattedMessage]);
-              }
-              break;
-
-            case 'DELETE':
-              setMessages(prev => prev.filter(msg => msg.id !== oldRecord.id));
-              break;
-
-            case 'UPDATE':
-              const updatedMessage = await formatMessage(newRecord);
-              if (updatedMessage) {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === updatedMessage.id ? updatedMessage : msg
-                ));
-              }
-              break;
-          }
-        } catch (error) {
-          console.error('[Chat] Error handling realtime message:', error);
-        }
-      }
-      
-      handleRealtimeMessage(payload);
-    }
+    fetchMessages
   );
 
-  const optimisticSendMessage = async (content: string, replyToId: string | null | undefined, attachments: File[]) => {
-    if (!currentUserId) return null;
-
-    const optimisticMessage: Message = {
-      id: `temp-${Date.now()}`,
-      content,
-      sender: {
-        id: currentUserId,
-        name: 'You', // This will be replaced with actual data
-        avatarUrl: ''
-      },
-      timestamp: new Date(),
-      channelType: 'group',
-      attachments: []
-    };
-
-    // Add optimistic message
-    setMessages(prev => [...prev, optimisticMessage]);
-
-    try {
-      await sendMessageToChannel(content, replyToId, attachments);
-    } catch (error) {
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
-      throw error;
-    }
-  };
-
-  const optimisticDeleteMessage = async (messageId: string) => {
-    // Remove message optimistically
-    setMessages(prev => prev.filter(msg => msg.id !== messageId));
-
-    try {
-      await deleteMessage(messageId);
-    } catch (error) {
-      // Restore message on error
-      const deletedMessage = messages.find(msg => msg.id === messageId);
-      if (deletedMessage) {
-        setMessages(prev => [...prev, deletedMessage]);
-      }
-      throw error;
-    }
-  };
-
   const { 
-    sendMessage: sendMessageToChannel,
-    deleteMessage,
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
     reactToMessage,
     markMentionsAsRead,
   } = useMessageActions(
@@ -242,6 +164,7 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
+  // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -250,6 +173,7 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
+  // Fetch messages when channel changes or when component mounts
   useEffect(() => {
     if (channelId) {
       console.log('[Chat] Initial messages fetch for channel:', channelId);
@@ -257,6 +181,7 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId, fetchMessages]);
 
+  // Update subscription status
   useEffect(() => {
     setSubscriptionStatus({
       messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
@@ -269,8 +194,8 @@ export const useChat = (channelId: string) => {
     isLoading,
     isSubscribed: subscriptionStatus.messages && subscriptionStatus.mentions,
     subscriptionStatus,
-    sendMessage: optimisticSendMessage,
-    deleteMessage: optimisticDeleteMessage,
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
