@@ -40,16 +40,26 @@ export const useInterpreterProfileUpdate = () => {
         id: data.id
       };
 
-      // Include all fields that are present, even if undefined
+      // Include all fields that are present
       Object.entries(data).forEach(([key, value]) => {
         if (key !== 'id') {
           if (key === 'languages' && Array.isArray(value)) {
             profileData.languages = formatLanguagePairs(value as LanguagePair[]);
           } else {
-            profileData[key] = value;
+            // Explicitly handle the special fields we want to persist
+            if (['booth_number', 'private_phone', 'professional_phone'].includes(key)) {
+              // Only include if value is not empty string
+              if (value !== undefined && value !== '') {
+                profileData[key] = value;
+              }
+            } else {
+              profileData[key] = value;
+            }
           }
         }
       });
+
+      console.log('Updating profile with data:', profileData);
 
       const { error } = await supabase.functions.invoke('update-interpreter-profile', {
         body: profileData
