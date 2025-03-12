@@ -1,9 +1,15 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
+
+// Add the type guard function at the top of the file
+const isValidChannelType = (type: string): type is 'group' | 'direct' => {
+  return type === 'group' || type === 'direct';
+};
 
 export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
