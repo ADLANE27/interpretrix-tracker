@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -6,6 +7,7 @@ import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
   message: string;
@@ -17,6 +19,7 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
+  isLoading?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -29,6 +32,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   inputRef,
   replyTo,
   setReplyTo,
+  isLoading = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -36,6 +40,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleEmojiSelect = (emoji: any) => {
     setMessage(message + emoji.native);
     setEmojiPickerOpen(false);
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSendMessage();
+    }
   };
 
   return (
@@ -61,12 +72,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Écrivez un message..."
               className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  onSendMessage();
-                }
-              }}
+              onKeyDown={handleTextareaKeyDown}
+              disabled={isLoading}
             />
           </div>
           <div className="flex items-center gap-1 p-2">
@@ -76,6 +83,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                  disabled={isLoading}
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -112,19 +120,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onChange={handleFileChange}
               multiple
               className="hidden"
+              disabled={isLoading}
             />
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
+              className={cn(
+                "h-8 w-8 bg-purple-500 hover:bg-purple-600",
+                isLoading && "opacity-50 pointer-events-none"
+              )}
               onClick={onSendMessage}
+              disabled={isLoading || (!message.trim() && attachments.length === 0)}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -141,6 +155,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 size="sm"
                 className="h-6 hover:text-red-500"
                 onClick={() => handleRemoveAttachment(index)}
+                disabled={isLoading}
               >
                 Supprimer
               </Button>

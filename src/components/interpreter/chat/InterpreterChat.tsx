@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -10,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -45,6 +47,8 @@ export const InterpreterChat = ({
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
 
@@ -105,7 +109,7 @@ export const InterpreterChat = ({
   useEffect(() => {
     if (channelId) {
       const channel = supabase
-        .channel(`chat-mentions-${channelId}`)
+        .channel(`chat-mentions-${channelId}-${Date.now()}`)
         .on(
           'postgres_changes',
           {
@@ -156,13 +160,28 @@ export const InterpreterChat = ({
     if (!files) return;
     
     const fileArray = Array.from(files);
+    
+    // Check file size limits (100MB total)
+    const totalSize = fileArray.reduce((sum, file) => sum + file.size, 0);
+    const maxTotalSize = 100 * 1024 * 1024; // 100MB
+    
+    if (totalSize > maxTotalSize) {
+      toast({
+        title: "Erreur",
+        description: "La taille totale des fichiers ne doit pas dépasser 100 Mo",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setAttachments(prev => [...prev, ...fileArray]);
   };
 
   const handleSendMessage = async () => {
-    if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
+    if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId || isSending) return;
 
     try {
+      setIsSending(true);
       await sendMessage(message, replyTo?.id, attachments);
       setMessage('');
       setAttachments([]);
@@ -171,7 +190,34 @@ export const InterpreterChat = ({
         inputRef.current.style.height = 'auto';
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[Chat] Error sending message:', error);
+      toast({
+        title: "Erreur",
+        description: "Échec de l'envoi du message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleDeleteMessageWrapper = async (messageId: string) => {
+    try {
+      setIsDeleting(true);
+      await deleteMessage(messageId);
+      toast({
+        title: "Succès",
+        description: "Message supprimé",
+      });
+    } catch (error) {
+      console.error('[Chat] Error deleting message:', error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -222,19 +268,27 @@ export const InterpreterChat = ({
           </div>
         ) : !isSubscribed ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
-              Connexion en cours...
-            </p>
+            <div className="text-center">
+              <p className="text-lg font-semibold mb-2">
+                Connexion en cours...
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {subscriptionStatus.messages ? 
+                  `Messages: ${subscriptionStatus.messages}` : 
+                  'Connexion aux messages...'}
+              </p>
+            </div>
           </div>
         ) : null}
         <MessageList
           messages={filteredMessages()}
           currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
+          onDeleteMessage={handleDeleteMessageWrapper}
           onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
+          isDeleting={isDeleting}
         />
       </div>
 
@@ -248,6 +302,7 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
+        isLoading={isSending}
       />
     </div>
   );
