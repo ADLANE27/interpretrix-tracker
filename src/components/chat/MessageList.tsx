@@ -1,15 +1,23 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Message, MessageListProps } from "@/types/messaging";
+import React, { useState, useRef } from 'react';
+import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
+
+interface MessageListProps {
+  messages: Message[];
+  currentUserId: string | null;
+  onDeleteMessage: (messageId: string) => Promise<void>;
+  onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
+  replyTo?: Message | null;
+  setReplyTo?: (message: Message | null) => void;
+  channelId: string;
+}
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -19,86 +27,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   replyTo,
   setReplyTo,
   channelId,
-  isDeleting,
-  isLoadingMore,
-  hasMoreMessages,
-  onLoadMore,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const loadTriggerRef = useRef<HTMLDivElement>(null);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [hasNewMessages, setHasNewMessages] = useState(false);
-  const prevMessageLengthRef = useRef(messages.length);
-  
-  // Scroll to bottom on initial load or when user clicks "New messages"
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-    setHasNewMessages(false);
-  };
-
-  // Setup intersection observer for infinite scrolling
-  useEffect(() => {
-    const loadTrigger = loadTriggerRef.current;
-    if (!loadTrigger || !hasMoreMessages || !onLoadMore) return;
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && hasMoreMessages) {
-          onLoadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    
-    observer.observe(loadTrigger);
-    
-    return () => {
-      if (loadTrigger) observer.unobserve(loadTrigger);
-    };
-  }, [onLoadMore, isLoadingMore, hasMoreMessages]);
-
-  // Check if new messages arrived and user is not at bottom
-  useEffect(() => {
-    if (messages.length > prevMessageLengthRef.current && !isAtBottom) {
-      setHasNewMessages(true);
-    }
-    prevMessageLengthRef.current = messages.length;
-  }, [messages.length, isAtBottom]);
-
-  useEffect(() => {
-    // Scroll to bottom on initial load
-    if (!isLoadingMore && messages.length > 0) {
-      scrollToBottom();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
-  // Track scroll position
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    
-    const handleScroll = () => {
-      const { scrollHeight, scrollTop, clientHeight } = container;
-      const atBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 20;
-      setIsAtBottom(atBottom);
-      
-      if (atBottom) {
-        setHasNewMessages(false);
-      }
-    };
-    
-    container.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
 
   const getInitials = (name: string) => {
     return name
@@ -200,7 +132,6 @@ export const MessageList: React.FC<MessageListProps> = ({
                 onClick={() => onDeleteMessage(message.id)}
                 className="p-1.5 rounded-full hover:bg-gray-100"
                 aria-label="Supprimer le message"
-                disabled={isDeleting}
               >
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
               </button>
@@ -231,88 +162,46 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="relative h-full">
-      <div
-        ref={scrollContainerRef}
-        className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full h-full overflow-y-auto rounded-md"
-      >
-        {/* Show loading indicator or load more button at the top when more messages are available */}
-        {(hasMoreMessages || isLoadingMore) && (
-          <div ref={loadTriggerRef} className="flex justify-center pb-2">
-            {isLoadingMore ? (
-              <div className="flex flex-col items-center space-y-2">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-4 w-32" />
+    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md">
+      {messages.map((message, index) => (
+        <React.Fragment key={message.id}>
+          {shouldShowDate(message, messages[index - 1]) && (
+            <div className="flex justify-center my-4">
+              <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
+                {formatMessageDate(message.timestamp)}
               </div>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onLoadMore}
-                disabled={isLoadingMore}
-                className="text-xs text-gray-600"
+            </div>
+          )}
+          {renderMessage(message)}
+          
+          {messageThreads[message.id]?.length > 1 && (
+            <div className="ml-12 mt-2 mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleThread(message.id)}
+                className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
               >
-                Charger les messages précédents
-              </Button>
-            )}
-          </div>
-        )}
-
-        {messages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
-              <div className="flex justify-center my-4">
-                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
-                  {formatMessageDate(message.timestamp)}
-                </div>
-              </div>
-            )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-12 mt-2 mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
-                >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  {messageThreads[message.id].length - 1} réponses
-                </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
-                  </div>
+                {expandedThreads.has(message.id) ? (
+                  <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 mr-1" />
                 )}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* New messages indicator */}
-      {hasNewMessages && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={scrollToBottom}
-            className="text-xs shadow-md flex items-center gap-1 px-3 py-2 rounded-full bg-white border border-gray-200"
-          >
-            <ChevronDown className="h-4 w-4" />
-            Nouveaux messages
-          </Button>
-        </div>
-      )}
+                {messageThreads[message.id].length - 1} réponses
+              </Button>
+              
+              {expandedThreads.has(message.id) && (
+                <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
+                  {messageThreads[message.id]
+                    .filter(reply => reply.id !== message.id)
+                    .map(reply => renderMessage(reply, true))}
+                </div>
+              )}
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+      <div ref={messagesEndRef} />
     </div>
   );
 };

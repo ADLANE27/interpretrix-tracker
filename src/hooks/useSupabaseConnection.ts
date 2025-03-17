@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
@@ -16,7 +16,6 @@ export const useSupabaseConnection = () => {
   const isExplicitDisconnectRef = useRef(false);
   const isReconnectingRef = useRef(false);
   const hasInitializedRef = useRef(false);
-  const [isOnline, setIsOnline] = useState<boolean>(window.navigator.onLine);
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
   const { validateChannelPresence } = usePresence({
@@ -35,12 +34,6 @@ export const useSupabaseConnection = () => {
     try {
       if (isReconnectingRef.current || hasInitializedRef.current) {
         console.log('[useSupabaseConnection] Already initialized or reconnecting, skipping initialization');
-        return () => {};
-      }
-
-      // Check network status
-      if (!isOnline) {
-        console.log('[useSupabaseConnection] Network offline, skipping initialization');
         return () => {};
       }
 
@@ -78,7 +71,6 @@ export const useSupabaseConnection = () => {
       let presenceValidationTimeout: NodeJS.Timeout;
       let isChannelReady = false;
 
-      // Setup channel subscriptions
       channelRef.current
         .on('presence', { event: 'sync' }, async () => {
           if (!channelRef.current || isExplicitDisconnectRef.current || !isChannelReady) return;
@@ -106,7 +98,6 @@ export const useSupabaseConnection = () => {
           }
         });
 
-      // Subscribe to the channel and handle status changes
       await channelRef.current.subscribe(async (status) => {
         console.log('[useSupabaseConnection] Channel status:', status);
 
@@ -153,7 +144,6 @@ export const useSupabaseConnection = () => {
         }
       });
 
-      // Return cleanup function
       return () => {
         if (channelRef.current) {
           supabase.removeChannel(channelRef.current);
@@ -175,7 +165,6 @@ export const useSupabaseConnection = () => {
       };
     }
   }, [
-    isOnline,
     releaseWakeLock,
     setupHeartbeat,
     validateChannelPresence,
@@ -183,7 +172,6 @@ export const useSupabaseConnection = () => {
     updateLastHeartbeat
   ]);
 
-  // Setup reconnect handler
   handleReconnectRef.current = async () => {
     if (isExplicitDisconnectRef.current || isReconnectingRef.current) {
       console.log('[useSupabaseConnection] Skipping reconnect - explicit disconnect or already reconnecting');
@@ -207,7 +195,6 @@ export const useSupabaseConnection = () => {
       return;
     }
 
-    // Calculate backoff delay
     const delay = Math.min(
       CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current),
       30000
@@ -219,39 +206,20 @@ export const useSupabaseConnection = () => {
       delay
     });
 
-    // Clean up existing channel
     if (channelRef.current) {
       await supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
-    // Schedule reconnection
     reconnectTimeoutRef.current = setTimeout(() => {
       reconnectAttemptsRef.current++;
       initializeChannel();
     }, delay);
   };
 
-  // Use effect to setup listeners and initialize connection
   useEffect(() => {
     let mounted = true;
     let cleanup: (() => void) = () => {};
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      if (!isReconnectingRef.current && !hasInitializedRef.current) {
-        initializeChannel();
-      }
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-      console.log('[useSupabaseConnection] Network is offline');
-    };
-    
-    // Add online/offline event listeners
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
 
     const setup = async () => {
       if (!mounted) return;
@@ -263,7 +231,6 @@ export const useSupabaseConnection = () => {
 
     setup();
 
-    // Session check interval to ensure authentication is still valid
     const sessionCheckInterval = setInterval(async () => {
       if (isExplicitDisconnectRef.current) return;
 
@@ -293,11 +260,10 @@ export const useSupabaseConnection = () => {
       }
     }, CONNECTION_CONSTANTS.SESSION_CHECK_INTERVAL);
 
-    // Handle visibility changes (page focus/blur)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useSupabaseConnection] Page visible');
-        if (!isExplicitDisconnectRef.current && !isReconnectingRef.current && isOnline) {
+        if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
           if ((!channelRef.current || channelRef.current.state !== 'joined') && !hasInitializedRef.current) {
             initializeChannel();
           }
@@ -307,7 +273,6 @@ export const useSupabaseConnection = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Handle auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (!mounted) return;
 
@@ -324,24 +289,17 @@ export const useSupabaseConnection = () => {
       }
     });
 
-    // Return cleanup function
     return () => {
       mounted = false;
       cleanup();
       clearInterval(sessionCheckInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
       subscription.unsubscribe();
       clearIntervals();
       releaseWakeLock();
       hasInitializedRef.current = false;
     };
-  }, [clearIntervals, initializeChannel, releaseWakeLock, isOnline]);
+  }, [clearIntervals, initializeChannel, releaseWakeLock]);
 
-  return {
-    channel: channelRef.current,
-    isOnline,
-    isConnected: channelRef.current?.state === 'joined'
-  };
+  return channelRef.current;
 };

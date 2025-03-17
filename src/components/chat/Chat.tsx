@@ -33,11 +33,6 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [message, setMessage] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [replyTo, setReplyTo] = useState(null);
-  const inputRef = React.createRef<HTMLTextAreaElement>();
 
   // Update newName when channel data is loaded
   useEffect(() => {
@@ -49,32 +44,11 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const {
     messages,
     isLoading,
-    sendMessage: sendChatMessage,
+    sendMessage,
     deleteMessage,
     currentUserId,
-    reactToMessage,
-    isSubscribed
+    reactToMessage
   } = useChat(channelId);
-
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      setIsDeleting(true);
-      await deleteMessage(messageId);
-      toast({
-        title: "Succès",
-        description: "Message supprimé"
-      });
-    } catch (error) {
-      console.error('[Chat] Error deleting message:', error);
-      toast({
-        title: "Erreur",
-        description: "Échec de la suppression du message",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -102,43 +76,9 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    const fileArray = Array.from(files);
-    setAttachments(prev => [...prev, ...fileArray]);
-  };
-
-  const handleRemoveAttachment = (index: number) => {
-    setAttachments(prev => {
-      const newAttachments = [...prev];
-      newAttachments.splice(index, 1);
-      return newAttachments;
-    });
-  };
-
-  const handleSendMessage = async (): Promise<void> => {
-    if ((!message.trim() && attachments.length === 0) || !channelId) {
-      return Promise.resolve();
-    }
-
-    try {
-      await sendChatMessage(message, replyTo?.id, attachments);
-      setMessage('');
-      setAttachments([]);
-      setReplyTo(null);
-      return Promise.resolve();
-    } catch (error) {
-      console.error('[Chat] Error sending message:', error);
-      toast({
-        title: "Erreur",
-        description: "Échec de l'envoi du message",
-        variant: "destructive",
-      });
-      return Promise.reject(error);
-    }
-  };
+  // Debug logging to check channel data
+  console.log('Channel data:', channel);
+  console.log('User role:', userRole);
 
   return (
     <div className="flex flex-col h-full">
@@ -193,24 +133,22 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         <MessageList
           messages={messages}
           currentUserId={currentUserId}
-          onDeleteMessage={handleDeleteMessage}
+          onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}
           channelId={channelId}
-          isDeleting={isDeleting}
         />
       </div>
       
       <ChatInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        handleFileChange={handleFileChange}
-        attachments={attachments}
-        handleRemoveAttachment={handleRemoveAttachment}
-        inputRef={inputRef}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-        isSubscribed={isSubscribed}
+        message=""
+        setMessage={() => {}}
+        onSendMessage={() => {}}
+        handleFileChange={() => {}}
+        attachments={[]}
+        handleRemoveAttachment={() => {}}
+        inputRef={React.createRef()}
+        replyTo={null}
+        setReplyTo={() => {}}
       />
     </div>
   );

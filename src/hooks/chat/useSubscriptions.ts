@@ -2,17 +2,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
-
-export type SubscriptionStatus = 'SUBSCRIBED' | 'CONNECTING' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
 
 interface SubscriptionState {
-  status: SubscriptionStatus,
+  status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
   error?: Error
 }
 
 interface SubscriptionStates {
   messages?: SubscriptionState;
+  mentions?: SubscriptionState;
 }
 
 export const useSubscriptions = (
@@ -20,61 +18,22 @@ export const useSubscriptions = (
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  onNewMessage: (payload: any) => Promise<void>,
-  onMessageUpdate: (payload: any) => Promise<void>,
-  onMessageDelete: (payload: any) => Promise<void>
+  fetchMessages: () => Promise<void>
 ) => {
-  const messageChannelRef = useRef<RealtimeChannel | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
-  const lastMessageRef = useRef<string | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const messageQueueRef = useRef<any[]>([]);
 
-  const handleSubscriptionError = (error: Error) => {
-    console.error(`[Chat] Subscription error:`, error);
+  const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
+    console.error(`[Chat] ${type} subscription error:`, error);
     setSubscriptionStates(prev => ({
       ...prev,
-      messages: { status: 'CHANNEL_ERROR' as const, error }
+      [type]: { status: 'CHANNEL_ERROR' as const, error }
     }));
     
-    if (retryCount < CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
-      // Use exponential backoff but with a shorter base delay for faster recovery
-      const delay = Math.min(
-        CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(1.5, retryCount),
-        CONNECTION_CONSTANTS.MAX_RECONNECT_DELAY
-      );
-      console.log(`[Chat] Retrying in ${delay}ms (attempt ${retryCount + 1}/${CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS})`);
-      
-      reconnectTimeoutRef.current = setTimeout(() => {
+    if (retryCount < 3) {
+      setTimeout(() => {
         setRetryCount(retryCount + 1);
-      }, delay);
-    } else {
-      console.error(`[Chat] Max retry attempts (${CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
-    }
-  };
-
-  // Process queued messages
-  const processMessageQueue = async () => {
-    if (messageQueueRef.current.length === 0) return;
-    
-    console.log(`[Chat] Processing ${messageQueueRef.current.length} queued messages`);
-    
-    // Create a copy of the queue and clear it to prevent processing duplicates
-    const queueCopy = [...messageQueueRef.current];
-    messageQueueRef.current = [];
-    
-    for (const item of queueCopy) {
-      try {
-        if (item.event === 'INSERT') {
-          await onNewMessage(item.payload);
-        } else if (item.event === 'UPDATE') {
-          await onMessageUpdate(item.payload);
-        } else if (item.event === 'DELETE') {
-          await onMessageDelete(item.payload);
-        }
-      } catch (error) {
-        console.error('[Chat] Error processing queued message:', error);
-      }
+      }, 1000 * Math.pow(2, retryCount));
     }
   };
 
@@ -88,154 +47,51 @@ export const useSubscriptions = (
         return;
       }
 
-      // Set status to connecting
-      setSubscriptionStates(prev => ({
-        ...prev,
-        messages: { status: 'CONNECTING' }
-      }));
-
       // Clean up existing channel if it exists
-      if (messageChannelRef.current) {
+      if (channelRef.current) {
         console.log('[Chat] Cleaning up existing channel');
-        await supabase.removeChannel(messageChannelRef.current);
-        messageChannelRef.current = null;
+        await supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
-      
+
       try {
-        // Create a new channel with a unique name for messages
-        const messageChannelName = `chat-messages-${channelId}-${Date.now()}`;
-        console.log('[Chat] Creating new message channel:', messageChannelName);
+        // Create a new channel with a unique name
+        const channelName = `chat-${channelId}-${Date.now()}`;
+        console.log('[Chat] Creating new channel:', channelName);
         
-        messageChannelRef.current = supabase.channel(messageChannelName);
+        channelRef.current = supabase.channel(channelName);
 
         // Set up message changes subscription with explicit event types
-        messageChannelRef.current
+        channelRef.current
           .on('postgres_changes',
             {
-              event: 'INSERT',
+              event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
               schema: 'public',
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
             async (payload) => {
               if (!isSubscribed) return;
-              
-              // Deduplicate messages by tracking the last message ID
-              if (payload.new && payload.new.id === lastMessageRef.current) {
-                console.log('[Chat] Ignoring duplicate message:', payload.new.id);
-                return;
-              }
-              
-              if (payload.new) {
-                lastMessageRef.current = payload.new.id;
-                
-                const isConnected = subscriptionStates.messages?.status === 'SUBSCRIBED';
-                if (!isConnected) {
-                  // Queue the message if we're not connected
-                  console.log('[Chat] Queuing new message for later processing');
-                  messageQueueRef.current.push({ event: 'INSERT', payload });
-                  
-                  // Limit queue size to prevent memory issues
-                  if (messageQueueRef.current.length > CONNECTION_CONSTANTS.OFFLINE_MESSAGE_QUEUE_SIZE) {
-                    messageQueueRef.current.shift();
-                  }
-                } else {
-                  try {
-                    await onNewMessage(payload);
-                  } catch (error) {
-                    console.error('[Chat] Error handling new message:', error);
-                  }
-                }
-              }
-            }
-          )
-          .on('postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'chat_messages',
-              filter: `channel_id=eq.${channelId}`
-            },
-            async (payload) => {
-              if (!isSubscribed) return;
-              
-              const isConnected = subscriptionStates.messages?.status === 'SUBSCRIBED';
-              if (!isConnected) {
-                // Queue the update if we're not connected
-                console.log('[Chat] Queuing message update for later processing');
-                messageQueueRef.current.push({ event: 'UPDATE', payload });
-                
-                // Limit queue size
-                if (messageQueueRef.current.length > CONNECTION_CONSTANTS.OFFLINE_MESSAGE_QUEUE_SIZE) {
-                  messageQueueRef.current.shift();
-                }
-              } else {
-                try {
-                  await onMessageUpdate(payload);
-                } catch (error) {
-                  console.error('[Chat] Error handling message update:', error);
-                }
-              }
-            }
-          )
-          .on('postgres_changes',
-            {
-              event: 'DELETE',
-              schema: 'public',
-              table: 'chat_messages',
-              filter: `channel_id=eq.${channelId}`
-            },
-            async (payload) => {
-              if (!isSubscribed) return;
-              
-              const isConnected = subscriptionStates.messages?.status === 'SUBSCRIBED';
-              if (!isConnected) {
-                // Queue the delete if we're not connected
-                console.log('[Chat] Queuing message deletion for later processing');
-                messageQueueRef.current.push({ event: 'DELETE', payload });
-                
-                // Limit queue size
-                if (messageQueueRef.current.length > CONNECTION_CONSTANTS.OFFLINE_MESSAGE_QUEUE_SIZE) {
-                  messageQueueRef.current.shift();
-                }
-              } else {
-                try {
-                  await onMessageDelete(payload);
-                } catch (error) {
-                  console.error('[Chat] Error handling message deletion:', error);
-                }
-              }
+              console.log('[Chat] Message change received:', payload);
+              await fetchMessages(); // Refresh messages when changes occur
             }
           );
 
-        // Subscribe to the messages channel
-        const messagesSubscription = await messageChannelRef.current.subscribe((status) => {
-          console.log('[Chat] Message subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            setSubscriptionStates(prev => ({
-              ...prev,
-              messages: { status: 'SUBSCRIBED' }
-            }));
-            
-            // Process any queued messages when we reconnect
-            processMessageQueue();
-            
-          } else if (status === 'TIMED_OUT' || status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-            setSubscriptionStates(prev => ({
-              ...prev,
-              messages: { status: status as SubscriptionStatus }
-            }));
-            
-            if (status === 'CHANNEL_ERROR' && retryCount < CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
-              setRetryCount(retryCount + 1);
-            }
-          }
+        // Subscribe to the channel
+        const channel = await channelRef.current.subscribe((status) => {
+          console.log('[Chat] Subscription status:', status);
         });
 
-        console.log('[Chat] Message channel subscribed:', messagesSubscription);
+        console.log('[Chat] Channel subscribed:', channel);
+
+        // Update subscription states
+        setSubscriptionStates({
+          messages: { status: 'SUBSCRIBED' },
+          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+        });
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
-        handleSubscriptionError(error as Error);
+        handleSubscriptionError(error as Error, 'messages');
       }
     };
 
@@ -246,19 +102,15 @@ export const useSubscriptions = (
       console.log('[Chat] Cleaning up subscriptions');
       isSubscribed = false;
       
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      
-      if (messageChannelRef.current) {
-        supabase.removeChannel(messageChannelRef.current)
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
           .catch(error => {
-            console.error('[Chat] Error removing message channel:', error);
+            console.error('[Chat] Error removing channel:', error);
           });
-        messageChannelRef.current = null;
+        channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, retryCount, setRetryCount, onNewMessage, onMessageUpdate, onMessageDelete]);
+  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]);
 
   return {
     subscriptionStates,
