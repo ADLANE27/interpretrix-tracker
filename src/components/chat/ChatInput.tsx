@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -17,6 +18,7 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
+  disabled?: boolean; // Add this prop
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -29,6 +31,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   inputRef,
   replyTo,
   setReplyTo,
+  disabled = false, // Default to false
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -47,6 +50,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
+            disabled={disabled}
           >
             Annuler
           </Button>
@@ -67,6 +71,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   onSendMessage();
                 }
               }}
+              disabled={disabled}
             />
           </div>
           <div className="flex items-center gap-1 p-2">
@@ -76,6 +81,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-8 w-8 text-gray-500 hover:text-purple-500"
+                  disabled={disabled}
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -112,12 +118,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onChange={handleFileChange}
               multiple
               className="hidden"
+              disabled={disabled}
             />
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
@@ -125,6 +133,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               size="icon"
               className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
               onClick={onSendMessage}
+              disabled={disabled}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -141,6 +150,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 size="sm"
                 className="h-6 hover:text-red-500"
                 onClick={() => handleRemoveAttachment(index)}
+                disabled={disabled}
               >
                 Supprimer
               </Button>

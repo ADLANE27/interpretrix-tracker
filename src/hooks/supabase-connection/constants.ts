@@ -1,9 +1,9 @@
 
 export const CONNECTION_CONSTANTS = {
-  MAX_RECONNECT_ATTEMPTS: 15,        // Increased from 10
-  BASE_RECONNECT_DELAY: 1000,        // Reduced from 2000
-  HEARTBEAT_TIMEOUT: 30000,          // Reduced from 60000
-  HEARTBEAT_INTERVAL: 15000,         // Reduced from 45000
-  PRESENCE_VALIDATION_DELAY: 2000,
-  SESSION_CHECK_INTERVAL: 30000      // Reduced from 60000
+  MAX_RECONNECT_ATTEMPTS: 20,        // Increased from 15
+  BASE_RECONNECT_DELAY: 800,         // Reduced from 1000
+  HEARTBEAT_TIMEOUT: 30000,          // Kept the same
+  HEARTBEAT_INTERVAL: 15000,         // Kept the same
+  PRESENCE_VALIDATION_DELAY: 2000,   // Kept the same
+  SESSION_CHECK_INTERVAL: 30000      // Kept the same
 } as const;

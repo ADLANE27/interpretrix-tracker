@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -169,6 +170,11 @@ export const useChat = (channelId: string) => {
     fetchMessages
   );
 
+  // Add a function to retry connection manually
+  const retryConnection = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+  }, []);
+
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -201,5 +207,8 @@ export const useChat = (channelId: string) => {
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    // Expose these two new functions
+    retry: retryConnection,
+    fetchMessages
   };
 };
