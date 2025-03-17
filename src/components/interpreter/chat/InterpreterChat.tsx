@@ -14,6 +14,7 @@ import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { Button } from "@/components/ui/button";
 import { ChevronDown, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { useMessageScroll } from "@/hooks/chat/useMessageScroll"; // Import added
 
 interface InterpreterChatProps {
   channelId: string;
@@ -69,7 +70,8 @@ export const InterpreterChat = ({
     markMentionsAsRead,
     onlineUsers,
     hasConnectivityIssue,
-    pendingMessages
+    pendingMessages,
+    clearFailedMessages // Added this function
   } = useChat(channelId);
 
   const { messagesEndRef, messagesContainerRef, scrollToBottom, shouldShowScrollButton, unreadCount } = 

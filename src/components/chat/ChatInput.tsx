@@ -56,7 +56,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const insertEmoji = (emoji: { native: string }) => {
-    setMessage(prev => prev + emoji.native);
+    // Fixed: Using the setter function correctly
+    setMessage((prev: string) => prev + emoji.native);
     setIsEmojiPickerOpen(false);
     inputRef.current?.focus();
   };
@@ -94,10 +95,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               key.includes(file.name) && uploadProgress[key] < 100
             );
             
-            const progress = Object.keys(uploadProgress)
-              .find(key => key.includes(file.name))
-              ?.map(key => uploadProgress[key])
-              ?.[0] || 0;
+            // Fixed: Getting the progress value correctly
+            const progressKey = Object.keys(uploadProgress).find(key => key.includes(file.name));
+            const progress = progressKey ? uploadProgress[progressKey] : 0;
               
             return (
               <div 
