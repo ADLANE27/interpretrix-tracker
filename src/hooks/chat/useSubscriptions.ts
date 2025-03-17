@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { CONNECTION_CONSTANTS } from '../supabase-connection/constants';
+import { Message } from '@/types/messaging';
 
 interface SubscriptionState {
   status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
@@ -19,7 +20,7 @@ export const useSubscriptions = (
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  fetchMessages: () => Promise<void>
+  fetchMessages: () => Promise<Message[] | void> // Updated type to accept either Message[] or void
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);

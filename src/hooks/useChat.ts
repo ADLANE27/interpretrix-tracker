@@ -185,13 +185,18 @@ export const useChat = (channelId: string | null) => {
     }
   }, [channelId, messages, getCachedMessages, setCachedMessages, fetchSendersInBatch]);
 
-  // Use our subscription hook
+  // Create a wrapper function with the right signature for useSubscriptions
+  const fetchMessagesWrapper = useCallback(async () => {
+    await fetchMessages();
+  }, [fetchMessages]);
+
+  // Use our subscription hook with the wrapper function
   const { subscriptionStates } = useSubscriptions(
     channelId || '', 
     currentUserId,
     retryCount, 
     setRetryCount,
-    fetchMessages
+    fetchMessagesWrapper // Use the wrapper that returns void
   );
   
   // Update subscription status based on the subscription states
