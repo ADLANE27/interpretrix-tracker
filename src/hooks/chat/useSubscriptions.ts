@@ -18,7 +18,7 @@ export const useSubscriptions = (
   channelId: string,
   currentUserId: string | null,
   retryCount: number,
-  setRetryCount: (count: number) => void,
+  setRetryCount: React.Dispatch<React.SetStateAction<number>>,
   fetchMessages: () => Promise<void>
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -38,7 +38,7 @@ export const useSubscriptions = (
       console.log(`[Chat] Retrying in ${backoffDelay}ms (attempt ${retryCount + 1})`);
       
       setTimeout(() => {
-        setRetryCount(retryCount + 1);
+        setRetryCount(prev => prev + 1);
       }, backoffDelay);
     } else {
       console.error(`[Chat] Max retry attempts (${CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS}) reached`);
