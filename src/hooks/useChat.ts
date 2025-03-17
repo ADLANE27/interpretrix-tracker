@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -52,18 +51,19 @@ export const useChat = (channelId: string) => {
           return null;
         }
 
-        sender = senderData?.[0];
-        if (!sender) {
+        if (!senderData || !senderData[0]) {
           console.error('[Chat] Sender not found:', message.sender_id);
           return null;
         }
         
-        // Cache sender details with correct property name mapping
+        // Cache sender details with correct property mapping
         senderCache.current.set(message.sender_id, {
-          id: sender.id,
-          name: sender.name,
-          avatarUrl: sender.avatar_url || ''
+          id: senderData[0].id,
+          name: senderData[0].name,
+          avatarUrl: senderData[0].avatar_url || ''
         });
+        
+        sender = senderCache.current.get(message.sender_id);
       }
 
       let parsedReactions = {};
@@ -94,13 +94,18 @@ export const useChat = (channelId: string) => {
         });
       }
 
+      if (!sender) {
+        console.error('[Chat] Sender still not available after fetching');
+        return null;
+      }
+
       return {
         id: message.id,
         content: message.content,
         sender: {
           id: sender.id,
           name: sender.name,
-          avatarUrl: sender.avatarUrl || ''
+          avatarUrl: sender.avatarUrl
         },
         timestamp: new Date(message.created_at),
         parent_message_id: message.parent_message_id,

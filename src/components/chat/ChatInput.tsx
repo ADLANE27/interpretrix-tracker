@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, KeyboardEvent } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +110,7 @@ export const ChatInput = ({
         }
       }, 10);
     } else {
-      setMessage((prev) => prev + emoji.native);
+      setMessage(prevMessage => prevMessage + emoji.native);
     }
   };
 
