@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -107,7 +107,7 @@ export const useMessageActions = (
     while (retries > 0) {
       try {
         // Track upload progress (using XHR since fetch doesn't support progress)
-        const progressTracker = async (uploadId: string): Promise<void> => {
+        const progressTracker = (uploadId: string): () => void => {
           // Simulate progress as best we can
           let currentProgress = 0;
           const interval = setInterval(() => {
@@ -132,7 +132,7 @@ export const useMessageActions = (
         };
         
         const uploadId = `${sanitizedFilename}-${Date.now()}`;
-        const cleanupProgress = await progressTracker(uploadId);
+        const cleanupProgress = progressTracker(uploadId);
 
         const { data, error: uploadError } = await supabase.storage
           .from('chat-attachments')
