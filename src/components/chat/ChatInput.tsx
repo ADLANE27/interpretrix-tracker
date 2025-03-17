@@ -1,15 +1,18 @@
+
 import React, { useRef, useState, KeyboardEvent } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, X, Smile, AlertCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { MessageAttachmentPreview } from './MessageAttachmentPreview';
+import { Send, Paperclip, Smile } from "lucide-react";
 import { Message } from '@/types/messaging';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ChatConnectionWarning } from './ChatConnectionWarning';
+import { ChatReplyIndicator } from './ChatReplyIndicator';
+import { ChatAttachmentsPreview } from './ChatAttachmentsPreview';
+import { ChatSendingStatus } from './ChatSendingStatus';
+import { useEmojiPicker } from '@/hooks/chat/useEmojiPicker';
 
 interface ChatInputProps {
   message: string;
@@ -41,15 +44,11 @@ export const ChatInput = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSending, setIsSending] = useState(false);
   const { toast } = useToast();
+  const { handleEmojiSelect, adjustTextareaHeight } = useEmojiPicker(message, setMessage, inputRef);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
-    adjustHeight(e.target);
-  };
-
-  const adjustHeight = (element: HTMLTextAreaElement) => {
-    element.style.height = 'auto';
-    element.style.height = `${Math.min(element.scrollHeight, 200)}px`;
+    adjustTextareaHeight(e.target);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -91,72 +90,14 @@ export const ChatInput = ({
     }
   };
 
-  const handleEmojiSelect = (emoji: any) => {
-    if (inputRef.current) {
-      const start = inputRef.current.selectionStart || 0;
-      const end = inputRef.current.selectionEnd || 0;
-      const text = inputRef.current.value;
-      const newText = text.substring(0, start) + emoji.native + text.substring(end);
-      setMessage(newText);
-      
-      // Set cursor position after the inserted emoji
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          const newPosition = start + emoji.native.length;
-          inputRef.current.selectionStart = newPosition;
-          inputRef.current.selectionEnd = newPosition;
-          adjustHeight(inputRef.current);
-        }
-      }, 10);
-    } else {
-      setMessage(prevMessage => prevMessage + emoji.native);
-    }
-  };
-
   return (
     <div className="p-4 border-t bg-background">
-      {/* Connection warning */}
-      {!isSubscribed && (
-        <Alert variant="destructive" className="mb-3">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Connexion perdue. Vos messages ne seront pas envoyés. Tentative de reconnexion...
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {/* Reply-to indicator */}
-      {replyTo && (
-        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-accent/50 rounded-lg">
-          <span className="text-sm text-muted-foreground truncate flex-1">
-            Réponse à : {replyTo.sender.name}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReplyTo(null)}
-            className="h-6 px-2 text-xs"
-          >
-            <X className="h-3.5 w-3.5 mr-1" />
-            Annuler
-          </Button>
-        </div>
-      )}
-      
-      {/* Attachments preview */}
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {attachments.map((file, index) => (
-            <div key={index} className="flex items-center">
-              <MessageAttachmentPreview 
-                file={file} 
-                onDelete={() => handleRemoveAttachment(index)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <ChatConnectionWarning isSubscribed={isSubscribed} />
+      <ChatReplyIndicator replyTo={replyTo} setReplyTo={setReplyTo} />
+      <ChatAttachmentsPreview 
+        attachments={attachments}
+        handleRemoveAttachment={handleRemoveAttachment}
+      />
       
       <div className="flex items-end gap-2">
         <div className="flex-1 relative">
@@ -226,13 +167,7 @@ export const ChatInput = ({
         </div>
       </div>
       
-      <div className="mt-1.5 flex justify-end">
-        {isSending && (
-          <Badge variant="outline" className="text-xs text-muted-foreground">
-            Envoi...
-          </Badge>
-        )}
-      </div>
+      <ChatSendingStatus isSending={isSending} />
     </div>
   );
 };
