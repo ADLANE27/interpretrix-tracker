@@ -1,7 +1,10 @@
+
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
 import type { Json } from '@/integrations/supabase/types';
+import { CONNECTION_CONSTANTS } from '../supabase-connection/constants';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
 const ALLOWED_FILE_TYPES = new Set([
@@ -14,6 +17,17 @@ const ALLOWED_FILE_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain',
 ]);
+
+// Queue for pending messages during offline or failure scenarios
+interface PendingMessage {
+  id: string;            // Temporary client-side ID
+  content: string;
+  parentMessageId?: string | null;
+  files: File[];
+  createdAt: Date;
+  retryCount: number;
+  status: 'pending' | 'sending' | 'failed';
+}
 
 const sanitizeFilename = (filename: string): string => {
   // Create a mapping of accented characters to their non-accented equivalents
@@ -71,9 +85,12 @@ const validateFile = (file: File): string | null => {
 export const useMessageActions = (
   channelId: string,
   currentUserId: string | null,
-  fetchMessages: () => Promise<void>
+  fetchMessages: () => Promise<void>,
+  hasConnectivityIssue?: boolean
 ) => {
   const { toast } = useToast();
+  const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
     // Validate file before upload
@@ -89,12 +106,42 @@ export const useMessageActions = (
     let retries = 3;
     while (retries > 0) {
       try {
+        // Track upload progress (using XHR since fetch doesn't support progress)
+        const progressTracker = async (uploadId: string): Promise<void> => {
+          // Simulate progress as best we can
+          let currentProgress = 0;
+          const interval = setInterval(() => {
+            currentProgress += Math.random() * 20;
+            if (currentProgress > 95) {
+              currentProgress = 95; // Cap at 95% until complete
+              clearInterval(interval);
+            }
+            setUploadProgress(prev => ({
+              ...prev,
+              [uploadId]: Math.min(Math.round(currentProgress), 95)
+            }));
+          }, 300);
+          
+          return () => {
+            clearInterval(interval);
+            setUploadProgress(prev => ({
+              ...prev,
+              [uploadId]: 100 // Mark as complete
+            }));
+          };
+        };
+        
+        const uploadId = `${sanitizedFilename}-${Date.now()}`;
+        const cleanupProgress = await progressTracker(uploadId);
+
         const { data, error: uploadError } = await supabase.storage
           .from('chat-attachments')
           .upload(sanitizedFilename, file, {
             cacheControl: '3600',
             upsert: false
           });
+
+        cleanupProgress(); // Mark as complete regardless of result
 
         if (uploadError) {
           console.error('[Chat] Upload error:', uploadError);
@@ -109,6 +156,13 @@ export const useMessageActions = (
           originalName: file.name,
           sanitizedName: sanitizedFilename,
           publicUrl
+        });
+        
+        // Remove from progress tracking
+        setUploadProgress(prev => {
+          const updated = { ...prev };
+          delete updated[uploadId];
+          return updated;
         });
 
         return {
@@ -127,6 +181,78 @@ export const useMessageActions = (
     throw new Error('Upload failed after all retries');
   };
 
+  // Process pending messages that failed to send
+  const processMessageQueue = async (): Promise<void> => {
+    if (pendingMessages.length === 0 || hasConnectivityIssue) {
+      return;
+    }
+
+    const pendingMessage = pendingMessages[0];
+    if (pendingMessage.status === 'sending') {
+      return; // Already being processed
+    }
+
+    try {
+      console.log('[Chat] Processing pending message:', pendingMessage);
+      
+      // Mark message as sending
+      setPendingMessages(prev => 
+        prev.map(msg => 
+          msg.id === pendingMessage.id 
+            ? { ...msg, status: 'sending' } 
+            : msg
+        )
+      );
+
+      // Attempt to send message
+      await sendMessage(
+        pendingMessage.content, 
+        pendingMessage.parentMessageId, 
+        pendingMessage.files
+      );
+      
+      // If successful, remove from queue
+      setPendingMessages(prev => prev.filter(msg => msg.id !== pendingMessage.id));
+      
+    } catch (error) {
+      console.error('[Chat] Failed to process pending message:', error);
+      
+      // Mark as failed if we've retried too many times
+      if (pendingMessage.retryCount >= 3) {
+        setPendingMessages(prev => 
+          prev.map(msg => 
+            msg.id === pendingMessage.id 
+              ? { ...msg, status: 'failed' } 
+              : msg
+          )
+        );
+        
+        toast({
+          title: "Message Failed",
+          description: "Unable to send message after multiple attempts",
+          variant: "destructive",
+        });
+      } else {
+        // Increment retry count and move to back of queue
+        setPendingMessages(prev => [
+          ...prev.filter(msg => msg.id !== pendingMessage.id),
+          { 
+            ...pendingMessage, 
+            retryCount: pendingMessage.retryCount + 1,
+            status: 'pending'
+          }
+        ]);
+      }
+    }
+  };
+  
+  // Try to process queue whenever connectivity changes or component renders
+  useEffect(() => {
+    if (!hasConnectivityIssue && pendingMessages.length > 0) {
+      processMessageQueue();
+    }
+  }, [hasConnectivityIssue, pendingMessages.length]);
+
   const sendMessage = async (
     content: string,
     parentMessageId?: string | null,
@@ -135,11 +261,36 @@ export const useMessageActions = (
     if (!channelId || !currentUserId) throw new Error("Missing required data");
     if (!content.trim() && files.length === 0) throw new Error("Message cannot be empty");
     
+    // If we have connectivity issues, queue the message for later
+    if (hasConnectivityIssue) {
+      const tempId = `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      
+      setPendingMessages(prev => [
+        ...prev,
+        {
+          id: tempId,
+          content,
+          parentMessageId,
+          files,
+          createdAt: new Date(),
+          retryCount: 0,
+          status: 'pending'
+        }
+      ]);
+      
+      toast({
+        title: "Offline Mode",
+        description: "Message queued for sending when connection is restored",
+      });
+      
+      return tempId;
+    }
+    
     try {
+      // Upload attachments in parallel for better performance
       console.log('[Chat] Starting file uploads:', files.length);
-      const uploadedAttachments = await Promise.all(
-        files.map(file => uploadAttachment(file))
-      );
+      const uploadPromises = files.map(file => uploadAttachment(file));
+      const uploadedAttachments = await Promise.all(uploadPromises);
       console.log('[Chat] All files uploaded successfully');
 
       const attachmentsForDb = uploadedAttachments.map(att => ({
@@ -179,14 +330,29 @@ export const useMessageActions = (
 
   const deleteMessage = async (messageId: string) => {
     try {
-      // Verify the message belongs to the current user before deleting
+      // First verify the message exists and belongs to the current user
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('sender_id')
         .eq('id', messageId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116') {
+          // Message not found - it may have been deleted already or never existed
+          console.warn('[Chat] Attempted to delete non-existent message:', messageId);
+          toast({
+            title: "Message Not Found",
+            description: "The message may have been deleted already",
+          });
+          return;
+        }
+        throw fetchError;
+      }
+
+      if (!message) {
+        throw new Error('Message not found');
+      }
 
       if (message.sender_id !== currentUserId) {
         throw new Error('You can only delete your own messages');
@@ -239,13 +405,21 @@ export const useMessageActions = (
     if (!currentUserId) return;
 
     try {
-      const { data: messages } = await supabase
+      // First get the current reactions to handle race conditions
+      const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
         .eq('id', messageId)
         .single();
 
-      if (!messages) return;
+      if (fetchError) {
+        console.error('[Chat] Error fetching message reactions:', fetchError);
+        throw fetchError;
+      }
+
+      if (!messages) {
+        throw new Error('Message not found');
+      }
 
       const currentReactions = messages.reactions as Record<string, string[]> || {};
       const currentUsers = currentReactions[emoji] || [];
@@ -287,5 +461,8 @@ export const useMessageActions = (
     deleteMessage,
     reactToMessage,
     markMentionsAsRead,
+    pendingMessages,
+    uploadProgress,
+    clearFailedMessages: () => setPendingMessages(prev => prev.filter(msg => msg.status !== 'failed'))
   };
 };

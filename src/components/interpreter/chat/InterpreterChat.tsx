@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { Button } from "@/components/ui/button";
+import { ChevronDown, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -47,6 +50,7 @@ export const InterpreterChat = ({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   const [chatMembers, setChatMembers] = useState([
@@ -63,7 +67,13 @@ export const InterpreterChat = ({
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    onlineUsers,
+    hasConnectivityIssue,
+    pendingMessages
   } = useChat(channelId);
+
+  const { messagesEndRef, messagesContainerRef, scrollToBottom, shouldShowScrollButton, unreadCount } = 
+    useMessageScroll(messages, isLoading, channelId, pendingMessages);
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
@@ -206,9 +216,22 @@ export const InterpreterChat = ({
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={chatContainerRef}>
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">{channel?.name}</h2>
+          {hasConnectivityIssue ? (
+            <div className="flex items-center text-amber-500 text-xs gap-1 bg-amber-50 px-2 py-0.5 rounded-full">
+              <WifiOff size={12} />
+              <span>Reconnecting...</span>
+            </div>
+          ) : (
+            <div className="flex items-center text-emerald-500 text-xs gap-1 bg-emerald-50 px-2 py-0.5 rounded-full">
+              <Wifi size={12} />
+              <span>{onlineUsers?.length || 0} online</span>
+            </div>
+          )}
+        </div>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
@@ -223,23 +246,62 @@ export const InterpreterChat = ({
             <p className="text-lg font-semibold">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-10">
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex flex-col items-center justify-center z-10 gap-2">
+            <AlertCircle className="h-6 w-6 text-amber-500" />
             <p className="text-lg font-semibold">
               Connexion en cours...
             </p>
+            <p className="text-sm text-muted-foreground max-w-md text-center">
+              Trying to establish a connection to the chat server. This may take a moment.
+            </p>
           </div>
         ) : null}
-        <MessageList
-          messages={filteredMessages()}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-          isLoading={isLoading}
-        />
+        
+        <div className="relative h-full" ref={messagesContainerRef}>
+          <MessageList
+            messages={filteredMessages()}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReactToMessage={reactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            channelId={channelId}
+            isLoading={isLoading}
+          />
+          <div ref={messagesEndRef} />
+          
+          {shouldShowScrollButton && (
+            <div className="absolute bottom-4 right-4 z-10">
+              <Button
+                onClick={() => scrollToBottom('smooth')}
+                size="sm"
+                className="rounded-full shadow-md"
+                variant="secondary"
+              >
+                <ChevronDown className="h-4 w-4 mr-1" />
+                {unreadCount > 0 ? `${unreadCount} new` : 'Bottom'}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {pendingMessages && pendingMessages.length > 0 && (
+        <div className={cn(
+          "px-4 py-2 text-sm bg-amber-50 border-t border-amber-100",
+          "text-amber-800 flex items-center justify-between"
+        )}>
+          <span>{pendingMessages.length} message{pendingMessages.length > 1 ? 's' : ''} waiting to be sent</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs h-7 px-2 hover:bg-amber-100"
+            onClick={() => clearFailedMessages()}
+          >
+            Clear Failed
+          </Button>
+        </div>
+      )}
 
       <ChatInput
         message={message}
@@ -251,6 +313,8 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
+        isDisabled={hasConnectivityIssue && pendingMessages?.length >= 5}
+        connectionStatus={hasConnectivityIssue ? 'offline' : 'online'}
       />
     </div>
   );
