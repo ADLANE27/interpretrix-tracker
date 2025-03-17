@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageFormatter } from './chat/useMessageFormatter';
@@ -44,12 +45,12 @@ export const useChat = (channelId: string) => {
 
       const channelType = channelData.channel_type as 'group' | 'direct';
 
-      // Modified query to remove the limit
+      // Modified query to fetch messages in descending order by creation date
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });  // Changed to descending order
 
       if (messagesError) {
         console.error('[Chat] Error fetching messages:', messagesError);
@@ -138,7 +139,8 @@ export const useChat = (channelId: string) => {
         msg.timestamp instanceof Date
       );
       
-      formattedMessages.push(...validMessages);
+      // Add messages in reversed order to have newest messages last (for correct display)
+      formattedMessages.push(...validMessages.reverse());
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);

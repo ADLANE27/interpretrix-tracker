@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -31,6 +31,13 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom when messages change or component mounts
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages]);
 
   const getInitials = (name: string) => {
     return name
@@ -162,45 +169,47 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md">
-      {messages.map((message, index) => (
-        <React.Fragment key={message.id}>
-          {shouldShowDate(message, messages[index - 1]) && (
-            <div className="flex justify-center my-4">
-              <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
-                {formatMessageDate(message.timestamp)}
-              </div>
-            </div>
-          )}
-          {renderMessage(message)}
-          
-          {messageThreads[message.id]?.length > 1 && (
-            <div className="ml-12 mt-2 mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleThread(message.id)}
-                className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
-              >
-                {expandedThreads.has(message.id) ? (
-                  <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                )}
-                {messageThreads[message.id].length - 1} réponses
-              </Button>
-              
-              {expandedThreads.has(message.id) && (
-                <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
-                  {messageThreads[message.id]
-                    .filter(reply => reply.id !== message.id)
-                    .map(reply => renderMessage(reply, true))}
+    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col">
+      <div className="flex-1">
+        {messages.map((message, index) => (
+          <React.Fragment key={message.id}>
+            {shouldShowDate(message, messages[index - 1]) && (
+              <div className="flex justify-center my-4">
+                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
+                  {formatMessageDate(message.timestamp)}
                 </div>
-              )}
-            </div>
-          )}
-        </React.Fragment>
-      ))}
+              </div>
+            )}
+            {renderMessage(message)}
+            
+            {messageThreads[message.id]?.length > 1 && (
+              <div className="ml-12 mt-2 mb-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleThread(message.id)}
+                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
+                >
+                  {expandedThreads.has(message.id) ? (
+                    <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  {messageThreads[message.id].length - 1} réponses
+                </Button>
+                
+                {expandedThreads.has(message.id) && (
+                  <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
+                    {messageThreads[message.id]
+                      .filter(reply => reply.id !== message.id)
+                      .map(reply => renderMessage(reply, true))}
+                  </div>
+                )}
+              </div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
       <div ref={messagesEndRef} />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -47,6 +48,7 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
@@ -215,7 +217,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative">
+      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>

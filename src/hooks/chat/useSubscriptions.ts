@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
 
 interface SubscriptionState {
   status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
@@ -30,10 +31,10 @@ export const useSubscriptions = (
       [type]: { status: 'CHANNEL_ERROR' as const, error }
     }));
     
-    if (retryCount < 3) {
+    if (retryCount < CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
       setTimeout(() => {
         setRetryCount(retryCount + 1);
-      }, 1000 * Math.pow(2, retryCount));
+      }, CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(2, retryCount));
     }
   };
 
