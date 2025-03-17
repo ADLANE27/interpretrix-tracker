@@ -58,10 +58,6 @@ export const InterpreterChat = ({
   const messageContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const [chatMembers, setChatMembers] = useState([
-    { id: 'current', name: 'Mes messages' },
-  ]);
-
   const {
     messages,
     isLoading,
@@ -73,7 +69,9 @@ export const InterpreterChat = ({
     reactToMessage,
     markMentionsAsRead,
     retry: retryConnection,
-    fetchMessages: refetchMessages
+    fetchMessages: refetchMessages,
+    loadMoreMessages,
+    hasMore
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -226,27 +224,6 @@ export const InterpreterChat = ({
     });
   };
 
-  // Track unique chat members
-  useEffect(() => {
-    const uniqueMembers = new Map();
-    
-    if (currentUserId) {
-      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
-    }
-
-    messages.forEach(msg => {
-      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
-        uniqueMembers.set(msg.sender.id, {
-          id: msg.sender.id,
-          name: msg.sender.name,
-          avatarUrl: msg.sender.avatarUrl
-        });
-      }
-    });
-
-    setChatMembers(Array.from(uniqueMembers.values()));
-  }, [messages, currentUserId]);
-
   // Handle reconnection attempts
   const handleReconnect = useCallback(() => {
     setReconnecting(true);
@@ -270,7 +247,7 @@ export const InterpreterChat = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
-        {isChannelLoading || isLoading ? (
+        {isChannelLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex flex-col items-center justify-center">
             <LoadingSpinner size="lg" />
             <p className="mt-2 text-lg font-semibold">Chargement des messages...</p>
@@ -310,11 +287,11 @@ export const InterpreterChat = ({
             setReplyTo={setReplyTo}
             channelId={channelId}
             messagesEndRef={messagesEndRef}
+            isLoading={isLoading}
+            loadMoreMessages={loadMoreMessages}
+            hasMore={hasMore}
           />
         )}
-        
-        {/* Invisible div for scrolling to bottom */}
-        <div ref={messagesEndRef} />
       </div>
 
       <ChatInput

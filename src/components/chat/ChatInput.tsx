@@ -18,7 +18,7 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
-  disabled?: boolean; // Add this prop
+  disabled?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -31,14 +31,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   inputRef,
   replyTo,
   setReplyTo,
-  disabled = false, // Default to false
+  disabled = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const handleEmojiSelect = (emoji: any) => {
     setMessage(message + emoji.native);
     setEmojiPickerOpen(false);
+  };
+
+  const handleSend = async () => {
+    if (isSending) return;
+    
+    try {
+      setIsSending(true);
+      await onSendMessage();
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -50,7 +62,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            disabled={disabled}
+            disabled={disabled || isSending}
           >
             Annuler
           </Button>
@@ -68,10 +80,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  onSendMessage();
+                  handleSend();
                 }
               }}
-              disabled={disabled}
+              disabled={disabled || isSending}
             />
           </div>
           <div className="flex items-center gap-1 p-2">
@@ -81,7 +93,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   variant="ghost" 
                   size="icon"
                   className="h-8 w-8 text-gray-500 hover:text-purple-500"
-                  disabled={disabled}
+                  disabled={disabled || isSending}
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -118,22 +130,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onChange={handleFileChange}
               multiple
               className="hidden"
-              disabled={disabled}
+              disabled={disabled || isSending}
             />
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
+              disabled={disabled || isSending}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
-              onClick={onSendMessage}
-              disabled={disabled}
+              className={`h-8 w-8 ${isSending ? 'bg-purple-400' : 'bg-purple-500 hover:bg-purple-600'}`}
+              onClick={handleSend}
+              disabled={disabled || isSending}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -150,7 +162,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 size="sm"
                 className="h-6 hover:text-red-500"
                 onClick={() => handleRemoveAttachment(index)}
-                disabled={disabled}
+                disabled={disabled || isSending}
               >
                 Supprimer
               </Button>

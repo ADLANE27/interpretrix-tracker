@@ -1,5 +1,5 @@
 
-import React, { useState, forwardRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -8,6 +8,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MessageListProps {
   messages: Message[];
@@ -18,6 +19,9 @@ interface MessageListProps {
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
   messagesEndRef?: React.RefObject<HTMLDivElement>;
+  isLoading?: boolean;
+  loadMoreMessages?: () => void;
+  hasMore?: boolean;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -28,10 +32,17 @@ export const MessageList: React.FC<MessageListProps> = ({
   replyTo,
   setReplyTo,
   channelId,
-  messagesEndRef
+  messagesEndRef,
+  isLoading = false,
+  loadMoreMessages,
+  hasMore = false
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const [isScrollingUp, setIsScrollingUp] = useState(false);
+  const loadTriggerRef = useRef<HTMLDivElement>(null);
 
   const getInitials = (name: string) => {
     return name
@@ -76,6 +87,43 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
+  // Intersection observer for loading more messages when scrolling up
+  useEffect(() => {
+    if (!loadMoreMessages || !hasMore || !loadTriggerRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
+          loadMoreMessages();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    
+    observer.observe(loadTriggerRef.current);
+    
+    return () => {
+      if (loadTriggerRef.current) {
+        observer.unobserve(loadTriggerRef.current);
+      }
+    };
+  }, [loadMoreMessages, hasMore, isLoading]);
+
+  // Handle scrolling detection
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      const currentPosition = container.scrollTop;
+      setIsScrollingUp(currentPosition < lastScrollPosition);
+      setLastScrollPosition(currentPosition);
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [lastScrollPosition]);
+
   // Group messages by parent_message_id
   const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
     const threadId = message.parent_message_id || message.id;
@@ -104,6 +152,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             src={message.sender.avatarUrl} 
             alt={message.sender.name}
             className="object-cover"
+            loading="lazy"
           />
           <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
             {getInitials(message.sender.name)}
@@ -122,7 +171,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           message.sender.id === currentUserId 
             ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
             : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
-        } px-4 py-2.5 break-words`}>
+        } px-4 py-2.5 break-words ${message.isOptimistic ? 'opacity-70' : ''}`}>
           <div className="text-[15px] mb-4">{message.content}</div>
           <div className="absolute right-4 bottom-2 flex items-center gap-1">
             <span className="text-[11px] text-gray-500">
@@ -130,21 +179,23 @@ export const MessageList: React.FC<MessageListProps> = ({
             </span>
           </div>
           <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-            {message.sender.id === currentUserId && (
+            {message.sender.id === currentUserId && !message.isOptimistic && (
               <button
                 onClick={() => onDeleteMessage(message.id)}
                 className="p-1.5 rounded-full hover:bg-gray-100"
                 aria-label="Supprimer le message"
+                disabled={message.isOptimistic}
               >
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
               </button>
             )}
-            {!isThreadReply && setReplyTo && (
+            {!isThreadReply && setReplyTo && !message.isOptimistic && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setReplyTo(message)}
                 className="p-1.5 rounded-full hover:bg-gray-100"
+                disabled={message.isOptimistic}
               >
                 <MessageCircle className="h-4 w-4 text-gray-500" />
               </Button>
@@ -157,6 +208,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               url={attachment.url}
               filename={attachment.filename}
               locale="fr"
+              isOptimistic={attachment.isOptimistic}
             />
           </div>
         ))}
@@ -164,9 +216,41 @@ export const MessageList: React.FC<MessageListProps> = ({
     </div>
   );
 
+  // Render loading indicator for older messages
+  const renderLoadingTrigger = () => (
+    <div ref={loadTriggerRef} className="flex justify-center py-4">
+      {hasMore && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="space-y-1">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-10 w-[250px] rounded-xl" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="space-y-1">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-14 w-[200px] rounded-xl" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md">
-      {messages.length === 0 ? (
+    <div 
+      ref={containerRef}
+      className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md overflow-y-auto"
+      style={{ scrollBehavior: isScrollingUp ? 'auto' : 'smooth' }}
+    >
+      {/* Loading indicator for older messages */}
+      {renderLoadingTrigger()}
+      
+      {/* Actual messages */}
+      {messages.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center h-40">
           <p className="text-gray-500 text-center">Aucun message</p>
         </div>
