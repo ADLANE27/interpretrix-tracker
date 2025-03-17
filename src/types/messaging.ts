@@ -23,7 +23,7 @@ export interface MessageData {
   sender_id: string;
   created_at: string;
   parent_message_id?: string | null;
-  reactions: Record<string, string[]>;
+  reactions: Record<string, string[]> | Json;
   attachments?: Array<{
     url: string;
     filename: string;

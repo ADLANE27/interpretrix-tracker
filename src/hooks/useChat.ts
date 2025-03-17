@@ -6,9 +6,31 @@ import { Message, MessageData, Attachment } from '@/types/messaging';
 import { useToast } from './use-toast';
 import { useMessageCache } from './chat/useMessageCache';
 import { useBatchSendersFetch } from './chat/useBatchSendersFetch';
+import type { Json } from '@/integrations/supabase/types';
 
 // Helper function to convert MessageData to Message
 const convertMessageData = (data: MessageData, senderInfo?: { name: string, avatarUrl: string }): Message => {
+  // Ensure reactions is a proper Record<string, string[]> object
+  let reactionsObj: Record<string, string[]> = {};
+  
+  if (data.reactions) {
+    if (typeof data.reactions === 'object' && !Array.isArray(data.reactions)) {
+      // Convert JSON reactions object to the expected format
+      reactionsObj = data.reactions as Record<string, string[]>;
+    }
+  }
+  
+  // Ensure attachments is properly typed
+  let attachmentsArray: Attachment[] = [];
+  if (data.attachments && Array.isArray(data.attachments)) {
+    attachmentsArray = data.attachments.map(att => ({
+      url: (att as any).url || '',
+      filename: (att as any).filename || '',
+      type: (att as any).type || '',
+      size: (att as any).size || 0,
+    }));
+  }
+  
   return {
     id: data.id,
     content: data.content,
@@ -19,8 +41,8 @@ const convertMessageData = (data: MessageData, senderInfo?: { name: string, avat
     },
     timestamp: new Date(data.created_at),
     parent_message_id: data.parent_message_id,
-    reactions: data.reactions || {},
-    attachments: data.attachments || [],
+    reactions: reactionsObj,
+    attachments: attachmentsArray,
     isOptimistic: false,
   };
 };
@@ -245,14 +267,18 @@ export const useChat = (channelId: string | null) => {
         .eq('id', messageId)
         .single();
       
-      let reactions = messageData?.reactions || {};
+      let reactions: Record<string, string[]> = {};
       
-      // Convert to proper format if needed
-      if (typeof reactions === 'string') {
-        try {
-          reactions = JSON.parse(reactions);
-        } catch (e) {
-          reactions = {};
+      if (messageData?.reactions) {
+        // Handle various types of reactions data
+        if (typeof messageData.reactions === 'string') {
+          try {
+            reactions = JSON.parse(messageData.reactions);
+          } catch (e) {
+            reactions = {};
+          }
+        } else if (typeof messageData.reactions === 'object') {
+          reactions = messageData.reactions as Record<string, string[]>;
         }
       }
       
@@ -376,6 +402,7 @@ export const useChat = (channelId: string | null) => {
       timestamp: new Date(),
       parent_message_id: parentMessageId,
       attachments: optimisticAttachments,
+      reactions: {},
       isOptimistic: true,
     };
     
@@ -391,7 +418,8 @@ export const useChat = (channelId: string | null) => {
           channel_id: channelId,
           sender_id: userId,
           parent_message_id: parentMessageId,
-          attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined
+          attachments: uploadedAttachments.length > 0 ? uploadedAttachments as unknown as Json[] : undefined,
+          reactions: {} as Json
         })
         .select('*')
         .single();
