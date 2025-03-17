@@ -10,18 +10,19 @@ interface MessageCache {
   };
 }
 
-export const useMessageCache = (ttl = 5 * 60 * 1000) => { // 5 minutes default TTL
+export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 seconds for more frequent refreshes
   const cache = useRef<MessageCache>({});
 
-  const getCachedMessages = useCallback((channelId: string) => {
+  const getCachedMessages = useCallback((channelId: string, forceFresh = false) => {
     const cachedData = cache.current[channelId];
     const now = Date.now();
     
-    if (cachedData && now - cachedData.lastFetched < ttl) {
-      console.log(`[Chat] Using cached messages for channel: ${channelId}`);
+    if (!forceFresh && cachedData && now - cachedData.lastFetched < ttl) {
+      console.log(`[Chat] Using cached messages for channel: ${channelId}, age: ${now - cachedData.lastFetched}ms`);
       return cachedData.messages;
     }
     
+    console.log(`[Chat] ${forceFresh ? 'Force refresh' : 'Cache expired'} for key: ${channelId}`);
     return null;
   }, [ttl]);
 
@@ -69,7 +70,8 @@ export const useMessageCache = (ttl = 5 * 60 * 1000) => { // 5 minutes default T
     if (existingIndex >= 0) {
       cachedMessages[existingIndex] = message;
     } else {
-      cachedMessages.push(message);
+      // Add new message at the beginning of the array for chronological order
+      cachedMessages.unshift(message);
     }
     
     cache.current[channelId] = {

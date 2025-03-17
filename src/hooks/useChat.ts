@@ -57,14 +57,17 @@ export const useChat = (channelId: string | null) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<Error | null>(null);
+  const [lastMessageTimestamp, setLastMessageTimestamp] = useState<Date | null>(null);
   const fetchInProgressRef = useRef(false);
+  const forceRefreshRef = useRef(false);
 
   // Use our caching hooks
   const { 
     getCachedMessages, 
     setCachedMessages,
     addMessageToCache,
-    removeMessageFromCache  
+    removeMessageFromCache,
+    invalidateCache  
   } = useMessageCache();
   
   const { fetchSendersInBatch } = useBatchSendersFetch();
@@ -90,7 +93,7 @@ export const useChat = (channelId: string | null) => {
   }, []);
 
   // Define fetchMessages before using it in useSubscriptions hook
-  const fetchMessages = useCallback(async (limit = 50, before?: string) => {
+  const fetchMessages = useCallback(async (limit = 50, before?: string, forceRefresh = false) => {
     if (!channelId) {
       console.log("[Chat] No channel ID, skipping fetch");
       return [];
@@ -106,19 +109,32 @@ export const useChat = (channelId: string | null) => {
     setError(null);
     
     try {
-      console.log(`[Chat] Fetching messages for channel ${channelId}${before ? ' before ' + before : ''}`);
+      console.log(`[Chat] Fetching messages for channel ${channelId}${before ? ' before ' + before : ''}${forceRefresh ? ' (FORCE REFRESH)' : ''}`);
       
-      // First check the cache for initial load
-      if (!before) {
+      // Only check cache for initial load and when not forcing refresh
+      if (!before && !forceRefresh && !forceRefreshRef.current) {
         const cachedMessages = getCachedMessages(channelId);
         if (cachedMessages && cachedMessages.length > 0) {
           console.log('[Chat] Using cached messages', cachedMessages.length);
           setMessages(cachedMessages);
+          
+          // Even with cached messages, do a background refresh to ensure up-to-date
+          // but don't set loading state to true since we're showing cached messages
+          forceRefreshRef.current = true;
+          setTimeout(() => {
+            fetchMessages(limit, before, true).catch(err => {
+              console.error('[Chat] Error during background refresh:', err);
+            });
+          }, 500);
+          
           setIsLoading(false);
           fetchInProgressRef.current = false;
           return cachedMessages;
         }
       }
+      
+      // Reset force refresh flag
+      forceRefreshRef.current = false;
       
       let query = supabase
         .from('chat_messages')
@@ -131,6 +147,7 @@ export const useChat = (channelId: string | null) => {
         query = query.lt('created_at', before);
       }
       
+      console.log('[Chat] Executing query:', query);
       const { data, error: fetchError } = await query;
       
       if (fetchError) {
@@ -160,6 +177,12 @@ export const useChat = (channelId: string | null) => {
         return convertMessageData(msgData as MessageData, senderInfo);
       });
       
+      // Update last message timestamp for freshness checking
+      if (fetchedMessages.length > 0 && !before) {
+        const newestMessage = fetchedMessages[0];
+        setLastMessageTimestamp(newestMessage.timestamp);
+      }
+      
       setHasMoreMessages(data.length === limit);
       
       // Update state based on whether this is initial load or pagination
@@ -187,16 +210,23 @@ export const useChat = (channelId: string | null) => {
 
   // Create a wrapper function with the right signature for useSubscriptions
   const fetchMessagesWrapper = useCallback(async () => {
-    await fetchMessages();
+    await fetchMessages(50, undefined, true); // Always force refresh when fetching from subscription
   }, [fetchMessages]);
 
+  // Force refresh method for manual refresh
+  const forceRefresh = useCallback(async () => {
+    console.log('[Chat] Manual force refresh requested');
+    invalidateCache(channelId || undefined);
+    return fetchMessages(50, undefined, true);
+  }, [channelId, fetchMessages, invalidateCache]);
+
   // Use our subscription hook with the wrapper function
-  const { subscriptionStates } = useSubscriptions(
+  const { subscriptionStates, lastMessageEventTime } = useSubscriptions(
     channelId || '', 
     currentUserId,
     retryCount, 
     setRetryCount,
-    fetchMessagesWrapper // Use the wrapper that returns void
+    fetchMessagesWrapper
   );
   
   // Update subscription status based on the subscription states
@@ -215,6 +245,20 @@ export const useChat = (channelId: string | null) => {
     }
   }, [subscriptionStates]);
 
+  // Add a periodic check to ensure messages are in sync
+  useEffect(() => {
+    if (!channelId || !isSubscribed) return;
+    
+    const syncInterval = setInterval(() => {
+      console.log('[Chat] Checking for message sync...');
+      forceRefresh().catch(err => {
+        console.error('[Chat] Error during sync check:', err);
+      });
+    }, 60 * 1000); // Check every minute
+    
+    return () => clearInterval(syncInterval);
+  }, [channelId, isSubscribed, forceRefresh]);
+
   // Retry connection function
   const retry = useCallback(() => {
     console.log('[Chat] Retrying connection...');
@@ -223,11 +267,12 @@ export const useChat = (channelId: string | null) => {
     // Increase retry count to trigger resubscriptions
     setRetryCount(prevCount => prevCount + 1);
     
-    // Re-fetch messages
-    fetchMessages().catch(err => {
+    // Invalidate cache and re-fetch messages
+    invalidateCache(channelId || undefined);
+    fetchMessages(50, undefined, true).catch(err => {
       console.error('[Chat] Error during retry fetch:', err);
     });
-  }, [fetchMessages]);
+  }, [channelId, fetchMessages, invalidateCache]);
 
   // Handle mentions
   const markMentionsAsRead = useCallback(async () => {
@@ -433,8 +478,13 @@ export const useChat = (channelId: string | null) => {
         prev.map(msg => msg.id === tempId ? realMessage : msg)
       );
       
-      // Update cache
-      addMessageToCache(channelId, realMessage);
+      // Force invalidate cache after sending a message to ensure it appears for both sender and receiver
+      invalidateCache(channelId);
+      
+      // Force fetch fresh messages after a short delay to ensure all clients are in sync
+      setTimeout(() => {
+        fetchMessages(50, undefined, true).catch(console.error);
+      }, 500);
       
       return realMessage;
     } catch (error) {
@@ -451,7 +501,7 @@ export const useChat = (channelId: string | null) => {
       
       return null;
     }
-  }, [channelId, toast, addMessageToCache]);
+  }, [channelId, toast, invalidateCache, fetchMessages]);
 
   // Delete message implementation
   const deleteMessage = useCallback(async (messageId: string): Promise<void> => {
@@ -489,12 +539,15 @@ export const useChat = (channelId: string | null) => {
       setHasMoreMessages(true);
       setError(null);
       
+      // Invalidate cache when switching channels
+      invalidateCache(channelId);
+      
       // Initial fetch
-      fetchMessages().catch(err => {
+      fetchMessages(50, undefined, true).catch(err => {
         console.error('[Chat] Error during initial fetch:', err);
       });
     }
-  }, [channelId, fetchMessages]);
+  }, [channelId, fetchMessages, invalidateCache]);
 
   // Retry automatically when subscription status is disconnected (after a delay)
   useEffect(() => {
@@ -533,10 +586,11 @@ export const useChat = (channelId: string | null) => {
     reactToMessage,
     markMentionsAsRead,
     retry,
-    fetchMessages,
+    fetchMessages: forceRefresh, // Use forceRefresh as the exposed method
     loadMoreMessages,
     hasMore: hasMoreMessages,
     hasMoreMessages,
-    error
+    error,
+    lastMessageTimestamp
   };
 };

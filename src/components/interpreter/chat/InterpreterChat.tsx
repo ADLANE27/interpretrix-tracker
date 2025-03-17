@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -53,6 +53,8 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'in-sync' | 'syncing' | 'out-of-sync'>('in-sync');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
@@ -72,7 +74,8 @@ export const InterpreterChat = ({
     fetchMessages: refetchMessages,
     loadMoreMessages,
     hasMore,
-    error: chatError
+    error: chatError,
+    lastMessageTimestamp
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -236,16 +239,43 @@ export const InterpreterChat = ({
   }, [retryConnection]);
 
   // Handle manual refresh (for when subscription is working but messages aren't loading)
-  const handleManualRefresh = useCallback(() => {
-    refetchMessages().catch(error => {
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setSyncStatus('syncing');
+    
+    try {
+      await refetchMessages();
+      toast({
+        title: "Synchronisé",
+        description: "Les messages ont été rafraîchis",
+      });
+      setSyncStatus('in-sync');
+    } catch (error) {
       console.error("Error during manual refresh:", error);
       toast({
         title: "Erreur",
         description: "Impossible de rafraîchir les messages",
         variant: "destructive",
       });
-    });
+      setSyncStatus('out-of-sync');
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [refetchMessages, toast]);
+
+  // Automatically refresh messages every 30 seconds if active in browser
+  useEffect(() => {
+    if (!isSubscribed || !channelId) return;
+    
+    const refreshInterval = setInterval(() => {
+      if (document.hasFocus()) {
+        console.log('[InterpreterChat] Auto-refreshing messages');
+        handleManualRefresh();
+      }
+    }, 30 * 1000);
+    
+    return () => clearInterval(refreshInterval);
+  }, [isSubscribed, channelId, handleManualRefresh]);
 
   // Log state changes to help with debugging
   useEffect(() => {
@@ -254,9 +284,10 @@ export const InterpreterChat = ({
       isSubscribed, 
       messageCount: messages.length, 
       isLoading,
-      hasError: !!chatError
+      hasError: !!chatError,
+      lastMessageTimestamp: lastMessageTimestamp?.toISOString()
     });
-  }, [subscriptionStatus, isSubscribed, messages.length, isLoading, chatError]);
+  }, [subscriptionStatus, isSubscribed, messages.length, isLoading, chatError, lastMessageTimestamp]);
 
   return (
     <div className="flex flex-col h-full">
@@ -267,11 +298,18 @@ export const InterpreterChat = ({
             variant="ghost" 
             size="sm" 
             onClick={handleManualRefresh}
-            className="p-1.5 h-7 w-7"
+            className={`p-1.5 h-7 w-7 ${isRefreshing ? 'animate-spin' : ''}`}
+            disabled={isRefreshing}
             title="Rafraîchir les messages"
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
+          {syncStatus === 'out-of-sync' && (
+            <span className="flex items-center text-amber-500 text-xs gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Désynchronisé
+            </span>
+          )}
         </div>
         <ChannelMembersPopover 
           channelId={channelId} 

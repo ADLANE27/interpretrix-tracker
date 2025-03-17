@@ -26,6 +26,7 @@ export const useSubscriptions = (
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
   const setupInProgressRef = useRef(false);
+  const lastMessageEventRef = useRef<Date | null>(null);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -94,11 +95,18 @@ export const useSubscriptions = (
           },
           async (payload) => {
             console.log('[Chat] Message change received:', payload);
-            await fetchMessages(); // Refresh messages when changes occur
+            lastMessageEventRef.current = new Date();
+            
+            // Fetch messages immediately to ensure fresh data
+            await fetchMessages();
           }
         )
         .on('system', { event: 'disconnect' }, (payload) => {
           console.log('[Chat] Disconnect event:', payload);
+          setSubscriptionStates(prev => ({
+            ...prev,
+            messages: { status: 'CLOSED' as const }
+          }));
           // Let the system reconnect automatically
         })
         .on('presence', { event: 'sync' }, () => {
@@ -149,7 +157,7 @@ export const useSubscriptions = (
             ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
           });
           
-          // Fetch messages immediately after subscribing
+          // Fetch messages immediately after subscribing with fresh data
           await fetchMessages();
         } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
           handleSubscriptionError(
@@ -167,6 +175,29 @@ export const useSubscriptions = (
       setupInProgressRef.current = false;
     }
   };
+
+  // Set up heartbeat to ensure connection is active
+  useEffect(() => {
+    if (!channelId || !channelRef.current) return;
+    
+    const heartbeatInterval = setInterval(() => {
+      // Check if we haven't received a message event in the last 2 minutes
+      const now = new Date();
+      const timeSinceLastEvent = lastMessageEventRef.current 
+        ? now.getTime() - lastMessageEventRef.current.getTime() 
+        : Infinity;
+      
+      // Force a re-fetch every 2 minutes even if the subscription is active
+      if (subscriptionStates.messages?.status === 'SUBSCRIBED' && timeSinceLastEvent > 2 * 60 * 1000) {
+        console.log('[Chat] Heartbeat: No message events in 2 minutes, forcing refresh');
+        fetchMessages().catch(err => {
+          console.error('[Chat] Error during heartbeat refresh:', err);
+        });
+      }
+    }, 30 * 1000); // Check every 30 seconds
+    
+    return () => clearInterval(heartbeatInterval);
+  }, [channelId, fetchMessages, subscriptionStates.messages?.status]);
 
   // Set up subscription
   useEffect(() => {
@@ -198,6 +229,7 @@ export const useSubscriptions = (
 
   return {
     subscriptionStates,
-    handleSubscriptionError
+    handleSubscriptionError,
+    lastMessageEventTime: lastMessageEventRef.current
   };
 };
