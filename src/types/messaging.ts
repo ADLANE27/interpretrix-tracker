@@ -1,3 +1,4 @@
+
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -64,4 +65,11 @@ export interface MessageListProps {
   currentUserId: string | null;
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
+  replyTo?: Message | null;
+  setReplyTo?: (message: Message | null) => void;
+  channelId: string;
+  messagesEndRef?: React.RefObject<HTMLDivElement>;
+  isLoading?: boolean;
+  loadMoreMessages?: () => Promise<void>;
+  hasMore?: boolean;
 }

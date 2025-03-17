@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,8 +19,9 @@ const convertMessageData = (data: MessageData, senderInfo?: { name: string, avat
     },
     timestamp: new Date(data.created_at),
     parent_message_id: data.parent_message_id,
-    reactions: data.reactions,
-    attachments: data.attachments,
+    reactions: data.reactions || {},
+    attachments: data.attachments || [],
+    isOptimistic: false,
   };
 };
 
@@ -29,6 +31,9 @@ export const useChat = (channelId: string | null) => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [newMessageSubscription, setNewMessageSubscription] = useState<any>(null);
   const [deletedMessageSubscription, setDeletedMessageSubscription] = useState<any>(null);
+  const [isSubscribed, setIsSubscribed] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Use our caching hooks
   const { 
@@ -41,6 +46,15 @@ export const useChat = (channelId: string | null) => {
   const { fetchSendersInBatch } = useBatchSendersFetch();
 
   const { toast } = useToast();
+
+  // Get current user ID on init
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUserId(data.user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   // Fetch messages with pagination
   const fetchMessages = useCallback(async (limit = 50, before?: string) => {
@@ -88,9 +102,9 @@ export const useChat = (channelId: string | null) => {
       const senderDetails = await fetchSendersInBatch(senderIds);
       
       // Convert raw data to message objects
-      const fetchedMessages: Message[] = data.map((msgData: MessageData) => {
+      const fetchedMessages: Message[] = data.map((msgData: any) => {
         const senderInfo = senderDetails[msgData.sender_id];
-        return convertMessageData(msgData, senderInfo);
+        return convertMessageData(msgData as MessageData, senderInfo);
       });
       
       setHasMoreMessages(data.length === limit);
@@ -132,20 +146,23 @@ export const useChat = (channelId: string | null) => {
         async (payload) => {
           if (!payload.new) return;
           
-          const newMessageData = payload.new as MessageData;
+          const newMessageData = payload.new as any;
           
           // Fetch sender details for the new message
           const senderDetails = await fetchSendersInBatch([newMessageData.sender_id]);
           const senderInfo = senderDetails[newMessageData.sender_id];
           
           // Convert raw data to message object
-          const newMessage = convertMessageData(newMessageData, senderInfo);
+          const newMessage = convertMessageData(newMessageData as MessageData, senderInfo);
           
           setMessages(prev => [newMessage, ...prev]);
           addMessageToCache(channelId, newMessage);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        setIsSubscribed(status === 'SUBSCRIBED');
+        setSubscriptionStatus(status === 'SUBSCRIBED' ? 'connected' : 'disconnected');
+      });
     
     setNewMessageSubscription(subscription);
     
@@ -171,7 +188,7 @@ export const useChat = (channelId: string | null) => {
         (payload) => {
           if (!payload.old) return;
           
-          const deletedMessageId = (payload.old as MessageData).id;
+          const deletedMessageId = (payload.old as any).id;
           
           setMessages(prev => prev.filter(msg => msg.id !== deletedMessageId));
           removeMessageFromCache(channelId, deletedMessageId);
@@ -186,8 +203,105 @@ export const useChat = (channelId: string | null) => {
     };
   }, [channelId, removeMessageFromCache]);
 
+  // Retry connection function
+  const retry = useCallback(() => {
+    if (newMessageSubscription) {
+      newMessageSubscription.unsubscribe();
+      setNewMessageSubscription(null);
+    }
+    
+    if (deletedMessageSubscription) {
+      deletedMessageSubscription.unsubscribe();
+      setDeletedMessageSubscription(null);
+    }
+    
+    // Re-fetch messages and re-establish subscriptions
+    fetchMessages();
+  }, [fetchMessages, newMessageSubscription, deletedMessageSubscription]);
+
+  // Handle mentions
+  const markMentionsAsRead = useCallback(async () => {
+    if (!channelId || !currentUserId) return;
+    
+    try {
+      await supabase
+        .from('message_mentions')
+        .update({ read: true })
+        .eq('channel_id', channelId)
+        .eq('mentioned_user_id', currentUserId);
+    } catch (error) {
+      console.error('Error marking mentions as read:', error);
+    }
+  }, [channelId, currentUserId]);
+
+  // React to message
+  const reactToMessage = useCallback(async (messageId: string, emoji: string): Promise<void> => {
+    if (!channelId || !currentUserId) return;
+    
+    try {
+      const { data: messageData } = await supabase
+        .from('chat_messages')
+        .select('reactions')
+        .eq('id', messageId)
+        .single();
+      
+      let reactions = messageData?.reactions || {};
+      
+      // Convert to proper format if needed
+      if (typeof reactions === 'string') {
+        try {
+          reactions = JSON.parse(reactions);
+        } catch (e) {
+          reactions = {};
+        }
+      }
+      
+      // Update the reactions
+      if (!reactions[emoji]) {
+        reactions[emoji] = [currentUserId];
+      } else if (!reactions[emoji].includes(currentUserId)) {
+        reactions[emoji].push(currentUserId);
+      } else {
+        reactions[emoji] = reactions[emoji].filter((id: string) => id !== currentUserId);
+        if (reactions[emoji].length === 0) {
+          delete reactions[emoji];
+        }
+      }
+      
+      // Update in database
+      await supabase
+        .from('chat_messages')
+        .update({ reactions })
+        .eq('id', messageId);
+      
+      // Update local state
+      setMessages(prev => 
+        prev.map(msg => {
+          if (msg.id === messageId) {
+            return { ...msg, reactions };
+          }
+          return msg;
+        })
+      );
+      
+      // Update cache
+      const cachedMessages = getCachedMessages(channelId);
+      if (cachedMessages) {
+        const updatedCachedMessages = cachedMessages.map(msg => {
+          if (msg.id === messageId) {
+            return { ...msg, reactions };
+          }
+          return msg;
+        });
+        setCachedMessages(channelId, updatedCachedMessages);
+      }
+    } catch (error) {
+      console.error('Error reacting to message:', error);
+    }
+  }, [channelId, currentUserId, getCachedMessages, setCachedMessages]);
+
   // Send message implementation
-  const sendMessage = useCallback(async (content: string, parentMessageId?: string) => {
+  const sendMessage = useCallback(async (content: string, parentMessageId?: string, attachments: File[] = []) => {
     if (!channelId) return null;
     
     // Create a temporary message ID for optimistic UI
@@ -205,6 +319,52 @@ export const useChat = (channelId: string | null) => {
     
     const userId = currentUser.data.user.id;
     
+    // Handle attachments if any
+    let optimisticAttachments: Attachment[] = [];
+    let uploadedAttachments: Attachment[] = [];
+    
+    if (attachments.length > 0) {
+      // Create optimistic attachments for UI
+      optimisticAttachments = attachments.map(file => ({
+        url: URL.createObjectURL(file),
+        filename: file.name,
+        type: file.type,
+        size: file.size,
+        isOptimistic: true
+      }));
+      
+      // Upload the actual files
+      for (const file of attachments) {
+        try {
+          const fileName = `${uuidv4()}-${file.name}`;
+          const { data, error } = await supabase.storage
+            .from('chat-attachments')
+            .upload(`${channelId}/${fileName}`, file);
+          
+          if (error) throw error;
+          
+          // Get public URL
+          const { data: urlData } = supabase.storage
+            .from('chat-attachments')
+            .getPublicUrl(`${channelId}/${fileName}`);
+          
+          uploadedAttachments.push({
+            url: urlData.publicUrl,
+            filename: file.name,
+            type: file.type,
+            size: file.size
+          });
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          toast({
+            title: "Error",
+            description: `Failed to upload ${file.name}`,
+            variant: "destructive",
+          });
+        }
+      }
+    }
+    
     // Create optimistic message
     const optimisticMessage: Message = {
       id: tempId,
@@ -215,6 +375,7 @@ export const useChat = (channelId: string | null) => {
       },
       timestamp: new Date(),
       parent_message_id: parentMessageId,
+      attachments: optimisticAttachments,
       isOptimistic: true,
     };
     
@@ -230,6 +391,7 @@ export const useChat = (channelId: string | null) => {
           channel_id: channelId,
           sender_id: userId,
           parent_message_id: parentMessageId,
+          attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined
         })
         .select('*')
         .single();
@@ -249,7 +411,7 @@ export const useChat = (channelId: string | null) => {
       }
       
       // Replace optimistic message with real one
-      const realMessage = convertMessageData(data, senderInfo);
+      const realMessage = convertMessageData(data as MessageData, senderInfo);
       
       setMessages(prev => 
         prev.map(msg => msg.id === tempId ? realMessage : msg)
@@ -276,8 +438,8 @@ export const useChat = (channelId: string | null) => {
   }, [channelId, toast, addMessageToCache]);
 
   // Delete message implementation
-  const deleteMessage = useCallback(async (messageId: string) => {
-    if (!channelId) return false;
+  const deleteMessage = useCallback(async (messageId: string): Promise<void> => {
+    if (!channelId) return;
     
     try {
       const { error } = await supabase
@@ -293,7 +455,6 @@ export const useChat = (channelId: string | null) => {
       // Update cache
       removeMessageFromCache(channelId, messageId);
       
-      return true;
     } catch (error) {
       console.error('Error deleting message:', error);
       toast({
@@ -301,7 +462,6 @@ export const useChat = (channelId: string | null) => {
         description: "Failed to delete message",
         variant: "destructive",
       });
-      return false;
     }
   }, [channelId, toast, removeMessageFromCache]);
 
@@ -331,8 +491,15 @@ export const useChat = (channelId: string | null) => {
     isLoading,
     sendMessage,
     deleteMessage,
-    // Additional exports:
-    hasMoreMessages,
+    isSubscribed,
+    subscriptionStatus,
+    currentUserId,
+    reactToMessage,
+    markMentionsAsRead,
+    retry,
+    fetchMessages,
     loadMoreMessages,
+    hasMore: hasMoreMessages,
+    hasMoreMessages,
   };
 };
