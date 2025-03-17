@@ -14,7 +14,6 @@ export interface Message {
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
-  isOptimistic?: boolean; // Added for optimistic UI updates
 }
 
 export interface MessageData {
@@ -23,7 +22,7 @@ export interface MessageData {
   sender_id: string;
   created_at: string;
   parent_message_id?: string | null;
-  reactions: Record<string, string[]> | Json;
+  reactions: Record<string, string[]>;
   attachments?: Array<{
     url: string;
     filename: string;
@@ -37,7 +36,6 @@ export interface Attachment {
   filename: string;
   type: string;
   size: number;
-  isOptimistic?: boolean; // Added for optimistic UI updates
 }
 
 export interface ChannelMember {
@@ -65,11 +63,4 @@ export interface MessageListProps {
   currentUserId: string | null;
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
-  replyTo?: Message | null;
-  setReplyTo?: (message: Message | null) => void;
-  channelId: string;
-  messagesEndRef?: React.RefObject<HTMLDivElement>;
-  isLoading?: boolean;
-  loadMoreMessages?: () => Promise<void>;
-  hasMore?: boolean;
 }

@@ -1,596 +1,205 @@
-
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
-import { Message, MessageData, Attachment } from '@/types/messaging';
-import { useToast } from './use-toast';
-import { useMessageCache } from './chat/useMessageCache';
-import { useBatchSendersFetch } from './chat/useBatchSendersFetch';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
+import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
-import type { Json } from '@/integrations/supabase/types';
+import { useMessageActions } from './chat/useMessageActions';
 
-// Helper function to convert MessageData to Message
-const convertMessageData = (data: MessageData, senderInfo?: { name: string, avatarUrl: string }): Message => {
-  // Ensure reactions is a proper Record<string, string[]> object
-  let reactionsObj: Record<string, string[]> = {};
-  
-  if (data.reactions) {
-    if (typeof data.reactions === 'object') {
-      // Convert JSON reactions object to the expected format
-      reactionsObj = data.reactions as Record<string, string[]>;
-    }
-  }
-  
-  // Ensure attachments is properly typed
-  let attachmentsArray: Attachment[] = [];
-  if (data.attachments && Array.isArray(data.attachments)) {
-    attachmentsArray = data.attachments.map(att => ({
-      url: (att as any).url || '',
-      filename: (att as any).filename || '',
-      type: (att as any).type || '',
-      size: (att as any).size || 0,
-    }));
-  }
-  
-  return {
-    id: data.id,
-    content: data.content,
-    sender: {
-      id: data.sender_id,
-      name: senderInfo?.name || 'Unknown User',
-      avatarUrl: senderInfo?.avatarUrl || '',
-    },
-    timestamp: new Date(data.created_at),
-    parent_message_id: data.parent_message_id,
-    reactions: reactionsObj,
-    attachments: attachmentsArray,
-    isOptimistic: false,
-  };
+// Add the type guard function at the top of the file
+const isValidChannelType = (type: string): type is 'group' | 'direct' => {
+  return type === 'group' || type === 'direct';
 };
 
-export const useChat = (channelId: string | null) => {
+export const useChat = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [error, setError] = useState<Error | null>(null);
-  const [lastMessageTimestamp, setLastMessageTimestamp] = useState<Date | null>(null);
-  const fetchInProgressRef = useRef(false);
-  const forceRefreshRef = useRef(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    messages: boolean;
+    mentions: boolean;
+  }>({ messages: false, mentions: false });
 
-  // Use our caching hooks
+  const { formatMessage } = useMessageFormatter();
+
+  const fetchMessages = useCallback(async () => {
+    if (!channelId) return;
+    
+    setIsLoading(true);
+    try {
+      console.log('[Chat] Fetching messages for channel:', channelId);
+      
+      // First get the channel type to check if it's a direct message
+      const { data: channelData, error: channelError } = await supabase
+        .from('chat_channels')
+        .select('channel_type, created_by')
+        .eq('id', channelId)
+        .single();
+
+      if (channelError) throw channelError;
+
+      if (!channelData?.channel_type || !isValidChannelType(channelData.channel_type)) {
+        throw new Error('Invalid channel type');
+      }
+
+      const channelType = channelData.channel_type as 'group' | 'direct';
+
+      // Modified query to remove the limit
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: true });
+
+      if (messagesError) {
+        console.error('[Chat] Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      console.log('[Chat] Retrieved messages:', messagesData?.length);
+
+      const formattedMessages: Message[] = [];
+      const senderDetailsPromises = messagesData?.map(async (message) => {
+        try {
+          const { data: senderData, error: senderError } = await supabase
+            .rpc('get_message_sender_details', {
+              sender_id: message.sender_id
+            });
+
+          if (senderError) {
+            console.error('[Chat] Error fetching sender details:', senderError);
+            return null;
+          }
+
+          const sender = senderData?.[0];
+          if (!sender?.id || !sender?.name) {
+            console.error('[Chat] Invalid sender data:', sender);
+            return null;
+          }
+
+          let parsedReactions = {};
+          try {
+            if (typeof message.reactions === 'string') {
+              parsedReactions = JSON.parse(message.reactions);
+            } else if (message.reactions && typeof message.reactions === 'object') {
+              parsedReactions = message.reactions;
+            }
+          } catch (e) {
+            console.error('[Chat] Error parsing reactions:', e);
+          }
+
+          const parsedAttachments: Attachment[] = [];
+          if (Array.isArray(message.attachments)) {
+            message.attachments.forEach(att => {
+              if (typeof att === 'object' && att !== null) {
+                const attachment = {
+                  url: String(att['url'] || ''),
+                  filename: String(att['filename'] || ''),
+                  type: String(att['type'] || ''),
+                  size: Number(att['size'] || 0)
+                };
+                if (isAttachment(attachment)) {
+                  parsedAttachments.push(attachment);
+                }
+              }
+            });
+          }
+
+          const formattedMessage: Message = {
+            id: message.id,
+            content: message.content,
+            sender: {
+              id: sender.id,
+              name: sender.name,
+              avatarUrl: sender.avatar_url || ''
+            },
+            timestamp: new Date(message.created_at),
+            reactions: parsedReactions,
+            attachments: parsedAttachments,
+            channelType: channelType
+          };
+
+          return formattedMessage;
+        } catch (error) {
+          console.error('[Chat] Error formatting message:', error, message);
+          return null;
+        }
+      }) || [];
+
+      const formattedMessagesResults = await Promise.all(senderDetailsPromises);
+      const validMessages = formattedMessagesResults.filter((msg): msg is Message => 
+        msg !== null && 
+        typeof msg === 'object' &&
+        typeof msg.id === 'string' &&
+        typeof msg.content === 'string' &&
+        typeof msg.sender === 'object' &&
+        typeof msg.sender.id === 'string' &&
+        typeof msg.sender.name === 'string' &&
+        msg.timestamp instanceof Date
+      );
+      
+      formattedMessages.push(...validMessages);
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('[Chat] Error fetching messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [channelId]);
+
   const { 
-    getCachedMessages, 
-    setCachedMessages,
-    addMessageToCache,
-    removeMessageFromCache,
-    invalidateCache  
-  } = useMessageCache();
-  
-  const { fetchSendersInBatch } = useBatchSendersFetch();
+    subscriptionStates, 
+    handleSubscriptionError 
+  } = useSubscriptions(
+    channelId,
+    currentUserId,
+    retryCount,
+    setRetryCount,
+    fetchMessages // Pass fetchMessages to ensure it's called when subscription receives updates
+  );
 
-  const { toast } = useToast();
+  const { 
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
+    reactToMessage,
+    markMentionsAsRead,
+  } = useMessageActions(
+    channelId,
+    currentUserId,
+    fetchMessages
+  );
 
-  // Get current user ID on init
   useEffect(() => {
     const getCurrentUser = async () => {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-        if (error) {
-          console.error("[Chat] Error getting current user:", error);
-          return;
-        }
-        setCurrentUserId(data.user?.id || null);
-        console.log("[Chat] Current user ID set:", data.user?.id);
-      } catch (e) {
-        console.error("[Chat] Exception getting current user:", e);
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
     };
     getCurrentUser();
   }, []);
 
-  // Define fetchMessages before using it in useSubscriptions hook
-  const fetchMessages = useCallback(async (limit = 50, before?: string, forceRefresh = false) => {
-    if (!channelId) {
-      console.log("[Chat] No channel ID, skipping fetch");
-      return [];
-    }
-    
-    if (fetchInProgressRef.current) {
-      console.log("[Chat] Fetch already in progress, skipping");
-      return [];
-    }
-    
-    fetchInProgressRef.current = true;
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      console.log(`[Chat] Fetching messages for channel ${channelId}${before ? ' before ' + before : ''}${forceRefresh ? ' (FORCE REFRESH)' : ''}`);
-      
-      // Only check cache for initial load and when not forcing refresh
-      if (!before && !forceRefresh && !forceRefreshRef.current) {
-        const cachedMessages = getCachedMessages(channelId);
-        if (cachedMessages && cachedMessages.length > 0) {
-          console.log('[Chat] Using cached messages', cachedMessages.length);
-          setMessages(cachedMessages);
-          
-          // Even with cached messages, do a background refresh to ensure up-to-date
-          // but don't set loading state to true since we're showing cached messages
-          forceRefreshRef.current = true;
-          setTimeout(() => {
-            fetchMessages(limit, before, true).catch(err => {
-              console.error('[Chat] Error during background refresh:', err);
-            });
-          }, 500);
-          
-          setIsLoading(false);
-          fetchInProgressRef.current = false;
-          return cachedMessages;
-        }
-      }
-      
-      // Reset force refresh flag
-      forceRefreshRef.current = false;
-      
-      let query = supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('channel_id', channelId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-      
-      if (before) {
-        query = query.lt('created_at', before);
-      }
-      
-      console.log('[Chat] Executing query:', query);
-      const { data, error: fetchError } = await query;
-      
-      if (fetchError) {
-        throw fetchError;
-      }
-      
-      console.log(`[Chat] Received ${data?.length || 0} messages from server`);
-      
-      if (!data || data.length === 0) {
-        setHasMoreMessages(false);
-        setIsLoading(false);
-        if (!before) {
-          setMessages([]);
-          setCachedMessages(channelId, []);
-        }
-        fetchInProgressRef.current = false;
-        return [];
-      }
-      
-      // Extract all sender IDs for batch fetching
-      const senderIds = data.map(msg => msg.sender_id);
-      const senderDetails = await fetchSendersInBatch(senderIds);
-      
-      // Convert raw data to message objects
-      const fetchedMessages: Message[] = data.map((msgData: any) => {
-        const senderInfo = senderDetails[msgData.sender_id];
-        return convertMessageData(msgData as MessageData, senderInfo);
-      });
-      
-      // Update last message timestamp for freshness checking
-      if (fetchedMessages.length > 0 && !before) {
-        const newestMessage = fetchedMessages[0];
-        setLastMessageTimestamp(newestMessage.timestamp);
-      }
-      
-      setHasMoreMessages(data.length === limit);
-      
-      // Update state based on whether this is initial load or pagination
-      if (before) {
-        setMessages(prev => [...prev, ...fetchedMessages]);
-        // Update cache with all messages
-        setCachedMessages(channelId, [...messages, ...fetchedMessages]);
-      } else {
-        setMessages(fetchedMessages);
-        setCachedMessages(channelId, fetchedMessages);
-      }
-      
-      setIsLoading(false);
-      fetchInProgressRef.current = false;
-      return fetchedMessages;
-      
-    } catch (fetchError) {
-      console.error('Error fetching messages:', fetchError);
-      setError(fetchError as Error);
-      setIsLoading(false);
-      fetchInProgressRef.current = false;
-      return [];
-    }
-  }, [channelId, messages, getCachedMessages, setCachedMessages, fetchSendersInBatch]);
-
-  // Create a wrapper function with the right signature for useSubscriptions
-  const fetchMessagesWrapper = useCallback(async () => {
-    await fetchMessages(50, undefined, true); // Always force refresh when fetching from subscription
-  }, [fetchMessages]);
-
-  // Force refresh method for manual refresh
-  const forceRefresh = useCallback(async () => {
-    console.log('[Chat] Manual force refresh requested');
-    invalidateCache(channelId || undefined);
-    return fetchMessages(50, undefined, true);
-  }, [channelId, fetchMessages, invalidateCache]);
-
-  // Use our subscription hook with the wrapper function
-  const { subscriptionStates, lastMessageEventTime } = useSubscriptions(
-    channelId || '', 
-    currentUserId,
-    retryCount, 
-    setRetryCount,
-    fetchMessagesWrapper
-  );
-  
-  // Update subscription status based on the subscription states
-  useEffect(() => {
-    console.log('[Chat] Subscription states updated:', subscriptionStates);
-    
-    if (subscriptionStates.messages?.status === 'SUBSCRIBED') {
-      setIsSubscribed(true);
-      setSubscriptionStatus('connected');
-      console.log('[Chat] Subscription status set to connected');
-    } else if (subscriptionStates.messages?.status === 'CHANNEL_ERROR' || 
-               subscriptionStates.messages?.status === 'TIMED_OUT') {
-      setIsSubscribed(false);
-      setSubscriptionStatus('disconnected');
-      console.log('[Chat] Subscription status set to disconnected');
-    }
-  }, [subscriptionStates]);
-
-  // Add a periodic check to ensure messages are in sync
-  useEffect(() => {
-    if (!channelId || !isSubscribed) return;
-    
-    const syncInterval = setInterval(() => {
-      console.log('[Chat] Checking for message sync...');
-      forceRefresh().catch(err => {
-        console.error('[Chat] Error during sync check:', err);
-      });
-    }, 60 * 1000); // Check every minute
-    
-    return () => clearInterval(syncInterval);
-  }, [channelId, isSubscribed, forceRefresh]);
-
-  // Retry connection function
-  const retry = useCallback(() => {
-    console.log('[Chat] Retrying connection...');
-    setSubscriptionStatus('reconnecting');
-    
-    // Increase retry count to trigger resubscriptions
-    setRetryCount(prevCount => prevCount + 1);
-    
-    // Invalidate cache and re-fetch messages
-    invalidateCache(channelId || undefined);
-    fetchMessages(50, undefined, true).catch(err => {
-      console.error('[Chat] Error during retry fetch:', err);
-    });
-  }, [channelId, fetchMessages, invalidateCache]);
-
-  // Handle mentions
-  const markMentionsAsRead = useCallback(async () => {
-    if (!channelId || !currentUserId) return;
-    
-    try {
-      await supabase
-        .from('message_mentions')
-        .update({ status: 'read' })
-        .eq('channel_id', channelId)
-        .eq('mentioned_user_id', currentUserId);
-    } catch (error) {
-      console.error('Error marking mentions as read:', error);
-    }
-  }, [channelId, currentUserId]);
-
-  // React to message
-  const reactToMessage = useCallback(async (messageId: string, emoji: string): Promise<void> => {
-    if (!channelId || !currentUserId) return;
-    
-    try {
-      const { data: messageData } = await supabase
-        .from('chat_messages')
-        .select('reactions')
-        .eq('id', messageId)
-        .single();
-      
-      let reactions: Record<string, string[]> = {};
-      
-      if (messageData?.reactions) {
-        // Handle various types of reactions data
-        if (typeof messageData.reactions === 'string') {
-          try {
-            reactions = JSON.parse(messageData.reactions);
-          } catch (e) {
-            reactions = {};
-          }
-        } else if (typeof messageData.reactions === 'object') {
-          reactions = messageData.reactions as Record<string, string[]>;
-        }
-      }
-      
-      // Update the reactions
-      if (!reactions[emoji]) {
-        reactions[emoji] = [currentUserId];
-      } else if (!reactions[emoji].includes(currentUserId)) {
-        reactions[emoji].push(currentUserId);
-      } else {
-        reactions[emoji] = reactions[emoji].filter((id: string) => id !== currentUserId);
-        if (reactions[emoji].length === 0) {
-          delete reactions[emoji];
-        }
-      }
-      
-      // Update in database
-      await supabase
-        .from('chat_messages')
-        .update({ reactions })
-        .eq('id', messageId);
-      
-      // Update local state
-      setMessages(prev => 
-        prev.map(msg => {
-          if (msg.id === messageId) {
-            return { ...msg, reactions };
-          }
-          return msg;
-        })
-      );
-      
-      // Update cache
-      const cachedMessages = getCachedMessages(channelId);
-      if (cachedMessages) {
-        const updatedCachedMessages = cachedMessages.map(msg => {
-          if (msg.id === messageId) {
-            return { ...msg, reactions };
-          }
-          return msg;
-        });
-        setCachedMessages(channelId, updatedCachedMessages);
-      }
-    } catch (error) {
-      console.error('Error reacting to message:', error);
-    }
-  }, [channelId, currentUserId, getCachedMessages, setCachedMessages]);
-
-  // Send message implementation
-  const sendMessage = useCallback(async (content: string, parentMessageId?: string, attachments: File[] = []) => {
-    if (!channelId) return null;
-    
-    // Create a temporary message ID for optimistic UI
-    const tempId = uuidv4();
-    const currentUser = await supabase.auth.getUser();
-    
-    if (!currentUser.data.user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to send messages",
-        variant: "destructive",
-      });
-      return null;
-    }
-    
-    const userId = currentUser.data.user.id;
-    
-    // Handle attachments if any
-    let optimisticAttachments: Attachment[] = [];
-    let uploadedAttachments: Attachment[] = [];
-    
-    if (attachments.length > 0) {
-      // Create optimistic attachments for UI
-      optimisticAttachments = attachments.map(file => ({
-        url: URL.createObjectURL(file),
-        filename: file.name,
-        type: file.type,
-        size: file.size,
-        isOptimistic: true
-      }));
-      
-      // Upload the actual files
-      for (const file of attachments) {
-        try {
-          const fileName = `${uuidv4()}-${file.name}`;
-          const { data, error } = await supabase.storage
-            .from('chat-attachments')
-            .upload(`${channelId}/${fileName}`, file);
-          
-          if (error) throw error;
-          
-          // Get public URL
-          const { data: urlData } = supabase.storage
-            .from('chat-attachments')
-            .getPublicUrl(`${channelId}/${fileName}`);
-          
-          uploadedAttachments.push({
-            url: urlData.publicUrl,
-            filename: file.name,
-            type: file.type,
-            size: file.size
-          });
-        } catch (error) {
-          console.error('Error uploading file:', error);
-          toast({
-            title: "Error",
-            description: `Failed to upload ${file.name}`,
-            variant: "destructive",
-          });
-        }
-      }
-    }
-    
-    // Create optimistic message
-    const optimisticMessage: Message = {
-      id: tempId,
-      content,
-      sender: {
-        id: userId,
-        name: 'You', // Will be replaced with actual name
-      },
-      timestamp: new Date(),
-      parent_message_id: parentMessageId,
-      attachments: optimisticAttachments,
-      reactions: {},
-      isOptimistic: true,
-    };
-    
-    // Add optimistic message to UI
-    setMessages(prev => [optimisticMessage, ...prev]);
-    
-    try {
-      // Send actual message to server
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert({
-          content,
-          channel_id: channelId,
-          sender_id: userId,
-          parent_message_id: parentMessageId,
-          attachments: uploadedAttachments.length > 0 ? uploadedAttachments as unknown as Json[] : undefined,
-          reactions: {} as Json
-        })
-        .select('*')
-        .single();
-      
-      if (error) throw error;
-      
-      // Fetch sender info for the new message
-      const { data: senderData } = await supabase
-        .rpc('get_message_sender_details', { sender_id: userId });
-      
-      let senderInfo;
-      if (senderData && senderData.length > 0) {
-        senderInfo = {
-          name: senderData[0].name,
-          avatarUrl: senderData[0].avatar_url || '',
-        };
-      }
-      
-      // Replace optimistic message with real one
-      const realMessage = convertMessageData(data as unknown as MessageData, senderInfo);
-      
-      setMessages(prev => 
-        prev.map(msg => msg.id === tempId ? realMessage : msg)
-      );
-      
-      // Force invalidate cache after sending a message to ensure it appears for both sender and receiver
-      invalidateCache(channelId);
-      
-      // Force fetch fresh messages after a short delay to ensure all clients are in sync
-      setTimeout(() => {
-        fetchMessages(50, undefined, true).catch(console.error);
-      }, 500);
-      
-      return realMessage;
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      // Remove failed optimistic message
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive",
-      });
-      
-      return null;
-    }
-  }, [channelId, toast, invalidateCache, fetchMessages]);
-
-  // Delete message implementation
-  const deleteMessage = useCallback(async (messageId: string): Promise<void> => {
-    if (!channelId) return;
-    
-    try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('id', messageId);
-      
-      if (error) throw error;
-      
-      // Update state optimistically
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
-      
-      // Update cache
-      removeMessageFromCache(channelId, messageId);
-      
-    } catch (error) {
-      console.error('Error deleting message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete message",
-        variant: "destructive",
-      });
-    }
-  }, [channelId, toast, removeMessageFromCache]);
-
-  // Load initial messages on channel ID change
   useEffect(() => {
     if (channelId) {
-      console.log('[Chat] Channel ID changed to:', channelId);
-      setMessages([]); // Clear existing messages
-      setHasMoreMessages(true);
-      setError(null);
-      
-      // Invalidate cache when switching channels
-      invalidateCache(channelId);
-      
-      // Initial fetch
-      fetchMessages(50, undefined, true).catch(err => {
-        console.error('[Chat] Error during initial fetch:', err);
-      });
+      console.log('[Chat] Initial messages fetch for channel:', channelId);
+      fetchMessages();
     }
-  }, [channelId, fetchMessages, invalidateCache]);
+  }, [channelId, fetchMessages]);
 
-  // Retry automatically when subscription status is disconnected (after a delay)
   useEffect(() => {
-    if (subscriptionStatus === 'disconnected' && channelId) {
-      const retryTimer = setTimeout(() => {
-        console.log('[Chat] Auto-retrying connection...');
-        retry();
-      }, 5000); // Try to reconnect after 5 seconds
-      
-      return () => clearTimeout(retryTimer);
-    }
-  }, [subscriptionStatus, channelId, retry]);
-
-  // Load more messages handler for infinite scrolling
-  const loadMoreMessages = useCallback(async () => {
-    if (!channelId || isLoading || !hasMoreMessages) return;
-    
-    const oldestMessage = [...messages].sort(
-      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-    )[0];
-    
-    if (oldestMessage) {
-      const oldestTimestamp = oldestMessage.timestamp.toISOString();
-      await fetchMessages(20, oldestTimestamp);
-    }
-  }, [channelId, messages, isLoading, hasMoreMessages, fetchMessages]);
+    setSubscriptionStatus({
+      messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
+      mentions: subscriptionStates.mentions?.status === 'SUBSCRIBED'
+    });
+  }, [subscriptionStates]);
 
   return {
     messages,
     isLoading,
-    sendMessage,
-    deleteMessage,
-    isSubscribed,
+    isSubscribed: subscriptionStatus.messages && subscriptionStatus.mentions,
     subscriptionStatus,
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
-    retry,
-    fetchMessages: forceRefresh, // Use forceRefresh as the exposed method
-    loadMoreMessages,
-    hasMore: hasMoreMessages,
-    hasMoreMessages,
-    error,
-    lastMessageTimestamp
   };
 };

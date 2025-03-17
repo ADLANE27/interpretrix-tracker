@@ -2,8 +2,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { CONNECTION_CONSTANTS } from '../supabase-connection/constants';
-import { Message } from '@/types/messaging';
 
 interface SubscriptionState {
   status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
@@ -20,14 +18,10 @@ export const useSubscriptions = (
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  fetchMessages: () => Promise<Message[] | void> // Updated type to accept either Message[] or void
+  fetchMessages: () => Promise<void>
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
-  const setupInProgressRef = useRef(false);
-  const lastMessageEventRef = useRef<Date | null>(null);
-  const lastFailedAttemptRef = useRef<Date | null>(null);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -36,40 +30,23 @@ export const useSubscriptions = (
       [type]: { status: 'CHANNEL_ERROR' as const, error }
     }));
     
-    // Record the failure time
-    lastFailedAttemptRef.current = new Date();
-    
-    if (retryCount < CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
-      // Exponential backoff with randomization to prevent thundering herd
-      const delay = Math.min(
-        CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(1.5, retryCount) * (0.9 + Math.random() * 0.2),
-        30000 // Max 30 seconds
-      );
-      
-      console.log(`[Chat] Scheduling retry ${retryCount + 1} in ${Math.round(delay)}ms`);
+    if (retryCount < 3) {
       setTimeout(() => {
         setRetryCount(retryCount + 1);
-      }, delay);
-    } else {
-      console.error('[Chat] Maximum retry attempts reached');
+      }, 1000 * Math.pow(2, retryCount));
     }
   };
 
-  const setupSubscription = async () => {
-    if (!channelId) {
-      console.log('[Chat] No channel ID provided, skipping subscription setup');
-      return;
-    }
+  useEffect(() => {
+    console.log('[Chat] Setting up subscriptions for channel:', channelId);
+    let isSubscribed = true;
 
-    // Prevent multiple setups from running simultaneously
-    if (setupInProgressRef.current) {
-      console.log('[Chat] Setup already in progress, skipping');
-      return;
-    }
+    const setupSubscriptions = async () => {
+      if (!channelId) {
+        console.log('[Chat] No channel ID provided, skipping subscription setup');
+        return;
+      }
 
-    setupInProgressRef.current = true;
-
-    try {
       // Clean up existing channel if it exists
       if (channelRef.current) {
         console.log('[Chat] Cleaning up existing channel');
@@ -77,161 +54,55 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
 
-      // Create a new channel with a unique name to prevent conflicts
-      const channelName = `chat-${channelId}-${Date.now()}`;
-      console.log('[Chat] Creating new channel:', channelName);
-      
-      channelRef.current = supabase.channel(channelName, {
-        config: {
-          broadcast: { ack: true, self: true },
-          presence: { key: currentUserId || 'anonymous' }
-        }
-      });
-
-      // Set up message changes subscription with explicit event types
-      channelRef.current
-        .on('postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'chat_messages',
-            filter: `channel_id=eq.${channelId}`
-          },
-          async (payload) => {
-            console.log('[Chat] Message change received:', payload);
-            lastMessageEventRef.current = new Date();
-            
-            // Fetch messages immediately to ensure fresh data
-            try {
-              await fetchMessages();
-              console.log('[Chat] Messages refreshed after realtime event');
-            } catch (err) {
-              console.error('[Chat] Error refreshing messages after realtime event:', err);
-            }
-          }
-        )
-        .on('system', { event: 'disconnect' }, (payload) => {
-          console.log('[Chat] Disconnect event:', payload);
-          setSubscriptionStates(prev => ({
-            ...prev,
-            messages: { status: 'CLOSED' as const }
-          }));
-          // Let the system reconnect automatically
-        })
-        .on('presence', { event: 'sync' }, () => {
-          const state = channelRef.current?.presenceState();
-          console.log('[Chat] Presence state synchronized:', state);
-        });
-
-      // Set timeout for subscription
-      if (subscriptionTimeoutRef.current) {
-        clearTimeout(subscriptionTimeoutRef.current);
-      }
-      subscriptionTimeoutRef.current = setTimeout(() => {
-        console.log('[Chat] Subscription timeout, forcing retry');
-        setSubscriptionStates(prev => ({
-          ...prev,
-          messages: { status: 'TIMED_OUT' as const }
-        }));
-        setRetryCount(retryCount + 1);
-      }, 10000); // 10 second timeout for subscription
-
-      // Subscribe to the channel with proper error handling
-      const status = await channelRef.current.subscribe(async (status, err) => {
-        console.log('[Chat] Subscription status:', status, err);
+      try {
+        // Create a new channel with a unique name
+        const channelName = `chat-${channelId}-${Date.now()}`;
+        console.log('[Chat] Creating new channel:', channelName);
         
-        if (subscriptionTimeoutRef.current) {
-          clearTimeout(subscriptionTimeoutRef.current);
-          subscriptionTimeoutRef.current = null;
-        }
+        channelRef.current = supabase.channel(channelName);
 
-        if (status === 'SUBSCRIBED') {
-          // Track presence after successful subscription
-          if (currentUserId && channelRef.current) {
-            try {
-              await channelRef.current.track({
-                user_id: currentUserId,
-                online_at: new Date().toISOString()
-              });
-              console.log('[Chat] User presence tracked for:', currentUserId);
-            } catch (presenceError) {
-              console.error('[Chat] Error tracking presence:', presenceError);
-              // Continue even if presence tracking fails
+        // Set up message changes subscription with explicit event types
+        channelRef.current
+          .on('postgres_changes',
+            {
+              event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+              schema: 'public',
+              table: 'chat_messages',
+              filter: `channel_id=eq.${channelId}`
+            },
+            async (payload) => {
+              if (!isSubscribed) return;
+              console.log('[Chat] Message change received:', payload);
+              await fetchMessages(); // Refresh messages when changes occur
             }
-          }
-
-          // Update subscription states
-          setSubscriptionStates({
-            messages: { status: 'SUBSCRIBED' },
-            ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
-          });
-          
-          // Fetch messages immediately after subscribing with fresh data
-          try {
-            await fetchMessages();
-            console.log('[Chat] Messages loaded after subscription established');
-          } catch (fetchError) {
-            console.error('[Chat] Error fetching messages after subscription:', fetchError);
-          }
-        } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-          handleSubscriptionError(
-            err || new Error(`Subscription failed with status: ${status}`),
-            'messages'
           );
-        }
-      });
 
-      console.log('[Chat] Channel subscription initiated with status:', status);
-    } catch (error) {
-      console.error('[Chat] Error setting up subscriptions:', error);
-      handleSubscriptionError(error as Error, 'messages');
-    } finally {
-      setupInProgressRef.current = false;
-    }
-  };
-
-  // Set up heartbeat to ensure connection is active
-  useEffect(() => {
-    if (!channelId || !channelRef.current) return;
-    
-    const heartbeatInterval = setInterval(() => {
-      // Check if we haven't received a message event in the last 60 seconds
-      const now = new Date();
-      const timeSinceLastEvent = lastMessageEventRef.current 
-        ? now.getTime() - lastMessageEventRef.current.getTime() 
-        : Infinity;
-      
-      // Force a re-fetch every minute even if the subscription is active
-      if (subscriptionStates.messages?.status === 'SUBSCRIBED' && timeSinceLastEvent > 60 * 1000) {
-        console.log('[Chat] Heartbeat: No message events in 60 seconds, forcing refresh');
-        fetchMessages().catch(err => {
-          console.error('[Chat] Error during heartbeat refresh:', err);
+        // Subscribe to the channel
+        const channel = await channelRef.current.subscribe((status) => {
+          console.log('[Chat] Subscription status:', status);
         });
-      }
-    }, 20 * 1000); // Check every 20 seconds
-    
-    return () => clearInterval(heartbeatInterval);
-  }, [channelId, fetchMessages, subscriptionStates.messages?.status]);
 
-  // Set up subscription
-  useEffect(() => {
-    let mounted = true;
-    
-    console.log('[Chat] Setting up subscriptions for channel:', channelId, 'currentUserId:', currentUserId, 'retryCount:', retryCount);
-    
-    if (mounted && channelId) {
-      setupSubscription();
-    }
+        console.log('[Chat] Channel subscribed:', channel);
+
+        // Update subscription states
+        setSubscriptionStates({
+          messages: { status: 'SUBSCRIBED' },
+          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+        });
+      } catch (error) {
+        console.error('[Chat] Error setting up subscriptions:', error);
+        handleSubscriptionError(error as Error, 'messages');
+      }
+    };
+
+    setupSubscriptions();
 
     // Cleanup function
     return () => {
-      mounted = false;
-      if (subscriptionTimeoutRef.current) {
-        clearTimeout(subscriptionTimeoutRef.current);
-      }
+      console.log('[Chat] Cleaning up subscriptions');
+      isSubscribed = false;
       
       if (channelRef.current) {
-        console.log('[Chat] Cleaning up subscriptions');
         supabase.removeChannel(channelRef.current)
           .catch(error => {
             console.error('[Chat] Error removing channel:', error);
@@ -239,12 +110,10 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, retryCount]);
+  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]);
 
   return {
     subscriptionStates,
-    handleSubscriptionError,
-    lastMessageEventTime: lastMessageEventRef.current,
-    lastFailedAttempt: lastFailedAttemptRef.current
+    handleSubscriptionError
   };
 };
