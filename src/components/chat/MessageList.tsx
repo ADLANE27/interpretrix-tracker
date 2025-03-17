@@ -9,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useProgressiveImage } from '@/hooks/useProgressiveImage';
 
 interface MessageListProps {
   messages: Message[];
@@ -208,7 +209,6 @@ export const MessageList: React.FC<MessageListProps> = ({
               url={attachment.url}
               filename={attachment.filename}
               locale="fr"
-              isOptimistic={attachment.isOptimistic}
             />
           </div>
         ))}

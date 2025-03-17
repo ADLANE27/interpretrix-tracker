@@ -1,4 +1,3 @@
-
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -14,6 +13,7 @@ export interface Message {
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
+  isOptimistic?: boolean; // Added for optimistic UI updates
 }
 
 export interface MessageData {
@@ -36,6 +36,7 @@ export interface Attachment {
   filename: string;
   type: string;
   size: number;
+  isOptimistic?: boolean; // Added for optimistic UI updates
 }
 
 export interface ChannelMember {
