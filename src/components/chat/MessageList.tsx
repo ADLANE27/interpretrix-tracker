@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, memo } from 'react';
+import React, { useState, useRef } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -8,8 +8,6 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
-import { useMessageScroll } from '@/hooks/chat/useMessageScroll';
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface MessageListProps {
   messages: Message[];
@@ -19,11 +17,9 @@ interface MessageListProps {
   replyTo?: Message | null;
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
-  isLoading?: boolean;
 }
 
-// Memoize MessageList to prevent unnecessary re-renders
-export const MessageList: React.FC<MessageListProps> = memo(({
+export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
   onDeleteMessage,
@@ -31,12 +27,11 @@ export const MessageList: React.FC<MessageListProps> = memo(({
   replyTo,
   setReplyTo,
   channelId,
-  isLoading = false
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
-  const { messagesEndRef, scrollToBottom } = useMessageScroll(messages, isLoading, channelId);
-  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -80,21 +75,16 @@ export const MessageList: React.FC<MessageListProps> = memo(({
     });
   };
 
-  // Memoize thread creation to prevent recalculations on each render
-  const messageThreads = React.useMemo(() => {
-    return messages.reduce((acc: { [key: string]: Message[] }, message) => {
-      const threadId = message.parent_message_id || message.id;
-      if (!acc[threadId]) {
-        acc[threadId] = [];
-      }
-      acc[threadId].push(message);
-      return acc;
-    }, {});
-  }, [messages]);
+  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
+    const threadId = message.parent_message_id || message.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
+    }
+    acc[threadId].push(message);
+    return acc;
+  }, {});
 
-  const rootMessages = React.useMemo(() => {
-    return messages.filter(message => !message.parent_message_id);
-  }, [messages]);
+  const rootMessages = messages.filter(message => !message.parent_message_id);
 
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
@@ -172,50 +162,46 @@ export const MessageList: React.FC<MessageListProps> = memo(({
   );
 
   return (
-    <ScrollArea className="h-full rounded-md">
-      <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md">
-        {messages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
-              <div className="flex justify-center my-4">
-                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
-                  {formatMessageDate(message.timestamp)}
-                </div>
+    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md">
+      {messages.map((message, index) => (
+        <React.Fragment key={message.id}>
+          {shouldShowDate(message, messages[index - 1]) && (
+            <div className="flex justify-center my-4">
+              <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
+                {formatMessageDate(message.timestamp)}
               </div>
-            )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-12 mt-2 mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
-                >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  {messageThreads[message.id].length - 1} réponses
-                </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
-                  </div>
+            </div>
+          )}
+          {renderMessage(message)}
+          
+          {messageThreads[message.id]?.length > 1 && (
+            <div className="ml-12 mt-2 mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toggleThread(message.id)}
+                className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
+              >
+                {expandedThreads.has(message.id) ? (
+                  <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 mr-1" />
                 )}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-    </ScrollArea>
+                {messageThreads[message.id].length - 1} réponses
+              </Button>
+              
+              {expandedThreads.has(message.id) && (
+                <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
+                  {messageThreads[message.id]
+                    .filter(reply => reply.id !== message.id)
+                    .map(reply => renderMessage(reply, true))}
+                </div>
+              )}
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+      <div ref={messagesEndRef} />
+    </div>
   );
-});
-
-MessageList.displayName = "MessageList";
+};
