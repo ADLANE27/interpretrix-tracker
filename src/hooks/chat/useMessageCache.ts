@@ -10,7 +10,7 @@ interface MessageCache {
   };
 }
 
-export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 seconds for more frequent refreshes
+export const useMessageCache = (ttl = 15 * 1000) => { // Reduced TTL to 15 seconds for more frequent refreshes
   const cache = useRef<MessageCache>({});
 
   const getCachedMessages = useCallback((channelId: string, forceFresh = false) => {
@@ -19,7 +19,12 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
     
     if (!forceFresh && cachedData && now - cachedData.lastFetched < ttl) {
       console.log(`[Chat] Using cached messages for channel: ${channelId}, age: ${now - cachedData.lastFetched}ms`);
-      return cachedData.messages;
+      // Only return cache if it's not empty
+      if (cachedData.messages.length > 0) {
+        return cachedData.messages;
+      }
+      console.log('[Chat] Cache exists but is empty, forcing refresh');
+      return null;
     }
     
     console.log(`[Chat] ${forceFresh ? 'Force refresh' : 'Cache expired'} for key: ${channelId}`);
@@ -27,6 +32,11 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
   }, [ttl]);
 
   const setCachedMessages = useCallback((channelId: string, messages: Message[], totalCount?: number) => {
+    if (!messages || messages.length === 0) {
+      console.log(`[Chat] Not caching empty messages array for channel: ${channelId}`);
+      return;
+    }
+    
     console.log(`[Chat] Caching ${messages.length} messages for channel: ${channelId}`);
     
     cache.current[channelId] = {
@@ -44,15 +54,14 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
     
     if (existingIndex >= 0) {
       cachedMessages[existingIndex] = message;
-    } else {
-      cachedMessages.push(message);
+      
+      cache.current[channelId] = {
+        messages: cachedMessages,
+        lastFetched: Date.now(), // Update the timestamp to reflect fresh data
+        totalCount: cache.current[channelId].totalCount
+      };
+      console.log(`[Chat] Updated cached message ${message.id} in channel: ${channelId}`);
     }
-    
-    cache.current[channelId] = {
-      messages: cachedMessages,
-      lastFetched: Date.now(),
-      totalCount: cache.current[channelId].totalCount
-    };
   }, []);
 
   const addMessageToCache = useCallback((channelId: string, message: Message) => {
@@ -76,9 +85,11 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
     
     cache.current[channelId] = {
       messages: cachedMessages,
-      lastFetched: Date.now(),
+      lastFetched: Date.now(), // Always update timestamp when adding messages
       totalCount: (cache.current[channelId].totalCount || 0) + (existingIndex >= 0 ? 0 : 1)
     };
+    
+    console.log(`[Chat] ${existingIndex >= 0 ? 'Updated' : 'Added new'} message in cache for channel: ${channelId}`);
   }, []);
 
   const removeMessageFromCache = useCallback((channelId: string, messageId: string) => {
@@ -88,9 +99,11 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
     
     cache.current[channelId] = {
       messages: cachedMessages,
-      lastFetched: Date.now(),
-      totalCount: (cache.current[channelId].totalCount || 0) - 1
+      lastFetched: Date.now(), // Update timestamp to reflect change
+      totalCount: Math.max(0, (cache.current[channelId].totalCount || 0) - 1)
     };
+    
+    console.log(`[Chat] Removed message ${messageId} from cache for channel: ${channelId}`);
   }, []);
 
   const invalidateCache = useCallback((channelId?: string) => {
@@ -103,12 +116,22 @@ export const useMessageCache = (ttl = 30 * 1000) => { // Reduced TTL to 30 secon
     }
   }, []);
 
+  // Check if cache is stale (older than TTL)
+  const isCacheStale = useCallback((channelId: string) => {
+    const cachedData = cache.current[channelId];
+    if (!cachedData) return true;
+    
+    const now = Date.now();
+    return now - cachedData.lastFetched >= ttl;
+  }, [ttl]);
+
   return {
     getCachedMessages,
     setCachedMessages,
     updateCachedMessage,
     addMessageToCache,
     removeMessageFromCache,
-    invalidateCache
+    invalidateCache,
+    isCacheStale
   };
 };

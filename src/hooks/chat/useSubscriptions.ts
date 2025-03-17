@@ -27,6 +27,7 @@ export const useSubscriptions = (
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
   const setupInProgressRef = useRef(false);
   const lastMessageEventRef = useRef<Date | null>(null);
+  const lastFailedAttemptRef = useRef<Date | null>(null);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -34,6 +35,9 @@ export const useSubscriptions = (
       ...prev,
       [type]: { status: 'CHANNEL_ERROR' as const, error }
     }));
+    
+    // Record the failure time
+    lastFailedAttemptRef.current = new Date();
     
     if (retryCount < CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
       // Exponential backoff with randomization to prevent thundering herd
@@ -98,7 +102,12 @@ export const useSubscriptions = (
             lastMessageEventRef.current = new Date();
             
             // Fetch messages immediately to ensure fresh data
-            await fetchMessages();
+            try {
+              await fetchMessages();
+              console.log('[Chat] Messages refreshed after realtime event');
+            } catch (err) {
+              console.error('[Chat] Error refreshing messages after realtime event:', err);
+            }
           }
         )
         .on('system', { event: 'disconnect' }, (payload) => {
@@ -158,7 +167,12 @@ export const useSubscriptions = (
           });
           
           // Fetch messages immediately after subscribing with fresh data
-          await fetchMessages();
+          try {
+            await fetchMessages();
+            console.log('[Chat] Messages loaded after subscription established');
+          } catch (fetchError) {
+            console.error('[Chat] Error fetching messages after subscription:', fetchError);
+          }
         } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
           handleSubscriptionError(
             err || new Error(`Subscription failed with status: ${status}`),
@@ -181,20 +195,20 @@ export const useSubscriptions = (
     if (!channelId || !channelRef.current) return;
     
     const heartbeatInterval = setInterval(() => {
-      // Check if we haven't received a message event in the last 2 minutes
+      // Check if we haven't received a message event in the last 60 seconds
       const now = new Date();
       const timeSinceLastEvent = lastMessageEventRef.current 
         ? now.getTime() - lastMessageEventRef.current.getTime() 
         : Infinity;
       
-      // Force a re-fetch every 2 minutes even if the subscription is active
-      if (subscriptionStates.messages?.status === 'SUBSCRIBED' && timeSinceLastEvent > 2 * 60 * 1000) {
-        console.log('[Chat] Heartbeat: No message events in 2 minutes, forcing refresh');
+      // Force a re-fetch every minute even if the subscription is active
+      if (subscriptionStates.messages?.status === 'SUBSCRIBED' && timeSinceLastEvent > 60 * 1000) {
+        console.log('[Chat] Heartbeat: No message events in 60 seconds, forcing refresh');
         fetchMessages().catch(err => {
           console.error('[Chat] Error during heartbeat refresh:', err);
         });
       }
-    }, 30 * 1000); // Check every 30 seconds
+    }, 20 * 1000); // Check every 20 seconds
     
     return () => clearInterval(heartbeatInterval);
   }, [channelId, fetchMessages, subscriptionStates.messages?.status]);
@@ -230,6 +244,7 @@ export const useSubscriptions = (
   return {
     subscriptionStates,
     handleSubscriptionError,
-    lastMessageEventTime: lastMessageEventRef.current
+    lastMessageEventTime: lastMessageEventRef.current,
+    lastFailedAttempt: lastFailedAttemptRef.current
   };
 };

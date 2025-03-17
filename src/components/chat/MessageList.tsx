@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
@@ -45,6 +45,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [isScrollingUp, setIsScrollingUp] = useState(false);
   const loadTriggerRef = useRef<HTMLDivElement>(null);
 
+  // Memoize messages to prevent unnecessary re-renders
+  const memoizedMessages = useMemo(() => messages, [messages]);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -62,6 +65,24 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
     return format(date, 'EEEE d MMMM yyyy', { locale: fr });
   };
+
+  // Memoize date checks to prevent flickering
+  const messageDateGroups = useMemo(() => {
+    const groups: {[key: string]: Message[]} = {};
+    
+    memoizedMessages.forEach((message, index) => {
+      const currentDate = new Date(message.timestamp);
+      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
+      
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      
+      groups[dateKey].push(message);
+    });
+    
+    return groups;
+  }, [memoizedMessages]);
 
   const shouldShowDate = (currentMessage: Message, previousMessage?: Message) => {
     if (!previousMessage) return true;
@@ -126,17 +147,21 @@ export const MessageList: React.FC<MessageListProps> = ({
   }, [lastScrollPosition]);
 
   // Group messages by parent_message_id
-  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
-    const threadId = message.parent_message_id || message.id;
-    if (!acc[threadId]) {
-      acc[threadId] = [];
-    }
-    acc[threadId].push(message);
-    return acc;
-  }, {});
+  const messageThreads = useMemo(() => {
+    return memoizedMessages.reduce((acc: { [key: string]: Message[] }, message) => {
+      const threadId = message.parent_message_id || message.id;
+      if (!acc[threadId]) {
+        acc[threadId] = [];
+      }
+      acc[threadId].push(message);
+      return acc;
+    }, {});
+  }, [memoizedMessages]);
 
   // Filter out just the root messages (those without parent_message_id)
-  const rootMessages = messages.filter(message => !message.parent_message_id);
+  const rootMessages = useMemo(() => {
+    return memoizedMessages.filter(message => !message.parent_message_id);
+  }, [memoizedMessages]);
 
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
@@ -250,49 +275,58 @@ export const MessageList: React.FC<MessageListProps> = ({
       {renderLoadingTrigger()}
       
       {/* Actual messages */}
-      {messages.length === 0 && !isLoading ? (
+      {memoizedMessages.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center h-40">
           <p className="text-gray-500 text-center">Aucun message</p>
         </div>
       ) : (
-        messages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
+        // Render messages grouped by date to prevent flickering
+        Object.entries(messageDateGroups).map(([dateKey, dateMessages]) => {
+          // Get the first message in this date group to display the date header
+          const firstMessageInGroup = dateMessages[0];
+          
+          return (
+            <React.Fragment key={dateKey}>
               <div className="flex justify-center my-4">
                 <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
-                  {formatMessageDate(message.timestamp)}
+                  {formatMessageDate(firstMessageInGroup.timestamp)}
                 </div>
               </div>
-            )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-12 mt-2 mb-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
-                >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              
+              {dateMessages.map((message) => (
+                <React.Fragment key={message.id}>
+                  {renderMessage(message)}
+                  
+                  {messageThreads[message.id]?.length > 1 && (
+                    <div className="ml-12 mt-2 mb-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleThread(message.id)}
+                        className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
+                      >
+                        {expandedThreads.has(message.id) ? (
+                          <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {messageThreads[message.id].length - 1} réponses
+                      </Button>
+                      
+                      {expandedThreads.has(message.id) && (
+                        <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
+                          {messageThreads[message.id]
+                            .filter(reply => reply.id !== message.id)
+                            .map(reply => renderMessage(reply, true))}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {messageThreads[message.id].length - 1} réponses
-                </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-2 pl-2 border-l-2 border-gray-200">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
-                  </div>
-                )}
-              </div>
-            )}
-          </React.Fragment>
-        ))
+                </React.Fragment>
+              ))}
+            </React.Fragment>
+          );
+        })
       )}
       
       {messagesEndRef && <div ref={messagesEndRef} className="h-1" />}
