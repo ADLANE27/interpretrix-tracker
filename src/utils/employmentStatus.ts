@@ -21,3 +21,17 @@ export const getEmploymentStatusOptions = () => {
     label
   }));
 };
+
+// Utility function to filter an array of interpreters by multiple employment statuses
+export const filterByEmploymentStatuses = (
+  interpreters: any[], 
+  selectedStatuses: EmploymentStatus[]
+): any[] => {
+  // If no statuses are selected, return all interpreters
+  if (!selectedStatuses.length) return interpreters;
+  
+  // Filter interpreters that match any of the selected statuses
+  return interpreters.filter(interpreter => 
+    selectedStatuses.includes(interpreter.employment_status as EmploymentStatus)
+  );
+};

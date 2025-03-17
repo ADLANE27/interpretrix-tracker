@@ -12,7 +12,7 @@ export const LANGUAGES = [
   "Diakhanké", "Dioula", "Estonien", "Espagnol", "Fidjien", "Finnois", "Fon", "Four", 
   "Français", "Géorgien", "Grec", "Guarani", "Gujarati", "Hakka", "Hassaniya", "Haoussa", "Hawaiien", 
   "Hindi", "Hongrois", "Igbo", "Ilokano", "Indonésien", "International Sign", "Inuktitut", "Islandais", 
-  "Italien", "Japonais", "Javanais", "Kabyle", "Kannada", "Kashmiri", "Kazakh", "Khmer", "Kikongo", "Kinyarwanda", 
+  "Italien", "Japonais", "Javanais", "Kabyle", "Kannada", "Kashmiri", "Kazakh", "Khassonké", "Khmer", "Kikongo", "Kinyarwanda", 
   "Kirghize", "Kirundi", "Konianké", "Konkani", "Krio", "Kurde (Kurmandji)", "Kurde (Sorani)", 
   "Langue des Signes Française (LSF)", "Langue des Signes Québécoise (LSQ)", "Lao", "Letton", "Lingala", 
   "Lituanien", "Macédonien", "Maithili", "Malais", "Malayalam", "Malinké", "Mandarin", "Mandingo", 
