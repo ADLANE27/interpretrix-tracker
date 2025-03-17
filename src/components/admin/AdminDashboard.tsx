@@ -23,9 +23,12 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ReservationsTab } from "./reservations/ReservationsTab";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InterpreterListItem } from "./interpreter/InterpreterListItem";
-import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
+import { EmploymentStatus, employmentStatusLabels, getEmploymentStatusOptions } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface WorkHours {
   start_morning?: string;
@@ -65,7 +68,7 @@ const AdminDashboard = () => {
   const [languageFilter, setLanguageFilter] = useState("all");
   const [phoneFilter, setPhoneFilter] = useState("");
   const [birthCountryFilter, setBirthCountryFilter] = useState("all");
-  const [employmentStatusFilter, setEmploymentStatusFilter] = useState<string>("all");
+  const [employmentStatusFilters, setEmploymentStatusFilters] = useState<EmploymentStatus[]>([]);
   const [rateSort, setRateSort] = useState<string>("none");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -76,6 +79,7 @@ const AdminDashboard = () => {
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
+  const employmentStatusOptions = getEmploymentStatusOptions();
 
   const tabs = [
     { id: "interpreters", label: "Interprètes" },
@@ -254,7 +258,7 @@ const AdminDashboard = () => {
     setLanguageFilter("all");
     setPhoneFilter("");
     setBirthCountryFilter("all");
-    setEmploymentStatusFilter("all");
+    setEmploymentStatusFilters([]);
     setRateSort("none");
     toast({
       title: "Filtres réinitialisés",
@@ -282,6 +286,16 @@ const AdminDashboard = () => {
     }
   };
 
+  const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
+    setEmploymentStatusFilters(current => {
+      if (current.includes(status)) {
+        return current.filter(s => s !== status);
+      } else {
+        return [...current, status];
+      }
+    });
+  };
+
   const filteredInterpreters = interpreters.filter(interpreter => {
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     const matchesName = nameFilter === "" || 
@@ -298,8 +312,8 @@ const AdminDashboard = () => {
        interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
     const matchesBirthCountry = birthCountryFilter === "all" || 
       interpreter.birth_country === birthCountryFilter;
-    const matchesEmploymentStatus = employmentStatusFilter === "all" || 
-      interpreter.employment_status === employmentStatusFilter;
+    const matchesEmploymentStatus = employmentStatusFilters.length === 0 || 
+      employmentStatusFilters.includes(interpreter.employment_status);
 
     return matchesStatus && 
            matchesName && 
@@ -470,19 +484,63 @@ const AdminDashboard = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="employment-status">Statut professionnel</Label>
-                      <Select value={employmentStatusFilter} onValueChange={setEmploymentStatusFilter}>
-                        <SelectTrigger id="employment-status">
-                          <SelectValue placeholder="Tous les statuts" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tous les statuts</SelectItem>
-                          {Object.entries(employmentStatusLabels).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            role="combobox"
+                            className="w-full justify-between h-10"
+                          >
+                            {employmentStatusFilters.length === 0 
+                              ? "Tous les statuts" 
+                              : employmentStatusFilters.length === 1 
+                                ? employmentStatusLabels[employmentStatusFilters[0]]
+                                : `${employmentStatusFilters.length} statuts sélectionnés`}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <div className="p-2">
+                            <div className="flex items-center space-x-2 pb-2">
+                              <Checkbox 
+                                id="select-all-statuses"
+                                checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setEmploymentStatusFilters(Object.keys(employmentStatusLabels) as EmploymentStatus[]);
+                                  } else {
+                                    setEmploymentStatusFilters([]);
+                                  }
+                                }}
+                              />
+                              <label 
+                                htmlFor="select-all-statuses"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                              >
+                                Tout sélectionner
+                              </label>
+                            </div>
+                            
+                            <div className="border-t my-2"></div>
+                            
+                            {Object.entries(employmentStatusLabels).map(([value, label]) => (
+                              <div key={value} className="flex items-center space-x-2 py-1">
+                                <Checkbox 
+                                  id={`status-${value}`}
+                                  checked={employmentStatusFilters.includes(value as EmploymentStatus)}
+                                  onCheckedChange={() => toggleEmploymentStatusFilter(value as EmploymentStatus)}
+                                />
+                                <label 
+                                  htmlFor={`status-${value}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                  {label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="flex flex-col gap-1.5 lg:col-span-3">

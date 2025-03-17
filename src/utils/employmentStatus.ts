@@ -13,3 +13,11 @@ export const employmentStatusLabels: Record<EmploymentStatus, string> = {
 export const getEmploymentStatusLabel = (status: EmploymentStatus): string => {
   return employmentStatusLabels[status] || status;
 };
+
+// Returns an array of all employment status options for multi-select
+export const getEmploymentStatusOptions = () => {
+  return Object.entries(employmentStatusLabels).map(([value, label]) => ({
+    value: value as EmploymentStatus,
+    label
+  }));
+};
