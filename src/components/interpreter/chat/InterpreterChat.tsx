@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -71,7 +71,8 @@ export const InterpreterChat = ({
     retry: retryConnection,
     fetchMessages: refetchMessages,
     loadMoreMessages,
-    hasMore
+    hasMore,
+    error: chatError
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -114,54 +115,54 @@ export const InterpreterChat = ({
 
   // Handle mentions
   useEffect(() => {
-    if (channelId) {
-      const channel = supabase
-        .channel(`chat-mentions-${channelId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'message_mentions'
-          },
-          async (payload) => {
-            if (!payload.new || !currentUserId) return;
+    if (!channelId || !currentUserId) return;
+    
+    const channel = supabase
+      .channel(`chat-mentions-${channelId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_mentions'
+        },
+        async (payload) => {
+          if (!payload.new || !currentUserId) return;
+          
+          if (payload.new.mentioned_user_id === currentUserId) {
+            // Play sound for mention
+            await playNotificationSound();
             
-            if (payload.new.mentioned_user_id === currentUserId) {
-              // Play sound for mention
-              await playNotificationSound();
-              
-              // Show toast notification
-              toast({
-                title: "💬 Nouvelle mention",
-                description: "Quelqu'un vous a mentionné dans un message",
-                duration: 5000,
-              });
+            // Show toast notification
+            toast({
+              title: "💬 Nouvelle mention",
+              description: "Quelqu'un vous a mentionné dans un message",
+              duration: 5000,
+            });
 
-              // Show browser notification
-              showNotification("Nouvelle mention", {
-                body: "Quelqu'un vous a mentionné dans un message",
-                tag: 'chat-mention',
-              });
-              
-              markMentionsAsRead();
-            }
+            // Show browser notification
+            showNotification("Nouvelle mention", {
+              body: "Quelqu'un vous a mentionné dans un message",
+              tag: 'chat-mention',
+            });
+            
+            markMentionsAsRead();
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [channelId, currentUserId, toast, markMentionsAsRead, showNotification]);
 
   // Mark mentions as read when viewing channel
   useEffect(() => {
-    if (channelId && !isLoading) {
+    if (channelId && !isLoading && currentUserId) {
       markMentionsAsRead();
     }
-  }, [channelId, markMentionsAsRead, isLoading]);
+  }, [channelId, markMentionsAsRead, isLoading, currentUserId]);
 
   // Scroll to bottom on new messages or when messages are loaded
   useEffect(() => {
@@ -234,10 +235,44 @@ export const InterpreterChat = ({
     }, 5000); // Show reconnecting state for at least 5 seconds
   }, [retryConnection]);
 
+  // Handle manual refresh (for when subscription is working but messages aren't loading)
+  const handleManualRefresh = useCallback(() => {
+    refetchMessages().catch(error => {
+      console.error("Error during manual refresh:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de rafraîchir les messages",
+        variant: "destructive",
+      });
+    });
+  }, [refetchMessages, toast]);
+
+  // Log state changes to help with debugging
+  useEffect(() => {
+    console.log("[InterpreterChat] Status:", { 
+      subscriptionStatus, 
+      isSubscribed, 
+      messageCount: messages.length, 
+      isLoading,
+      hasError: !!chatError
+    });
+  }, [subscriptionStatus, isSubscribed, messages.length, isLoading, chatError]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">{channel?.name}</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleManualRefresh}
+            className="p-1.5 h-7 w-7"
+            title="Rafraîchir les messages"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
@@ -273,8 +308,24 @@ export const InterpreterChat = ({
         {filteredMessages().length === 0 && !isLoading && isSubscribed ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500 text-center">
-              Aucun message dans cette conversation.<br />
-              Envoyez votre premier message ci-dessous.
+              {chatError ? (
+                <>
+                  Une erreur est survenue lors du chargement des messages.<br />
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManualRefresh}
+                    className="mt-2"
+                  >
+                    Réessayer
+                  </Button>
+                </>
+              ) : (
+                <>
+                  Aucun message dans cette conversation.<br />
+                  Envoyez votre premier message ci-dessous.
+                </>
+              )}
             </p>
           </div>
         ) : (
@@ -304,7 +355,7 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
-        disabled={!isSubscribed}
+        disabled={!currentUserId || !isSubscribed}
       />
     </div>
   );

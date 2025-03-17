@@ -24,6 +24,7 @@ export const useSubscriptions = (
   const channelRef = useRef<RealtimeChannel | null>(null);
   const subscriptionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
+  const setupInProgressRef = useRef(false);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -54,6 +55,14 @@ export const useSubscriptions = (
       return;
     }
 
+    // Prevent multiple setups from running simultaneously
+    if (setupInProgressRef.current) {
+      console.log('[Chat] Setup already in progress, skipping');
+      return;
+    }
+
+    setupInProgressRef.current = true;
+
     try {
       // Clean up existing channel if it exists
       if (channelRef.current) {
@@ -62,7 +71,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
 
-      // Create a new channel with a unique name
+      // Create a new channel with a unique name to prevent conflicts
       const channelName = `chat-${channelId}-${Date.now()}`;
       console.log('[Chat] Creating new channel:', channelName);
       
@@ -102,10 +111,14 @@ export const useSubscriptions = (
       }
       subscriptionTimeoutRef.current = setTimeout(() => {
         console.log('[Chat] Subscription timeout, forcing retry');
+        setSubscriptionStates(prev => ({
+          ...prev,
+          messages: { status: 'TIMED_OUT' as const }
+        }));
         setRetryCount(retryCount + 1);
       }, 10000); // 10 second timeout for subscription
 
-      // Subscribe to the channel
+      // Subscribe to the channel with proper error handling
       const status = await channelRef.current.subscribe(async (status, err) => {
         console.log('[Chat] Subscription status:', status, err);
         
@@ -117,10 +130,16 @@ export const useSubscriptions = (
         if (status === 'SUBSCRIBED') {
           // Track presence after successful subscription
           if (currentUserId && channelRef.current) {
-            await channelRef.current.track({
-              user_id: currentUserId,
-              online_at: new Date().toISOString()
-            });
+            try {
+              await channelRef.current.track({
+                user_id: currentUserId,
+                online_at: new Date().toISOString()
+              });
+              console.log('[Chat] User presence tracked for:', currentUserId);
+            } catch (presenceError) {
+              console.error('[Chat] Error tracking presence:', presenceError);
+              // Continue even if presence tracking fails
+            }
           }
 
           // Update subscription states
@@ -128,6 +147,9 @@ export const useSubscriptions = (
             messages: { status: 'SUBSCRIBED' },
             ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
           });
+          
+          // Fetch messages immediately after subscribing
+          await fetchMessages();
         } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
           handleSubscriptionError(
             err || new Error(`Subscription failed with status: ${status}`),
@@ -140,6 +162,8 @@ export const useSubscriptions = (
     } catch (error) {
       console.error('[Chat] Error setting up subscriptions:', error);
       handleSubscriptionError(error as Error, 'messages');
+    } finally {
+      setupInProgressRef.current = false;
     }
   };
 
@@ -147,9 +171,9 @@ export const useSubscriptions = (
   useEffect(() => {
     let mounted = true;
     
-    console.log('[Chat] Setting up subscriptions for channel:', channelId);
+    console.log('[Chat] Setting up subscriptions for channel:', channelId, 'currentUserId:', currentUserId, 'retryCount:', retryCount);
     
-    if (mounted) {
+    if (mounted && channelId) {
       setupSubscription();
     }
 
@@ -169,7 +193,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, retryCount, fetchMessages]);
+  }, [channelId, currentUserId, retryCount]);
 
   return {
     subscriptionStates,

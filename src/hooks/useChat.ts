@@ -56,6 +56,8 @@ export const useChat = (channelId: string | null) => {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [error, setError] = useState<Error | null>(null);
+  const fetchInProgressRef = useRef(false);
 
   // Use our caching hooks
   const { 
@@ -72,62 +74,70 @@ export const useChat = (channelId: string | null) => {
   // Get current user ID on init
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setCurrentUserId(data.user?.id || null);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("[Chat] Error getting current user:", error);
+          return;
+        }
+        setCurrentUserId(data.user?.id || null);
+        console.log("[Chat] Current user ID set:", data.user?.id);
+      } catch (e) {
+        console.error("[Chat] Exception getting current user:", e);
+      }
     };
     getCurrentUser();
   }, []);
 
-  // Use our subscription hook
-  const { subscriptionStates } = useSubscriptions(
-    channelId || '', 
-    currentUserId,
-    retryCount, 
-    setRetryCount,
-    async () => { await fetchMessages(); }
-  );
-  
-  // Update subscription status based on the subscription states
-  useEffect(() => {
-    if (subscriptionStates.messages?.status === 'SUBSCRIBED') {
-      setIsSubscribed(true);
-      setSubscriptionStatus('connected');
-    } else if (subscriptionStates.messages?.status === 'CHANNEL_ERROR') {
-      setIsSubscribed(false);
-      setSubscriptionStatus('disconnected');
-    }
-  }, [subscriptionStates]);
-
-  // Fetch messages with pagination
+  // Define fetchMessages before using it in useSubscriptions hook
   const fetchMessages = useCallback(async (limit = 50, before?: string) => {
-    if (!channelId) return [];
+    if (!channelId) {
+      console.log("[Chat] No channel ID, skipping fetch");
+      return [];
+    }
     
+    if (fetchInProgressRef.current) {
+      console.log("[Chat] Fetch already in progress, skipping");
+      return [];
+    }
+    
+    fetchInProgressRef.current = true;
     setIsLoading(true);
-    
-    // First check the cache
-    const cachedMessages = getCachedMessages(channelId);
-    if (cachedMessages && !before) {
-      console.log('[Chat] Using cached messages');
-      setMessages(cachedMessages);
-      setIsLoading(false);
-      return cachedMessages;
-    }
-    
-    let query = supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    
-    if (before) {
-      query = query.lt('created_at', before);
-    }
+    setError(null);
     
     try {
-      const { data, error } = await query;
+      console.log(`[Chat] Fetching messages for channel ${channelId}${before ? ' before ' + before : ''}`);
       
-      if (error) throw error;
+      // First check the cache for initial load
+      if (!before) {
+        const cachedMessages = getCachedMessages(channelId);
+        if (cachedMessages && cachedMessages.length > 0) {
+          console.log('[Chat] Using cached messages', cachedMessages.length);
+          setMessages(cachedMessages);
+          setIsLoading(false);
+          fetchInProgressRef.current = false;
+          return cachedMessages;
+        }
+      }
+      
+      let query = supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      
+      if (before) {
+        query = query.lt('created_at', before);
+      }
+      
+      const { data, error: fetchError } = await query;
+      
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      console.log(`[Chat] Received ${data?.length || 0} messages from server`);
       
       if (!data || data.length === 0) {
         setHasMoreMessages(false);
@@ -136,6 +146,7 @@ export const useChat = (channelId: string | null) => {
           setMessages([]);
           setCachedMessages(channelId, []);
         }
+        fetchInProgressRef.current = false;
         return [];
       }
       
@@ -162,14 +173,42 @@ export const useChat = (channelId: string | null) => {
       }
       
       setIsLoading(false);
+      fetchInProgressRef.current = false;
       return fetchedMessages;
       
-    } catch (error) {
-      console.error('Error fetching messages:', error);
+    } catch (fetchError) {
+      console.error('Error fetching messages:', fetchError);
+      setError(fetchError as Error);
       setIsLoading(false);
+      fetchInProgressRef.current = false;
       return [];
     }
   }, [channelId, messages, getCachedMessages, setCachedMessages, fetchSendersInBatch]);
+
+  // Use our subscription hook
+  const { subscriptionStates } = useSubscriptions(
+    channelId || '', 
+    currentUserId,
+    retryCount, 
+    setRetryCount,
+    fetchMessages
+  );
+  
+  // Update subscription status based on the subscription states
+  useEffect(() => {
+    console.log('[Chat] Subscription states updated:', subscriptionStates);
+    
+    if (subscriptionStates.messages?.status === 'SUBSCRIBED') {
+      setIsSubscribed(true);
+      setSubscriptionStatus('connected');
+      console.log('[Chat] Subscription status set to connected');
+    } else if (subscriptionStates.messages?.status === 'CHANNEL_ERROR' || 
+               subscriptionStates.messages?.status === 'TIMED_OUT') {
+      setIsSubscribed(false);
+      setSubscriptionStatus('disconnected');
+      console.log('[Chat] Subscription status set to disconnected');
+    }
+  }, [subscriptionStates]);
 
   // Retry connection function
   const retry = useCallback(() => {
@@ -180,7 +219,9 @@ export const useChat = (channelId: string | null) => {
     setRetryCount(prevCount => prevCount + 1);
     
     // Re-fetch messages
-    fetchMessages();
+    fetchMessages().catch(err => {
+      console.error('[Chat] Error during retry fetch:', err);
+    });
   }, [fetchMessages]);
 
   // Handle mentions
@@ -438,11 +479,29 @@ export const useChat = (channelId: string | null) => {
   // Load initial messages on channel ID change
   useEffect(() => {
     if (channelId) {
-      setMessages([]);
+      console.log('[Chat] Channel ID changed to:', channelId);
+      setMessages([]); // Clear existing messages
       setHasMoreMessages(true);
-      fetchMessages();
+      setError(null);
+      
+      // Initial fetch
+      fetchMessages().catch(err => {
+        console.error('[Chat] Error during initial fetch:', err);
+      });
     }
   }, [channelId, fetchMessages]);
+
+  // Retry automatically when subscription status is disconnected (after a delay)
+  useEffect(() => {
+    if (subscriptionStatus === 'disconnected' && channelId) {
+      const retryTimer = setTimeout(() => {
+        console.log('[Chat] Auto-retrying connection...');
+        retry();
+      }, 5000); // Try to reconnect after 5 seconds
+      
+      return () => clearTimeout(retryTimer);
+    }
+  }, [subscriptionStatus, channelId, retry]);
 
   // Load more messages handler for infinite scrolling
   const loadMoreMessages = useCallback(async () => {
@@ -473,5 +532,6 @@ export const useChat = (channelId: string | null) => {
     loadMoreMessages,
     hasMore: hasMoreMessages,
     hasMoreMessages,
+    error
   };
 };
