@@ -6,6 +6,7 @@ import { Message, MessageData, Attachment } from '@/types/messaging';
 import { useToast } from './use-toast';
 import { useMessageCache } from './chat/useMessageCache';
 import { useBatchSendersFetch } from './chat/useBatchSendersFetch';
+import { useSubscriptions } from './chat/useSubscriptions';
 import type { Json } from '@/integrations/supabase/types';
 
 // Helper function to convert MessageData to Message
@@ -51,10 +52,8 @@ export const useChat = (channelId: string | null) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [newMessageSubscription, setNewMessageSubscription] = useState<any>(null);
-  const [deletedMessageSubscription, setDeletedMessageSubscription] = useState<any>(null);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -78,6 +77,26 @@ export const useChat = (channelId: string | null) => {
     };
     getCurrentUser();
   }, []);
+
+  // Use our subscription hook
+  const { subscriptionStates } = useSubscriptions(
+    channelId || '', 
+    currentUserId,
+    retryCount, 
+    setRetryCount,
+    async () => { await fetchMessages(); }
+  );
+  
+  // Update subscription status based on the subscription states
+  useEffect(() => {
+    if (subscriptionStates.messages?.status === 'SUBSCRIBED') {
+      setIsSubscribed(true);
+      setSubscriptionStatus('connected');
+    } else if (subscriptionStates.messages?.status === 'CHANNEL_ERROR') {
+      setIsSubscribed(false);
+      setSubscriptionStatus('disconnected');
+    }
+  }, [subscriptionStates]);
 
   // Fetch messages with pagination
   const fetchMessages = useCallback(async (limit = 50, before?: string) => {
@@ -151,89 +170,6 @@ export const useChat = (channelId: string | null) => {
       return [];
     }
   }, [channelId, messages, getCachedMessages, setCachedMessages, fetchSendersInBatch]);
-
-  // Subscribe to new messages
-  useEffect(() => {
-    if (!channelId) return;
-    
-    // Clear old subscription if exists
-    if (newMessageSubscription) {
-      newMessageSubscription.unsubscribe();
-    }
-    
-    const subscription = supabase
-      .channel('public:chat_messages')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
-        async (payload) => {
-          if (!payload.new) return;
-          
-          const newMessageData = payload.new as any;
-          
-          // Don't process if it's already in the list (avoid duplicates)
-          if (messages.some(msg => msg.id === newMessageData.id)) return;
-          
-          // Fetch sender details for the new message
-          const senderDetails = await fetchSendersInBatch([newMessageData.sender_id]);
-          const senderInfo = senderDetails[newMessageData.sender_id];
-          
-          // Convert raw data to message object
-          const newMessage = convertMessageData(newMessageData as MessageData, senderInfo);
-          
-          setMessages(prev => [newMessage, ...prev]);
-          addMessageToCache(channelId, newMessage);
-        }
-      )
-      .subscribe((status) => {
-        setIsSubscribed(status === 'SUBSCRIBED');
-        setSubscriptionStatus(status === 'SUBSCRIBED' ? 'connected' : 'disconnected');
-        
-        if (status === 'SUBSCRIBED') {
-          console.log('[Chat] Successfully subscribed to channel');
-        } else {
-          console.log('[Chat] Failed to subscribe to channel, status:', status);
-        }
-      });
-    
-    setNewMessageSubscription(subscription);
-    
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [channelId, fetchSendersInBatch, addMessageToCache, messages, retryCount]);
-
-  // Subscribe to deleted messages
-  useEffect(() => {
-    if (!channelId) return;
-    
-    // Clear old subscription if exists
-    if (deletedMessageSubscription) {
-      deletedMessageSubscription.unsubscribe();
-    }
-    
-    const subscription = supabase
-      .channel('public:chat_messages_delete')
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
-        (payload) => {
-          if (!payload.old) return;
-          
-          const deletedMessageId = (payload.old as any).id;
-          
-          setMessages(prev => prev.filter(msg => msg.id !== deletedMessageId));
-          removeMessageFromCache(channelId, deletedMessageId);
-        }
-      )
-      .subscribe();
-    
-    setDeletedMessageSubscription(subscription);
-    
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [channelId, removeMessageFromCache, retryCount]);
 
   // Retry connection function
   const retry = useCallback(() => {
