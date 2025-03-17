@@ -56,7 +56,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const insertEmoji = (emoji: { native: string }) => {
-    // Fixed: Direct value instead of using callback to match the expected type
+    // Fixed: Direct string concatenation instead of function 
     setMessage(message + emoji.native);
     setIsEmojiPickerOpen(false);
     inputRef.current?.focus();

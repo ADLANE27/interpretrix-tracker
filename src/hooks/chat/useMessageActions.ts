@@ -107,7 +107,7 @@ export const useMessageActions = (
     while (retries > 0) {
       try {
         // Track upload progress (using XHR since fetch doesn't support progress)
-        const progressTracker = (uploadId: string): () => void => {
+        const progressTracker = (uploadId: string) => {
           // Simulate progress as best we can
           let currentProgress = 0;
           const interval = setInterval(() => {
@@ -456,6 +456,10 @@ export const useMessageActions = (
     }
   };
 
+  const clearFailedMessages = () => {
+    setPendingMessages(prev => prev.filter(msg => msg.status !== 'failed'));
+  };
+
   return {
     sendMessage,
     deleteMessage,
@@ -463,6 +467,6 @@ export const useMessageActions = (
     markMentionsAsRead,
     pendingMessages,
     uploadProgress,
-    clearFailedMessages: () => setPendingMessages(prev => prev.filter(msg => msg.status !== 'failed'))
+    clearFailedMessages
   };
 };
