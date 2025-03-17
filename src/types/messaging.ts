@@ -67,4 +67,7 @@ export interface MessageListProps {
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
   isDeleting?: boolean;
+  isLoadingMore?: boolean;
+  hasMoreMessages?: boolean;
+  onLoadMore?: () => void;
 }
