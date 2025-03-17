@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -66,6 +67,7 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
+  // Memoize the filtered messages to prevent unnecessary recalculations
   const filteredMessages = useCallback(() => {
     let filtered = messages;
 
@@ -215,13 +217,13 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative">
+      <div className="flex-1 overflow-hidden relative">
         {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-10">
             <p className="text-lg font-semibold">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-10">
             <p className="text-lg font-semibold">
               Connexion en cours...
             </p>
@@ -235,6 +237,7 @@ export const InterpreterChat = ({
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
+          isLoading={isLoading}
         />
       </div>
 

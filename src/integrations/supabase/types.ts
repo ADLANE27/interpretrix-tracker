@@ -760,6 +760,16 @@ export type Database = {
       }
     }
     Functions: {
+      batch_get_message_sender_details: {
+        Args: {
+          p_sender_ids: string[]
+        }
+        Returns: {
+          id: string
+          name: string
+          avatar_url: string
+        }[]
+      }
       bytea_to_text: {
         Args: {
           data: string
