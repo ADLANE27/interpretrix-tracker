@@ -6,6 +6,7 @@ import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
 import { useMessageActions } from './chat/useMessageActions';
 import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
+import { toast } from './use-toast';
 
 // Add the type guard function at the top of the file
 const isValidChannelType = (type: string): type is 'group' | 'direct' => {
@@ -57,7 +58,7 @@ export const useChat = (channelId: string) => {
           return null;
         }
         
-        // Cache sender details
+        // Cache sender details with correct property name mapping
         senderCache.current.set(message.sender_id, {
           id: sender.id,
           name: sender.name,
@@ -99,7 +100,7 @@ export const useChat = (channelId: string) => {
         sender: {
           id: sender.id,
           name: sender.name,
-          avatarUrl: sender.avatar_url || ''
+          avatarUrl: sender.avatarUrl || ''
         },
         timestamp: new Date(message.created_at),
         parent_message_id: message.parent_message_id,
@@ -166,6 +167,11 @@ export const useChat = (channelId: string) => {
 
       if (messagesError) {
         console.error('[Chat] Error fetching messages:', messagesError);
+        toast({
+          title: "Erreur",
+          description: "Une erreur est survenue lors du chargement des messages.",
+          variant: "destructive",
+        });
         throw messagesError;
       }
 
@@ -202,7 +208,7 @@ export const useChat = (channelId: string) => {
           throw sendersError;
         }
         
-        // Add to cache
+        // Add to cache with correct property mapping
         if (sendersData) {
           sendersData.forEach(sender => {
             senderCache.current.set(sender.id, {
@@ -251,34 +257,46 @@ export const useChat = (channelId: string) => {
   const handleNewMessage = useCallback(async (payload: any) => {
     if (!payload.new || !payload.new.id) return;
     
-    // Don't add duplicates
-    if (messages.some(m => m.id === payload.new.id)) {
-      return;
-    }
-    
-    const formattedMessage = await formatSingleMessage(payload.new);
-    if (formattedMessage) {
-      setMessages(prev => [...prev, formattedMessage]);
+    try {
+      // Don't add duplicates
+      if (messages.some(m => m.id === payload.new.id)) {
+        return;
+      }
+      
+      const formattedMessage = await formatSingleMessage(payload.new);
+      if (formattedMessage) {
+        setMessages(prev => [...prev, formattedMessage]);
+      }
+    } catch (error) {
+      console.error('[Chat] Error handling new message:', error);
     }
   }, [messages, formatSingleMessage]);
   
   const handleMessageUpdate = useCallback(async (payload: any) => {
     if (!payload.new || !payload.new.id) return;
     
-    const formattedMessage = await formatSingleMessage(payload.new);
-    if (formattedMessage) {
-      setMessages(prev => 
-        prev.map(m => m.id === payload.new.id ? formattedMessage : m)
-      );
+    try {
+      const formattedMessage = await formatSingleMessage(payload.new);
+      if (formattedMessage) {
+        setMessages(prev => 
+          prev.map(m => m.id === payload.new.id ? formattedMessage : m)
+        );
+      }
+    } catch (error) {
+      console.error('[Chat] Error handling message update:', error);
     }
   }, [formatSingleMessage]);
   
-  const handleMessageDelete = useCallback((payload: any) => {
+  const handleMessageDelete = useCallback(async (payload: any): Promise<void> => {
     if (!payload.old || !payload.old.id) return;
     
-    setMessages(prev => 
-      prev.filter(m => m.id !== payload.old.id)
-    );
+    try {
+      setMessages(prev => 
+        prev.filter(m => m.id !== payload.old.id)
+      );
+    } catch (error) {
+      console.error('[Chat] Error handling message deletion:', error);
+    }
   }, []);
 
   const { 
@@ -298,11 +316,11 @@ export const useChat = (channelId: string) => {
     sendMessage,
     deleteMessage: handleDeleteMessage,
     reactToMessage,
-    markMentionsAsRead,
+    markMentionsAsRead
   } = useMessageActions(
     channelId,
     currentUserId,
-    () => {}  // No need to fetch all messages on action completion anymore
+    async () => {} // Empty Promise for action completion callback
   );
 
   useEffect(() => {
