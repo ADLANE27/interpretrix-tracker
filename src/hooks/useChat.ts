@@ -226,7 +226,7 @@ export const useChat = (channelId: string | null) => {
     try {
       await supabase
         .from('message_mentions')
-        .update({ read: true })
+        .update({ status: 'read' })
         .eq('channel_id', channelId)
         .eq('mentioned_user_id', currentUserId);
     } catch (error) {
@@ -411,7 +411,7 @@ export const useChat = (channelId: string | null) => {
       }
       
       // Replace optimistic message with real one
-      const realMessage = convertMessageData(data as MessageData, senderInfo);
+      const realMessage = convertMessageData(data as unknown as MessageData, senderInfo);
       
       setMessages(prev => 
         prev.map(msg => msg.id === tempId ? realMessage : msg)
