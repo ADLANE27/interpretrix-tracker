@@ -63,4 +63,8 @@ export interface MessageListProps {
   currentUserId: string | null;
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
+  replyTo?: Message | null;
+  setReplyTo?: (message: Message | null) => void;
+  channelId: string;
+  isDeleting?: boolean;
 }

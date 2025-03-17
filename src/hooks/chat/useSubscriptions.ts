@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { CONNECTION_CONSTANTS } from './constants';
+import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
 
 interface SubscriptionState {
   status: 'SUBSCRIBED' | 'CONNECTING' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
