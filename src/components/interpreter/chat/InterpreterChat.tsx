@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -121,17 +120,14 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
-              // Play sound for mention
               await playNotificationSound();
               
-              // Show toast notification
               toast({
                 title: "💬 Nouvelle mention",
                 description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
               });
 
-              // Show browser notification
               showNotification("Nouvelle mention", {
                 body: "Quelqu'un vous a mentionné dans un message",
                 tag: 'chat-mention',
@@ -161,7 +157,6 @@ export const InterpreterChat = ({
     
     const fileArray = Array.from(files);
     
-    // Check file size limits (100MB total)
     const totalSize = fileArray.reduce((sum, file) => sum + file.size, 0);
     const maxTotalSize = 100 * 1024 * 1024; // 100MB
     

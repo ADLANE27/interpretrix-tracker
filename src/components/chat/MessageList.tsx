@@ -1,6 +1,5 @@
-
 import React, { useState, useRef } from 'react';
-import { Message } from "@/types/messaging";
+import { Message, MessageListProps } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -8,16 +7,6 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
-
-interface MessageListProps {
-  messages: Message[];
-  currentUserId: string | null;
-  onDeleteMessage: (messageId: string) => Promise<void>;
-  onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
-  replyTo?: Message | null;
-  setReplyTo?: (message: Message | null) => void;
-  channelId: string;
-}
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -27,6 +16,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   replyTo,
   setReplyTo,
   channelId,
+  isDeleting,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
@@ -132,6 +122,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 onClick={() => onDeleteMessage(message.id)}
                 className="p-1.5 rounded-full hover:bg-gray-100"
                 aria-label="Supprimer le message"
+                disabled={isDeleting}
               >
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
               </button>
