@@ -41,6 +41,7 @@ export const useSubscriptions = (
       
       console.log(`[Chat] Scheduling retry ${retryCount + 1} in ${Math.round(delay)}ms`);
       setTimeout(() => {
+        // Fixed: Changed from passing a function to passing the incremented number directly
         setRetryCount(retryCount + 1);
       }, delay);
     } else {
@@ -102,7 +103,8 @@ export const useSubscriptions = (
       }
       subscriptionTimeoutRef.current = setTimeout(() => {
         console.log('[Chat] Subscription timeout, forcing retry');
-        setRetryCount(prev => prev + 1);
+        // Fixed: Changed from passing a function to passing the incremented number directly
+        setRetryCount(retryCount + 1);
       }, 10000); // 10 second timeout for subscription
 
       // Subscribe to the channel
