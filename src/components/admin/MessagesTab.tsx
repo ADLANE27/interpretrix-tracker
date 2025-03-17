@@ -479,78 +479,77 @@ export const MessagesTab = () => {
     const isCurrentUser = message.sender?.id === currentUser.current?.id;
 
     return (
-      <Card 
+      <div 
         key={message.id} 
-        className={`border-0 shadow-none bg-transparent p-0 mb-2 group`}
+        className={`group relative mb-4 ${isCurrentUser ? 'flex flex-row-reverse' : 'flex'}`}
       >
-        <div className={`flex gap-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        {!isCurrentUser && (
+          <Avatar className="h-9 w-9 shrink-0 mt-1">
+            {message.sender?.avatarUrl && (
+              <AvatarImage src={message.sender.avatarUrl} alt={message.sender?.name || 'User'} className="object-cover" />
+            )}
+            <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+              {message.sender?.name?.substring(0, 2).toUpperCase() || '??'}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        
+        <div className={`flex-1 max-w-[75%] space-y-1.5 ${
+          isCurrentUser ? 'items-end mr-2' : 'items-start ml-2'
+        }`}>
           {!isCurrentUser && (
-            <Avatar className="h-8 w-8">
-              {message.sender?.avatarUrl && (
-                <AvatarImage src={message.sender.avatarUrl} />
-              )}
-              <AvatarFallback>
-                {message.sender?.name?.substring(0, 2) || '??'}
-              </AvatarFallback>
-            </Avatar>
+            <span className="text-xs font-medium text-gray-600 ml-1 mb-1 block">
+              {message.sender?.name}
+            </span>
           )}
           
-          <div className={`flex-1 max-w-[75%] space-y-1 ${
-            isCurrentUser ? 'items-end' : 'items-start'
-          }`}>
-            {!isCurrentUser && (
-              <span className="text-xs font-medium text-gray-600 ml-1">
-                {message.sender?.name}
-              </span>
-            )}
-            
-            <div className={`group relative ${
-              isCurrentUser 
-                ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl ml-auto' 
-                : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm'
-            } px-3 py-2 break-words`}>
-              <div className="text-[15px]">
-                {(() => {
-                  try {
-                    const data = JSON.parse(message.content);
-                    if (data.type === 'attachment' && data.file) {
-                      return <MessageAttachment url={data.file.url} filename={data.file.name} />;
-                    }
-                  } catch (e) {
-                    return message.content;
+          <div className={`group relative ${
+            isCurrentUser 
+              ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl ml-auto' 
+              : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+          } px-4 py-2.5 break-words`}>
+            <div className="text-[15px] mb-4">
+              {(() => {
+                try {
+                  const data = JSON.parse(message.content);
+                  if (data.type === 'attachment' && data.file) {
+                    return <MessageAttachment url={data.file.url} filename={data.file.name} locale="fr" />;
                   }
+                } catch (e) {
                   return message.content;
-                })()}
-              </div>
-              
-              <div className="absolute right-2 bottom-1 flex items-center gap-1">
-                <span className="text-[11px] text-gray-500">
-                  {format(new Date(message.created_at), 'HH:mm')}
-                </span>
-              </div>
+                }
+                return message.content;
+              })()}
             </div>
-
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => deleteMessage(message.id, message.sender_id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleReply(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-              >
-                <MessageSquare className="h-4 w-4 text-gray-500" />
-              </Button>
+            
+            <div className="absolute right-4 bottom-2 flex items-center gap-1">
+              <span className="text-[11px] text-gray-500">
+                {format(new Date(message.created_at), 'HH:mm')}
+              </span>
             </div>
           </div>
+
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+            {isCurrentUser && (
+              <button
+                onClick={() => deleteMessage(message.id, message.sender_id)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+                aria-label="Supprimer le message"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleReply(message)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+            >
+              <MessageSquare className="h-4 w-4 text-gray-500" />
+            </Button>
+          </div>
         </div>
-      </Card>
+      </div>
     );
   };
 
@@ -656,10 +655,31 @@ export const MessagesTab = () => {
     }
   };
 
+  const formatMessageDate = (date: Date) => {
+    if (isToday(date)) {
+      return "Aujourd'hui";
+    } else if (isYesterday(date)) {
+      return "Hier";
+    }
+    return format(date, 'EEEE d MMMM yyyy', { locale: fr });
+  };
+
+  const shouldShowDate = (currentMessage: Message, previousMessage?: Message) => {
+    if (!previousMessage) return true;
+    
+    const currentDate = new Date(currentMessage.created_at);
+    const previousDate = new Date(previousMessage.created_at);
+    
+    return (
+      currentDate.getDate() !== previousDate.getDate() ||
+      currentDate.getMonth() !== previousDate.getMonth() ||
+      currentDate.getFullYear() !== previousDate.getFullYear()
+    );
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
       <div className="flex h-full">
-        {/* Channel List */}
         <div 
           className={`${
             isMobile 
@@ -772,7 +792,6 @@ export const MessagesTab = () => {
           </div>
         </div>
 
-        {/* Chat Area */}
         <div className={`flex-1 flex flex-col ${isMobile && !showChannelList ? 'absolute inset-0 z-20 bg-background' : ''}`}>
           {selectedChannel ? (
             <>
@@ -792,15 +811,120 @@ export const MessagesTab = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-[#F1F1F1] p-4 space-y-4">
-                {messages.map((message) => renderMessageContent(message))}
+              <div className="flex-1 overflow-y-auto bg-[#F8F9FA] p-4 space-y-6">
+                {messages.map((message, index) => (
+                  <React.Fragment key={message.id}>
+                    {shouldShowDate(message, messages[index - 1]) && (
+                      <div className="flex justify-center my-4">
+                        <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
+                          {formatMessageDate(new Date(message.created_at))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {renderMessageContent(message)}
+                    
+                    {messageThreads[message.id]?.length > 1 && (
+                      <div className="ml-12 mt-1 mb-6">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleThread(message.id)}
+                          className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
+                        >
+                          {expandedThreads.has(message.id) ? (
+                            <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          {messageThreads[message.id].length - 1} réponses
+                        </Button>
+                        
+                        {expandedThreads.has(message.id) && (
+                          <div className="space-y-2 mt-2 pl-4 border-l-2 border-gray-200">
+                            {messageThreads[message.id]
+                              .filter(reply => reply.id !== message.id)
+                              .map(reply => {
+                                const isCurrentUser = reply.sender?.id === currentUser.current?.id;
+                                return (
+                                  <div
+                                    key={reply.id}
+                                    className={`group relative mb-2 ${isCurrentUser ? 'flex flex-row-reverse' : 'flex'}`}
+                                  >
+                                    {!isCurrentUser && (
+                                      <Avatar className="h-7 w-7 shrink-0 mt-1">
+                                        {reply.sender?.avatarUrl && (
+                                          <AvatarImage src={reply.sender.avatarUrl} alt={reply.sender?.name || 'User'} className="object-cover" />
+                                        )}
+                                        <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+                                          {reply.sender?.name?.substring(0, 2).toUpperCase() || '??'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    )}
+                                    
+                                    <div className={`flex-1 max-w-[80%] space-y-1 ${
+                                      isCurrentUser ? 'items-end mr-2' : 'items-start ml-2'
+                                    }`}>
+                                      {!isCurrentUser && (
+                                        <span className="text-xs font-medium text-gray-600 ml-1">
+                                          {reply.sender?.name}
+                                        </span>
+                                      )}
+                                      
+                                      <div className={`group relative ${
+                                        isCurrentUser 
+                                          ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl ml-auto' 
+                                          : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+                                      } px-3 py-2 break-words`}>
+                                        <div className="text-[14px]">
+                                          {(() => {
+                                            try {
+                                              const data = JSON.parse(reply.content);
+                                              if (data.type === 'attachment' && data.file) {
+                                                return <MessageAttachment url={data.file.url} filename={data.file.name} locale="fr" />;
+                                              }
+                                            } catch (e) {
+                                              return reply.content;
+                                            }
+                                            return reply.content;
+                                          })()}
+                                        </div>
+                                        
+                                        <div className="absolute right-2 bottom-1 flex items-center gap-1">
+                                          <span className="text-[10px] text-gray-500">
+                                            {format(new Date(reply.created_at), 'HH:mm')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+                                        {isCurrentUser && (
+                                          <button
+                                            onClick={() => deleteMessage(reply.id, reply.sender_id)}
+                                            className="p-1 rounded-full hover:bg-gray-100"
+                                            aria-label="Supprimer le message"
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5 text-gray-500 hover:text-red-500" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
+                ))}
                 <div ref={messagesEndRef} />
               </div>
 
               <div className="border-t p-4 bg-background safe-area-bottom">
                 {replyTo && (
-                  <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-accent/50 rounded-lg">
-                    <span className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-accent/50 rounded-lg">
+                    <span className="text-sm text-muted-foreground truncate flex-1">
                       En réponse à : {replyTo.sender?.name}
                     </span>
                     <Button
