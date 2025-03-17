@@ -1,5 +1,5 @@
 
-import React, { useRef, useState, KeyboardEvent } from 'react';
+import React, { useRef, useState, KeyboardEvent, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Paperclip, Smile } from "lucide-react";
@@ -43,9 +43,23 @@ export const ChatInput = ({
 }: ChatInputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSending, setIsSending] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(window.navigator.onLine);
   const { toast } = useToast();
   const { handleEmojiSelect, adjustTextareaHeight } = useEmojiPicker(message, setMessage, inputRef);
   
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
     adjustTextareaHeight(e.target);
@@ -61,7 +75,7 @@ export const ChatInput = ({
   const handleSend = async () => {
     if (isSending || !message.trim() && attachments.length === 0) return;
     
-    if (!isSubscribed) {
+    if (!isSubscribed || !isOnline) {
       toast({
         title: "Connexion perdue",
         description: "Impossible d'envoyer votre message. Vérifiez votre connexion.",
@@ -89,6 +103,9 @@ export const ChatInput = ({
       setIsSending(false);
     }
   };
+
+  const canSendMessage = !!message.trim() || attachments.length > 0;
+  const isDisabled = isSending || isLoading || !isSubscribed || !isOnline || !canSendMessage;
 
   return (
     <div className="p-4 border-t bg-background">
@@ -158,7 +175,7 @@ export const ChatInput = ({
           <Button
             type="button"
             onClick={handleSend}
-            disabled={(!message.trim() && attachments.length === 0) || isSending || isLoading || !isSubscribed}
+            disabled={isDisabled}
             className={`ml-1 h-9 w-9 rounded-full ${isSending ? 'opacity-50' : ''}`}
             title="Envoyer"
           >

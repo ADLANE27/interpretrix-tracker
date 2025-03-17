@@ -40,6 +40,12 @@ export const useMessageSend = (
         reactions: {} as Json
       };
 
+      // Check if connection is available before attempting to send
+      const isOnline = window.navigator.onLine;
+      if (!isOnline) {
+        throw new Error("Network connection unavailable");
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .insert(newMessage)

@@ -9,10 +9,24 @@ import { useMessageHandlers } from './chat/useMessageHandlers';
 export const useChat = (channelId: string) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [isOnline, setIsOnline] = useState<boolean>(window.navigator.onLine);
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     messages: boolean;
   }>({ messages: false });
   
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const {
     messages,
     isLoading,
@@ -57,11 +71,12 @@ export const useChat = (channelId: string) => {
     sendMessage,
     deleteMessage: handleDeleteMessage,
     reactToMessage,
-    markMentionsAsRead
+    markMentionsAsRead,
+    connectionStatus
   } = useMessageActions(
     channelId,
     currentUserId,
-    async () => {} // Empty Promise for action completion callback
+    fetchMessages
   );
 
   // Fetch current user on mount
@@ -84,9 +99,9 @@ export const useChat = (channelId: string) => {
   // Update subscription status from the subscription states
   useEffect(() => {
     setSubscriptionStatus({
-      messages: subscriptionStates.messages?.status === 'SUBSCRIBED'
+      messages: subscriptionStates.messages?.status === 'SUBSCRIBED' && isOnline
     });
-  }, [subscriptionStates]);
+  }, [subscriptionStates, isOnline]);
 
   return {
     messages,
@@ -101,5 +116,6 @@ export const useChat = (channelId: string) => {
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    isOnline,
   };
 };
