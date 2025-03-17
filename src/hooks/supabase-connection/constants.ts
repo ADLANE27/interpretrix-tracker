@@ -1,12 +1,20 @@
 
 export const CONNECTION_CONSTANTS = {
+  // Decrease base delay for faster initial reconnect attempts
+  BASE_RECONNECT_DELAY: 500, // 500ms instead of the typical 1000ms
+  
+  // Maximum reconnection attempts before giving up
   MAX_RECONNECT_ATTEMPTS: 10,
-  BASE_RECONNECT_DELAY: 2000,
-  HEARTBEAT_TIMEOUT: 60000,
-  HEARTBEAT_INTERVAL: 45000,
-  PRESENCE_VALIDATION_DELAY: 2000,
-  SESSION_CHECK_INTERVAL: 60000,
-  MAX_MESSAGE_BATCH_SIZE: 50,
-  MESSAGE_FETCH_LIMIT: 100,
-  SENDER_CACHE_EXPIRY: 300000 // 5 minutes
-} as const;
+  
+  // Maximum delay between reconnect attempts (capped at 10 seconds)
+  MAX_RECONNECT_DELAY: 10000,
+  
+  // Default message fetch limit per page
+  MESSAGE_FETCH_LIMIT: 30,
+  
+  // Connection monitoring interval (check connection every 30s)
+  CONNECTION_CHECK_INTERVAL: 30000,
+  
+  // Heartbeat interval for presence (15 seconds)
+  PRESENCE_HEARTBEAT_INTERVAL: 15000
+};
