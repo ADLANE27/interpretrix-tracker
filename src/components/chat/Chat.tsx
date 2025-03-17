@@ -33,6 +33,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Update newName when channel data is loaded
   useEffect(() => {
@@ -49,6 +50,26 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     currentUserId,
     reactToMessage
   } = useChat(channelId);
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      setIsDeleting(true);
+      await deleteMessage(messageId);
+      toast({
+        title: "Succès",
+        description: "Message supprimé"
+      });
+    } catch (error) {
+      console.error('[Chat] Error deleting message:', error);
+      toast({
+        title: "Erreur",
+        description: "Échec de la suppression du message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -133,9 +154,10 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         <MessageList
           messages={messages}
           currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
+          onDeleteMessage={handleDeleteMessage}
           onReactToMessage={reactToMessage}
           channelId={channelId}
+          isDeleting={isDeleting}
         />
       </div>
       
