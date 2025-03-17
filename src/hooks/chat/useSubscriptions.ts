@@ -217,11 +217,12 @@ export const useSubscriptions = (
               console.log('[Chat] Message change received:', payload);
               
               // Track message IDs to prevent duplicate processing
-              const messageId = payload.new?.id || payload.old?.id;
-              if (messageId && messageQueueRef.current.has(messageId)) {
-                console.log('[Chat] Skipping already processed message:', messageId);
-                return;
-              }
+              // Fixed: Add type check for payload.new and payload.old
+              const messageId = payload.new && 'id' in payload.new 
+                ? payload.new.id 
+                : payload.old && 'id' in payload.old 
+                  ? payload.old.id 
+                  : null;
               
               if (messageId) {
                 messageQueueRef.current.add(messageId);
