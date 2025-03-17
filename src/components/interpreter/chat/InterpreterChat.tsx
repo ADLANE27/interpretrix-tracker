@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -10,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -28,7 +32,7 @@ export const InterpreterChat = ({
   onFiltersChange, 
   onClearFilters 
 }: InterpreterChatProps) => {
-  const { data: channel } = useQuery({
+  const { data: channel, isLoading: isChannelLoading } = useQuery({
     queryKey: ['channel', channelId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -39,13 +43,19 @@ export const InterpreterChat = ({
       
       if (error) throw error;
       return data;
-    }
+    },
+    retry: 3,
+    staleTime: 5 * 60 * 1000 // 5 minutes
   });
 
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   const [chatMembers, setChatMembers] = useState([
@@ -62,6 +72,8 @@ export const InterpreterChat = ({
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    retry: retryConnection,
+    fetchMessages: refetchMessages
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -102,6 +114,7 @@ export const InterpreterChat = ({
     requestPermission();
   }, [requestPermission]);
 
+  // Handle mentions
   useEffect(() => {
     if (channelId) {
       const channel = supabase
@@ -145,12 +158,31 @@ export const InterpreterChat = ({
     }
   }, [channelId, currentUserId, toast, markMentionsAsRead, showNotification]);
 
+  // Mark mentions as read when viewing channel
   useEffect(() => {
-    if (channelId) {
+    if (channelId && !isLoading) {
       markMentionsAsRead();
     }
-  }, [channelId, markMentionsAsRead]);
+  }, [channelId, markMentionsAsRead, isLoading]);
 
+  // Scroll to bottom on new messages or when messages are loaded
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current && !filters.userId && !filters.keyword && !filters.date) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        setHasScrolledToBottom(true);
+      }
+    };
+    
+    // Only scroll to bottom on initial load or when new messages are added
+    if (messages.length > 0 && (!hasScrolledToBottom || document.hasFocus())) {
+      // Slight delay to ensure DOM has updated
+      const timer = setTimeout(scrollToBottom, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length, filters, hasScrolledToBottom]);
+
+  // Handle file attachments
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -159,6 +191,7 @@ export const InterpreterChat = ({
     setAttachments(prev => [...prev, ...fileArray]);
   };
 
+  // Handle sending messages
   const handleSendMessage = async () => {
     if ((!message.trim() && attachments.length === 0) || !channelId || !currentUserId) return;
 
@@ -170,8 +203,18 @@ export const InterpreterChat = ({
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
+      
+      // Force scroll to bottom when sending a message
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer votre message. Veuillez réessayer.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -183,6 +226,7 @@ export const InterpreterChat = ({
     });
   };
 
+  // Track unique chat members
   useEffect(() => {
     const uniqueMembers = new Map();
     
@@ -203,6 +247,16 @@ export const InterpreterChat = ({
     setChatMembers(Array.from(uniqueMembers.values()));
   }, [messages, currentUserId]);
 
+  // Handle reconnection attempts
+  const handleReconnect = useCallback(() => {
+    setReconnecting(true);
+    retryConnection();
+    
+    setTimeout(() => {
+      setReconnecting(false);
+    }, 5000); // Show reconnecting state for at least 5 seconds
+  }, [retryConnection]);
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
@@ -215,27 +269,52 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative">
-        {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
+      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
+        {isChannelLoading || isLoading ? (
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex flex-col items-center justify-center">
+            <LoadingSpinner size="lg" />
+            <p className="mt-2 text-lg font-semibold">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
-              Connexion en cours...
-            </p>
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+              <p className="text-lg font-semibold text-center">
+                {reconnecting ? 'Tentative de reconnexion...' : 'Connexion interrompue'}
+              </p>
+              <Button 
+                variant="outline"
+                onClick={handleReconnect}
+                disabled={reconnecting}
+              >
+                {reconnecting ? 'Reconnexion en cours...' : 'Reconnecter'}
+              </Button>
+            </div>
           </div>
         ) : null}
-        <MessageList
-          messages={filteredMessages()}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-        />
+        
+        {filteredMessages().length === 0 && !isLoading && isSubscribed ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-gray-500 text-center">
+              Aucun message dans cette conversation.<br />
+              Envoyez votre premier message ci-dessous.
+            </p>
+          </div>
+        ) : (
+          <MessageList
+            messages={filteredMessages()}
+            currentUserId={currentUserId}
+            onDeleteMessage={deleteMessage}
+            onReactToMessage={reactToMessage}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+            channelId={channelId}
+            messagesEndRef={messagesEndRef}
+          />
+        )}
+        
+        {/* Invisible div for scrolling to bottom */}
+        <div ref={messagesEndRef} />
       </div>
 
       <ChatInput
@@ -248,6 +327,7 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
+        disabled={!isSubscribed}
       />
     </div>
   );
