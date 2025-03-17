@@ -14,7 +14,7 @@ const convertMessageData = (data: MessageData, senderInfo?: { name: string, avat
   let reactionsObj: Record<string, string[]> = {};
   
   if (data.reactions) {
-    if (typeof data.reactions === 'object' && !Array.isArray(data.reactions)) {
+    if (typeof data.reactions === 'object') {
       // Convert JSON reactions object to the expected format
       reactionsObj = data.reactions as Record<string, string[]>;
     }
@@ -53,9 +53,10 @@ export const useChat = (channelId: string | null) => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [newMessageSubscription, setNewMessageSubscription] = useState<any>(null);
   const [deletedMessageSubscription, setDeletedMessageSubscription] = useState<any>(null);
-  const [isSubscribed, setIsSubscribed] = useState(true);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // Use our caching hooks
   const { 
@@ -170,6 +171,9 @@ export const useChat = (channelId: string | null) => {
           
           const newMessageData = payload.new as any;
           
+          // Don't process if it's already in the list (avoid duplicates)
+          if (messages.some(msg => msg.id === newMessageData.id)) return;
+          
           // Fetch sender details for the new message
           const senderDetails = await fetchSendersInBatch([newMessageData.sender_id]);
           const senderInfo = senderDetails[newMessageData.sender_id];
@@ -184,6 +188,12 @@ export const useChat = (channelId: string | null) => {
       .subscribe((status) => {
         setIsSubscribed(status === 'SUBSCRIBED');
         setSubscriptionStatus(status === 'SUBSCRIBED' ? 'connected' : 'disconnected');
+        
+        if (status === 'SUBSCRIBED') {
+          console.log('[Chat] Successfully subscribed to channel');
+        } else {
+          console.log('[Chat] Failed to subscribe to channel, status:', status);
+        }
       });
     
     setNewMessageSubscription(subscription);
@@ -191,7 +201,7 @@ export const useChat = (channelId: string | null) => {
     return () => {
       subscription?.unsubscribe();
     };
-  }, [channelId, fetchSendersInBatch, addMessageToCache]);
+  }, [channelId, fetchSendersInBatch, addMessageToCache, messages, retryCount]);
 
   // Subscribe to deleted messages
   useEffect(() => {
@@ -203,7 +213,7 @@ export const useChat = (channelId: string | null) => {
     }
     
     const subscription = supabase
-      .channel('public:chat_messages')
+      .channel('public:chat_messages_delete')
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
@@ -223,23 +233,19 @@ export const useChat = (channelId: string | null) => {
     return () => {
       subscription?.unsubscribe();
     };
-  }, [channelId, removeMessageFromCache]);
+  }, [channelId, removeMessageFromCache, retryCount]);
 
   // Retry connection function
   const retry = useCallback(() => {
-    if (newMessageSubscription) {
-      newMessageSubscription.unsubscribe();
-      setNewMessageSubscription(null);
-    }
+    console.log('[Chat] Retrying connection...');
+    setSubscriptionStatus('reconnecting');
     
-    if (deletedMessageSubscription) {
-      deletedMessageSubscription.unsubscribe();
-      setDeletedMessageSubscription(null);
-    }
+    // Increase retry count to trigger resubscriptions
+    setRetryCount(prevCount => prevCount + 1);
     
-    // Re-fetch messages and re-establish subscriptions
+    // Re-fetch messages
     fetchMessages();
-  }, [fetchMessages, newMessageSubscription, deletedMessageSubscription]);
+  }, [fetchMessages]);
 
   // Handle mentions
   const markMentionsAsRead = useCallback(async () => {
@@ -495,9 +501,11 @@ export const useChat = (channelId: string | null) => {
 
   // Load initial messages on channel ID change
   useEffect(() => {
-    setMessages([]);
-    setHasMoreMessages(true);
-    fetchMessages();
+    if (channelId) {
+      setMessages([]);
+      setHasMoreMessages(true);
+      fetchMessages();
+    }
   }, [channelId, fetchMessages]);
 
   // Load more messages handler for infinite scrolling
