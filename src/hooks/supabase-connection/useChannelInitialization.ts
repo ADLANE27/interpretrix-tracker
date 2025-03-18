@@ -2,7 +2,6 @@
 import { useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { CONNECTION_CONSTANTS } from './constants';
-import { useWakeLock } from './useWakeLock';
 
 interface UseChannelInitializationProps {
   onChannelError: () => void;
@@ -11,12 +10,6 @@ interface UseChannelInitializationProps {
   isReconnecting: boolean;
   setConnectionStatus: (status: 'connected' | 'connecting' | 'disconnected') => void;
   updateLastHeartbeat: () => void;
-  setupHeartbeat: (
-    channel: RealtimeChannel,
-    isExplicitDisconnect: boolean,
-    isReconnecting: boolean
-  ) => boolean;
-  validateChannelPresence: (channel: RealtimeChannel) => Promise<boolean>;
 }
 
 export const useChannelInitialization = ({
@@ -25,37 +18,14 @@ export const useChannelInitialization = ({
   isExplicitDisconnect,
   isReconnecting,
   setConnectionStatus,
-  updateLastHeartbeat,
-  setupHeartbeat,
-  validateChannelPresence
+  updateLastHeartbeat
 }: UseChannelInitializationProps) => {
-  const { requestWakeLock } = useWakeLock();
-
   const setupChannelSubscription = useCallback(async (
     channel: RealtimeChannel,
   ): Promise<void> => {
     if (!channel) return;
 
-    let presenceValidationTimeout: NodeJS.Timeout;
-
     channel
-      .on('presence', { event: 'sync' }, async () => {
-        if (isExplicitDisconnect) return;
-        
-        if (presenceValidationTimeout) {
-          clearTimeout(presenceValidationTimeout);
-        }
-
-        presenceValidationTimeout = setTimeout(async () => {
-          if (!channel) return;
-          
-          const isValid = await validateChannelPresence(channel);
-          if (!isValid && !isReconnecting && !isExplicitDisconnect) {
-            console.warn('[useChannelInitialization] Invalid presence state detected');
-            handleReconnect(channel);
-          }
-        }, CONNECTION_CONSTANTS.PRESENCE_VALIDATION_DELAY);
-      })
       .on('presence', { event: 'join' }, () => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
@@ -76,29 +46,7 @@ export const useChannelInitialization = ({
 
       if (status === 'SUBSCRIBED' && !isExplicitDisconnect) {
         setConnectionStatus('connected');
-
-        try {
-          const isValid = await validateChannelPresence(channel);
-          if (!isValid) {
-            throw new Error('Failed to establish presence');
-          }
-
-          const heartbeatSetup = setupHeartbeat(
-            channel, 
-            isExplicitDisconnect, 
-            isReconnecting
-          );
-          if (!heartbeatSetup) {
-            throw new Error('Failed to setup heartbeat');
-          }
-
-          await requestWakeLock();
-        } catch (error) {
-          console.error('[useChannelInitialization] Channel setup error:', error);
-          if (!isExplicitDisconnect && !isReconnecting) {
-            handleReconnect(channel);
-          }
-        }
+        updateLastHeartbeat();
       }
 
       if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -114,11 +62,8 @@ export const useChannelInitialization = ({
     isExplicitDisconnect,
     isReconnecting,
     onChannelError,
-    requestWakeLock,
     setConnectionStatus,
-    setupHeartbeat,
-    updateLastHeartbeat,
-    validateChannelPresence
+    updateLastHeartbeat
   ]);
 
   return { setupChannelSubscription };

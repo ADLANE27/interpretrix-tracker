@@ -1,14 +1,9 @@
+
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
-import { useWakeLock } from './supabase-connection/useWakeLock';
-import { useHeartbeat } from './supabase-connection/useHeartbeat';
-import { usePresence } from './supabase-connection/usePresence';
-import { useTokenRefresh } from './supabase-connection/useTokenRefresh';
-import { useConnectionRecovery } from './supabase-connection/useConnectionRecovery';
 import { useChannelInitialization } from './supabase-connection/useChannelInitialization';
-import { useSessionManagement } from './supabase-connection/useSessionManagement';
 import { CONNECTION_CONSTANTS } from './supabase-connection/constants';
 
 export const useSupabaseConnection = () => {
@@ -17,78 +12,70 @@ export const useSupabaseConnection = () => {
   const isExplicitDisconnectRef = useRef(false);
   const isReconnectingRef = useRef(false);
   const hasInitializedRef = useRef(false);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectAttemptsRef = useRef(0);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
+  const lastHeartbeatRef = useRef<number>(Date.now());
 
-  const { releaseWakeLock } = useWakeLock();
-  const { validateChannelPresence } = usePresence({
-    presenceValidationDelay: CONNECTION_CONSTANTS.PRESENCE_VALIDATION_DELAY
-  });
+  const updateLastHeartbeat = useCallback(() => {
+    lastHeartbeatRef.current = Date.now();
+  }, []);
 
-  const { setupHeartbeat, clearIntervals, updateLastHeartbeat } = useHeartbeat({
-    heartbeatInterval: CONNECTION_CONSTANTS.HEARTBEAT_INTERVAL,
-    heartbeatTimeout: CONNECTION_CONSTANTS.HEARTBEAT_TIMEOUT,
-    onHeartbeatFailed: () => handleReconnectRef.current?.()
-  });
+  const clearReconnectTimeout = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+  }, []);
 
-  const { scheduleTokenRefresh } = useTokenRefresh();
+  const handleReconnect = useCallback(async (channel: RealtimeChannel | null): Promise<void> => {
+    clearReconnectTimeout();
+    isReconnectingRef.current = true;
+    setConnectionStatus('connecting');
 
-  const { handleReconnect, resetReconnectAttempts, clearReconnectTimeout } = useConnectionRecovery({
-    onReconnectStart: () => {
-      isReconnectingRef.current = true;
-      setConnectionStatus('connecting');
-      clearIntervals();
-    },
-    onReconnectEnd: () => {
+    if (reconnectAttemptsRef.current >= CONNECTION_CONSTANTS.MAX_RECONNECT_ATTEMPTS) {
+      console.error('[useSupabaseConnection] Max reconnection attempts reached');
       isReconnectingRef.current = false;
       setConnectionStatus('disconnected');
       toast({
         title: "Erreur de connexion",
         description: "La connexion temps réel a été perdue. Veuillez rafraîchir la page.",
         variant: "destructive",
-        duration: 0,
       });
+      return;
     }
-  });
 
-  const handleReconnectRef = useRef<() => Promise<void>>();
-  
+    const delay = Math.min(
+      CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttemptsRef.current),
+      30000
+    );
+    
+    reconnectTimeoutRef.current = setTimeout(async () => {
+      reconnectAttemptsRef.current++;
+      try {
+        if (channelRef.current) {
+          await supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        await initializeChannel();
+      } catch (error) {
+        console.error('[useSupabaseConnection] Reconnection attempt failed:', error);
+        handleReconnect(null);
+      }
+    }, delay);
+  }, [clearReconnectTimeout, toast]);
+
   const { setupChannelSubscription } = useChannelInitialization({
     onChannelError: () => {
       if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
-        handleReconnectRef.current?.();
+        handleReconnect(channelRef.current);
       }
     },
-    handleReconnect: () => handleReconnectRef.current?.(),
+    handleReconnect,
     isExplicitDisconnect: isExplicitDisconnectRef.current,
     isReconnecting: isReconnectingRef.current,
     setConnectionStatus,
-    updateLastHeartbeat,
-    setupHeartbeat,
-    validateChannelPresence
-  });
-
-  const { checkSession } = useSessionManagement({
-    isExplicitDisconnect: isExplicitDisconnectRef.current,
-    isReconnecting: isReconnectingRef.current,
-    hasInitialized: hasInitializedRef.current,
-    onSessionInvalid: () => {
-      isExplicitDisconnectRef.current = true;
-      clearIntervals();
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-      releaseWakeLock();
-      hasInitializedRef.current = false;
-      setConnectionStatus('disconnected');
-    },
-    onSessionValid: () => {
-      if (!channelRef.current || !['SUBSCRIBED', 'JOINED'].includes(channelRef.current.state)) {
-        if (!isReconnectingRef.current && !hasInitializedRef.current) {
-          initializeChannel();
-        }
-      }
-    }
+    updateLastHeartbeat
   });
 
   const initializeChannel = useCallback(async () => {
@@ -103,11 +90,9 @@ export const useSupabaseConnection = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.log('[useSupabaseConnection] No active session, skipping connection');
-        releaseWakeLock();
         return;
       }
 
-      scheduleTokenRefresh();
       isExplicitDisconnectRef.current = false;
       
       if (channelRef.current) {
@@ -121,12 +106,7 @@ export const useSupabaseConnection = () => {
       const channelName = `app-health-${Date.now()}`;
       console.log('[useSupabaseConnection] Creating new channel:', channelName);
       
-      channelRef.current = supabase.channel(channelName, {
-        config: {
-          broadcast: { ack: true },
-          presence: { key: 'status' }
-        }
-      });
+      channelRef.current = supabase.channel(channelName);
 
       if (!channelRef.current) {
         throw new Error('Failed to create channel');
@@ -135,34 +115,21 @@ export const useSupabaseConnection = () => {
       await setupChannelSubscription(channelRef.current);
       hasInitializedRef.current = true;
       isReconnectingRef.current = false;
-      resetReconnectAttempts();
+      reconnectAttemptsRef.current = 0;
       updateLastHeartbeat();
 
     } catch (error) {
       console.error('[useSupabaseConnection] Channel initialization error:', error);
       setConnectionStatus('disconnected');
       if (!isExplicitDisconnectRef.current && !isReconnectingRef.current) {
-        handleReconnectRef.current?.();
+        handleReconnect(null);
       }
     }
   }, [
-    releaseWakeLock,
     setupChannelSubscription,
-    scheduleTokenRefresh,
-    resetReconnectAttempts,
-    updateLastHeartbeat
+    updateLastHeartbeat,
+    handleReconnect
   ]);
-
-  handleReconnectRef.current = async () => {
-    if (channelRef.current) {
-      await supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    await handleReconnect(
-      channelRef.current,
-      initializeChannel
-    );
-  };
 
   useEffect(() => {
     let cleanup: () => void = () => {};
@@ -172,10 +139,6 @@ export const useSupabaseConnection = () => {
     };
 
     setup();
-
-    const sessionCheckInterval = setInterval(async () => {
-      await checkSession();
-    }, CONNECTION_CONSTANTS.SESSION_CHECK_INTERVAL);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -194,13 +157,11 @@ export const useSupabaseConnection = () => {
       if (event === 'SIGNED_OUT') {
         console.log('[useSupabaseConnection] User signed out');
         isExplicitDisconnectRef.current = true;
-        clearIntervals();
         clearReconnectTimeout();
         if (channelRef.current) {
           await supabase.removeChannel(channelRef.current);
           channelRef.current = null;
         }
-        releaseWakeLock();
         hasInitializedRef.current = false;
         setConnectionStatus('disconnected');
       }
@@ -208,20 +169,13 @@ export const useSupabaseConnection = () => {
 
     return () => {
       cleanup();
-      clearInterval(sessionCheckInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       subscription.unsubscribe();
-      clearIntervals();
       clearReconnectTimeout();
-      releaseWakeLock();
-      hasInitializedRef.current = false;
     };
   }, [
-    clearIntervals,
     initializeChannel,
-    releaseWakeLock,
     clearReconnectTimeout,
-    checkSession
   ]);
 
   return {

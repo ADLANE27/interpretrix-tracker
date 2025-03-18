@@ -79,16 +79,12 @@ export const useSubscriptions = (
           );
 
         // Subscribe to the channel
-        const channel = await channelRef.current.subscribe((status) => {
+        channelRef.current.subscribe((status) => {
           console.log('[Chat] Subscription status:', status);
-        });
-
-        console.log('[Chat] Channel subscribed:', channel);
-
-        // Update subscription states
-        setSubscriptionStates({
-          messages: { status: 'SUBSCRIBED' },
-          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+          setSubscriptionStates(prev => ({
+            ...prev,
+            messages: { status: status as any }
+          }));
         });
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
