@@ -12,25 +12,25 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
     { 
       id: "available", 
       label: "Disponible", 
-      color: "bg-interpreter-available", 
+      color: "from-green-400 to-green-600", 
       icon: Clock 
     },
     { 
       id: "busy", 
       label: "En appel", 
-      color: "bg-interpreter-busy", 
+      color: "from-violet-400 to-violet-600", 
       icon: Phone 
     },
     { 
       id: "pause", 
       label: "En pause", 
-      color: "bg-interpreter-pause", 
+      color: "from-orange-400 to-orange-600", 
       icon: Coffee 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
-      color: "bg-interpreter-unavailable", 
+      color: "from-red-400 to-red-600", 
       icon: X 
     },
   ];
@@ -46,16 +46,18 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
   };
 
   return (
-    <div className="flex flex-wrap gap-2 p-4 justify-center">
+    <div className="flex flex-wrap gap-3 justify-center">
       {statuses.map((status) => {
         const Icon = status.icon;
         return (
           <Button
             key={status.id}
-            variant="outline"
+            variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              transition-all duration-200 whitespace-nowrap min-w-[120px]
-              ${selectedStatus === status.id ? `${status.color} text-white shadow-lg` : 'bg-white dark:bg-gray-950'}
+              transition-all duration-200 rounded-full px-5
+              ${selectedStatus === status.id 
+                ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
