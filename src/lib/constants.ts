@@ -1,3 +1,4 @@
+
 // Constants for the application
 
 // Theme constants
@@ -48,8 +49,8 @@ export const ROLES = {
   CLIENT: 'client',
 };
 
-// Standardized language list for mentions
-export const LANGUAGES = {
+// Language mapping (code to name)
+export const LANGUAGE_MAP = {
   fr: "Français",
   en: "English",
   es: "Español",
@@ -63,6 +64,9 @@ export const LANGUAGES = {
   ja: "日本語",
   ko: "한국어"
 };
+
+// Standardized language list for mentions and iterations (array format)
+export const LANGUAGES = Object.values(LANGUAGE_MAP);
 
 export const TRANSLATIONS = {
   download: {
