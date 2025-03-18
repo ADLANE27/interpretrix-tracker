@@ -23,6 +23,7 @@ export const useSubscriptions = (
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
+  const lastEventTimestamp = useRef<number>(Date.now());
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -73,6 +74,12 @@ export const useSubscriptions = (
             },
             (payload) => {
               if (!isSubscribed) return;
+              
+              const now = Date.now();
+              // Add timestamp to track when we received this event
+              payload.receivedAt = now;
+              lastEventTimestamp.current = now;
+              
               console.log('[Chat] Message change received:', payload.eventType, payload);
               onRealtimeEvent(payload);
             }
@@ -103,10 +110,26 @@ export const useSubscriptions = (
 
     setupSubscriptions();
 
+    // Set up a health check interval to detect stalled subscriptions
+    const healthCheckInterval = setInterval(() => {
+      const now = Date.now();
+      const lastEvent = lastEventTimestamp.current;
+      const timeSinceLastEvent = now - lastEvent;
+      
+      console.log(`[Chat] Health check: ${timeSinceLastEvent}ms since last event`);
+      
+      // If it's been too long since we received an event, reconnect
+      if (timeSinceLastEvent > CONNECTION_CONSTANTS.MAX_RECONNECT_DELAY && channelRef.current) {
+        console.log('[Chat] Subscription appears stalled, reconnecting...');
+        setRetryCount(prev => prev + 1);
+      }
+    }, 30000); // Check every 30 seconds
+
     // Cleanup function
     return () => {
       console.log('[Chat] Cleaning up subscriptions');
       isSubscribed = false;
+      clearInterval(healthCheckInterval);
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
@@ -121,6 +144,7 @@ export const useSubscriptions = (
   return {
     subscriptionStates,
     handleSubscriptionError,
-    isSubscribed: subscriptionStates.messages?.status === 'SUBSCRIBED'
+    isSubscribed: subscriptionStates.messages?.status === 'SUBSCRIBED',
+    lastEventTimestamp: lastEventTimestamp.current
   };
 };

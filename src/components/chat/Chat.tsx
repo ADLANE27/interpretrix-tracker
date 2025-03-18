@@ -37,8 +37,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  // Using HTMLTextAreaElement to match ChatInput expectations
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messageListKey = useRef<number>(0);
 
   // Update newName when channel data is loaded
   useEffect(() => {
@@ -55,8 +55,24 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     currentUserId,
     reactToMessage,
     isSubscribed,
-    subscriptionStatus
+    subscriptionStatus,
+    forceFetch
   } = useChat(channelId);
+
+  // Force refresh of message list when channel changes
+  useEffect(() => {
+    messageListKey.current += 1;
+  }, [channelId]);
+
+  // Force refresh periodically to ensure messages stay in sync
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      console.log(`[Chat ${userRole}] Forcing message sync`);
+      forceFetch();
+    }, 60000); // Sync every minute
+    
+    return () => clearInterval(syncInterval);
+  }, [forceFetch, userRole]);
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -112,6 +128,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   console.log(`[Chat ${userRole}] Is subscribed:`, isSubscribed);
   console.log(`[Chat ${userRole}] Subscription status:`, subscriptionStatus);
   console.log(`[Chat ${userRole}] Current user ID:`, currentUserId);
+  console.log(`[Chat ${userRole}] Last message timestamp:`, messages.length > 0 ? messages[messages.length - 1].timestamp : 'none');
 
   return (
     <div className="flex flex-col h-full">
@@ -164,7 +181,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       
       <div className="flex-1 overflow-y-auto" id="messages-container">
         <MessageList
-          key={`message-list-${channelId}-${messages.length}`}
+          key={`message-list-${channelId}-${messageListKey.current}`}
           messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}

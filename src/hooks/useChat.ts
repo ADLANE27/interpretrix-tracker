@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -73,11 +74,13 @@ export const useChat = (channelId: string) => {
       const timestamp = new Date().toISOString();
       
       // Query messages with consistent ascending order by creation date
+      // Add a random query parameter to bypass caching
+      const cacheBypass = Math.random().toString(36).substring(2);
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: true });  // Always use ascending for consistent order
+        .order('created_at', { ascending: true })  // Always use ascending for consistent order
 
       if (messagesError) {
         console.error(`[useChat ${userRole.current}] Error fetching messages:`, messagesError);
@@ -92,6 +95,14 @@ export const useChat = (channelId: string) => {
       const formattedMessages: Message[] = [];
       const senderDetailsPromises = messagesData?.map(async (message) => {
         try {
+          // Check if we already have this message in cache
+          if (messageCache.current[message.id]) {
+            // Update timestamp for existing message to ensure proper sorting
+            const cachedMessage = messageCache.current[message.id];
+            cachedMessage.timestamp = new Date(message.created_at);
+            return cachedMessage;
+          }
+          
           const { data: senderData, error: senderError } = await supabase
             .rpc('get_message_sender_details', {
               sender_id: message.sender_id
@@ -184,6 +195,9 @@ export const useChat = (channelId: string) => {
       }
 
       console.log(`[useChat ${userRole.current}] Messages processed and set:`, formattedMessages.length);
+      console.log(`[useChat ${userRole.current}] Last message timestamp:`, 
+        formattedMessages.length > 0 ? 
+        formattedMessages[formattedMessages.length - 1].timestamp : 'none');
     } catch (error) {
       console.error(`[useChat ${userRole.current}] Error fetching messages:`, error);
     } finally {
@@ -258,6 +272,13 @@ export const useChat = (channelId: string) => {
         });
         
         console.log(`[useChat ${userRole.current}] Realtime: Message added/updated:`, formattedMessage, 'For channel:', channelId);
+        
+        // Update last fetch timestamp
+        const messageTimestamp = new Date(messageData.created_at);
+        if (!lastFetchTimestamp.current || messageTimestamp > new Date(lastFetchTimestamp.current)) {
+          lastFetchTimestamp.current = messageTimestamp.toISOString();
+          setLastFetchTime(new Date());
+        }
       } 
       // For deletions, remove the message
       else if (payload.eventType === 'DELETE') {
@@ -274,7 +295,8 @@ export const useChat = (channelId: string) => {
   const { 
     subscriptionStates, 
     handleSubscriptionError,
-    isSubscribed
+    isSubscribed,
+    lastEventTimestamp
   } = useSubscriptions(
     channelId,
     currentUserId,
@@ -328,6 +350,12 @@ export const useChat = (channelId: string) => {
     return () => clearInterval(refreshInterval);
   }, [channelId, fetchMessages, lastFetchTime]);
 
+  // Add a function to force fetch regardless of last fetch time
+  const forceFetch = useCallback(() => {
+    console.log(`[useChat ${userRole.current}] Force fetching messages`);
+    fetchMessages();
+  }, [fetchMessages, userRole]);
+
   return {
     messages,
     isLoading,
@@ -338,5 +366,6 @@ export const useChat = (channelId: string) => {
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    forceFetch,
   };
 };
