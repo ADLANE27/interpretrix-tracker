@@ -1,9 +1,10 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Attachment, isAttachment } from '@/types/messaging';
 import { useMessageActions } from './chat/useMessageActions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSubscriptions } from './chat/useSubscriptions';
 
 export const useChat = (channelId: string) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -18,7 +19,7 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  // Fetch messages using a normal query since the stored procedure isn't registered in TypeScript types
+  // Fetch messages using a direct query since we can't use the stored procedure
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['channel-messages', channelId],
     queryFn: async () => {
@@ -144,7 +145,7 @@ export const useChat = (channelId: string) => {
     refetchOnWindowFocus: true,
   });
 
-  // Set up real-time subscription - simplified
+  // Set up real-time subscription using our shared hook
   useEffect(() => {
     if (!channelId) return;
     
@@ -170,6 +171,11 @@ export const useChat = (channelId: string) => {
       supabase.removeChannel(channel);
     };
   }, [channelId, queryClient]);
+  
+  // Add specialized subscription for mentions
+  useSubscriptions(channelId, currentUserId, () => {
+    queryClient.invalidateQueries({ queryKey: ['channel-messages', channelId] });
+  });
 
   // Get message actions with optimistic updates
   const { 

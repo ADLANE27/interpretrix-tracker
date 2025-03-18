@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
-import { MessageList } from "@/components/chat/MessageList";
+import { UnifiedMessageList } from "@/components/chat/UnifiedMessageList";
 import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -222,7 +222,7 @@ export const InterpreterChat = ({
           </div>
         ) : (
           <ScrollArea className="h-full pr-2">
-            <MessageList
+            <UnifiedMessageList
               messages={filteredMessages()}
               currentUserId={currentUserId}
               onDeleteMessage={deleteMessage}

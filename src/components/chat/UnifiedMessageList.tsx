@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Message, Attachment } from "@/types/messaging";
+import { Message } from "@/types/messaging";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageAttachment } from "./MessageAttachment";
 import { format } from 'date-fns';

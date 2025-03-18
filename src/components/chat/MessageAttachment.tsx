@@ -7,11 +7,19 @@ import { TRANSLATIONS } from "@/constants/languages";
 interface AttachmentProps {
   url: string;
   filename: string;
-  locale?: keyof typeof TRANSLATIONS.download; // Making locale optional with default
+  type?: string; // Added type property to match usage in UnifiedMessageList
+  dark?: boolean;  // Added dark property to handle theming
+  locale?: keyof typeof TRANSLATIONS.download;
 }
 
-export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentProps) => {
-  const fileType = filename.split('.').pop()?.toLowerCase() || '';
+export const MessageAttachment = ({ 
+  url, 
+  filename, 
+  type, 
+  dark = false,
+  locale = "fr" 
+}: AttachmentProps) => {
+  const fileType = type || filename.split('.').pop()?.toLowerCase() || '';
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileType);
   const isPdf = fileType === 'pdf';
 
@@ -19,10 +27,19 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
     window.open(url, '_blank');
   };
 
+  // Apply dark mode classes conditionally
+  const cardClass = dark 
+    ? "rounded-lg border bg-primary/10 text-primary-foreground shadow-sm p-2"
+    : "rounded-lg border bg-card text-card-foreground shadow-sm p-2";
+
+  const buttonClass = dark
+    ? "text-xs text-primary-foreground/80 hover:text-primary-foreground"
+    : "text-xs";
+
   if (isImage) {
     return (
       <div className="mt-2 max-w-sm">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-2">
+        <div className={cardClass}>
           <div className="flex items-center gap-2 mb-2">
             <FileImage className="h-5 w-5 text-blue-500" />
             <span className="text-sm font-medium truncate">{filename}</span>
@@ -37,7 +54,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
               variant="ghost"
               size="sm"
               onClick={handleDownload}
-              className="text-xs"
+              className={buttonClass}
             >
               <Download className="h-4 w-4 mr-1" />
               {TRANSLATIONS.download[locale]}
@@ -51,7 +68,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
   if (isPdf) {
     return (
       <div className="mt-2">
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
+        <div className={cardClass.replace('p-2', 'p-3')}>
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-red-500" />
             <span className="text-sm font-medium truncate flex-1">{filename}</span>
@@ -60,7 +77,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
                 variant="ghost"
                 size="sm"
                 onClick={() => window.open(url, '_blank')}
-                className="text-xs"
+                className={buttonClass}
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
                 {TRANSLATIONS.preview[locale]}
@@ -69,7 +86,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
                 variant="ghost"
                 size="sm"
                 onClick={handleDownload}
-                className="text-xs"
+                className={buttonClass}
               >
                 <Download className="h-4 w-4 mr-1" />
                 {TRANSLATIONS.download[locale]}
@@ -83,7 +100,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
 
   return (
     <div className="mt-2">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-3">
+      <div className={cardClass.replace('p-2', 'p-3')}>
         <div className="flex items-center gap-2">
           <File className="h-5 w-5 text-gray-500" />
           <span className="text-sm font-medium truncate flex-1">{filename}</span>
@@ -91,7 +108,7 @@ export const MessageAttachment = ({ url, filename, locale = "fr" }: AttachmentPr
             variant="ghost"
             size="sm"
             onClick={handleDownload}
-            className="text-xs"
+            className={buttonClass}
           >
             <Download className="h-4 w-4 mr-1" />
             {TRANSLATIONS.download[locale]}
