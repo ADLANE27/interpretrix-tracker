@@ -47,7 +47,8 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
     // Extract original time directly from string
     const originalTime = formatTimeString(dateString);
     const date = parseISO(dateString);
-    return `${format(date, 'EEEE d MMMM yyyy', { locale: fr })} à ${originalTime}`;
+    const formattedDate = format(date, 'EEEE d MMMM yyyy', { locale: fr });
+    return `${formattedDate} à ${originalTime}`;
   } catch (error) {
     console.error('[dateTimeUtils] Error formatting datetime display:', error);
     return '';
