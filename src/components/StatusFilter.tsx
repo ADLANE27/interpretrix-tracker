@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Clock, Coffee, Phone, X } from "lucide-react";
 
@@ -12,29 +13,25 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
       id: "available", 
       label: "Disponible", 
       color: "from-green-400 to-green-600", 
-      icon: Clock,
-      hoverColor: "hover:bg-green-100/10" 
+      icon: Clock 
     },
     { 
       id: "busy", 
       label: "En appel", 
-      color: "from-palette-vivid-purple to-indigo-600", 
-      icon: Phone,
-      hoverColor: "hover:bg-purple-100/10" 
+      color: "from-violet-400 to-violet-600", 
+      icon: Phone 
     },
     { 
       id: "pause", 
       label: "En pause", 
-      color: "from-palette-bright-orange to-amber-600", 
-      icon: Coffee,
-      hoverColor: "hover:bg-orange-100/10" 
+      color: "from-orange-400 to-orange-600", 
+      icon: Coffee 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
-      color: "from-red-400 to-rose-600", 
-      icon: X,
-      hoverColor: "hover:bg-red-100/10" 
+      color: "from-red-400 to-red-600", 
+      icon: X 
     },
   ];
 
@@ -57,15 +54,15 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             key={status.id}
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              relative overflow-hidden transition-all duration-300 rounded-full px-5
+              transition-all duration-200 rounded-full px-5
               ${selectedStatus === status.id 
-                ? `bg-gradient-to-r ${status.color} text-white shadow-md border-transparent` 
-                : `border border-white/10 bg-black/20 backdrop-blur-sm text-white/90 ${status.hoverColor}`}
+                ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
             <Icon className="mr-2 h-4 w-4" />
-            <span className="font-medium drop-shadow-sm">{status.label}</span>
+            {status.label}
           </Button>
         )}
       )}

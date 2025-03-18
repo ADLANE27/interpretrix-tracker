@@ -24,49 +24,37 @@ export const StatisticsCards = ({
       title: "Interprètes",
       value: totalInterpreters,
       icon: Users,
-      color: "bg-gradient-to-br from-palette-ocean-blue to-palette-bright-orange/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-blue-400 to-blue-600",
     },
     {
       title: "Missions aujourd'hui",
       value: todayMissionsCount,
       icon: CalendarDays,
-      color: "bg-gradient-to-br from-palette-magenta-pink to-palette-vivid-purple/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-purple-400 to-purple-600",
     },
     {
       title: "Disponibles",
       value: availableCount,
       icon: CheckCircle2,
-      color: "bg-gradient-to-br from-green-400 to-emerald-600/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-green-400 to-green-600",
     },
     {
       title: "En appel",
       value: busyCount,
       icon: Phone,
-      color: "bg-gradient-to-br from-palette-vivid-purple to-indigo-600/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-violet-400 to-violet-600",
     },
     {
       title: "En pause",
       value: pauseCount,
       icon: Coffee,
-      color: "bg-gradient-to-br from-palette-bright-orange to-amber-600/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-orange-400 to-orange-600",
     },
     {
       title: "Indisponibles",
       value: unavailableCount,
       icon: X,
-      color: "bg-gradient-to-br from-red-400 to-rose-600/30",
-      iconBg: "bg-white/15",
-      textColor: "text-white",
+      color: "from-red-400 to-red-600",
     },
   ];
 
@@ -77,24 +65,12 @@ export const StatisticsCards = ({
         return (
           <Card
             key={index}
-            className={`group relative overflow-hidden ${card.color} p-4 
-              border border-white/10 shadow-lg hover:shadow-xl transition-all duration-300
-              hover:-translate-y-1`}
+            className={`bg-gradient-to-br ${card.color} text-white p-4 shadow-lg hover:shadow-xl transition-shadow`}
           >
-            <div className="relative flex flex-col items-center justify-center space-y-2">
-              <div className={`p-2 rounded-full ${card.iconBg} backdrop-blur-sm`}>
-                <Icon className="h-7 w-7 text-white" />
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <span className={`text-3xl font-bold mt-1 ${card.textColor} drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]`}>
-                  {card.value}
-                </span>
-                
-                <span className={`text-sm ${card.textColor} font-medium px-2 py-0.5 rounded-full bg-black/20 backdrop-blur-sm mt-1`}>
-                  {card.title}
-                </span>
-              </div>
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <Icon className="h-8 w-8 opacity-80" />
+              <span className="text-2xl font-bold">{card.value}</span>
+              <span className="text-sm opacity-80">{card.title}</span>
             </div>
           </Card>
         );
