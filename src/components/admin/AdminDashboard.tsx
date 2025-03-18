@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -558,11 +557,13 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end lg:col-span-3">
-                    <Button variant="outline" onClick={resetAllFilters} className="gap-2">
-                      <X className="h-4 w-4" />
-                      Supprimer tous les filtres
-                    </Button>
+                  <div className="grid grid-cols-1 lg:grid-cols-3">
+                    <div className="lg:col-start-3 flex justify-end">
+                      <Button variant="outline" onClick={resetAllFilters} className="gap-2">
+                        <X className="h-4 w-4" />
+                        Supprimer tous les filtres
+                      </Button>
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
