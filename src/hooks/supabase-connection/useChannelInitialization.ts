@@ -31,8 +31,8 @@ export const useChannelInitialization = ({
           updateLastHeartbeat();
         }
       })
-      // Fixed: Using system instead of broadcast and adding the required 'payload' parameter
-      .on('system', { event: 'heartbeat' }, (payload) => {
+      // Fixed: Properly handling the heartbeat event with the correct parameters
+      .on('system', { event: 'heartbeat' }, (payload, context) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
