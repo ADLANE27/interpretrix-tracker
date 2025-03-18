@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-// Remove the local Message interface since we're now importing it
 
 interface Channel {
   id: string;
@@ -129,7 +126,7 @@ export const MessagesTab = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages.length]);
 
   useEffect(() => {
     if (!selectedChannel) return;
@@ -146,7 +143,9 @@ export const MessagesTab = () => {
         },
         (payload) => {
           console.log("Realtime message update:", payload);
-          fetchMessages(selectedChannel.id);
+          setTimeout(() => {
+            fetchMessages(selectedChannel.id);
+          }, 100);
         }
       )
       .subscribe();
@@ -221,7 +220,6 @@ export const MessagesTab = () => {
 
           const sender = senderData?.[0];
           
-          // Process attachments if they exist
           let processedAttachments: Attachment[] = [];
           if (Array.isArray(message.attachments)) {
             processedAttachments = message.attachments
@@ -252,11 +250,13 @@ export const MessagesTab = () => {
         })
       );
 
+      console.log(`Processed ${messagesWithSenders.length} messages`);
+      
       setMessages(messagesWithSenders);
       
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-      }, 100);
+      }, 200);
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast({

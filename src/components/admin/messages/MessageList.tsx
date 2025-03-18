@@ -27,8 +27,10 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   };
 
+  // Add key prop based on messages length to force refresh when messages change
   return (
     <ChatMessageList
+      key={`message-list-${messages.length}`}
       messages={messages}
       currentUserId={currentUserId}
       channelId={messages.length > 0 ? messages[0].channel_id : ""}
