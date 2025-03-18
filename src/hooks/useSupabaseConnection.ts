@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -211,7 +210,13 @@ export const useSupabaseConnection = () => {
       await supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
-    await handleReconnect(channelRef.current, isReconnectingRef.current, initializeChannel);
+    await handleReconnect(
+      channelRef.current, 
+      isReconnectingRef.current, 
+      async () => {
+        await initializeChannel();
+      }
+    );
   };
 
   useEffect(() => {
@@ -274,8 +279,8 @@ export const useSupabaseConnection = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-        console.log('[useSupabaseConnection] User signed out or deleted');
+      if (event === 'SIGNED_OUT') {
+        console.log('[useSupabaseConnection] User signed out');
         isExplicitDisconnectRef.current = true;
         clearIntervals();
         clearReconnectTimeout();
