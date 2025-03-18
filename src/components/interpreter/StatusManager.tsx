@@ -157,13 +157,13 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               disabled={isLoading}
               className={`
                 w-full transition-all duration-200 text-sm font-medium
-                h-10 px-2 sm:px-4
+                h-10 px-1 sm:px-4
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              <Icon className="h-4 w-4 mr-1 sm:mr-1.5 flex-shrink-0" />
               <span className="truncate">{statusConfig[statusKey].label}</span>
             </Button>
           </motion.div>

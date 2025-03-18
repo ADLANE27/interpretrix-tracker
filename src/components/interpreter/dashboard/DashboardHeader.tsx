@@ -20,10 +20,10 @@ export const DashboardHeader = ({
   isMobile
 }: DashboardHeaderProps) => {
   return (
-    <header className="h-auto border-b bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
+    <header className="h-auto border-b bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-2 md:px-6 sticky top-0 z-40 safe-area-top">
       <div className="h-[56px] md:h-16 flex items-center justify-between">
         {isMobile && (
-          <Button variant="ghost" size="icon" className="-ml-1 flex items-center justify-center" onClick={onMenuClick}>
+          <Button variant="ghost" size="icon" className="-ml-0.5 flex items-center justify-center" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
         )}
@@ -32,7 +32,7 @@ export const DashboardHeader = ({
         </div>
       </div>
       
-      <div className="py-2 md:py-3 w-full overflow-visible">
+      <div className="py-1.5 md:py-3 w-full overflow-visible">
         <StatusManager currentStatus={profile?.status} onStatusChange={onStatusChange} />
       </div>
     </header>

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft, Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -109,17 +109,6 @@ export const MessagingTab = () => {
           "lg:col-span-2",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChannels(true)}
-              className="absolute top-3 left-2 z-10 h-8 px-2"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Retour
-            </Button>
-          )}
           <InterpreterChat 
             channelId={selectedChannelId}
             filters={filters}
