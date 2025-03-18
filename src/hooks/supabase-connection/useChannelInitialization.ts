@@ -9,7 +9,7 @@ import { useWakeLock } from './useWakeLock';
 
 interface UseChannelInitializationProps {
   onChannelError: () => void;
-  handleReconnect: () => void;  // Updated to not require parameters
+  handleReconnect: (channel: RealtimeChannel | null, initializeChannel: () => Promise<void>) => void;
   isExplicitDisconnect: boolean;
   isReconnecting: boolean;
   setConnectionStatus: (status: 'connected' | 'connecting' | 'disconnected') => void;
@@ -55,7 +55,7 @@ export const useChannelInitialization = ({
           const isValid = await validateChannelPresence(channel);
           if (!isValid && !isReconnecting && !isExplicitDisconnect) {
             console.warn('[useChannelInitialization] Invalid presence state detected');
-            handleReconnect();
+            handleReconnect(channel, () => setupChannelSubscription(channel));
           }
         }, CONNECTION_CONSTANTS.PRESENCE_VALIDATION_DELAY);
       })
@@ -95,7 +95,7 @@ export const useChannelInitialization = ({
         } catch (error) {
           console.error('[useChannelInitialization] Channel setup error:', error);
           if (!isExplicitDisconnect && !isReconnecting) {
-            handleReconnect();
+            handleReconnect(channel, () => setupChannelSubscription(channel));
           }
         }
       }
@@ -104,7 +104,7 @@ export const useChannelInitialization = ({
         console.error(`[useChannelInitialization] Channel ${status}`);
         setConnectionStatus('disconnected');
         if (!isExplicitDisconnect && !isReconnecting) {
-          handleReconnect();
+          handleReconnect(channel, () => setupChannelSubscription(channel));
         }
       }
     });
