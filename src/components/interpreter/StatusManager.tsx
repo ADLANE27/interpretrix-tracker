@@ -136,7 +136,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   return (
     <motion.div 
-      className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm"
+      className="flex flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm px-1 overflow-visible"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -148,7 +148,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
             key={statusKey}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-auto"
+            className="flex-grow min-w-0"
           >
             <Button
               variant={status === statusKey ? "default" : "outline"}
@@ -156,15 +156,15 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               onClick={() => handleStatusChange(statusKey)}
               disabled={isLoading}
               className={`
-                w-full sm:w-auto transition-all duration-200 whitespace-nowrap 
-                min-w-[120px] h-11 sm:h-10 text-sm font-medium
+                w-full transition-all duration-200 text-sm font-medium
+                h-10 px-2 sm:px-4
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-4 w-4" />
-              {statusConfig[statusKey].label}
+              <Icon className="h-4 w-4 mr-1.5 flex-shrink-0" />
+              <span className="truncate">{statusConfig[statusKey].label}</span>
             </Button>
           </motion.div>
         );

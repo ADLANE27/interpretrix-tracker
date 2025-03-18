@@ -55,7 +55,7 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full pb-safe max-h-full">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
           "p-2 lg:col-span-1 overflow-hidden",
