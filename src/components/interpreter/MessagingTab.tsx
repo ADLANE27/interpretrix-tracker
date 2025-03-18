@@ -55,17 +55,16 @@ export const MessagingTab = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6 h-[calc(100vh-300px)] min-h-[500px] relative">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full relative">
       {(!selectedChannelId || showChannels || !isMobile) && (
         <Card className={cn(
-          "p-2 sm:p-4 lg:col-span-1 shadow-lg border-0 overflow-hidden",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm",
-          "transition-all duration-300 hover:shadow-xl rounded-lg",
-          "dark:from-gray-800 dark:to-gray-900",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
+          "p-2 lg:col-span-1 overflow-hidden",
+          "bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm",
+          "transition-all duration-200 rounded-lg",
+          isMobile && selectedChannelId && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
-          <div className="flex items-center justify-between mb-2 sm:mb-4 px-2">
-            <h2 className="text-base sm:text-lg font-semibold">Conversations</h2>
+          <div className="flex items-center justify-between mb-2 px-2">
+            <h2 className="text-base font-semibold">Conversations</h2>
             <MentionsPopover
               mentions={unreadMentions}
               totalCount={totalUnreadCount}
@@ -74,7 +73,7 @@ export const MessagingTab = () => {
               onDelete={deleteMention}
             >
               <div className={cn(
-                "transition-all duration-200 p-1.5 sm:p-2",
+                "transition-all duration-200 p-1.5",
                 "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
                 "border border-gray-100 dark:border-gray-700",
                 "rounded-lg flex items-center justify-center relative",
@@ -100,9 +99,9 @@ export const MessagingTab = () => {
       
       {(selectedChannelId && (!showChannels || !isMobile)) ? (
         <Card className={cn(
-          "p-2 sm:p-4 shadow-lg border-0 overflow-hidden backdrop-blur-sm relative transition-all duration-300",
-          "bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] dark:from-gray-800 dark:to-gray-900",
-          "hover:shadow-xl rounded-lg",
+          "p-2 overflow-hidden backdrop-blur-sm relative transition-all duration-200",
+          "bg-white/90 dark:bg-gray-800/90",
+          "rounded-lg",
           "lg:col-span-2",
           isMobile && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
@@ -125,9 +124,9 @@ export const MessagingTab = () => {
           />
         </Card>
       ) : !selectedChannelId && !isMobile ? (
-        <Card className="p-3 sm:p-4 lg:col-span-2 shadow-lg border-0 flex items-center justify-center bg-gradient-to-br from-[#FFFFFF] to-[#F8F9FA] backdrop-blur-sm transition-all duration-300 hover:shadow-xl rounded-xl dark:from-gray-800 dark:to-gray-900">
+        <Card className="p-3 lg:col-span-2 flex items-center justify-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm transition-all duration-200 rounded-lg">
           <div className="text-center text-muted-foreground">
-            <p className="text-base sm:text-lg font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
+            <p className="text-base font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
           </div>
         </Card>
       ) : null}

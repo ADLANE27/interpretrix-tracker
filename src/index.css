@@ -73,6 +73,11 @@
   #root {
     @apply h-full w-full overflow-hidden;
   }
+
+  input, textarea, button, select, a {
+    @apply touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @layer components {
@@ -113,5 +118,14 @@
 
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  
+  .mobile-safe-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  }
+  
+  .mobile-button {
+    @apply h-12 min-w-12 rounded-full flex items-center justify-center;
+    touch-action: manipulation;
   }
 }

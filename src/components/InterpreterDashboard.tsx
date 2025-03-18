@@ -121,8 +121,6 @@ export const InterpreterDashboard = () => {
 
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
-
-      // Validate work hours from the database
       const workHours = isValidWorkHours(data.work_hours) ? data.work_hours : null;
 
       const transformedProfile: Profile = {
@@ -276,8 +274,7 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen w-full bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
-      {/* Overlay for mobile sidebar */}
+    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
           isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -285,11 +282,10 @@ export const InterpreterDashboard = () => {
         onClick={() => setIsSidebarOpen(false)}
       />
       
-      {/* Sidebar */}
       <div 
-        className={`fixed md:relative w-[280px] z-50 transition-transform duration-300 h-[100vh] ${
+        className={`fixed md:relative w-[270px] z-50 transition-transform duration-200 h-[100vh] ${
           isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
-        } md:translate-x-0`}
+        } md:translate-x-0 overflow-hidden`}
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
       >
         <Sidebar
@@ -303,9 +299,7 @@ export const InterpreterDashboard = () => {
         />
       </div>
       
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen w-full overflow-hidden">
-        <div className="safe-area-top" />
+      <main className="flex-1 flex flex-col h-full w-full overflow-hidden">
         <DashboardHeader 
           profile={profile}
           onStatusChange={async (newStatus) => {
@@ -318,7 +312,7 @@ export const InterpreterDashboard = () => {
           isMobile={isMobile}
         />
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative">
           <DashboardContent 
             activeTab={activeTab}
             profile={profile}
@@ -328,7 +322,6 @@ export const InterpreterDashboard = () => {
             onProfilePictureDelete={handleProfilePictureDelete}
           />
         </div>
-        <div className="safe-area-bottom" />
       </main>
 
       <PasswordChangeDialog
