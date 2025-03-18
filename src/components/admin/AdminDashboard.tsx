@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -355,7 +356,7 @@ const AdminDashboard = () => {
   return (
     <div className="flex flex-col h-full bg-[#1a2844]">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
-        <div className="flex justify-between items-center sticky top-0 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b shadow-sm bg-[#1a2844]">
+        <div className="flex justify-between items-center sticky top-0 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b border-[#2a3854] shadow-sm bg-[#1a2844]">
           {isMobile ? <div className="flex items-center gap-3 w-full">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>

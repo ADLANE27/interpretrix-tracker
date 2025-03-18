@@ -55,7 +55,7 @@ const Admin = () => {
   }, [navigate]);
 
   return (
-    <div className="h-screen w-full bg-[#1a2844] transition-colors duration-300">
+    <div className="h-screen w-full bg-[#1a2844] transition-colors duration-300 overflow-hidden">
       <div className="h-full w-full">
         <AdminDashboard />
       </div>
