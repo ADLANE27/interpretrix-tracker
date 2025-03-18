@@ -31,12 +31,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatisticsCards } from "./dashboard/StatisticsCards";
 import { Card } from "@/components/ui/card";
+
 interface WorkHours {
   start_morning?: string;
   end_morning?: string;
   start_afternoon?: string;
   end_afternoon?: string;
 }
+
 interface Interpreter {
   id: string;
   first_name: string;
@@ -60,6 +62,7 @@ interface Interpreter {
   next_mission_source_language?: string | null;
   next_mission_target_language?: string | null;
 }
+
 const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -106,6 +109,7 @@ const AdminDashboard = () => {
     activeTab,
     setActiveTab
   } = useTabPersistence("interpreters");
+
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
@@ -163,6 +167,7 @@ const AdminDashboard = () => {
       clearInterval(connectionCheckInterval);
     };
   }, []);
+
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
@@ -237,6 +242,7 @@ const AdminDashboard = () => {
       });
     }
   };
+
   const fetchTodayMissions = async () => {
     try {
       const today = new Date();
@@ -273,6 +279,7 @@ const AdminDashboard = () => {
       console.error("[AdminDashboard] Error fetching today's missions:", error);
     }
   };
+
   const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
@@ -286,6 +293,7 @@ const AdminDashboard = () => {
       description: "Tous les filtres ont été réinitialisés"
     });
   };
+
   const handleLogout = async () => {
     try {
       const {
@@ -305,6 +313,7 @@ const AdminDashboard = () => {
       });
     }
   };
+
   const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
     setEmploymentStatusFilters(current => {
       if (current.includes(status)) {
@@ -314,6 +323,7 @@ const AdminDashboard = () => {
       }
     });
   };
+
   const filteredInterpreters = interpreters.filter(interpreter => {
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
     const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
@@ -331,14 +341,17 @@ const AdminDashboard = () => {
     }
     return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
   });
+
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setIsMenuOpen(false);
   };
+
   const availableCount = interpreters.filter(i => i.status === "available").length;
   const busyCount = interpreters.filter(i => i.status === "busy").length;
   const pauseCount = interpreters.filter(i => i.status === "pause").length;
   const unavailableCount = interpreters.filter(i => i.status === "unavailable").length;
+
   return <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
         <div className="flex justify-between items-center sticky top-0 bg-background/95 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b shadow-sm">
@@ -378,20 +391,17 @@ const AdminDashboard = () => {
             <div className="min-h-full p-4 sm:p-6 space-y-6 bg-[#1a2844]">
               <StatisticsCards totalInterpreters={interpreters.length} availableCount={availableCount} busyCount={busyCount} pauseCount={pauseCount} unavailableCount={unavailableCount} todayMissionsCount={todayMissionsCount} />
               
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">Filtrage par statut</h2>
-                  <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="gap-2">
-                    {viewMode === "grid" ? <>
-                        <List className="h-4 w-4" />
-                        Vue compacte
-                      </> : <>
-                        <LayoutGrid className="h-4 w-4" />
-                        Vue détaillée
-                      </>}
-                  </Button>
-                </div>
+              <div className="flex justify-between items-center">
                 <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
+                <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="gap-2">
+                  {viewMode === "grid" ? <>
+                      <List className="h-4 w-4" />
+                      Vue compacte
+                    </> : <>
+                      <LayoutGrid className="h-4 w-4" />
+                      Vue détaillée
+                    </>}
+                </Button>
               </div>
 
               <Card className="p-6">
@@ -574,4 +584,5 @@ const AdminDashboard = () => {
       </Tabs>
     </div>;
 };
+
 export default AdminDashboard;

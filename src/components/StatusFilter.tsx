@@ -46,7 +46,7 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
   };
 
   return (
-    <div className="flex flex-wrap gap-2 justify-center">
+    <div className="flex flex-wrap gap-2">
       {statuses.map((status) => {
         const Icon = status.icon;
         return (
