@@ -19,7 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MessageList } from "./messages/MessageList";
-import { Message, Attachment } from "@/types/messaging";
+import { Message, Attachment, isAttachment, parseReactions } from "@/types/messaging";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -214,12 +214,26 @@ export const MessagesTab = () => {
                 avatarUrl: ''
               },
               timestamp: new Date(message.created_at),
-              reactions: {},
+              reactions: parseReactions(message.reactions),
               attachments: []
             } as Message;
           }
 
           const sender = senderData?.[0];
+          
+          // Process attachments if they exist
+          let processedAttachments: Attachment[] = [];
+          if (Array.isArray(message.attachments)) {
+            processedAttachments = message.attachments
+              .filter(att => isAttachment(att))
+              .map(att => ({
+                url: (att as any).url,
+                filename: (att as any).filename,
+                type: (att as any).type,
+                size: (att as any).size
+              }));
+          }
+          
           return {
             ...message,
             sender: sender ? {
@@ -232,7 +246,8 @@ export const MessagesTab = () => {
               avatarUrl: ''
             },
             timestamp: new Date(message.created_at),
-            reactions: message.reactions || {}
+            reactions: parseReactions(message.reactions),
+            attachments: processedAttachments
           } as Message;
         })
       );
