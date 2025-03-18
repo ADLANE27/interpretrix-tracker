@@ -391,8 +391,10 @@ const AdminDashboard = () => {
             <div className="min-h-full p-4 sm:p-6 space-y-6 bg-[#1a2844]">
               <StatisticsCards totalInterpreters={interpreters.length} availableCount={availableCount} busyCount={busyCount} pauseCount={pauseCount} unavailableCount={unavailableCount} todayMissionsCount={todayMissionsCount} />
               
-              <div className="flex justify-between items-center">
-                <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex-1 w-full sm:w-auto flex justify-center">
+                  <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
+                </div>
                 <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="gap-2">
                   {viewMode === "grid" ? <>
                       <List className="h-4 w-4" />
@@ -586,3 +588,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
