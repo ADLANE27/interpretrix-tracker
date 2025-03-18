@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
 import { ChatInput } from "./ChatInput";
@@ -19,6 +18,8 @@ interface ChatProps {
 }
 
 const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
+  const queryClient = useQueryClient();
+  
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
     queryFn: async () => {
@@ -30,7 +31,9 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       
       if (error) throw error;
       return data;
-    }
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -40,7 +43,6 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Update newName when channel data is loaded
   useEffect(() => {
     if (channel?.name) {
       setNewName(channel.name);
@@ -49,7 +51,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const {
     messages,
-    isLoading,
+    isLoading: _isLoading,
     sendMessage,
     deleteMessage,
     currentUserId,
@@ -67,6 +69,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
       if (error) throw error;
 
+      queryClient.invalidateQueries({ queryKey: ['channel', channelId] });
+      
       toast({
         title: "Succès",
         description: "Le canal a été renommé",
@@ -138,7 +142,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
+              <h2 className="text-lg font-semibold truncate">{channel?.name || 'Chargement...'}</h2>
               {userRole === 'admin' && (
                 <Button
                   size="sm"
@@ -161,12 +165,12 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       </div>
       
       <div className="flex-1 w-full overflow-hidden">
-        {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
-          </div>
-        ) : (
-          <ScrollArea className="h-full pr-2">
+        <ScrollArea className="h-full pr-2">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-gray-500 mt-10">
+              Aucun message dans cette conversation
+            </div>
+          ) : (
             <MessageList
               messages={messages}
               currentUserId={currentUserId}
@@ -176,8 +180,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
               setReplyTo={setReplyTo}
               channelId={channelId}
             />
-          </ScrollArea>
-        )}
+          )}
+        </ScrollArea>
       </div>
       
       <div className="w-full bg-white border-t">

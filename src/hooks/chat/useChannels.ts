@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export interface Channel {
   id: string;
@@ -13,17 +13,14 @@ export interface Channel {
 export const useChannels = () => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Check if user is admin
-  const { data: isAdmin } = useQuery({
+  // Check if user is admin with caching
+  const { data: isAdmin = false } = useQuery({
     queryKey: ['isUserAdmin'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Chat Debug] No authenticated user found');
-        return false;
-      }
-      console.log('[Chat Debug] Checking admin status for user:', user.id);
+      if (!user) return false;
 
       const { data: roles, error } = await supabase
         .from('user_roles')
@@ -31,57 +28,66 @@ export const useChannels = () => {
         .eq('user_id', user.id)
         .maybeSingle();
       
-      if (error) {
-        console.error('[Chat Debug] Error checking admin role:', error);
-        return false;
-      }
-
-      const isAdmin = roles?.role === 'admin';
-      console.log('[Chat Debug] User is admin:', isAdmin);
-      return isAdmin;
-    }
+      if (error) return false;
+      return roles?.role === 'admin';
+    },
+    staleTime: Infinity, // Cache this value indefinitely (until logout)
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
-  // Fetch channels - now with detailed logging
-  const { data: channels = [], refetch: fetchChannels } = useQuery({
+  // Fetch channels with caching
+  const { data: channels = [] } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
-      console.log('[Chat Debug] Starting to fetch channels');
-      
+      console.log('[Chat] Fetching channels');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('[Chat Debug] No authenticated user found while fetching channels');
-        return [];
-      }
-      console.log('[Chat Debug] Fetching channels for user:', user.id);
-
-      // Get channels user is a member of
+      if (!user) return [];
+      
       const { data: channels, error: channelsError } = await supabase
         .from('chat_channels')
         .select('*')
         .order('name');
 
       if (channelsError) {
-        console.error('[Chat Debug] Error fetching channels:', channelsError);
+        console.error('[Chat] Error fetching channels:', channelsError);
         toast({
           title: "Error",
           description: "Failed to fetch channels",
           variant: "destructive",
         });
-        throw channelsError;
+        return [];
       }
 
-      console.log('[Chat Debug] Successfully fetched channels:', channels);
       return channels;
     },
-    retry: 1
+    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
+    refetchOnWindowFocus: false,
   });
 
+  // Set up realtime subscription for channels
+  useEffect(() => {
+    const channel = supabase.channel('public:chat_channels')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chat_channels'
+      }, () => {
+        // Invalidate cache to refresh channels
+        queryClient.invalidateQueries({ queryKey: ['channels'] });
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return {
-    channels,
+    channels: channels || [],
     selectedChannelId,
     setSelectedChannelId,
     isAdmin,
-    fetchChannels
+    fetchChannels: () => queryClient.invalidateQueries({ queryKey: ['channels'] })
   };
 };
