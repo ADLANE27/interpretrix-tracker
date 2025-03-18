@@ -14,8 +14,15 @@ interface SubscriptionStates {
   mentions?: SubscriptionState;
 }
 
-// Extended payload type to include our custom property
-interface ExtendedPayload extends RealtimePostgresChangesPayload<{ [key: string]: any }> {
+// Define our custom payload type
+interface ExtendedPayload {
+  schema: string;
+  table: string;
+  commit_timestamp: string;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: Record<string, any>;
+  old?: Record<string, any>;
+  errors: string | null;
   receivedAt?: number;
 }
 
@@ -80,10 +87,14 @@ export const useSubscriptions = (
             (payload) => {
               if (!isSubscribed) return;
               
-              // Cast to our extended type and add timestamp
-              const extendedPayload = payload as ExtendedPayload;
+              // Create our extended payload with additional properties
+              const extendedPayload: ExtendedPayload = {
+                ...payload as any,
+                eventType: (payload as any).eventType,
+                receivedAt: Date.now()
+              };
+
               const now = Date.now();
-              // Add timestamp to track when we received this event
               extendedPayload.receivedAt = now;
               lastEventTimestamp.current = now;
               
@@ -126,10 +137,8 @@ export const useSubscriptions = (
       console.log(`[Chat] Health check: ${timeSinceLastEvent}ms since last event`);
       
       // If it's been too long since we received an event, reconnect
-      // Use BASE_RECONNECT_DELAY instead of MAX_RECONNECT_DELAY which doesn't exist
       if (timeSinceLastEvent > CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * 10 && channelRef.current) {
         console.log('[Chat] Subscription appears stalled, reconnecting...');
-        // Fix: Pass a number directly instead of a function
         setRetryCount(retryCount + 1);
       }
     }, 30000); // Check every 30 seconds
