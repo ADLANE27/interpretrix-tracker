@@ -36,6 +36,7 @@ export const useSubscriptions = (
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
   const lastEventTimestamp = useRef<number>(Date.now());
+  const instanceId = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -69,8 +70,9 @@ export const useSubscriptions = (
       }
 
       try {
-        // Create a new channel with a unique name based on channelId and timestamp to avoid conflicts
-        const channelName = `chat-${channelId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        // Create a new channel with a unique name based on channelId and instanceId
+        // Using a consistent naming scheme with instanceId ensures unique channel names
+        const channelName = `chat-channel-${channelId}-${instanceId.current}`;
         console.log('[Chat] Creating new channel with unique name:', channelName);
         
         channelRef.current = supabase.channel(channelName);
