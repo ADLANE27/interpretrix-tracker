@@ -32,6 +32,8 @@ export function useRealtimeSubscription(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const retryCountRef = useRef(0);
   const [isConnected, setIsConnected] = useState(false);
+  // Generate a stable instance ID for consistent channel naming
+  const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -46,9 +48,11 @@ export function useRealtimeSubscription(
           channelRef.current = null;
         }
 
-        console.log('[Realtime] Setting up new channel for:', config.table);
+        // Use a consistent naming pattern for channels
+        const channelName = `realtime-${config.table}-${instanceIdRef.current}`;
+        console.log('[Realtime] Setting up new channel with name:', channelName);
         
-        const channel = supabase.channel(`realtime_${config.table}`);
+        const channel = supabase.channel(channelName);
         
         channelRef.current = channel.on(
           'postgres_changes' as any,

@@ -15,6 +15,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import {

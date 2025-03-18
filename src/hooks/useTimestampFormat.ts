@@ -47,7 +47,7 @@ export const useTimestampFormat = () => {
     }
   };
 
-  // Add a new function for formatting message timestamps consistently
+  // Format message timestamps consistently - this is crucial for uniform timestamp display
   const formatMessageTime = (date: Date | string): string => {
     try {
       const messageDate = typeof date === 'string' ? new Date(date) : date;

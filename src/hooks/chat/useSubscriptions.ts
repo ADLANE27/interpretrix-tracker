@@ -70,10 +70,10 @@ export const useSubscriptions = (
       }
 
       try {
-        // Create a new channel with a unique name based on channelId and instanceId
-        // Using a consistent naming scheme with instanceId ensures unique channel names
-        const channelName = `chat-channel-${channelId}-${instanceId.current}`;
-        console.log('[Chat] Creating new channel with unique name:', channelName);
+        // Create a consistent channel name format for both interpreters and admins
+        // Using channel ID and timestamp ensures a unique name but maintains consistent format
+        const channelName = `chat-messages-${channelId}-${instanceId.current}`;
+        console.log('[Chat] Creating new channel with name:', channelName);
         
         channelRef.current = supabase.channel(channelName);
 
@@ -96,10 +96,6 @@ export const useSubscriptions = (
                 receivedAt: Date.now()
               };
 
-              const now = Date.now();
-              extendedPayload.receivedAt = now;
-              lastEventTimestamp.current = now;
-              
               console.log('[Chat] Message change received:', extendedPayload.eventType, extendedPayload);
               onRealtimeEvent(extendedPayload);
             }
