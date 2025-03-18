@@ -46,7 +46,7 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
   };
 
   return (
-    <div className="flex flex-wrap gap-3 justify-center">
+    <div className="flex flex-wrap gap-2 justify-center">
       {statuses.map((status) => {
         const Icon = status.icon;
         return (
@@ -54,14 +54,14 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             key={status.id}
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              transition-all duration-200 rounded-full px-5
+              transition-all duration-200 rounded-full px-4 py-1 text-sm
               ${selectedStatus === status.id 
                 ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
                 : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
-            <Icon className="mr-2 h-4 w-4" />
+            <Icon className="mr-1 h-3.5 w-3.5" />
             {status.label}
           </Button>
         )}
