@@ -543,7 +543,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6">
+            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
               <MessagesTab />
             </div>
           </TabsContent>
@@ -567,7 +567,7 @@ const AdminDashboard = () => {
           </TabsContent>
         </div>
 
-        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 bg-[#1a2844] backdrop-blur-sm">
+        <footer className="py-3 text-center text-sm text-muted-foreground border-t px-4 sm:px-6 backdrop-blur-sm bg-slate-50">
           © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
       </Tabs>
