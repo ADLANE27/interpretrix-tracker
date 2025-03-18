@@ -61,7 +61,7 @@ export const useChannelInitialization = ({
           updateLastHeartbeat();
         }
       })
-      .on('broadcast', { event: 'heartbeat' }, () => {
+      .on('broadcast', { event: 'heartbeat', schema: 'public' }, () => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
