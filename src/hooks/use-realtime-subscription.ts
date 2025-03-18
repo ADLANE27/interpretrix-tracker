@@ -32,8 +32,8 @@ export function useRealtimeSubscription(
   const channelRef = useRef<RealtimeChannel | null>(null);
   const retryCountRef = useRef(0);
   const [isConnected, setIsConnected] = useState(false);
-  // Generate a stable instance ID for consistent channel naming
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+  const seenEvents = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -48,8 +48,9 @@ export function useRealtimeSubscription(
           channelRef.current = null;
         }
 
-        // Use a consistent naming pattern for channels
-        const channelName = `realtime-${config.table}-${instanceIdRef.current}`;
+        // Use the table name as the base for the channel name
+        // This ensures consistent naming across different components
+        const channelName = `realtime-${config.table}`;
         console.log('[Realtime] Setting up new channel with name:', channelName);
         
         const channel = supabase.channel(channelName);
@@ -63,6 +64,29 @@ export function useRealtimeSubscription(
             filter: config.filter,
           },
           (payload) => {
+            // Generate a unique event ID for deduplication
+            const eventId = `${payload.eventType}-${
+              payload.eventType === 'DELETE' ? 
+              (payload.old as any)?.id : 
+              (payload.new as any)?.id
+            }-${payload.commit_timestamp}`;
+            
+            // Skip if we've already seen this exact event
+            if (seenEvents.current.has(eventId)) {
+              console.log('[Realtime] Skipping duplicate event:', eventId);
+              return;
+            }
+            
+            // Add to seen events set for deduplication
+            seenEvents.current.add(eventId);
+            
+            // Limit the size of the seen events set
+            if (seenEvents.current.size > 100) {
+              // Convert to array, remove oldest entries
+              const eventsArray = Array.from(seenEvents.current);
+              seenEvents.current = new Set(eventsArray.slice(-50));
+            }
+            
             console.log(`[Realtime] Received ${config.event} event for ${config.table}:`, payload);
             callback(payload);
           }
@@ -105,7 +129,7 @@ export function useRealtimeSubscription(
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [enabled, config.table, config.event, config.schema, config.filter]);
+  }, [enabled, config.table, config.event, config.schema, config.filter, callback, maxRetries, retryInterval, onError]);
 
   return { isConnected };
 }

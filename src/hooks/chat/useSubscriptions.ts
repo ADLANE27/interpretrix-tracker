@@ -37,6 +37,7 @@ export const useSubscriptions = (
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
   const lastEventTimestamp = useRef<number>(Date.now());
   const instanceId = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+  const seenEvents = useRef<Set<string>>(new Set());
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -70,9 +71,9 @@ export const useSubscriptions = (
       }
 
       try {
-        // Create a consistent channel name format for both interpreters and admins
-        // Using channel ID and timestamp ensures a unique name but maintains consistent format
-        const channelName = `chat-messages-${channelId}-${instanceId.current}`;
+        // ALL clients (admin and interpreter) use the exact same channel name format
+        // This ensures consistent channel naming across different user types
+        const channelName = `chat-${channelId}`;
         console.log('[Chat] Creating new channel with name:', channelName);
         
         channelRef.current = supabase.channel(channelName);
@@ -89,12 +90,38 @@ export const useSubscriptions = (
             (payload) => {
               if (!isSubscribed) return;
               
+              // Generate a unique event ID for deduplication
+              const eventId = `${payload.eventType}-${
+                payload.eventType === 'DELETE' ? 
+                (payload.old as any)?.id : 
+                (payload.new as any)?.id
+              }-${payload.commit_timestamp}`;
+              
+              // Skip if we've already seen this exact event
+              if (seenEvents.current.has(eventId)) {
+                console.log('[Chat] Skipping duplicate event:', eventId);
+                return;
+              }
+              
+              // Add to seen events set for deduplication
+              seenEvents.current.add(eventId);
+              
+              // Limit the size of the seen events set
+              if (seenEvents.current.size > 100) {
+                // Convert to array, remove oldest entries
+                const eventsArray = Array.from(seenEvents.current);
+                seenEvents.current = new Set(eventsArray.slice(-50));
+              }
+              
               // Create our extended payload with additional properties
               const extendedPayload: ExtendedPayload = {
                 ...payload as any,
                 eventType: (payload as any).eventType,
                 receivedAt: Date.now()
               };
+
+              // Update last event timestamp for health checks
+              lastEventTimestamp.current = extendedPayload.receivedAt;
 
               console.log('[Chat] Message change received:', extendedPayload.eventType, extendedPayload);
               onRealtimeEvent(extendedPayload);
