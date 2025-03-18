@@ -59,6 +59,33 @@
   }
 }
 
+@layer components {
+  .gradient-border {
+    @apply border-l-4 border-l-palette-ocean-blue hover:border-l-palette-vivid-purple transition-colors;
+  }
+  
+  .card-header-gradient {
+    @apply bg-gradient-to-r from-slate-50 to-blue-50 dark:from-gray-800 dark:to-blue-900;
+  }
+  
+  .status-badge {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .hover-elevate {
+    @apply transition-all hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* New text gradient styles */
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue bg-clip-text text-transparent;
+  }
+
+  .text-gradient-secondary {
+    @apply bg-gradient-to-r from-palette-bright-orange to-palette-magenta-pink bg-clip-text text-transparent;
+  }
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
