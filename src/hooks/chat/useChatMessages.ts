@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment } from '@/types/messaging';
+import { Message, Attachment, parseReactions, isAttachment } from '@/types/messaging';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
@@ -103,13 +103,37 @@ export const useChatMessages = ({
             avatarUrl: ''
           };
 
+          // Parse reactions with type safety
+          const parsedReactions = parseReactions(msg.reactions);
+          
+          // Handle attachments with type safety
+          const parsedAttachments: Attachment[] = [];
+          if (Array.isArray(msg.attachments)) {
+            msg.attachments.forEach(att => {
+              if (typeof att === 'object' && att !== null) {
+                const attachment = {
+                  url: String(att['url'] || ''),
+                  filename: String(att['filename'] || ''),
+                  type: String(att['type'] || ''),
+                  size: Number(att['size'] || 0)
+                };
+                if (isAttachment(attachment)) {
+                  parsedAttachments.push(attachment);
+                }
+              }
+            });
+          }
+
           return {
             id: msg.id,
             content: msg.content,
             sender: sender,
+            sender_id: msg.sender_id,
+            channel_id: msg.channel_id,
             timestamp: new Date(msg.created_at),
-            reactions: msg.reactions || {},
-            attachments: msg.attachments || [],
+            created_at: msg.created_at,
+            reactions: parsedReactions,
+            attachments: parsedAttachments,
             channelType: 'group',
             parent_message_id: msg.parent_message_id
           };

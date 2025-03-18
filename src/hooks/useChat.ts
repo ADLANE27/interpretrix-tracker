@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment, isAttachment } from '@/types/messaging';
+import { Message, Attachment, isAttachment, parseReactions } from '@/types/messaging';
 import { useMessageActions } from './chat/useMessageActions';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSubscriptions } from './chat/useSubscriptions';
@@ -94,10 +94,10 @@ export const useChat = (channelId: string) => {
         
         // Transform the data into Message objects
         const formattedMessages: Message[] = data.map(msg => {
-          const parsedReactions = typeof msg.reactions === 'string' 
-            ? JSON.parse(msg.reactions || '{}') 
-            : (msg.reactions || {});
+          // Parse reactions with type safety
+          const parsedReactions = parseReactions(msg.reactions);
             
+          // Handle attachments with type safety
           const parsedAttachments: Attachment[] = [];
           if (Array.isArray(msg.attachments)) {
             msg.attachments.forEach(att => {
@@ -126,7 +126,10 @@ export const useChat = (channelId: string) => {
             id: msg.id,
             content: msg.content,
             sender: sender,
+            sender_id: msg.sender_id,
+            channel_id: msg.channel_id,
             timestamp: new Date(msg.created_at),
+            created_at: msg.created_at,
             reactions: parsedReactions,
             attachments: parsedAttachments,
             channelType: 'group',  // Default, will be updated if needed

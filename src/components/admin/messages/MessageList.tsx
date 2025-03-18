@@ -21,14 +21,17 @@ export const MessageList: React.FC<MessageListProps> = ({
   // Adapt to the new ChatMessageList interface
   const handleDeleteMessage = async (messageId: string) => {
     if (!currentUserId) return;
-    await onDeleteMessage(messageId, currentUserId);
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      await onDeleteMessage(messageId, message.sender_id);
+    }
   };
 
   return (
     <ChatMessageList
       messages={messages}
       currentUserId={currentUserId?.id || currentUserId}
-      channelId={messages[0]?.channel_id || ""}
+      channelId={messages.length > 0 ? messages[0].channel_id : ""}
       onDeleteMessage={handleDeleteMessage}
       onReplyToMessage={onReplyToMessage}
     />

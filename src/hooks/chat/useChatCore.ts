@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment, MessageData } from '@/types/messaging';
+import { Message, Attachment, MessageData, isAttachment, parseReactions } from '@/types/messaging';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { playNotificationSound } from '@/utils/notificationSound';
@@ -104,9 +104,26 @@ export const useChatCore = ({
             avatarUrl: ''
           };
 
-          const parsedReactions = typeof msg.reactions === 'string' 
-            ? JSON.parse(msg.reactions || '{}') 
-            : (msg.reactions || {});
+          // Parse reactions with type safety
+          const parsedReactions = parseReactions(msg.reactions);
+
+          // Handle attachments with type safety
+          const parsedAttachments: Attachment[] = [];
+          if (Array.isArray(msg.attachments)) {
+            msg.attachments.forEach(att => {
+              if (typeof att === 'object' && att !== null) {
+                const attachment = {
+                  url: String(att['url'] || ''),
+                  filename: String(att['filename'] || ''),
+                  type: String(att['type'] || ''),
+                  size: Number(att['size'] || 0)
+                };
+                if (isAttachment(attachment)) {
+                  parsedAttachments.push(attachment);
+                }
+              }
+            });
+          }
 
           return {
             id: msg.id,
@@ -115,8 +132,9 @@ export const useChatCore = ({
             sender_id: msg.sender_id,
             channel_id: msg.channel_id,
             timestamp: new Date(msg.created_at),
-            reactions: parsedReactions as Record<string, string[]>,
-            attachments: msg.attachments as Attachment[] || [],
+            created_at: msg.created_at,
+            reactions: parsedReactions,
+            attachments: parsedAttachments,
             channelType: 'group',
             parent_message_id: msg.parent_message_id
           };
@@ -204,6 +222,27 @@ export const useChatCore = ({
               }
               
               const sender = senderData[0];
+
+              // Parse reactions with type safety
+              const parsedReactions = parseReactions(newMessage.reactions);
+              
+              // Handle attachments with type safety
+              const parsedAttachments: Attachment[] = [];
+              if (Array.isArray(newMessage.attachments)) {
+                newMessage.attachments.forEach((att: any) => {
+                  if (typeof att === 'object' && att !== null) {
+                    const attachment = {
+                      url: String(att['url'] || ''),
+                      filename: String(att['filename'] || ''),
+                      type: String(att['type'] || ''),
+                      size: Number(att['size'] || 0)
+                    };
+                    if (isAttachment(attachment)) {
+                      parsedAttachments.push(attachment);
+                    }
+                  }
+                });
+              }
               
               const formattedMessage: Message = {
                 id: newMessage.id,
@@ -216,8 +255,9 @@ export const useChatCore = ({
                 sender_id: newMessage.sender_id,
                 channel_id: newMessage.channel_id,
                 timestamp: new Date(newMessage.created_at),
-                reactions: (newMessage.reactions as any as Record<string, string[]>) || {},
-                attachments: (newMessage.attachments as any as Attachment[]) || [],
+                created_at: newMessage.created_at,
+                reactions: parsedReactions,
+                attachments: parsedAttachments,
                 channelType: 'group',
                 parent_message_id: newMessage.parent_message_id
               };
@@ -261,11 +301,32 @@ export const useChatCore = ({
         queryClient.setQueryData<Message[]>(['channel-messages', channelId], (oldData = []) => {
           return oldData.map(msg => {
             if (msg.id === payload.new.id) {
+              // Parse reactions with type safety
+              const parsedReactions = parseReactions(payload.new.reactions);
+              
+              // Handle attachments with type safety
+              const parsedAttachments: Attachment[] = [];
+              if (Array.isArray(payload.new.attachments)) {
+                payload.new.attachments.forEach((att: any) => {
+                  if (typeof att === 'object' && att !== null) {
+                    const attachment = {
+                      url: String(att['url'] || ''),
+                      filename: String(att['filename'] || ''),
+                      type: String(att['type'] || ''),
+                      size: Number(att['size'] || 0)
+                    };
+                    if (isAttachment(attachment)) {
+                      parsedAttachments.push(attachment);
+                    }
+                  }
+                });
+              }
+              
               return {
                 ...msg,
                 content: payload.new.content,
-                reactions: (payload.new.reactions as any as Record<string, string[]>) || {},
-                attachments: (payload.new.attachments as any as Attachment[]) || []
+                reactions: parsedReactions,
+                attachments: parsedAttachments
               };
             }
             return msg;

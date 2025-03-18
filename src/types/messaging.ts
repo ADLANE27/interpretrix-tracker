@@ -10,12 +10,13 @@ export interface Message {
     avatarUrl?: string;
   };
   timestamp: Date;
+  created_at?: string;      // Include for compatibility
+  sender_id: string;
+  channel_id: string;
   parent_message_id?: string | null;
-  reactions?: Record<string, string[]>;
+  reactions: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
-  channel_id?: string;
-  sender_id?: string;
 }
 
 export interface MessageData {
@@ -25,13 +26,13 @@ export interface MessageData {
   created_at: string;
   channel_id: string;
   parent_message_id?: string | null;
-  reactions: Record<string, string[]>;
+  reactions: Record<string, string[]> | Json;
   attachments?: Array<{
     url: string;
     filename: string;
     type: string;
     size: number;
-  }>;
+  }> | Json[];
 }
 
 export interface Attachment {
@@ -50,6 +51,31 @@ export function isAttachment(obj: any): obj is Attachment {
     typeof obj.type === 'string' &&
     typeof obj.size === 'number'
   );
+}
+
+// Helper function to validate and convert reactions
+export function parseReactions(reactions: any): Record<string, string[]> {
+  if (typeof reactions === 'string') {
+    try {
+      reactions = JSON.parse(reactions);
+    } catch (e) {
+      return {};
+    }
+  }
+  
+  if (typeof reactions !== 'object' || reactions === null) {
+    return {};
+  }
+  
+  const result: Record<string, string[]> = {};
+  
+  Object.entries(reactions).forEach(([emoji, users]) => {
+    if (Array.isArray(users) && users.every(u => typeof u === 'string')) {
+      result[emoji] = users;
+    }
+  });
+  
+  return result;
 }
 
 export interface MessageListProps {
