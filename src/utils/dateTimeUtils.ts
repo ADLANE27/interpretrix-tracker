@@ -11,7 +11,7 @@ export const formatTimeString = (dateString: string | null): string => {
   if (!dateString) return '';
   
   try {
-    // Just extract the time portion without any date parsing
+    // Just extract the time portion directly from the string
     if (dateString.includes('T')) {
       return dateString.split('T')[1].substring(0, 5);
     }
@@ -30,6 +30,7 @@ export const formatDateDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
   
   try {
+    // Parse without timezone conversion
     const date = parseISO(dateString);
     return format(date, 'EEEE d MMMM yyyy', { locale: fr });
   } catch (error) {
@@ -43,7 +44,7 @@ export const formatDateTimeDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
   
   try {
-    // Extract original time without conversion
+    // Extract original time directly from string
     const originalTime = formatTimeString(dateString);
     const date = parseISO(dateString);
     return `${format(date, 'EEEE d MMMM yyyy', { locale: fr })} à ${originalTime}`;

@@ -543,19 +543,17 @@ const AdminDashboard = () => {
                       </Popover>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 lg:col-span-3">
+                    <div className="space-y-2">
                       <Label htmlFor="rate-sort">Trier par tarif</Label>
-                      <div className="flex gap-2 items-start">
-                        <Select value={rateSort} onValueChange={setRateSort}>
-                          <SelectTrigger id="rate-sort">
-                            <SelectValue placeholder="Trier par tarif" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Pas de tri</SelectItem>
-                            <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <Select value={rateSort} onValueChange={setRateSort}>
+                        <SelectTrigger id="rate-sort">
+                          <SelectValue placeholder="Trier par tarif" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Pas de tri</SelectItem>
+                          <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

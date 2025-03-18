@@ -4,6 +4,7 @@ import { fr } from 'date-fns/locale';
 import { formatTimeString, formatDateDisplay } from '@/utils/dateTimeUtils';
 
 export const useTimeFormat = () => {
+  // Get time directly from string without any parsing or timezone conversion
   const getTimeFromString = (dateString: string | null) => {
     return formatTimeString(dateString);
   };
