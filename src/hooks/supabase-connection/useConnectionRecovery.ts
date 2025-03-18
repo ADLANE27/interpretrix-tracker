@@ -24,14 +24,8 @@ export const useConnectionRecovery = ({
 
   const handleReconnect = useCallback(async (
     channel: RealtimeChannel | null,
-    isReconnecting: boolean,
     initializeChannel: () => Promise<void>
   ) => {
-    if (isReconnecting) {
-      console.log('[ConnectionRecovery] Already reconnecting, skipping');
-      return;
-    }
-
     clearReconnectTimeout();
     onReconnectStart();
 
@@ -58,7 +52,7 @@ export const useConnectionRecovery = ({
         await initializeChannel();
       } catch (error) {
         console.error('[ConnectionRecovery] Reconnection attempt failed:', error);
-        handleReconnect(channel, false, initializeChannel);
+        handleReconnect(channel, initializeChannel);
       }
     }, delay);
   }, [clearReconnectTimeout, onReconnectStart, onReconnectEnd]);
