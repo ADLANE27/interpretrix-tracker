@@ -211,8 +211,8 @@ export const useSupabaseConnection = () => {
       channelRef.current = null;
     }
     await handleReconnect(
-      channelRef.current, 
-      isReconnectingRef.current, 
+      channelRef.current,
+      false,
       async () => {
         await initializeChannel();
       }

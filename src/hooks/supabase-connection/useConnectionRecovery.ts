@@ -58,7 +58,7 @@ export const useConnectionRecovery = ({
         await initializeChannel();
       } catch (error) {
         console.error('[ConnectionRecovery] Reconnection attempt failed:', error);
-        handleReconnect(channel, isReconnecting, initializeChannel);
+        handleReconnect(channel, false, initializeChannel);
       }
     }, delay);
   }, [clearReconnectTimeout, onReconnectStart, onReconnectEnd]);
