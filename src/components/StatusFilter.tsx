@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Clock, Coffee, Phone, X } from "lucide-react";
 
@@ -65,9 +64,6 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             `}
             onClick={() => handleStatusClick(status.id)}
           >
-            {selectedStatus === status.id && (
-              <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50"></span>
-            )}
             <Icon className="mr-2 h-4 w-4" />
             <span className="font-medium drop-shadow-sm">{status.label}</span>
           </Button>

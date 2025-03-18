@@ -81,19 +81,16 @@ export const StatisticsCards = ({
               border border-white/10 shadow-lg hover:shadow-xl transition-all duration-300
               hover:-translate-y-1`}
           >
-            {/* Enhanced contrast for readability */}
             <div className="relative flex flex-col items-center justify-center space-y-2">
               <div className={`p-2 rounded-full ${card.iconBg} backdrop-blur-sm`}>
                 <Icon className="h-7 w-7 text-white" />
               </div>
               
-              {/* Value with enhanced visibility */}
               <div className="flex flex-col items-center">
-                <span className={`text-3xl font-bold mt-1 ${card.textColor} drop-shadow-md`}>
+                <span className={`text-3xl font-bold mt-1 ${card.textColor} drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]`}>
                   {card.value}
                 </span>
                 
-                {/* Title with background for better readability */}
                 <span className={`text-sm ${card.textColor} font-medium px-2 py-0.5 rounded-full bg-black/20 backdrop-blur-sm mt-1`}>
                   {card.title}
                 </span>
