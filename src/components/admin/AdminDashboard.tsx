@@ -31,14 +31,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { StatisticsCards } from "./dashboard/StatisticsCards";
 import { Card } from "@/components/ui/card";
-
 interface WorkHours {
   start_morning?: string;
   end_morning?: string;
   start_afternoon?: string;
   end_afternoon?: string;
 }
-
 interface Interpreter {
   id: string;
   first_name: string;
@@ -62,7 +60,6 @@ interface Interpreter {
   next_mission_source_language?: string | null;
   next_mission_target_language?: string | null;
 }
-
 const AdminDashboard = () => {
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -75,70 +72,76 @@ const AdminDashboard = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [todayMissionsCount, setTodayMissionsCount] = useState(0);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sortedLanguages = [...LANGUAGES].sort((a, b) => a.localeCompare(b));
   const employmentStatusOptions = getEmploymentStatusOptions();
-
-  const tabs = [
-    { id: "interpreters", label: "Interprètes" },
-    { id: "missions", label: "Missions" },
-    { id: "reservations", label: "Réservations" },
-    { id: "calendar", label: "Calendrier" },
-    { id: "messages", label: "Messages" },
-    { id: "users", label: "Utilisateurs" },
-    { id: "guide", label: "Guide" },
-  ];
-
-  const { activeTab, setActiveTab } = useTabPersistence("interpreters");
-
+  const tabs = [{
+    id: "interpreters",
+    label: "Interprètes"
+  }, {
+    id: "missions",
+    label: "Missions"
+  }, {
+    id: "reservations",
+    label: "Réservations"
+  }, {
+    id: "calendar",
+    label: "Calendrier"
+  }, {
+    id: "messages",
+    label: "Messages"
+  }, {
+    id: "users",
+    label: "Utilisateurs"
+  }, {
+    id: "guide",
+    label: "Guide"
+  }];
+  const {
+    activeTab,
+    setActiveTab
+  } = useTabPersistence("interpreters");
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
 
     // Channel for interpreter profile changes (status updates)
-    const interpreterChannel = supabase.channel('admin-interpreter-profiles')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'interpreter_profiles'
-      }, async payload => {
-        console.log(`[AdminDashboard] Interpreter profiles changed:`, payload);
-        await fetchInterpreters();
-      })
-      .subscribe(status => {
-        console.log(`[AdminDashboard] Interpreter profiles subscription status:`, status);
-      });
-    
+    const interpreterChannel = supabase.channel('admin-interpreter-profiles').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'interpreter_profiles'
+    }, async payload => {
+      console.log(`[AdminDashboard] Interpreter profiles changed:`, payload);
+      await fetchInterpreters();
+    }).subscribe(status => {
+      console.log(`[AdminDashboard] Interpreter profiles subscription status:`, status);
+    });
     channels.push(interpreterChannel);
 
     // Channel for private reservations changes
-    const reservationsChannel = supabase.channel('admin-private-reservations')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'private_reservations'
-      }, async payload => {
-        console.log(`[AdminDashboard] Private reservations changed:`, payload);
-        await fetchInterpreters();
-      })
-      .subscribe(status => {
-        console.log(`[AdminDashboard] Private reservations subscription status:`, status);
-      });
-    
+    const reservationsChannel = supabase.channel('admin-private-reservations').on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'private_reservations'
+    }, async payload => {
+      console.log(`[AdminDashboard] Private reservations changed:`, payload);
+      await fetchInterpreters();
+    }).subscribe(status => {
+      console.log(`[AdminDashboard] Private reservations subscription status:`, status);
+    });
     channels.push(reservationsChannel);
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("[AdminDashboard] Tab became visible, refreshing data");
         fetchInterpreters();
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     const handleConnectionState = () => {
       const connectionState = supabase.getChannels().length > 0;
       console.log("[AdminDashboard] Connection state:", connectionState ? "connected" : "disconnected");
@@ -147,12 +150,10 @@ const AdminDashboard = () => {
         channels.forEach(channel => channel.subscribe());
       }
     };
-
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
 
     // Initial fetch
     fetchInterpreters();
-
     return () => {
       console.log("[AdminDashboard] Cleaning up subscriptions");
       channels.forEach(channel => {
@@ -162,13 +163,13 @@ const AdminDashboard = () => {
       clearInterval(connectionCheckInterval);
     };
   }, []);
-
   const fetchInterpreters = async () => {
     try {
       console.log("[AdminDashboard] Fetching interpreters data");
-      const { data, error } = await supabase
-        .from("interpreter_profiles")
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from("interpreter_profiles").select(`
           *,
           private_reservations!left(
             id,
@@ -180,15 +181,9 @@ const AdminDashboard = () => {
             status
           )
         `);
-
       if (error) throw error;
-
       console.log("[AdminDashboard] Raw data:", data);
-
-      const uniqueInterpreters = Array.from(new Map(
-        (data || []).map(item => [item.id, item])
-      ).values());
-
+      const uniqueInterpreters = Array.from(new Map((data || []).map(item => [item.id, item])).values());
       const mappedInterpreters: Interpreter[] = uniqueInterpreters.map(interpreter => {
         let workHours = null;
         if (interpreter.work_hours && typeof interpreter.work_hours === 'object') {
@@ -200,28 +195,16 @@ const AdminDashboard = () => {
             end_afternoon: hours.end_afternoon || ''
           };
         }
-
         const now = new Date();
 
         // Find next scheduled private reservation
-        const nextReservation = interpreter.private_reservations?.find(reservation => 
-          reservation?.start_time && 
-          new Date(reservation.start_time) > now && 
-          reservation.status === 'scheduled'
-        );
-
+        const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
         console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name} next reservation:`, nextReservation);
-
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
           last_name: interpreter.last_name || "",
-          status: (interpreter.status === "available" ||
-                  interpreter.status === "unavailable" ||
-                  interpreter.status === "pause" ||
-                  interpreter.status === "busy") 
-                  ? interpreter.status 
-                  : "unavailable" as const,
+          status: interpreter.status === "available" || interpreter.status === "unavailable" || interpreter.status === "pause" || interpreter.status === "busy" ? interpreter.status : "unavailable" as const,
           employment_status: interpreter.employment_status || "salaried_aft",
           languages: interpreter.languages || [],
           phone_interpretation_rate: interpreter.phone_interpretation_rate,
@@ -240,7 +223,6 @@ const AdminDashboard = () => {
           work_hours: workHours
         };
       });
-
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
 
@@ -255,55 +237,42 @@ const AdminDashboard = () => {
       });
     }
   };
-
   const fetchTodayMissions = async () => {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
       const todayStart = today.toISOString();
       const tomorrowStart = tomorrow.toISOString();
-      
       console.log("[AdminDashboard] Fetching today's missions", todayStart, tomorrowStart);
-      
+
       // Fetch scheduled missions for today
-      const { data: scheduledMissions, error: scheduledError } = await supabase
-        .from("interpretation_missions")
-        .select("id")
-        .eq("mission_type", "scheduled")
-        .gte("scheduled_start_time", todayStart)
-        .lt("scheduled_start_time", tomorrowStart);
-      
+      const {
+        data: scheduledMissions,
+        error: scheduledError
+      } = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
       if (scheduledError) throw scheduledError;
-      
+
       // Fetch private reservations for today
-      const { data: privateReservations, error: reservationsError } = await supabase
-        .from("private_reservations")
-        .select("id")
-        .eq("status", "scheduled")
-        .gte("start_time", todayStart)
-        .lt("start_time", tomorrowStart);
-      
+      const {
+        data: privateReservations,
+        error: reservationsError
+      } = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
       if (reservationsError) throw reservationsError;
-      
       const scheduledCount = scheduledMissions?.length || 0;
       const reservationsCount = privateReservations?.length || 0;
       const totalMissionsToday = scheduledCount + reservationsCount;
-      
       console.log("[AdminDashboard] Today's missions count:", {
         scheduledMissions: scheduledCount,
         privateReservations: reservationsCount,
         total: totalMissionsToday
       });
-      
       setTodayMissionsCount(totalMissionsToday);
     } catch (error) {
       console.error("[AdminDashboard] Error fetching today's missions:", error);
     }
   };
-
   const resetAllFilters = () => {
     setSelectedStatus(null);
     setNameFilter("");
@@ -317,7 +286,6 @@ const AdminDashboard = () => {
       description: "Tous les filtres ont été réinitialisés"
     });
   };
-
   const handleLogout = async () => {
     try {
       const {
@@ -337,7 +305,6 @@ const AdminDashboard = () => {
       });
     }
   };
-
   const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
     setEmploymentStatusFilters(current => {
       if (current.includes(status)) {
@@ -347,56 +314,35 @@ const AdminDashboard = () => {
       }
     });
   };
-
   const filteredInterpreters = interpreters.filter(interpreter => {
     const matchesStatus = !selectedStatus || interpreter.status === selectedStatus;
-    const matchesName = nameFilter === "" || 
-      `${interpreter.first_name} ${interpreter.last_name}`
-        .toLowerCase()
-        .includes(nameFilter.toLowerCase());
+    const matchesName = nameFilter === "" || `${interpreter.first_name} ${interpreter.last_name}`.toLowerCase().includes(nameFilter.toLowerCase());
     const matchesLanguage = languageFilter === "all" || interpreter.languages.some(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
-      return source.toLowerCase().includes(languageFilter.toLowerCase()) || 
-             target?.toLowerCase().includes(languageFilter.toLowerCase());
+      return source.toLowerCase().includes(languageFilter.toLowerCase()) || target?.toLowerCase().includes(languageFilter.toLowerCase());
     });
-    const matchesPhone = phoneFilter === "" || 
-      (interpreter.phone_number && 
-       interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase()));
-    const matchesBirthCountry = birthCountryFilter === "all" || 
-      interpreter.birth_country === birthCountryFilter;
-    const matchesEmploymentStatus = employmentStatusFilters.length === 0 || 
-      employmentStatusFilters.includes(interpreter.employment_status);
-
-    return matchesStatus && 
-           matchesName && 
-           matchesLanguage && 
-           matchesPhone && 
-           matchesBirthCountry && 
-           matchesEmploymentStatus;
+    const matchesPhone = phoneFilter === "" || interpreter.phone_number && interpreter.phone_number.toLowerCase().includes(phoneFilter.toLowerCase());
+    const matchesBirthCountry = birthCountryFilter === "all" || interpreter.birth_country === birthCountryFilter;
+    const matchesEmploymentStatus = employmentStatusFilters.length === 0 || employmentStatusFilters.includes(interpreter.employment_status);
+    return matchesStatus && matchesName && matchesLanguage && matchesPhone && matchesBirthCountry && matchesEmploymentStatus;
   }).sort((a, b) => {
     if (rateSort === "rate-asc") {
       return (a.tarif_15min || 0) - (b.tarif_15min || 0);
     }
-    return `${a.first_name} ${a.last_name}`
-      .localeCompare(`${b.first_name} ${b.last_name}`);
+    return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
   });
-
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     setIsMenuOpen(false);
   };
-
   const availableCount = interpreters.filter(i => i.status === "available").length;
   const busyCount = interpreters.filter(i => i.status === "busy").length;
   const pauseCount = interpreters.filter(i => i.status === "pause").length;
   const unavailableCount = interpreters.filter(i => i.status === "unavailable").length;
-
-  return (
-    <div className="flex flex-col h-full">
+  return <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
         <div className="flex justify-between items-center sticky top-0 bg-background/95 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b shadow-sm">
-          {isMobile ? (
-            <div className="flex items-center gap-3 w-full">
+          {isMobile ? <div className="flex items-center gap-3 w-full">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
                   <Button variant="outline" size="icon" className="touch-target">
@@ -405,38 +351,22 @@ const AdminDashboard = () => {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[280px] sm:w-[320px]">
                   <div className="flex flex-col gap-1.5 mt-6">
-                    {tabs.map(tab => (
-                      <Button
-                        key={tab.id}
-                        variant={activeTab === tab.id ? "default" : "ghost"}
-                        className="justify-start h-11"
-                        onClick={() => handleTabChange(tab.id)}
-                      >
+                    {tabs.map(tab => <Button key={tab.id} variant={activeTab === tab.id ? "default" : "ghost"} className="justify-start h-11" onClick={() => handleTabChange(tab.id)}>
                         {tab.label}
-                      </Button>
-                    ))}
+                      </Button>)}
                   </div>
                 </SheetContent>
               </Sheet>
               <div className="flex-1 text-lg font-semibold">
                 {tabs.find(tab => tab.id === activeTab)?.label}
               </div>
-            </div>
-          ) : (
-            <div className="flex gap-4 items-center flex-1">
+            </div> : <div className="flex gap-4 items-center flex-1">
               <TabsList className="bg-muted/50 flex-1 gap-1">
-                {tabs.map(tab => (
-                  <TabsTrigger 
-                    key={tab.id} 
-                    value={tab.id} 
-                    className="flex-1 px-6"
-                  >
+                {tabs.map(tab => <TabsTrigger key={tab.id} value={tab.id} className="flex-1 px-6">
                     {tab.label}
-                  </TabsTrigger>
-                ))}
+                  </TabsTrigger>)}
               </TabsList>
-            </div>
-          )}
+            </div>}
           <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0">
             <LogOut className="h-4 w-4" />
             {!isMobile && "Se déconnecter"}
@@ -445,47 +375,27 @@ const AdminDashboard = () => {
 
         <div className="flex-1 min-h-0 relative">
           <TabsContent value="interpreters" className="absolute inset-0 overflow-auto">
-            <div className="min-h-full p-4 sm:p-6 space-y-6">
-              <StatisticsCards 
-                totalInterpreters={interpreters.length}
-                availableCount={availableCount}
-                busyCount={busyCount}
-                pauseCount={pauseCount}
-                unavailableCount={unavailableCount}
-                todayMissionsCount={todayMissionsCount}
-              />
+            <div className="min-h-full p-4 sm:p-6 space-y-6 bg-[#1a2844]">
+              <StatisticsCards totalInterpreters={interpreters.length} availableCount={availableCount} busyCount={busyCount} pauseCount={pauseCount} unavailableCount={unavailableCount} todayMissionsCount={todayMissionsCount} />
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-semibold">Filtrage par statut</h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-                    className="gap-2"
-                  >
-                    {viewMode === "grid" ? (
-                      <>
+                  <Button variant="outline" size="sm" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")} className="gap-2">
+                    {viewMode === "grid" ? <>
                         <List className="h-4 w-4" />
                         Vue compacte
-                      </>
-                    ) : (
-                      <>
+                      </> : <>
                         <LayoutGrid className="h-4 w-4" />
                         Vue détaillée
-                      </>
-                    )}
+                      </>}
                   </Button>
                 </div>
                 <StatusFilter selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
               </div>
 
               <Card className="p-6">
-                <Collapsible
-                  open={isFiltersOpen}
-                  onOpenChange={setIsFiltersOpen}
-                  className="space-y-2"
-                >
+                <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       <Filter className="h-5 w-5 text-primary" />
@@ -498,11 +408,7 @@ const AdminDashboard = () => {
                       </Button>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="w-9 p-0">
-                          {isFiltersOpen ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
+                          {isFiltersOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </Button>
                       </CollapsibleTrigger>
                     </div>
@@ -514,13 +420,7 @@ const AdminDashboard = () => {
                         <Label htmlFor="name-search">Nom</Label>
                         <div className="relative">
                           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="name-search"
-                            placeholder="Rechercher par nom..."
-                            className="pl-9"
-                            value={nameFilter}
-                            onChange={e => setNameFilter(e.target.value)}
-                          />
+                          <Input id="name-search" placeholder="Rechercher par nom..." className="pl-9" value={nameFilter} onChange={e => setNameFilter(e.target.value)} />
                         </div>
                       </div>
 
@@ -532,88 +432,52 @@ const AdminDashboard = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">Toutes les langues</SelectItem>
-                            {LANGUAGES.map(lang => (
-                              <SelectItem key={lang} value={lang}>
+                            {LANGUAGES.map(lang => <SelectItem key={lang} value={lang}>
                                 {lang}
-                              </SelectItem>
-                            ))}
+                              </SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="phone-search">Numéro de téléphone</Label>
-                        <Input
-                          id="phone-search"
-                          placeholder="Rechercher par téléphone..."
-                          value={phoneFilter}
-                          onChange={e => setPhoneFilter(e.target.value)}
-                        />
+                        <Input id="phone-search" placeholder="Rechercher par téléphone..." value={phoneFilter} onChange={e => setPhoneFilter(e.target.value)} />
                       </div>
 
-                      <CountrySelect
-                        value={birthCountryFilter}
-                        onValueChange={setBirthCountryFilter}
-                        label="Pays de naissance"
-                        placeholder="Sélectionner un pays"
-                      />
+                      <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
 
                       <div className="space-y-2">
                         <Label htmlFor="employment-status">Statut professionnel</Label>
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              role="combobox"
-                              className="w-full justify-between h-10"
-                            >
-                              {employmentStatusFilters.length === 0 
-                                ? "Tous les statuts" 
-                                : employmentStatusFilters.length === 1 
-                                  ? employmentStatusLabels[employmentStatusFilters[0]]
-                                  : `${employmentStatusFilters.length} statuts sélectionnés`}
+                            <Button variant="outline" role="combobox" className="w-full justify-between h-10">
+                              {employmentStatusFilters.length === 0 ? "Tous les statuts" : employmentStatusFilters.length === 1 ? employmentStatusLabels[employmentStatusFilters[0]] : `${employmentStatusFilters.length} statuts sélectionnés`}
                               <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-full p-0" align="start">
                             <div className="p-2">
                               <div className="flex items-center space-x-2 pb-2">
-                                <Checkbox 
-                                  id="select-all-statuses"
-                                  checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setEmploymentStatusFilters(Object.keys(employmentStatusLabels) as EmploymentStatus[]);
-                                    } else {
-                                      setEmploymentStatusFilters([]);
-                                    }
-                                  }}
-                                />
-                                <label 
-                                  htmlFor="select-all-statuses"
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
+                                <Checkbox id="select-all-statuses" checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length} onCheckedChange={checked => {
+                                if (checked) {
+                                  setEmploymentStatusFilters(Object.keys(employmentStatusLabels) as EmploymentStatus[]);
+                                } else {
+                                  setEmploymentStatusFilters([]);
+                                }
+                              }} />
+                                <label htmlFor="select-all-statuses" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                   Tout sélectionner
                                 </label>
                               </div>
                               
                               <div className="border-t my-2"></div>
                               
-                              {Object.entries(employmentStatusLabels).map(([value, label]) => (
-                                <div key={value} className="flex items-center space-x-2 py-1">
-                                  <Checkbox 
-                                    id={`status-${value}`}
-                                    checked={employmentStatusFilters.includes(value as EmploymentStatus)}
-                                    onCheckedChange={() => toggleEmploymentStatusFilter(value as EmploymentStatus)}
-                                  />
-                                  <label 
-                                    htmlFor={`status-${value}`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
+                              {Object.entries(employmentStatusLabels).map(([value, label]) => <div key={value} className="flex items-center space-x-2 py-1">
+                                  <Checkbox id={`status-${value}`} checked={employmentStatusFilters.includes(value as EmploymentStatus)} onCheckedChange={() => toggleEmploymentStatusFilter(value as EmploymentStatus)} />
+                                  <label htmlFor={`status-${value}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     {label}
                                   </label>
-                                </div>
-                              ))}
+                                </div>)}
                             </div>
                           </PopoverContent>
                         </Popover>
@@ -636,48 +500,33 @@ const AdminDashboard = () => {
                 </Collapsible>
               </Card>
 
-              <div className={viewMode === "grid" 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-                : "space-y-2"
-              }>
-                {filteredInterpreters.map(interpreter => (
-                  viewMode === "grid" ? (
-                    <InterpreterCard
-                      key={interpreter.id}
-                      interpreter={{
-                        id: interpreter.id,
-                        name: `${interpreter.first_name} ${interpreter.last_name}`,
-                        status: interpreter.status || "unavailable",
-                        employment_status: interpreter.employment_status,
-                        languages: interpreter.languages,
-                        tarif_15min: interpreter.tarif_15min,
-                        tarif_5min: interpreter.tarif_5min,
-                        phone_number: interpreter.phone_number,
-                        next_mission_start: interpreter.next_mission_start,
-                        next_mission_duration: interpreter.next_mission_duration,
-                        next_mission_source_language: interpreter.next_mission_source_language,
-                        next_mission_target_language: interpreter.next_mission_target_language,
-                        booth_number: interpreter.booth_number,
-                        private_phone: interpreter.private_phone,
-                        professional_phone: interpreter.professional_phone,
-                        work_hours: interpreter.work_hours
-                      }}
-                    />
-                  ) : (
-                    <InterpreterListItem
-                      key={interpreter.id}
-                      interpreter={{
-                        id: interpreter.id,
-                        name: `${interpreter.first_name} ${interpreter.last_name}`,
-                        status: interpreter.status || "unavailable",
-                        employment_status: interpreter.employment_status,
-                        languages: interpreter.languages,
-                        next_mission_start: interpreter.next_mission_start,
-                        next_mission_duration: interpreter.next_mission_duration,
-                      }}
-                    />
-                  )
-                ))}
+              <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4" : "space-y-2"}>
+                {filteredInterpreters.map(interpreter => viewMode === "grid" ? <InterpreterCard key={interpreter.id} interpreter={{
+                id: interpreter.id,
+                name: `${interpreter.first_name} ${interpreter.last_name}`,
+                status: interpreter.status || "unavailable",
+                employment_status: interpreter.employment_status,
+                languages: interpreter.languages,
+                tarif_15min: interpreter.tarif_15min,
+                tarif_5min: interpreter.tarif_5min,
+                phone_number: interpreter.phone_number,
+                next_mission_start: interpreter.next_mission_start,
+                next_mission_duration: interpreter.next_mission_duration,
+                next_mission_source_language: interpreter.next_mission_source_language,
+                next_mission_target_language: interpreter.next_mission_target_language,
+                booth_number: interpreter.booth_number,
+                private_phone: interpreter.private_phone,
+                professional_phone: interpreter.professional_phone,
+                work_hours: interpreter.work_hours
+              }} /> : <InterpreterListItem key={interpreter.id} interpreter={{
+                id: interpreter.id,
+                name: `${interpreter.first_name} ${interpreter.last_name}`,
+                status: interpreter.status || "unavailable",
+                employment_status: interpreter.employment_status,
+                languages: interpreter.languages,
+                next_mission_start: interpreter.next_mission_start,
+                next_mission_duration: interpreter.next_mission_duration
+              }} />)}
               </div>
             </div>
           </TabsContent>
@@ -723,8 +572,6 @@ const AdminDashboard = () => {
           © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
         </footer>
       </Tabs>
-    </div>
-  );
+    </div>;
 };
-
 export default AdminDashboard;
