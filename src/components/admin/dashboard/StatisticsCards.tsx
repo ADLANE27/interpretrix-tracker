@@ -24,37 +24,43 @@ export const StatisticsCards = ({
       title: "Interprètes",
       value: totalInterpreters,
       icon: Users,
-      color: "from-blue-400 to-blue-600",
+      color: "from-palette-ocean-blue/80 to-palette-bright-orange/40",
+      borderGlow: "group-hover:border-palette-ocean-blue/50",
     },
     {
       title: "Missions aujourd'hui",
       value: todayMissionsCount,
       icon: CalendarDays,
-      color: "from-purple-400 to-purple-600",
+      color: "from-palette-magenta-pink/80 to-palette-vivid-purple/40",
+      borderGlow: "group-hover:border-palette-magenta-pink/50",
     },
     {
       title: "Disponibles",
       value: availableCount,
       icon: CheckCircle2,
-      color: "from-green-400 to-green-600",
+      color: "from-green-400/80 to-emerald-600/40",
+      borderGlow: "group-hover:border-green-400/50",
     },
     {
       title: "En appel",
       value: busyCount,
       icon: Phone,
-      color: "from-violet-400 to-violet-600",
+      color: "from-palette-vivid-purple/80 to-indigo-600/40",
+      borderGlow: "group-hover:border-palette-vivid-purple/50",
     },
     {
       title: "En pause",
       value: pauseCount,
       icon: Coffee,
-      color: "from-orange-400 to-orange-600",
+      color: "from-palette-bright-orange/80 to-amber-600/40",
+      borderGlow: "group-hover:border-palette-bright-orange/50",
     },
     {
       title: "Indisponibles",
       value: unavailableCount,
       icon: X,
-      color: "from-red-400 to-red-600",
+      color: "from-red-400/80 to-rose-600/40",
+      borderGlow: "group-hover:border-red-400/50",
     },
   ];
 
@@ -65,12 +71,20 @@ export const StatisticsCards = ({
         return (
           <Card
             key={index}
-            className={`bg-gradient-to-br ${card.color} text-white p-4 shadow-lg hover:shadow-xl transition-shadow`}
+            className={`group relative overflow-hidden bg-gradient-to-br ${card.color} text-white p-4 
+              border border-white/5 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300
+              hover:-translate-y-1 ${card.borderGlow}`}
           >
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <Icon className="h-8 w-8 opacity-80" />
-              <span className="text-2xl font-bold">{card.value}</span>
-              <span className="text-sm opacity-80">{card.title}</span>
+            {/* Subtle glow effect */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 
+              group-hover:opacity-20 transition-opacity duration-500"></div>
+            
+            <div className="relative flex flex-col items-center justify-center space-y-2">
+              <div className="p-2 rounded-full bg-white/10 backdrop-blur-sm">
+                <Icon className="h-7 w-7 opacity-90" />
+              </div>
+              <span className="text-2xl font-bold mt-1">{card.value}</span>
+              <span className="text-sm opacity-90">{card.title}</span>
             </div>
           </Card>
         );

@@ -13,25 +13,29 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
       id: "available", 
       label: "Disponible", 
       color: "from-green-400 to-green-600", 
-      icon: Clock 
+      icon: Clock,
+      hoverColor: "hover:bg-green-100/10" 
     },
     { 
       id: "busy", 
       label: "En appel", 
-      color: "from-violet-400 to-violet-600", 
-      icon: Phone 
+      color: "from-palette-vivid-purple to-indigo-600", 
+      icon: Phone,
+      hoverColor: "hover:bg-purple-100/10" 
     },
     { 
       id: "pause", 
       label: "En pause", 
-      color: "from-orange-400 to-orange-600", 
-      icon: Coffee 
+      color: "from-palette-bright-orange to-amber-600", 
+      icon: Coffee,
+      hoverColor: "hover:bg-orange-100/10" 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
-      color: "from-red-400 to-red-600", 
-      icon: X 
+      color: "from-red-400 to-rose-600", 
+      icon: X,
+      hoverColor: "hover:bg-red-100/10" 
     },
   ];
 
@@ -54,13 +58,16 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             key={status.id}
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              transition-all duration-200 rounded-full px-5
+              relative overflow-hidden transition-all duration-300 rounded-full px-5
               ${selectedStatus === status.id 
-                ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
-                : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
+                ? `bg-gradient-to-r ${status.color} text-white shadow-md border-transparent` 
+                : `border border-white/10 bg-black/20 backdrop-blur-sm text-white/80 ${status.hoverColor}`}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
+            {selectedStatus === status.id && (
+              <span className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent opacity-50"></span>
+            )}
             <Icon className="mr-2 h-4 w-4" />
             {status.label}
           </Button>
