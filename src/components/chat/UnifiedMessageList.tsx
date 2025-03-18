@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Message } from "@/types/messaging";
+import { Message, Attachment } from "@/types/messaging";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageAttachment } from "./MessageAttachment";
 import { format } from 'date-fns';
@@ -80,7 +80,9 @@ export const UnifiedMessageList: React.FC<MessageListProps> = ({
             {message.attachments.map((attachment, index) => (
               <MessageAttachment 
                 key={index} 
-                attachment={attachment} 
+                url={attachment.url}
+                filename={attachment.filename}
+                type={attachment.type}
                 dark={isCurrentUser} 
               />
             ))}

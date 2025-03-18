@@ -57,8 +57,6 @@ export const InterpreterChat = ({
   const {
     messages,
     isLoading,
-    isSubscribed,
-    subscriptionStatus,
     sendMessage,
     deleteMessage,
     currentUserId,
@@ -221,12 +219,6 @@ export const InterpreterChat = ({
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
-          </div>
-        ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
-              Connexion en cours...
-            </p>
           </div>
         ) : (
           <ScrollArea className="h-full pr-2">

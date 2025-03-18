@@ -18,7 +18,7 @@ export const useChat = (channelId: string) => {
     getCurrentUser();
   }, []);
 
-  // Fetch messages using the stored procedure
+  // Fetch messages using a normal query since the stored procedure isn't registered in TypeScript types
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ['channel-messages', channelId],
     queryFn: async () => {
@@ -27,15 +27,69 @@ export const useChat = (channelId: string) => {
       console.log('[Chat] Fetching messages for channel:', channelId);
       
       try {
-        // Using the stored procedure for efficient fetching
+        // Using a direct SQL query for efficient fetching
         const { data, error } = await supabase
-          .rpc('get_channel_messages_with_senders', {
-            p_channel_id: channelId
-          });
+          .from('chat_messages')
+          .select(`
+            id, 
+            content, 
+            created_at,
+            sender_id,
+            channel_id,
+            parent_message_id,
+            reactions,
+            attachments
+          `)
+          .eq('channel_id', channelId)
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
         
         if (!Array.isArray(data)) return [];
+        
+        // Get unique sender IDs for batch fetching
+        const senderIds = [...new Set(data.map(msg => msg.sender_id))];
+        
+        // Batch fetch all sender details
+        const { data: senders, error: sendersError } = await supabase
+          .from('interpreter_profiles')
+          .select('id, first_name, last_name, profile_picture_url')
+          .in('id', senderIds);
+          
+        if (sendersError) {
+          console.error('[Chat] Error fetching sender details:', sendersError);
+        }
+
+        // Create sender lookup map
+        const senderMap = {};
+        if (senders) {
+          senders.forEach(sender => {
+            senderMap[sender.id] = {
+              id: sender.id,
+              name: `${sender.first_name} ${sender.last_name}`,
+              avatarUrl: sender.profile_picture_url || ''
+            };
+          });
+        }
+
+        // For admin users not found in interpreter profiles, fetch from auth.users via function
+        const missingIds = senderIds.filter(id => !senderMap[id]);
+        if (missingIds.length > 0) {
+          const { data: adminSenders, error: adminError } = await supabase
+            .rpc('batch_get_message_sender_details', { p_sender_ids: missingIds });
+            
+          if (adminError) {
+            console.error('[Chat] Error fetching admin details:', adminError);
+          } else if (adminSenders) {
+            adminSenders.forEach(sender => {
+              senderMap[sender.id] = {
+                id: sender.id,
+                name: sender.name,
+                avatarUrl: sender.avatar_url || ''
+              };
+            });
+          }
+        }
         
         // Transform the data into Message objects
         const formattedMessages: Message[] = data.map(msg => {
@@ -60,23 +114,26 @@ export const useChat = (channelId: string) => {
             });
           }
 
+          // Use sender details from our map, or provide fallback
+          const sender = senderMap[msg.sender_id] || {
+            id: msg.sender_id,
+            name: 'Unknown User',
+            avatarUrl: ''
+          };
+
           return {
             id: msg.id,
             content: msg.content,
-            sender: {
-              id: msg.sender_id,
-              name: msg.sender_name,
-              avatarUrl: msg.sender_avatar || ''
-            },
+            sender: sender,
             timestamp: new Date(msg.created_at),
             reactions: parsedReactions,
             attachments: parsedAttachments,
-            channelType: msg.channel_type as 'group' | 'direct',
+            channelType: 'group',  // Default, will be updated if needed
             parent_message_id: msg.parent_message_id
           };
         });
         
-        return formattedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        return formattedMessages;
       } catch (error) {
         console.error('[Chat] Error fetching messages:', error);
         return [];

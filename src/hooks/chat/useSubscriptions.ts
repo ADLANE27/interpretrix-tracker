@@ -3,8 +3,7 @@ import { useEffect, useRef } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-// This hook is now simplified and only used for specialized subscriptions
-// The main message subscription is now handled directly in useChat
+// This hook is now simplified to use our new realtime subscription pattern
 export const useSubscriptions = (
   channelId: string,
   currentUserId: string | null,
@@ -24,7 +23,7 @@ export const useSubscriptions = (
       channelRef.current = null;
     }
     
-    // Set up subscription for mentions (which is separate from regular messages)
+    // Set up subscription for mentions
     channelRef.current = supabase
       .channel(`mentions-${channelId}-${currentUserId}`)
       .on('postgres_changes', {
@@ -46,7 +45,5 @@ export const useSubscriptions = (
     };
   }, [channelId, currentUserId, onUpdate]);
 
-  return {
-    isSubscribed: true // Simplified to always return true
-  };
+  // No need to expose isSubscribed anymore as it's not used
 };
