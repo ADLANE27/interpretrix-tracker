@@ -32,7 +32,7 @@ export const useChannelInitialization = ({
         }
       })
       // Using the proper event type and function signature with all required parameters
-      .on('broadcast', { event: 'heartbeat' }, (payload) => {
+      .on('broadcast', { event: 'heartbeat' }, (payload, context) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
