@@ -17,6 +17,7 @@ import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import { useIsMobile } from "@/hooks/use-mobile";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
+import { MessageList } from "./messages/MessageList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Message {
   id: string;
@@ -143,7 +145,7 @@ export const MessagesTab = () => {
     if (!selectedChannel) return;
 
     const messagesChannel = supabase
-      .channel("chat_messages")
+      .channel(`chat_messages_${selectedChannel.id}`)
       .on(
         "postgres_changes",
         { 
@@ -152,14 +154,15 @@ export const MessagesTab = () => {
           table: "chat_messages",
           filter: `channel_id=eq.${selectedChannel.id}`
         },
-        () => {
+        (payload) => {
+          console.log("Realtime message update:", payload);
           fetchMessages(selectedChannel.id);
         }
       )
       .subscribe();
 
     const membersChannel = supabase
-      .channel("channel_members")
+      .channel(`channel_members_${selectedChannel.id}`)
       .on(
         "postgres_changes",
         {
@@ -184,6 +187,8 @@ export const MessagesTab = () => {
 
   const fetchMessages = async (channelId: string) => {
     try {
+      console.log(`Fetching messages for channel ${channelId}`);
+      
       const { data: messagesData, error: messagesError } = await supabase
         .from("chat_messages")
         .select("*")
@@ -199,6 +204,8 @@ export const MessagesTab = () => {
         });
         return;
       }
+
+      console.log(`Got ${messagesData?.length || 0} messages`);
 
       const messagesWithSenders = await Promise.all(
         (messagesData || []).map(async (message) => {
@@ -225,6 +232,10 @@ export const MessagesTab = () => {
       );
 
       setMessages(messagesWithSenders);
+      
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 100);
     } catch (error) {
       console.error("Error fetching messages:", error);
       toast({
@@ -813,115 +824,19 @@ export const MessagesTab = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-[#F8F9FA] p-4 space-y-6">
-                {messages.map((message, index) => (
-                  <React.Fragment key={message.id}>
-                    {shouldShowDate(message, messages[index - 1]) && (
-                      <div className="flex justify-center my-4">
-                        <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-[13px] font-medium shadow-sm">
-                          {formatMessageDate(new Date(message.created_at))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {renderMessageContent(message)}
-                    
-                    {messageThreads[message.id]?.length > 1 && (
-                      <div className="ml-12 mt-1 mb-6">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleThread(message.id)}
-                          className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
-                        >
-                          {expandedThreads.has(message.id) ? (
-                            <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 mr-1" />
-                          )}
-                          {messageThreads[message.id].length - 1} réponses
-                        </Button>
-                        
-                        {expandedThreads.has(message.id) && (
-                          <div className="space-y-2 mt-2 pl-4 border-l-2 border-gray-200">
-                            {messageThreads[message.id]
-                              .filter(reply => reply.id !== message.id)
-                              .map(reply => {
-                                const isCurrentUser = reply.sender?.id === currentUser.current?.id;
-                                return (
-                                  <div
-                                    key={reply.id}
-                                    className={`group relative mb-2 ${isCurrentUser ? 'flex flex-row-reverse' : 'flex'}`}
-                                  >
-                                    {!isCurrentUser && (
-                                      <Avatar className="h-7 w-7 shrink-0 mt-1">
-                                        {reply.sender?.avatarUrl && (
-                                          <AvatarImage src={reply.sender.avatarUrl} alt={reply.sender?.name || 'User'} className="object-cover" />
-                                        )}
-                                        <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
-                                          {reply.sender?.name?.substring(0, 2).toUpperCase() || '??'}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                    )}
-                                    
-                                    <div className={`flex-1 max-w-[80%] space-y-1 ${
-                                      isCurrentUser ? 'items-end mr-2' : 'items-start ml-2'
-                                    }`}>
-                                      {!isCurrentUser && (
-                                        <span className="text-xs font-medium text-gray-600 ml-1">
-                                          {reply.sender?.name}
-                                        </span>
-                                      )}
-                                      
-                                      <div className={`group relative ${
-                                        isCurrentUser 
-                                          ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl ml-auto' 
-                                          : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
-                                      } px-3 py-2 break-words`}>
-                                        <div className="text-[14px]">
-                                          {(() => {
-                                            try {
-                                              const data = JSON.parse(reply.content);
-                                              if (data.type === 'attachment' && data.file) {
-                                                return <MessageAttachment url={data.file.url} filename={data.file.name} locale="fr" />;
-                                              }
-                                            } catch (e) {
-                                              return reply.content;
-                                            }
-                                            return reply.content;
-                                          })()}
-                                        </div>
-                                        
-                                        <div className="absolute right-2 bottom-1 flex items-center gap-1">
-                                          <span className="text-[10px] text-gray-500">
-                                            {format(new Date(reply.created_at), 'HH:mm')}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-                                        {isCurrentUser && (
-                                          <button
-                                            onClick={() => deleteMessage(reply.id, reply.sender_id)}
-                                            className="p-1 rounded-full hover:bg-gray-100"
-                                            aria-label="Supprimer le message"
-                                          >
-                                            <Trash2 className="h-3.5 w-3.5 text-gray-500 hover:text-red-500" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+              <ScrollArea className="flex-1">
+                <div className="bg-[#F8F9FA] p-4">
+                  <MessageList 
+                    messages={messages}
+                    expandedThreads={expandedThreads}
+                    currentUserId={currentUser.current?.id}
+                    onToggleThread={toggleThread}
+                    onDeleteMessage={deleteMessage}
+                    onReplyToMessage={handleReply}
+                  />
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
 
               <div className="border-t p-4 bg-background safe-area-bottom">
                 {replyTo && (

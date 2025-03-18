@@ -62,7 +62,7 @@ export const useChat = (channelId: string) => {
         }
 
         // Create sender lookup map
-        const senderMap = {};
+        const senderMap: {[key: string]: {id: string, name: string, avatarUrl: string}} = {};
         if (senders) {
           senders.forEach(sender => {
             senderMap[sender.id] = {
@@ -82,7 +82,7 @@ export const useChat = (channelId: string) => {
           if (adminError) {
             console.error('[Chat] Error fetching admin details:', adminError);
           } else if (adminSenders) {
-            adminSenders.forEach(sender => {
+            adminSenders.forEach((sender: any) => {
               senderMap[sender.id] = {
                 id: sender.id,
                 name: sender.name,
@@ -134,13 +134,14 @@ export const useChat = (channelId: string) => {
           };
         });
         
+        console.log(`[Chat] Formatted ${formattedMessages.length} messages`);
         return formattedMessages;
       } catch (error) {
         console.error('[Chat] Error fetching messages:', error);
         return [];
       }
     },
-    staleTime: 1 * 60 * 1000, // Keep data fresh for 1 minute
+    staleTime: 10 * 1000, // Keep data fresh for 10 seconds to reduce excessive refetching
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
@@ -162,7 +163,7 @@ export const useChat = (channelId: string) => {
         // Invalidate only after a small delay to prevent multiple unnecessary fetches
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['channel-messages', channelId] });
-        }, 300);
+        }, 100);
       })
       .subscribe();
     

@@ -49,7 +49,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   };
 
-  // Group messages by thread
+  // Group messages by parent_message_id or by their own id if they're root messages
   const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
     const threadId = message.parent_message_id || message.id;
     if (!acc[threadId]) {
@@ -62,8 +62,13 @@ export const MessageList: React.FC<MessageListProps> = ({
   // Get root messages (messages that start a thread)
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  // Sort root messages by creation date
+  rootMessages.sort((a, b) => {
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" key={messages.length}>
       {rootMessages.map((message, index) => (
         <React.Fragment key={message.id}>
           {shouldShowDate(message, rootMessages[index - 1]) && (
