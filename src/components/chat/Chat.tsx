@@ -37,7 +37,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Change from HTMLInputElement to HTMLTextAreaElement to match ChatInput expectations
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update newName when channel data is loaded
   useEffect(() => {
