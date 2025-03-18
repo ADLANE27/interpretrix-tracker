@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Card } from './ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
 import { Phone, Clock, User } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
@@ -33,10 +33,22 @@ interface InterpreterCardProps {
 }
 
 const statusConfig = {
-  available: { color: 'bg-interpreter-available', label: 'Disponible' },
-  busy: { color: 'bg-interpreter-busy', label: 'En appel' },
-  pause: { color: 'bg-interpreter-pause', label: 'En pause' },
-  unavailable: { color: 'bg-interpreter-unavailable', label: 'Indisponible' },
+  available: { 
+    color: 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm', 
+    label: 'Disponible' 
+  },
+  busy: { 
+    color: 'bg-gradient-to-r from-indigo-400 to-purple-500 text-white shadow-sm', 
+    label: 'En appel' 
+  },
+  pause: { 
+    color: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm', 
+    label: 'En pause' 
+  },
+  unavailable: { 
+    color: 'bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-sm', 
+    label: 'Indisponible' 
+  },
 };
 
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
@@ -48,21 +60,20 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
     .filter(lang => lang.source && lang.target);
 
   return (
-    <Card className="p-6 hover:shadow-md transition-shadow">
-      <div className="space-y-6">
-        {/* Header with name and status */}
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="text-xl font-semibold">{interpreter.name}</h3>
-            <p className="text-sm text-muted-foreground">
-              {employmentStatusLabels[interpreter.employment_status]}
-            </p>
-          </div>
-          <div className={`px-3 py-1 rounded-full text-sm text-white ${statusConfig[interpreter.status].color}`}>
+    <Card className="hover-elevate gradient-border">
+      <CardHeader className="card-header-gradient">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-gradient-primary">{interpreter.name}</CardTitle>
+          <div className={`px-3 py-1 rounded-full text-sm ${statusConfig[interpreter.status].color}`}>
             {statusConfig[interpreter.status].label}
           </div>
         </div>
+        <p className="text-sm text-muted-foreground">
+          {employmentStatusLabels[interpreter.employment_status]}
+        </p>
+      </CardHeader>
 
+      <CardContent className="space-y-4 pt-4">
         {/* Languages Section */}
         <div className="space-y-2">
           <h4 className="text-sm font-medium uppercase text-muted-foreground">LANGUES</h4>
@@ -70,10 +81,10 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
             {parsedLanguages.map((lang, index) => (
               <div
                 key={index}
-                className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm flex items-center gap-1"
+                className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
               >
                 <span>{lang.source}</span>
-                <span className="text-blue-400">→</span>
+                <span className="text-palette-vivid-purple">→</span>
                 <span>{lang.target}</span>
               </div>
             ))}
@@ -86,19 +97,19 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
           <div className="space-y-2">
             {interpreter.booth_number && (
               <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-muted-foreground" />
+                <User className="h-4 w-4 text-palette-ocean-blue" />
                 <span>Cabine {interpreter.booth_number}</span>
               </div>
             )}
             {interpreter.phone_number && (
               <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
+                <Phone className="h-4 w-4 text-palette-ocean-blue" />
                 <span>{interpreter.phone_number}</span>
               </div>
             )}
             {interpreter.work_hours && (
               <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="h-4 w-4 text-palette-ocean-blue" />
                 <span>
                   {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning}, {' '}
                   {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
@@ -107,28 +118,28 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
             )}
           </div>
         </div>
+      </CardContent>
 
-        {/* Additional Info */}
-        {(interpreter.next_mission_start || interpreter.tarif_15min || interpreter.tarif_5min) && (
-          <div className="border-t pt-4 space-y-3">
-            {interpreter.next_mission_start && (
-              <UpcomingMissionBadge
-                startTime={interpreter.next_mission_start}
-                estimatedDuration={interpreter.next_mission_duration || 0}
-                sourceLang={interpreter.next_mission_source_language}
-                targetLang={interpreter.next_mission_target_language}
-              />
-            )}
-            {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
-              <div className="text-sm text-muted-foreground">
-                {interpreter.tarif_5min !== null && `Tarif 5min: ${interpreter.tarif_5min}€`}
-                {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
-                {interpreter.tarif_15min !== null && `Tarif 15min: ${interpreter.tarif_15min}€`}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Additional Info */}
+      {(interpreter.next_mission_start || interpreter.tarif_15min || interpreter.tarif_5min) && (
+        <CardFooter className="flex flex-col items-start border-t pt-4 space-y-3">
+          {interpreter.next_mission_start && (
+            <UpcomingMissionBadge
+              startTime={interpreter.next_mission_start}
+              estimatedDuration={interpreter.next_mission_duration || 0}
+              sourceLang={interpreter.next_mission_source_language}
+              targetLang={interpreter.next_mission_target_language}
+            />
+          )}
+          {(interpreter.tarif_15min !== null || interpreter.tarif_5min !== null) && (
+            <div className="text-sm text-muted-foreground">
+              {interpreter.tarif_5min !== null && `Tarif 5min: ${interpreter.tarif_5min}€`}
+              {interpreter.tarif_5min !== null && interpreter.tarif_15min !== null && ' | '}
+              {interpreter.tarif_15min !== null && `Tarif 15min: ${interpreter.tarif_15min}€`}
+            </div>
+          )}
+        </CardFooter>
+      )}
     </Card>
   );
 };
