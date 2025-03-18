@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { ReservationEditDialog } from "./ReservationEditDialog";
-import { formatDateTimeDisplay } from "@/utils/dateTimeUtils";
+import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 import { Clock, Languages, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMissionUpdates } from "@/hooks/useMissionUpdates";
@@ -56,7 +55,6 @@ export const PrivateReservationList = ({
         query = query.eq('target_language', targetLanguageFilter);
       }
 
-      // Add time component to date filters for proper range querying
       if (startDateFilter) {
         query = query.gte('start_time', `${startDateFilter}T00:00:00`);
       }

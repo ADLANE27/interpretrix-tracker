@@ -1,10 +1,11 @@
 
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, format, parseISO } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { formatTimeString } from "@/utils/dateTimeUtils";
 
 interface UpcomingMissionBadgeProps {
   startTime: string;
@@ -46,13 +47,15 @@ export const UpcomingMissionBadge = ({
   const getStatusDisplay = () => {
     const status = getMissionStatus();
     const languageInfo = sourceLang && targetLang ? ` (${sourceLang} → ${targetLang})` : '';
-    const timeRange = `${format(missionStartDate, 'HH:mm')}-${format(missionEndDate, 'HH:mm')}`;
-    const missionDate = format(missionStartDate, 'd MMMM yyyy', { locale: fr });
+    // Use direct time extraction for consistent display
+    const startHour = formatTimeString(startTime);
+    const endHour = formatTimeString(addMinutes(parseISO(startTime), estimatedDuration).toISOString());
+    const timeRange = `${startHour}-${endHour}`;
 
     switch (status) {
       case "upcoming":
         return {
-          text: `${missionDate} ${timeRange}${languageInfo}`,
+          text: `${timeRange}${languageInfo}`,
           variant: "secondary" as const
         };
       case "in-progress":

@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, startOfDay, startOfWeek, endOfWeek } from "date-fns";
+import { startOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Clock, User, Languages } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,14 +47,8 @@ export const AdminMissionsCalendar = () => {
 
       if (error) throw error;
       
-      const localizedMissions = data.map(mission => ({
-        ...mission,
-        scheduled_start_time: mission.scheduled_start_time,
-        scheduled_end_time: mission.scheduled_end_time
-      }));
-      
-      console.log('[AdminMissionsCalendar] Fetched missions:', localizedMissions);
-      setMissions(localizedMissions);
+      console.log('[AdminMissionsCalendar] Fetched missions:', data);
+      setMissions(data);
     } catch (error) {
       console.error('[AdminMissionsCalendar] Error fetching missions:', error);
       toast({
@@ -121,6 +114,7 @@ export const AdminMissionsCalendar = () => {
         const weekStart = startOfWeek(selectedDate, { locale: fr });
         const weekEnd = endOfWeek(selectedDate, { locale: fr });
         return missions.filter(mission => {
+          if (!mission.scheduled_start_time) return false;
           const missionDate = new Date(mission.scheduled_start_time);
           return missionDate >= weekStart && missionDate <= weekEnd;
         });
@@ -128,6 +122,7 @@ export const AdminMissionsCalendar = () => {
       case 'day':
       default: // month
         return missions.filter(mission => {
+          if (!mission.scheduled_start_time) return false;
           const missionDate = new Date(mission.scheduled_start_time);
           return startOfDay(missionDate).getTime() === startOfDay(selectedDate).getTime();
         });
@@ -135,7 +130,8 @@ export const AdminMissionsCalendar = () => {
   };
 
   const datesWithMissions = missions
-    .map((mission) => startOfDay(new Date(mission.scheduled_start_time)))
+    .filter(mission => mission.scheduled_start_time)
+    .map((mission) => startOfDay(new Date(mission.scheduled_start_time!)))
     .filter((date): date is Date => date !== null);
 
   const visibleMissions = getVisibleMissions();

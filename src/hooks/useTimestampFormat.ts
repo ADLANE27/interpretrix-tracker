@@ -7,7 +7,7 @@ export const useTimestampFormat = () => {
     if (!lastSeenDate) return 'Jamais connecté';
     
     try {
-      // Parse the date string
+      // Parse the date string without timezone conversion
       const date = parseISO(lastSeenDate);
       
       if (!isValid(date)) {
@@ -50,6 +50,11 @@ export const useTimestampFormat = () => {
   // Format message timestamps consistently - this is crucial for uniform timestamp display
   const formatMessageTime = (date: Date | string): string => {
     try {
+      if (typeof date === 'string' && date.includes('T')) {
+        // Extract time directly from the string for consistency
+        return date.split('T')[1].substring(0, 5);
+      }
+      
       const messageDate = typeof date === 'string' ? parseISO(date) : date;
       
       if (!isValid(messageDate)) {

@@ -6,7 +6,6 @@ import { Mission } from "@/types/mission";
 import { MissionCard } from "./mission/MissionCard";
 import { useMissionSubscription } from "./mission/useMissionSubscription";
 import { useMissionManagement } from "./mission/useMissionManagement";
-import { parseISO } from "date-fns";
 
 export const MissionsTab = () => {
   const [missions, setMissions] = useState<Mission[]>([]);
@@ -36,7 +35,7 @@ export const MissionsTab = () => {
         throw missionsError;
       }
 
-      // Use the mission data as-is without timezone adjustments
+      // Use the mission data directly without any parsing or conversion
       setMissions(missionsData as Mission[]);
       
     } catch (error) {

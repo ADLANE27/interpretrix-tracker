@@ -61,13 +61,13 @@ export const ReservationEditDialog = ({
     setIsSubmitting(true);
 
     try {
-      // Create new time strings without the 'Z' UTC marker
+      // Create new time strings without any timezone adjustment
       const newStartTime = createLocalISOString(startDate, startTime);
       const newEndTime = createLocalISOString(endDate, endTime);
       
       // Calculate duration in minutes
-      const startTimeMs = new Date(newStartTime).getTime();
-      const endTimeMs = new Date(newEndTime).getTime();
+      const startTimeMs = new Date(`${startDate}T${startTime}`).getTime();
+      const endTimeMs = new Date(`${endDate}T${endTime}`).getTime();
       const durationMinutes = Math.round((endTimeMs - startTimeMs) / (1000 * 60));
 
       // First check if the new interpreter is available for this time slot

@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Calendar, Clock, CheckSquare, XSquare, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";

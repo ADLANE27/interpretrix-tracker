@@ -12,6 +12,7 @@ export const useTimeFormat = () => {
     if (!dateString) return '';
     
     try {
+      // Simple direct parsing without timezone conversion
       const date = parseISO(dateString);
       return format(date, formatStr, { locale: fr });
     } catch (error) {
