@@ -1,5 +1,5 @@
 
-import { format, formatDistanceToNow, isValid } from 'date-fns';
+import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export const useTimestampFormat = () => {
@@ -7,8 +7,8 @@ export const useTimestampFormat = () => {
     if (!lastSeenDate) return 'Jamais connecté';
     
     try {
-      // Parse the UTC date string
-      const date = new Date(lastSeenDate);
+      // Parse the date string
+      const date = parseISO(lastSeenDate);
       
       if (!isValid(date)) {
         console.error('[useTimestampFormat] Invalid date:', lastSeenDate);
@@ -50,7 +50,7 @@ export const useTimestampFormat = () => {
   // Format message timestamps consistently - this is crucial for uniform timestamp display
   const formatMessageTime = (date: Date | string): string => {
     try {
-      const messageDate = typeof date === 'string' ? new Date(date) : date;
+      const messageDate = typeof date === 'string' ? parseISO(date) : date;
       
       if (!isValid(messageDate)) {
         console.error('[useTimestampFormat] Invalid message date:', date);

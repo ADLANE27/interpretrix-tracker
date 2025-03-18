@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { createLocalISOString } from "@/utils/dateTimeUtils";
 
 interface ReservationEditDialogProps {
   reservation: PrivateReservation;
@@ -31,7 +32,7 @@ export const ReservationEditDialog = ({
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState(reservation.interpreter_id);
 
-  // Convert UTC dates to local format for form inputs without any timezone adjustments
+  // Convert dates to local format for form inputs without timezone adjustments
   const [startDate, setStartDate] = useState(reservation.start_time.split('T')[0]);
   const [startTime, setStartTime] = useState(reservation.start_time.split('T')[1].substring(0, 5));
   const [endDate, setEndDate] = useState(reservation.end_time.split('T')[0]);
@@ -60,9 +61,9 @@ export const ReservationEditDialog = ({
     setIsSubmitting(true);
 
     try {
-      // Create new Date objects using the form values directly
-      const newStartTime = `${startDate}T${startTime}:00Z`;
-      const newEndTime = `${endDate}T${endTime}:00Z`;
+      // Create new time strings without the 'Z' UTC marker
+      const newStartTime = createLocalISOString(startDate, startTime);
+      const newEndTime = createLocalISOString(endDate, endTime);
       
       // Calculate duration in minutes
       const startTimeMs = new Date(newStartTime).getTime();

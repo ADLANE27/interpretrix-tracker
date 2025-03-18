@@ -1,5 +1,6 @@
+
 import { Clock } from "lucide-react";
-import { formatDistanceToNow, isAfter, isBefore, addMinutes, format } from "date-fns";
+import { formatDistanceToNow, isAfter, isBefore, addMinutes, format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Badge } from "./ui/badge";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export const UpcomingMissionBadge = ({
     return () => clearInterval(interval);
   }, []);
 
-  const missionStartDate = new Date(startTime);
+  const missionStartDate = parseISO(startTime);
   const missionEndDate = addMinutes(missionStartDate, estimatedDuration);
   
   const getMissionStatus = () => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -55,6 +56,7 @@ export const PrivateReservationList = ({
         query = query.eq('target_language', targetLanguageFilter);
       }
 
+      // Add time component to date filters for proper range querying
       if (startDateFilter) {
         query = query.gte('start_time', `${startDateFilter}T00:00:00`);
       }
