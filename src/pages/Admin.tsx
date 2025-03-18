@@ -1,9 +1,6 @@
-
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
-import { ThemeToggle } from '@/components/interpreter/ThemeToggle';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,8 +54,8 @@ const Admin = () => {
   }, [navigate]);
 
   return (
-    <div className="h-screen bg-background transition-colors duration-300">
-      <div className="h-full container mx-auto p-6 px-0 py-0">
+    <div className="h-screen w-full bg-background transition-colors duration-300">
+      <div className="h-full w-full">
         <AdminDashboard />
       </div>
     </div>
