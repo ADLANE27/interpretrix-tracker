@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   useEffect(() => {
@@ -17,7 +17,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
           schema: 'public',
           table: 'interpretation_missions'
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('[useMissionUpdates] Mission update received:', payload);
           onUpdate();
         }
@@ -34,7 +34,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
           schema: 'public',
           table: 'private_reservations'
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('[useMissionUpdates] Private reservation update received:', payload);
           onUpdate();
         }

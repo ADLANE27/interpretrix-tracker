@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SubscriptionConfig {
@@ -63,10 +63,13 @@ export function useRealtimeSubscription(
             table: config.table,
             filter: config.filter,
           },
-          (payload) => {
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            // Access the correct properties based on the payload structure
+            const eventType = payload.eventType;
+            
             // Generate a unique event ID for deduplication
-            const eventId = `${payload.eventType}-${
-              payload.eventType === 'DELETE' ? 
+            const eventId = `${eventType}-${
+              eventType === 'DELETE' ? 
               (payload.old as any)?.id : 
               (payload.new as any)?.id
             }-${payload.commit_timestamp}`;

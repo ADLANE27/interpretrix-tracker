@@ -87,7 +87,7 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            (payload) => {
+            (payload: RealtimePostgresChangesPayload<any>) => {
               if (!isSubscribed) return;
               
               // Generate a unique event ID for deduplication
@@ -116,7 +116,7 @@ export const useSubscriptions = (
               // Create our extended payload with additional properties
               const extendedPayload: ExtendedPayload = {
                 ...payload as any,
-                eventType: (payload as any).eventType,
+                eventType: payload.eventType,
                 receivedAt: Date.now()
               };
 
