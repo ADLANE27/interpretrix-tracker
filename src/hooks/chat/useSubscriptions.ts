@@ -38,9 +38,34 @@ export const useSubscriptions = (
   const lastEventTimestamp = useRef<number>(Date.now());
   const instanceId = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
+  const userRole = useRef<'admin' | 'interpreter' | null>(null);
+
+  // Determine user role for logging
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          userRole.current = data.role as 'admin' | 'interpreter';
+        }
+      } catch (error) {
+        console.error('[useSubscriptions] Error determining user role:', error);
+      }
+    };
+    
+    checkUserRole();
+  }, []);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
-    console.error(`[Chat] ${type} subscription error:`, error);
+    console.error(`[Chat ${userRole.current}] ${type} subscription error:`, error);
     setSubscriptionStates(prev => ({
       ...prev,
       [type]: { status: 'CHANNEL_ERROR' as const, error }
@@ -54,18 +79,18 @@ export const useSubscriptions = (
   };
 
   useEffect(() => {
-    console.log('[Chat] Setting up subscriptions for channel:', channelId);
+    console.log(`[Chat ${userRole.current}] Setting up subscriptions for channel:`, channelId);
     let isSubscribed = true;
 
     const setupSubscriptions = async () => {
       if (!channelId) {
-        console.log('[Chat] No channel ID provided, skipping subscription setup');
+        console.log(`[Chat ${userRole.current}] No channel ID provided, skipping subscription setup`);
         return;
       }
 
       // Clean up existing channel if it exists
       if (channelRef.current) {
-        console.log('[Chat] Cleaning up existing channel');
+        console.log(`[Chat ${userRole.current}] Cleaning up existing channel`);
         await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
@@ -74,7 +99,7 @@ export const useSubscriptions = (
         // ALL clients (admin and interpreter) use the exact same channel name format
         // This ensures consistent channel naming across different user types
         const channelName = `chat-${channelId}`;
-        console.log('[Chat] Creating new channel with name:', channelName);
+        console.log(`[Chat ${userRole.current}] Creating new channel with name:`, channelName);
         
         channelRef.current = supabase.channel(channelName);
 
@@ -99,7 +124,7 @@ export const useSubscriptions = (
               
               // Skip if we've already seen this exact event
               if (seenEvents.current.has(eventId)) {
-                console.log('[Chat] Skipping duplicate event:', eventId);
+                console.log(`[Chat ${userRole.current}] Skipping duplicate event:`, eventId);
                 return;
               }
               
@@ -123,30 +148,30 @@ export const useSubscriptions = (
               // Update last event timestamp for health checks
               lastEventTimestamp.current = extendedPayload.receivedAt;
 
-              console.log('[Chat] Message change received:', extendedPayload.eventType, extendedPayload);
+              console.log(`[Chat ${userRole.current}] Message change received:`, extendedPayload.eventType, extendedPayload);
               onRealtimeEvent(extendedPayload);
             }
           );
 
         // Subscribe to the channel
         const channel = await channelRef.current.subscribe((status) => {
-          console.log('[Chat] Subscription status:', status);
+          console.log(`[Chat ${userRole.current}] Subscription status:`, status);
           
           if (status === 'SUBSCRIBED') {
-            console.log('[Chat] Successfully subscribed to channel:', channelName);
+            console.log(`[Chat ${userRole.current}] Successfully subscribed to channel:`, channelName);
             setSubscriptionStates({
               messages: { status: 'SUBSCRIBED' },
               ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
             });
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('[Chat] Channel error for channel:', channelName);
+            console.error(`[Chat ${userRole.current}] Channel error for channel:`, channelName);
             handleSubscriptionError(new Error(`Channel error for ${channelName}`), 'messages');
           }
         });
 
-        console.log('[Chat] Channel subscription initiated:', channel);
+        console.log(`[Chat ${userRole.current}] Channel subscription initiated:`, channel);
       } catch (error) {
-        console.error('[Chat] Error setting up subscriptions:', error);
+        console.error(`[Chat ${userRole.current}] Error setting up subscriptions:`, error);
         handleSubscriptionError(error as Error, 'messages');
       }
     };
@@ -159,25 +184,25 @@ export const useSubscriptions = (
       const lastEvent = lastEventTimestamp.current;
       const timeSinceLastEvent = now - lastEvent;
       
-      console.log(`[Chat] Health check: ${timeSinceLastEvent}ms since last event`);
+      console.log(`[Chat ${userRole.current}] Health check: ${timeSinceLastEvent}ms since last event`);
       
       // If it's been too long since we received an event, reconnect
       if (timeSinceLastEvent > CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * 10 && channelRef.current) {
-        console.log('[Chat] Subscription appears stalled, reconnecting...');
+        console.log(`[Chat ${userRole.current}] Subscription appears stalled, reconnecting...`);
         setRetryCount(retryCount + 1);
       }
     }, 30000); // Check every 30 seconds
 
     // Cleanup function
     return () => {
-      console.log('[Chat] Cleaning up subscriptions');
+      console.log(`[Chat ${userRole.current}] Cleaning up subscriptions`);
       isSubscribed = false;
       clearInterval(healthCheckInterval);
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
           .catch(error => {
-            console.error('[Chat] Error removing channel:', error);
+            console.error(`[Chat ${userRole.current}] Error removing channel:`, error);
           });
         channelRef.current = null;
       }
