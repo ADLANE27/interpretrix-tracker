@@ -67,6 +67,7 @@ interface LanguageSuggestion {
 type Suggestion = MemberSuggestion | LanguageSuggestion;
 
 export const MessagesTab = () => {
+  const { formatMessageTime } = useTimestampFormat();
   const [messages, setMessages] = useState<Message[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -524,7 +525,7 @@ export const MessagesTab = () => {
             
             <div className="absolute right-4 bottom-2 flex items-center gap-1">
               <span className="text-[11px] text-gray-500">
-                {format(new Date(message.created_at), 'HH:mm')}
+                {formatMessageTime(new Date(message.created_at))}
               </span>
             </div>
           </div>
@@ -892,7 +893,7 @@ export const MessagesTab = () => {
                                         
                                         <div className="absolute right-2 bottom-1 flex items-center gap-1">
                                           <span className="text-[10px] text-gray-500">
-                                            {format(new Date(reply.created_at), 'HH:mm')}
+                                            {formatMessageTime(new Date(reply.created_at))}
                                           </span>
                                         </div>
                                       </div>

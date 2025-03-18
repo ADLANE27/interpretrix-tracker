@@ -1,12 +1,11 @@
 
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatTimeString, formatDateDisplay } from '@/utils/dateTimeUtils';
 
 export const useTimeFormat = () => {
   const getTimeFromString = (dateString: string | null) => {
-    if (!dateString) return '';
-    // Extract HH:mm directly from ISO string
-    return dateString.slice(11, 16);
+    return formatTimeString(dateString);
   };
 
   const getDateDisplay = (dateString: string | null, formatStr: string = 'd MMMM') => {

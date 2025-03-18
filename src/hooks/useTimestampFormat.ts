@@ -47,5 +47,23 @@ export const useTimestampFormat = () => {
     }
   };
 
-  return { formatLastSeen };
+  // Add a new function for formatting message timestamps consistently
+  const formatMessageTime = (date: Date | string): string => {
+    try {
+      const messageDate = typeof date === 'string' ? new Date(date) : date;
+      
+      if (!isValid(messageDate)) {
+        console.error('[useTimestampFormat] Invalid message date:', date);
+        return '--:--';
+      }
+      
+      // Format time as HH:MM in 24-hour format
+      return format(messageDate, 'HH:mm', { locale: fr });
+    } catch (error) {
+      console.error('[useTimestampFormat] Error formatting message time:', error);
+      return '--:--';
+    }
+  };
+
+  return { formatLastSeen, formatMessageTime };
 };

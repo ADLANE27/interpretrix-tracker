@@ -8,6 +8,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
+import { useTimestampFormat } from '@/hooks/useTimestampFormat';
 
 interface MessageListProps {
   messages: Message[];
@@ -30,6 +31,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const { observeMessage } = useMessageVisibility(channelId);
+  const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change or component mounts
@@ -130,30 +132,30 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div className="text-[15px] mb-4">{message.content}</div>
           <div className="absolute right-4 bottom-2 flex items-center gap-1">
             <span className="text-[11px] text-gray-500">
-              {format(message.timestamp, 'HH:mm')}
+              {formatMessageTime(message.timestamp)}
             </span>
           </div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
-            {message.sender.id === currentUserId && (
-              <button
-                onClick={() => onDeleteMessage(message.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-                aria-label="Supprimer le message"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </button>
-            )}
-            {!isThreadReply && setReplyTo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyTo(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-              >
-                <MessageCircle className="h-4 w-4 text-gray-500" />
-              </Button>
-            )}
-          </div>
+        </div>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+          {message.sender.id === currentUserId && (
+            <button
+              onClick={() => onDeleteMessage(message.id)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+              aria-label="Supprimer le message"
+            >
+              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+            </button>
+          )}
+          {!isThreadReply && setReplyTo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyTo(message)}
+              className="p-1.5 rounded-full hover:bg-gray-100"
+            >
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+            </Button>
+          )}
         </div>
         {message.attachments && message.attachments.map((attachment, index) => (
           <div key={index} className="relative group max-w-sm mt-2">
