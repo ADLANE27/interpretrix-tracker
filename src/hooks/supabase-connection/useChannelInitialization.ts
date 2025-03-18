@@ -1,15 +1,12 @@
 
 import { useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { usePresence } from './usePresence';
-import { useHeartbeat } from './useHeartbeat';
 import { CONNECTION_CONSTANTS } from './constants';
 import { useWakeLock } from './useWakeLock';
 
 interface UseChannelInitializationProps {
   onChannelError: () => void;
-  handleReconnect: (channel: RealtimeChannel | null, initializeChannel: () => Promise<void>) => void;
+  handleReconnect: (channel: RealtimeChannel | null) => void;
   isExplicitDisconnect: boolean;
   isReconnecting: boolean;
   setConnectionStatus: (status: 'connected' | 'connecting' | 'disconnected') => void;
@@ -55,7 +52,7 @@ export const useChannelInitialization = ({
           const isValid = await validateChannelPresence(channel);
           if (!isValid && !isReconnecting && !isExplicitDisconnect) {
             console.warn('[useChannelInitialization] Invalid presence state detected');
-            handleReconnect(channel, () => setupChannelSubscription(channel));
+            handleReconnect(channel);
           }
         }, CONNECTION_CONSTANTS.PRESENCE_VALIDATION_DELAY);
       })
@@ -86,7 +83,11 @@ export const useChannelInitialization = ({
             throw new Error('Failed to establish presence');
           }
 
-          const heartbeatSetup = setupHeartbeat(channel, isExplicitDisconnect, isReconnecting);
+          const heartbeatSetup = setupHeartbeat(
+            channel, 
+            isExplicitDisconnect, 
+            isReconnecting
+          );
           if (!heartbeatSetup) {
             throw new Error('Failed to setup heartbeat');
           }
@@ -95,7 +96,7 @@ export const useChannelInitialization = ({
         } catch (error) {
           console.error('[useChannelInitialization] Channel setup error:', error);
           if (!isExplicitDisconnect && !isReconnecting) {
-            handleReconnect(channel, () => setupChannelSubscription(channel));
+            handleReconnect(channel);
           }
         }
       }
@@ -104,7 +105,7 @@ export const useChannelInitialization = ({
         console.error(`[useChannelInitialization] Channel ${status}`);
         setConnectionStatus('disconnected');
         if (!isExplicitDisconnect && !isReconnecting) {
-          handleReconnect(channel, () => setupChannelSubscription(channel));
+          handleReconnect(channel);
         }
       }
     });
@@ -122,4 +123,3 @@ export const useChannelInitialization = ({
 
   return { setupChannelSubscription };
 };
-
