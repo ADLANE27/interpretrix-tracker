@@ -74,7 +74,6 @@ const AdminDashboard = () => {
   const [rateSort, setRateSort] = useState<string>("none");
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [todayMissionsCount, setTodayMissionsCount] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -243,9 +242,6 @@ const AdminDashboard = () => {
 
       setInterpreters(mappedInterpreters);
       console.log("[AdminDashboard] Interpreters data updated:", mappedInterpreters.length, "records");
-
-      // Fetch scheduled missions and private reservations for today's count
-      fetchTodayMissions();
     } catch (error) {
       console.error("[AdminDashboard] Error fetching interpreters:", error);
       toast({
@@ -253,54 +249,6 @@ const AdminDashboard = () => {
         description: "Impossible de charger la liste des interprètes",
         variant: "destructive"
       });
-    }
-  };
-
-  const fetchTodayMissions = async () => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const todayStart = today.toISOString();
-      const tomorrowStart = tomorrow.toISOString();
-      
-      console.log("[AdminDashboard] Fetching today's missions", todayStart, tomorrowStart);
-      
-      // Fetch scheduled missions for today
-      const { data: scheduledMissions, error: scheduledError } = await supabase
-        .from("interpretation_missions")
-        .select("id")
-        .eq("mission_type", "scheduled")
-        .gte("scheduled_start_time", todayStart)
-        .lt("scheduled_start_time", tomorrowStart);
-      
-      if (scheduledError) throw scheduledError;
-      
-      // Fetch private reservations for today
-      const { data: privateReservations, error: reservationsError } = await supabase
-        .from("private_reservations")
-        .select("id")
-        .eq("status", "scheduled")
-        .gte("start_time", todayStart)
-        .lt("start_time", tomorrowStart);
-      
-      if (reservationsError) throw reservationsError;
-      
-      const scheduledCount = scheduledMissions?.length || 0;
-      const reservationsCount = privateReservations?.length || 0;
-      const totalMissionsToday = scheduledCount + reservationsCount;
-      
-      console.log("[AdminDashboard] Today's missions count:", {
-        scheduledMissions: scheduledCount,
-        privateReservations: reservationsCount,
-        total: totalMissionsToday
-      });
-      
-      setTodayMissionsCount(totalMissionsToday);
-    } catch (error) {
-      console.error("[AdminDashboard] Error fetching today's missions:", error);
     }
   };
 
@@ -391,6 +339,15 @@ const AdminDashboard = () => {
   const pauseCount = interpreters.filter(i => i.status === "pause").length;
   const unavailableCount = interpreters.filter(i => i.status === "unavailable").length;
 
+  const todayMissions = interpreters.filter(interpreter => {
+    if (interpreter.next_mission_start) {
+      const missionDate = new Date(interpreter.next_mission_start);
+      const today = new Date();
+      return missionDate.toDateString() === today.toDateString();
+    }
+    return false;
+  }).length;
+
   return (
     <div className="flex flex-col h-full">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
@@ -452,7 +409,7 @@ const AdminDashboard = () => {
                 busyCount={busyCount}
                 pauseCount={pauseCount}
                 unavailableCount={unavailableCount}
-                todayMissionsCount={todayMissionsCount}
+                todayMissionsCount={todayMissions}
               />
               
               <div className="space-y-3">

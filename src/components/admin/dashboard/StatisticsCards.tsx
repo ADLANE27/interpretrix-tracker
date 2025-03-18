@@ -8,7 +8,7 @@ interface StatisticsCardsProps {
   busyCount: number;
   pauseCount: number;
   unavailableCount: number;
-  todayMissionsCount: number;
+  todayMissionsCount?: number;
 }
 
 export const StatisticsCards = ({
@@ -17,7 +17,7 @@ export const StatisticsCards = ({
   busyCount,
   pauseCount,
   unavailableCount,
-  todayMissionsCount
+  todayMissionsCount = 0
 }: StatisticsCardsProps) => {
   const cards = [
     {
