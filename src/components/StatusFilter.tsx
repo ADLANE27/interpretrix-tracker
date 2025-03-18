@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Clock, Coffee, Phone, X } from "lucide-react";
-import { motion } from "framer-motion";
 
 interface StatusFilterProps {
   selectedStatus: string | null;
@@ -14,29 +13,25 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
       id: "available", 
       label: "Disponible", 
       color: "from-green-400 to-green-600", 
-      icon: Clock,
-      delay: 0 
+      icon: Clock 
     },
     { 
       id: "busy", 
       label: "En appel", 
       color: "from-violet-400 to-violet-600", 
-      icon: Phone,
-      delay: 0.1
+      icon: Phone 
     },
     { 
       id: "pause", 
       label: "En pause", 
       color: "from-orange-400 to-orange-600", 
-      icon: Coffee,
-      delay: 0.2
+      icon: Coffee 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
       color: "from-red-400 to-red-600", 
-      icon: X,
-      delay: 0.3
+      icon: X 
     },
   ];
 
@@ -55,32 +50,22 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
       {statuses.map((status) => {
         const Icon = status.icon;
         return (
-          <motion.div
+          <Button
             key={status.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: 0.4,
-              delay: status.delay,
-              ease: "easeOut"
-            }}
+            variant={selectedStatus === status.id ? "default" : "outline"}
+            className={`
+              transition-all duration-200 rounded-full px-5
+              ${selectedStatus === status.id 
+                ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
+            `}
+            onClick={() => handleStatusClick(status.id)}
           >
-            <Button
-              variant={selectedStatus === status.id ? "default" : "outline"}
-              className={`
-                transition-all duration-300 rounded-full px-5 h-10
-                ${selectedStatus === status.id 
-                  ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
-                  : 'hover:bg-white/10 backdrop-blur-sm border border-white/20 text-white'}
-              `}
-              onClick={() => handleStatusClick(status.id)}
-            >
-              <Icon className="mr-2 h-4 w-4" />
-              {status.label}
-            </Button>
-          </motion.div>
-        );
-      })}
+            <Icon className="mr-2 h-4 w-4" />
+            {status.label}
+          </Button>
+        )}
+      )}
     </div>
   );
 };
