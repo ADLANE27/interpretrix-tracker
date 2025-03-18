@@ -537,7 +537,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="calendar" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6">
+            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
               <AdminMissionsCalendar />
             </div>
           </TabsContent>
