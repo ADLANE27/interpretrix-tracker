@@ -2,7 +2,7 @@
 import React from 'react';
 import { FileText, FileImage, File, Download, ExternalLink } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { TRANSLATIONS } from "@/constants/languages";
+import { TRANSLATIONS } from "@/lib/constants";
 
 interface AttachmentProps {
   url: string;
