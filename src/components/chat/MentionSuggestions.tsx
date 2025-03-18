@@ -6,6 +6,7 @@ import { Languages, User } from 'lucide-react';
 import { LANGUAGES, LANGUAGE_MAP } from '@/lib/constants';
 import { MemberSuggestion, LanguageSuggestion, Suggestion } from '@/types/messaging';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useMessageFormatter } from '@/hooks/chat/useMessageFormatter';
 
 interface MentionSuggestionsProps {
   suggestions: Suggestion[];
@@ -22,14 +23,23 @@ export const MentionSuggestions = ({
   loading = false,
   searchTerm = ''
 }: MentionSuggestionsProps) => {
+  const { allLanguages } = useMessageFormatter();
+  
   if (!visible) return null;
 
-  // Convert standardized languages to suggestions format with both code and name
-  const standardLanguageSuggestions: LanguageSuggestion[] = Object.entries(LANGUAGE_MAP).map(([code, name]) => ({
-    name,
-    code,
-    type: 'language'
-  }));
+  // Get languages from the useMessageFormatter hook if available, or fall back to constants
+  const availableLanguages = allLanguages.length > 0 ? allLanguages : Object.values(LANGUAGE_MAP);
+
+  // Convert languages to suggestions format
+  const standardLanguageSuggestions: LanguageSuggestion[] = availableLanguages.map((name) => {
+    // Try to find a code for this language name
+    const codeEntry = Object.entries(LANGUAGE_MAP).find(([_, langName]) => langName === name);
+    return {
+      name,
+      code: codeEntry ? codeEntry[0] : undefined,
+      type: 'language'
+    };
+  });
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   
@@ -37,7 +47,7 @@ export const MentionSuggestions = ({
   const languageSuggestions = searchTerm 
     ? standardLanguageSuggestions.filter(lang => {
         const normalizedName = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const normalizedCode = lang.code.toLowerCase();
+        const normalizedCode = lang.code?.toLowerCase() || "";
         const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
         return normalizedName.includes(normalizedSearch) || normalizedCode.includes(normalizedSearch);
