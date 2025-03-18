@@ -21,6 +21,9 @@ export const useChat = (channelId: string) => {
     mentions: boolean;
   }>({ messages: false, mentions: false });
 
+  // Add a message cache to prevent duplicate messages
+  const messageCache = useRef<Set<string>>(new Set());
+
   const { formatMessage } = useMessageFormatter();
 
   const fetchMessages = useCallback(async () => {
@@ -59,8 +62,19 @@ export const useChat = (channelId: string) => {
 
       console.log('[Chat] Retrieved messages:', messagesData?.length);
 
+      // Reset message cache on fresh fetch
+      messageCache.current.clear();
+      
       const formattedMessages: Message[] = [];
       const senderDetailsPromises = messagesData?.map(async (message) => {
+        // Skip if this message is already in our cache
+        if (messageCache.current.has(message.id)) {
+          return null;
+        }
+        
+        // Add to cache
+        messageCache.current.add(message.id);
+        
         try {
           const { data: senderData, error: senderError } = await supabase
             .rpc('get_message_sender_details', {
@@ -117,7 +131,8 @@ export const useChat = (channelId: string) => {
             timestamp: new Date(message.created_at),
             reactions: parsedReactions,
             attachments: parsedAttachments,
-            channelType: channelType
+            channelType: channelType,
+            parent_message_id: message.parent_message_id
           };
 
           return formattedMessage;
@@ -140,7 +155,9 @@ export const useChat = (channelId: string) => {
       );
       
       // Add messages in reversed order to have newest messages last (for correct display)
-      formattedMessages.push(...validMessages.reverse());
+      // Also sort by timestamp to ensure consistent ordering
+      formattedMessages.push(...validMessages
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime()));
       setMessages(formattedMessages);
     } catch (error) {
       console.error('[Chat] Error fetching messages:', error);
@@ -182,6 +199,8 @@ export const useChat = (channelId: string) => {
   useEffect(() => {
     if (channelId) {
       console.log('[Chat] Initial messages fetch for channel:', channelId);
+      // Clear the message cache when changing channels
+      messageCache.current.clear();
       fetchMessages();
     }
   }, [channelId, fetchMessages]);

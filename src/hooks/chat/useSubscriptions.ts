@@ -23,6 +23,9 @@ export const useSubscriptions = (
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
+  const lastProcessedEventRef = useRef<{id?: string; timestamp?: number}>({});
+  // Debounce mechanism to prevent multiple consecutive fetches
+  const fetchDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat] ${type} subscription error:`, error);
@@ -36,6 +39,18 @@ export const useSubscriptions = (
         setRetryCount(retryCount + 1);
       }, CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * Math.pow(2, retryCount));
     }
+  };
+
+  // Debounced fetch function to prevent multiple fetches in quick succession
+  const debouncedFetchMessages = () => {
+    if (fetchDebounceTimerRef.current) {
+      clearTimeout(fetchDebounceTimerRef.current);
+    }
+    
+    fetchDebounceTimerRef.current = setTimeout(() => {
+      fetchMessages();
+      fetchDebounceTimerRef.current = null;
+    }, 300); // 300ms debounce time
   };
 
   useEffect(() => {
@@ -63,19 +78,65 @@ export const useSubscriptions = (
         channelRef.current = supabase.channel(channelName);
 
         // Set up message changes subscription with explicit event types
-        // Use the updated pattern with proper types
         channelRef.current
           .on('postgres_changes',
             {
-              event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+              event: 'INSERT', // Only listen for new messages
               schema: 'public',
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
             (payload) => {
               if (!isSubscribed) return;
-              console.log('[Chat] Message change received:', payload);
-              fetchMessages(); // Refresh messages when changes occur
+              
+              // Check for duplicate events
+              const eventId = payload.new?.id;
+              const currentTime = Date.now();
+              
+              // Skip if we've already processed this event recently
+              if (eventId === lastProcessedEventRef.current.id && 
+                  lastProcessedEventRef.current.timestamp && 
+                  currentTime - lastProcessedEventRef.current.timestamp < 2000) {
+                console.log('[Chat] Skipping duplicate event:', eventId);
+                return;
+              }
+              
+              // Update last processed event
+              lastProcessedEventRef.current = {
+                id: eventId,
+                timestamp: currentTime
+              };
+              
+              console.log('[Chat] New message received:', payload);
+              debouncedFetchMessages();
+            }
+          )
+          // Handle message updates separately
+          .on('postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'chat_messages',
+              filter: `channel_id=eq.${channelId}`
+            },
+            (payload) => {
+              if (!isSubscribed) return;
+              console.log('[Chat] Message update received:', payload);
+              debouncedFetchMessages();
+            }
+          )
+          // Handle message deletions separately
+          .on('postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'chat_messages',
+              filter: `channel_id=eq.${channelId}`
+            },
+            (payload) => {
+              if (!isSubscribed) return;
+              console.log('[Chat] Message deletion received:', payload);
+              debouncedFetchMessages();
             }
           );
 
@@ -99,6 +160,11 @@ export const useSubscriptions = (
     return () => {
       console.log('[Chat] Cleaning up subscriptions');
       isSubscribed = false;
+      
+      if (fetchDebounceTimerRef.current) {
+        clearTimeout(fetchDebounceTimerRef.current);
+        fetchDebounceTimerRef.current = null;
+      }
       
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current)
