@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -10,9 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -121,14 +119,17 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
+              // Play sound for mention
               await playNotificationSound();
               
+              // Show toast notification
               toast({
                 title: "💬 Nouvelle mention",
                 description: "Quelqu'un vous a mentionné dans un message",
                 duration: 5000,
               });
 
+              // Show browser notification
               showNotification("Nouvelle mention", {
                 body: "Quelqu'un vous a mentionné dans un message",
                 tag: 'chat-mention',
@@ -206,38 +207,17 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center p-3 sm:p-4 border-b">
-        {isMobile && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.history.back()}
-            className="mr-2 h-8 w-8 p-0 flex-shrink-0"
-          >
-            <ChevronLeft className="h-5 w-5" />
-            <span className="sr-only">Retour</span>
-          </Button>
-        )}
-        
-        <div className={cn(
-          "flex items-center justify-between w-full",
-          isMobile ? "overflow-hidden" : ""
-        )}>
-          <h2 className="text-lg font-semibold truncate max-w-[75%]">
-            {channel?.name}
-          </h2>
-          <div className="flex-shrink-0 ml-2">
-            <ChannelMembersPopover 
-              channelId={channelId} 
-              channelName={channel?.name || ''} 
-              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-              userRole="interpreter"
-            />
-          </div>
-        </div>
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <ChannelMembersPopover 
+          channelId={channelId} 
+          channelName={channel?.name || ''} 
+          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+          userRole="interpreter"
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto relative" ref={messageContainerRef}>
+      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>

@@ -114,7 +114,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           </AvatarFallback>
         </Avatar>
       )}
-      <div className={`flex-1 max-w-[85%] sm:max-w-[75%] space-y-1.5 ${
+      <div className={`flex-1 max-w-[75%] space-y-1.5 ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
         {!isThreadReply && message.sender.id !== currentUserId && (
@@ -133,11 +133,11 @@ export const MessageList: React.FC<MessageListProps> = ({
               {format(message.timestamp, 'HH:mm')}
             </span>
           </div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-[105%] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-1">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
             {message.sender.id === currentUserId && (
               <button
                 onClick={() => onDeleteMessage(message.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100 bg-white/80 shadow-sm"
+                className="p-1.5 rounded-full hover:bg-gray-100"
                 aria-label="Supprimer le message"
               >
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -148,7 +148,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setReplyTo(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100 bg-white/80 shadow-sm"
+                className="p-1.5 rounded-full hover:bg-gray-100"
               >
                 <MessageCircle className="h-4 w-4 text-gray-500" />
               </Button>
@@ -169,8 +169,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-6 p-2 sm:p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col">
-      <div className="flex-1 w-full">
+    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col">
+      <div className="flex-1">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
             {shouldShowDate(message, messages[index - 1]) && (

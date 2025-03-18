@@ -128,13 +128,4 @@
     @apply h-12 min-w-12 rounded-full flex items-center justify-center;
     touch-action: manipulation;
   }
-
-  /* New classes to fix mobile problems */
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
-  }
 }
