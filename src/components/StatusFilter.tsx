@@ -61,15 +61,15 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
               relative overflow-hidden transition-all duration-300 rounded-full px-5
               ${selectedStatus === status.id 
                 ? `bg-gradient-to-r ${status.color} text-white shadow-md border-transparent` 
-                : `border border-white/10 bg-black/20 backdrop-blur-sm text-white/80 ${status.hoverColor}`}
+                : `border border-white/10 bg-black/20 backdrop-blur-sm text-white/90 ${status.hoverColor}`}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
             {selectedStatus === status.id && (
-              <span className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent opacity-50"></span>
+              <span className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50"></span>
             )}
             <Icon className="mr-2 h-4 w-4" />
-            {status.label}
+            <span className="font-medium drop-shadow-sm">{status.label}</span>
           </Button>
         )}
       )}
