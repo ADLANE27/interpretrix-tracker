@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { MessageList } from "./messages/MessageList";
+import { Message, Attachment } from "@/types/messaging";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,19 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-interface Message {
-  id: string;
-  content: string;
-  created_at: string;
-  channel_id: string;
-  sender_id: string;
-  parent_message_id?: string | null;
-  sender?: {
-    id: string;
-    name: string;
-    avatarUrl?: string;
-  };
-}
+// Remove the local Message interface since we're now importing it
 
 interface Channel {
   id: string;
@@ -210,13 +200,23 @@ export const MessagesTab = () => {
       const messagesWithSenders = await Promise.all(
         (messagesData || []).map(async (message) => {
           const { data: senderData, error: senderError } = await supabase
-            .rpc('get_message_sender_details', {
-              sender_id: message.sender_id
+            .rpc('batch_get_message_sender_details', {
+              p_sender_ids: [message.sender_id]
             });
 
           if (senderError) {
             console.error("Error fetching sender:", senderError);
-            return message;
+            return {
+              ...message,
+              sender: {
+                id: message.sender_id,
+                name: 'Unknown User',
+                avatarUrl: ''
+              },
+              timestamp: new Date(message.created_at),
+              reactions: {},
+              attachments: []
+            } as Message;
           }
 
           const sender = senderData?.[0];
@@ -226,8 +226,14 @@ export const MessagesTab = () => {
               id: sender.id,
               name: sender.name,
               avatarUrl: sender.avatar_url
-            } : undefined
-          };
+            } : {
+              id: message.sender_id,
+              name: 'Unknown User',
+              avatarUrl: ''
+            },
+            timestamp: new Date(message.created_at),
+            reactions: message.reactions || {}
+          } as Message;
         })
       );
 

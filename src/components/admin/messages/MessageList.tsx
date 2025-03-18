@@ -6,7 +6,7 @@ import { Message } from '@/types/messaging';
 interface MessageListProps {
   messages: Message[];
   expandedThreads: Set<string>;
-  currentUserId: any;
+  currentUserId: string | null;
   onToggleThread: (messageId: string) => void;
   onDeleteMessage: (messageId: string, senderId: string) => void;
   onReplyToMessage: (message: Message) => void;
@@ -30,7 +30,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <ChatMessageList
       messages={messages}
-      currentUserId={currentUserId?.id || currentUserId}
+      currentUserId={currentUserId}
       channelId={messages.length > 0 ? messages[0].channel_id : ""}
       onDeleteMessage={handleDeleteMessage}
       onReplyToMessage={onReplyToMessage}
