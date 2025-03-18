@@ -19,7 +19,7 @@ export const useSubscriptions = (
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  fetchMessages: () => Promise<void>
+  onRealtimeEvent: (payload: any) => void
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
@@ -56,7 +56,7 @@ export const useSubscriptions = (
       }
 
       try {
-        // Create a new channel with a unique name
+        // Create a new channel with a unique name based on channelId and timestamp
         const channelName = `chat-${channelId}-${Date.now()}`;
         console.log('[Chat] Creating new channel:', channelName);
         
@@ -71,25 +71,26 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            async (payload) => {
+            (payload) => {
               if (!isSubscribed) return;
               console.log('[Chat] Message change received:', payload);
-              await fetchMessages(); // Refresh messages when changes occur
+              onRealtimeEvent(payload);
             }
           );
 
         // Subscribe to the channel
         const channel = await channelRef.current.subscribe((status) => {
           console.log('[Chat] Subscription status:', status);
+          
+          if (status === 'SUBSCRIBED') {
+            setSubscriptionStates({
+              messages: { status: 'SUBSCRIBED' },
+              ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
+            });
+          }
         });
 
         console.log('[Chat] Channel subscribed:', channel);
-
-        // Update subscription states
-        setSubscriptionStates({
-          messages: { status: 'SUBSCRIBED' },
-          ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
-        });
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
         handleSubscriptionError(error as Error, 'messages');
@@ -111,7 +112,7 @@ export const useSubscriptions = (
         channelRef.current = null;
       }
     };
-  }, [channelId, currentUserId, fetchMessages, retryCount, setRetryCount]);
+  }, [channelId, currentUserId, onRealtimeEvent, retryCount, setRetryCount]);
 
   return {
     subscriptionStates,

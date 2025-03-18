@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { toast } from "@/hooks/use-toast";
+import { Message } from '@/types/messaging';
 
 interface ChatProps {
   channelId: string;
@@ -33,6 +34,10 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
+  const [message, setMessage] = useState('');
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Update newName when channel data is loaded
   useEffect(() => {
@@ -47,7 +52,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     sendMessage,
     deleteMessage,
     currentUserId,
-    reactToMessage
+    reactToMessage,
+    isSubscribed
   } = useChat(channelId);
 
   const handleRename = async () => {
@@ -76,9 +82,33 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     }
   };
 
-  // Debug logging to check channel data
-  console.log('Channel data:', channel);
-  console.log('User role:', userRole);
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
+    
+    try {
+      await sendMessage(message);
+      setMessage('');
+      setReplyTo(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'envoyer le message",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Placeholder for file attachment logic
+    console.log("File attachment functionality placeholder");
+  };
+
+  // Debug logging
+  console.log('[Chat Component] Rendering with messages:', messages.length);
+  console.log('[Chat Component] Is subscribed:', isSubscribed);
+  console.log('[Chat Component] Current user ID:', currentUserId);
+  console.log('[Chat Component] Channel ID:', channelId);
 
   return (
     <div className="flex flex-col h-full">
@@ -131,24 +161,29 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
       
       <div className="flex-1 overflow-y-auto">
         <MessageList
+          key={`message-list-${channelId}-${messages.length}`}
           messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
           channelId={channelId}
         />
       </div>
       
       <ChatInput
-        message=""
-        setMessage={() => {}}
-        onSendMessage={() => {}}
-        handleFileChange={() => {}}
-        attachments={[]}
-        handleRemoveAttachment={() => {}}
-        inputRef={React.createRef()}
-        replyTo={null}
-        setReplyTo={() => {}}
+        message={message}
+        setMessage={setMessage}
+        onSendMessage={handleSendMessage}
+        handleFileChange={handleFileChange}
+        attachments={attachments}
+        handleRemoveAttachment={(index: number) => {
+          setAttachments(prev => prev.filter((_, i) => i !== index));
+        }}
+        inputRef={inputRef}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
       />
     </div>
   );
