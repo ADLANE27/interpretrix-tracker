@@ -45,7 +45,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     .filter(lang => lang.source && lang.target);
 
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow border-l-4 border-l-blue-300 hover:border-l-blue-500">
+    <Card className="p-4 hover-elevate gradient-border">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className={`px-3 py-1 rounded-full text-sm ${statusConfig[interpreter.status].color}`}>
@@ -56,22 +56,22 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
 
         <div className="flex items-center gap-3 flex-wrap flex-1 justify-end">
           <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-blue-500" />
+            <Globe className="h-4 w-4 text-palette-ocean-blue" />
             <div className="flex flex-wrap gap-1">
               {parsedLanguages.map((lang, index) => (
                 <div
                   key={index}
-                  className="px-3 py-1 bg-gradient-to-r from-blue-50 to-indigo-100 text-blue-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
+                  className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
                 >
                   <span>{lang.source}</span>
-                  <span className="text-indigo-400">→</span>
+                  <span className="text-palette-vivid-purple">→</span>
                   <span>{lang.target}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="text-sm text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded-md">
+          <div className="text-sm text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-3 py-1 rounded-full">
             {employmentStatusLabels[interpreter.employment_status]}
           </div>
 

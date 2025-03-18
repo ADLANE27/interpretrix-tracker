@@ -24,37 +24,43 @@ export const StatisticsCards = ({
       title: "Interprètes",
       value: totalInterpreters,
       icon: Users,
-      color: "from-blue-400 to-blue-600",
+      color: "from-palette-ocean-blue to-palette-soft-blue",
+      textColor: "text-white",
     },
     {
       title: "Missions aujourd'hui",
       value: todayMissionsCount,
       icon: CalendarDays,
-      color: "from-purple-400 to-purple-600",
+      color: "from-palette-vivid-purple to-palette-soft-purple",
+      textColor: "text-white",
     },
     {
       title: "Disponibles",
       value: availableCount,
       icon: CheckCircle2,
-      color: "from-green-400 to-green-600",
+      color: "from-green-400 to-emerald-600",
+      textColor: "text-white",
     },
     {
       title: "En appel",
       value: busyCount,
       icon: Phone,
-      color: "from-violet-400 to-violet-600",
+      color: "from-indigo-400 to-palette-vivid-purple",
+      textColor: "text-white",
     },
     {
       title: "En pause",
       value: pauseCount,
       icon: Coffee,
-      color: "from-orange-400 to-orange-600",
+      color: "from-amber-400 to-palette-bright-orange",
+      textColor: "text-white",
     },
     {
       title: "Indisponibles",
       value: unavailableCount,
       icon: X,
-      color: "from-red-400 to-red-600",
+      color: "from-red-400 to-rose-600",
+      textColor: "text-white",
     },
   ];
 
@@ -65,12 +71,14 @@ export const StatisticsCards = ({
         return (
           <Card
             key={index}
-            className={`bg-gradient-to-br ${card.color} text-white p-3 shadow-lg hover:shadow-xl transition-shadow`}
+            className={`bg-gradient-to-br ${card.color} ${card.textColor} p-4 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-0`}
           >
-            <div className="flex flex-col items-center justify-center space-y-1">
-              <Icon className="h-6 w-6 opacity-80" />
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                <Icon className="h-6 w-6" />
+              </div>
               <span className="text-xl font-bold">{card.value}</span>
-              <span className="text-xs opacity-80">{card.title}</span>
+              <span className="text-xs opacity-90">{card.title}</span>
             </div>
           </Card>
         );

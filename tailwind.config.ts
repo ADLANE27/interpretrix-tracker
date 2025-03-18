@@ -67,6 +67,21 @@ export default {
           muted: "#8A898C",
           accent: "#222222",
           highlight: "#E5DEFF"
+        },
+        palette: {
+          purple: "#9b87f5",
+          "soft-green": "#F2FCE2",
+          "soft-yellow": "#FEF7CD",
+          "soft-orange": "#FEC6A1",
+          "soft-purple": "#E5DEFF",
+          "soft-pink": "#FFDEE2",
+          "soft-peach": "#FDE1D3",
+          "soft-blue": "#D3E4FD",
+          "soft-gray": "#F1F0FB",
+          "vivid-purple": "#8B5CF6",
+          "magenta-pink": "#D946EF",
+          "bright-orange": "#F97316",
+          "ocean-blue": "#0EA5E9",
         }
       },
       borderRadius: {
@@ -87,6 +102,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
     },
   },
