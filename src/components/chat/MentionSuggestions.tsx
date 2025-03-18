@@ -13,6 +13,7 @@ interface MemberSuggestion {
 }
 
 interface LanguageSuggestion {
+  id: string; // Add id to make this compatible with ChatComposer's Suggestion type
   name: string;
   type: 'language';
 }
@@ -32,8 +33,9 @@ export const MentionSuggestions = ({
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
-  // Convert standardized languages to suggestions format
+  // Convert standardized languages to suggestions format with id property
   const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
+    id: `lang-${lang.toLowerCase().replace(/\s+/g, '-')}`, // Generate an ID for language suggestions
     name: lang,
     type: 'language'
   }));
@@ -84,7 +86,7 @@ export const MentionSuggestions = ({
             <CommandGroup heading="Langues">
               {languageSuggestions.map((lang) => (
                 <CommandItem
-                  key={lang.name}
+                  key={lang.id}
                   value={lang.name.toLowerCase()}
                   onSelect={() => onSelect(lang)}
                   className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"

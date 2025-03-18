@@ -22,13 +22,21 @@ interface Message {
   sender?: MessageSender;
 }
 
-interface Suggestion {
+// Ensure these types match exactly with those in MentionSuggestions.tsx
+interface MemberSuggestion {
   id: string;
   name: string;
-  email?: string;
-  role?: 'admin' | 'interpreter';
-  type?: 'language';
+  email: string;
+  role: 'admin' | 'interpreter';
 }
+
+interface LanguageSuggestion {
+  id: string;
+  name: string;
+  type: 'language';
+}
+
+type Suggestion = MemberSuggestion | LanguageSuggestion;
 
 interface ChatComposerProps {
   newMessage: string;
