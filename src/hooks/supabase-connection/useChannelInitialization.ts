@@ -31,8 +31,8 @@ export const useChannelInitialization = ({
           updateLastHeartbeat();
         }
       })
-      // Use the correct event type for broadcast messages with proper parameters
-      .on('broadcast', { event: 'heartbeat' }, (payload, context) => {
+      // The correct way to listen for broadcast messages in Supabase Realtime
+      .on('broadcast', { event: 'heartbeat' }, (payload) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
