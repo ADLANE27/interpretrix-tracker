@@ -60,6 +60,7 @@ interface MemberSuggestion {
 }
 
 interface LanguageSuggestion {
+  id: string;
   name: string;
   type: 'language';
 }
@@ -258,6 +259,7 @@ export const MessagesTab = () => {
       const languageSuggestions = (languageData || [])
         .filter(lang => lang.target_language.toLowerCase().includes(query.toLowerCase()))
         .map(lang => ({
+          id: `lang-${lang.target_language.toLowerCase().replace(/\s+/g, '-')}`,
           name: lang.target_language,
           type: 'language' as const
         }));
