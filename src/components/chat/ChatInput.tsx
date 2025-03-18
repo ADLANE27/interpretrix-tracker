@@ -199,19 +199,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         console.error('Error fetching source languages:', sourceLanguagesError);
       }
 
-      const targetLanguageSuggestions: LanguageSuggestion[] = (channelLanguages || []).map(
+      const targetLanguageSuggestions: LanguageSuggestion[] = Array.isArray(channelLanguages) ? channelLanguages.map(
         (lang: { target_language: string }) => ({
           name: lang.target_language,
           type: 'language'
         })
-      );
+      ) : [];
 
-      const sourceLanguageSuggestions: LanguageSuggestion[] = (sourceLanguages || []).map(
+      const sourceLanguageSuggestions: LanguageSuggestion[] = Array.isArray(sourceLanguages) ? sourceLanguages.map(
         (lang: { source_language: string }) => ({
           name: lang.source_language,
           type: 'language'
         })
-      );
+      ) : [];
 
       const combinedSuggestions = [
         ...interpreterSuggestions, 
@@ -226,7 +226,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       for (const suggestion of combinedSuggestions) {
         const key = 'type' in suggestion && suggestion.type === 'language' 
           ? `language-${suggestion.name.toLowerCase()}`
-          : `user-${suggestion.id}`;
+          : `user-${(suggestion as MemberSuggestion).id}`;
           
         if (!seenNames.has(key)) {
           seenNames.add(key);
