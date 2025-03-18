@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -205,9 +206,9 @@ export const InterpreterChat = ({
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full relative">
       <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
@@ -216,7 +217,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 h-full overflow-hidden">
+      <div className="flex-1 w-full overflow-hidden relative">
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
@@ -228,7 +229,7 @@ export const InterpreterChat = ({
             </p>
           </div>
         ) : (
-          <div className="h-full overflow-hidden">
+          <ScrollArea className="h-full pr-2">
             <MessageList
               messages={filteredMessages()}
               currentUserId={currentUserId}
@@ -238,11 +239,11 @@ export const InterpreterChat = ({
               setReplyTo={setReplyTo}
               channelId={channelId}
             />
-          </div>
+          </ScrollArea>
         )}
       </div>
 
-      <div className="shrink-0">
+      <div className="w-full bg-white border-t">
         <ChatInput
           message={message}
           setMessage={setMessage}

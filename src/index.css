@@ -128,4 +128,25 @@
     @apply h-12 min-w-12 rounded-full flex items-center justify-center;
     touch-action: manipulation;
   }
+
+  .chat-message-action {
+    @apply opacity-0 group-hover:opacity-100 transition-opacity duration-200 
+           p-1.5 rounded-full hover:bg-gray-100 bg-white/90 backdrop-blur-sm shadow-sm;
+  }
+
+  .messages-container {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .message-input-container {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    background-color: white;
+    border-top: 1px solid var(--border);
+    z-index: 10;
+  }
 }

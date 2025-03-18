@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageList } from "./MessageList";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { toast } from "@/hooks/use-toast";
+import { Message } from "@/types/messaging";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ChatProps {
   channelId: string;
@@ -33,6 +35,10 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
+  const [message, setMessage] = useState('');
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update newName when channel data is loaded
   useEffect(() => {
@@ -76,13 +82,38 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     }
   };
 
-  // Debug logging to check channel data
-  console.log('Channel data:', channel);
-  console.log('User role:', userRole);
+  const handleSendMessage = async () => {
+    if (!message.trim() || !channelId || !currentUserId) return;
+    
+    try {
+      await sendMessage(message, replyTo?.id, attachments);
+      setMessage('');
+      setAttachments([]);
+      setReplyTo(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+    
+    const fileArray = Array.from(files);
+    setAttachments(prev => [...prev, ...fileArray]);
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments(prev => {
+      const newAttachments = [...prev];
+      newAttachments.splice(index, 1);
+      return newAttachments;
+    });
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex flex-col h-full relative">
+      <div className="flex items-center justify-between p-4 border-b shrink-0">
         <div className="flex items-center gap-2">
           {isEditing && userRole === 'admin' ? (
             <>
@@ -107,7 +138,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">{channel?.name}</h2>
+              <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
               {userRole === 'admin' && (
                 <Button
                   size="sm"
@@ -129,27 +160,39 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         />
       </div>
       
-      <div className="flex-1 overflow-y-auto">
-        <MessageList
-          messages={messages}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          channelId={channelId}
-        />
+      <div className="flex-1 w-full overflow-hidden">
+        {isLoading ? (
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold">Chargement des messages...</p>
+          </div>
+        ) : (
+          <ScrollArea className="h-full pr-2">
+            <MessageList
+              messages={messages}
+              currentUserId={currentUserId}
+              onDeleteMessage={deleteMessage}
+              onReactToMessage={reactToMessage}
+              replyTo={replyTo}
+              setReplyTo={setReplyTo}
+              channelId={channelId}
+            />
+          </ScrollArea>
+        )}
       </div>
       
-      <ChatInput
-        message=""
-        setMessage={() => {}}
-        onSendMessage={() => {}}
-        handleFileChange={() => {}}
-        attachments={[]}
-        handleRemoveAttachment={() => {}}
-        inputRef={React.createRef()}
-        replyTo={null}
-        setReplyTo={() => {}}
-      />
+      <div className="w-full bg-white border-t">
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+        />
+      </div>
     </div>
   );
 };
