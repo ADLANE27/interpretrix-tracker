@@ -44,52 +44,58 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
   const { formatMessage } = useMessageFormatter();
 
-  // Create a debounced version of the fetchMentionSuggestions function
+  // Create a debounced version of the fetchMentionSuggestions function with reduced timeout
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
       fetchMentionSuggestions(searchTerm, channelId);
-    }, 300),
+    }, 150), // Reduced from 300ms to 150ms for better responsiveness
     []
   );
 
-  // Function to detect when @ is typed and handle mention suggestions
-  useEffect(() => {
-    const textarea = inputRef.current;
-    if (!textarea) return;
+  // Track cursor position when input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMessage = e.target.value;
+    setMessage(newMessage);
+    
+    // Update cursor position
+    const cursorPos = e.target.selectionStart || 0;
+    setCursorPosition(cursorPos);
+    
+    // Check for mentions only on the onChange event
+    checkForMentions(newMessage, cursorPos);
+  };
 
-    const handleInput = () => {
-      const cursorPos = textarea.selectionStart || 0;
-      const textBeforeCursor = message.substring(0, cursorPos);
+  // Check for mentions in the current text at cursor position
+  const checkForMentions = (text: string, cursorPos: number) => {
+    const textBeforeCursor = text.substring(0, cursorPos);
+    
+    // Look for @ symbol followed by text without spaces
+    const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
+    
+    if (mentionMatch) {
+      const searchTerm = mentionMatch[1];
+      setMentionSearchTerm(searchTerm);
+      setMentionStartIndex(mentionMatch.index || 0);
+      setMentionSuggestionsVisible(true);
       
-      // Look for @ symbol followed by text without spaces
-      const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
-      
-      if (mentionMatch) {
-        const searchTerm = mentionMatch[1];
-        setMentionSearchTerm(searchTerm);
-        setMentionStartIndex(mentionMatch.index || 0);
-        setMentionSuggestionsVisible(true);
-        
-        // Find which channel we're in by looking at the DOM
-        const channelId = document.querySelector('#messages-container')?.getAttribute('data-channel-id');
-        if (channelId) {
-          setCurrentChannelId(channelId);
-          setIsLoadingSuggestions(true);
-          debouncedFetchSuggestions(searchTerm, channelId);
-        }
-      } else {
-        setMentionSuggestionsVisible(false);
+      // Find which channel we're in by looking at the DOM
+      const channelId = document.querySelector('#messages-container')?.getAttribute('data-channel-id');
+      if (channelId) {
+        setCurrentChannelId(channelId);
+        setIsLoadingSuggestions(true);
+        debouncedFetchSuggestions(searchTerm, channelId);
       }
-    };
-
-    const handleInputEvent = () => handleInput();
-    textarea.addEventListener('input', handleInputEvent);
-    return () => {
-      textarea.removeEventListener('input', handleInputEvent);
-    };
-  }, [message, inputRef, debouncedFetchSuggestions]);
+    } else {
+      // Only hide suggestions if we're not currently in mention mode
+      if (mentionSuggestionsVisible) {
+        setMentionSuggestionsVisible(false);
+        setMentionSearchTerm('');
+      }
+    }
+  };
 
   const fetchMentionSuggestions = async (searchTerm: string, channelId: string) => {
     try {
@@ -119,7 +125,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       
       const memberIds = members.map(m => m.user_id);
       
-      // Get interpreter profiles
+      // Get interpreter profiles with better filtering
       const { data: interpreters, error: interpretersError } = await supabase
         .from('interpreter_profiles')
         .select(`
@@ -129,10 +135,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           email,
           profile_picture_url
         `)
-        .in('id', memberIds)
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        .in('id', memberIds);
       
-      // Get admin profiles
+      // Get admin profiles with better filtering
       const { data: admins, error: adminsError } = await supabase
         .from('admin_profiles')
         .select(`
@@ -141,8 +146,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           last_name,
           email
         `)
-        .in('id', memberIds)
-        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        .in('id', memberIds);
 
       if (interpretersError) {
         console.error('Error fetching interpreter profiles:', interpretersError);
@@ -193,11 +197,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         };
       });
 
-      // Combine the suggestions
+      // Filter suggestions based on search term
       const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
-      console.log("Found suggestions:", combinedSuggestions.length);
       
-      setSuggestions(combinedSuggestions);
+      // Client-side filtering based on search term
+      const filteredSuggestions = searchTerm 
+        ? combinedSuggestions.filter(suggestion => {
+            const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return normalizedName.includes(normalizedSearch);
+          })
+        : combinedSuggestions;
+      
+      console.log("Found suggestions:", filteredSuggestions.length);
+      setSuggestions(filteredSuggestions);
     } catch (error) {
       console.error('Error fetching mention suggestions:', error);
       setSuggestions([]);
@@ -209,7 +222,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleMentionSelect = (suggestion: Suggestion) => {
     if (!inputRef.current) return;
     
-    const cursorPos = inputRef.current.selectionStart || 0;
+    const cursorPos = cursorPosition;
     const textBeforeMention = message.substring(0, mentionStartIndex);
     const textAfterCursor = message.substring(cursorPos);
     
@@ -235,6 +248,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         inputRef.current.focus();
         const newCursorPos = textBeforeMention.length + insertText.length;
         inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
       }
     }, 0);
   };
@@ -243,6 +257,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setMessage(message + emoji.native);
     setEmojiPickerOpen(false);
   };
+
+  // Track cursor position when manually moving it
+  const handleSelectionChange = () => {
+    if (inputRef.current) {
+      setCursorPosition(inputRef.current.selectionStart || 0);
+    }
+  };
+
+  // Update cursor position tracking
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    
+    textarea.addEventListener('click', handleSelectionChange);
+    textarea.addEventListener('keyup', handleSelectionChange);
+    
+    return () => {
+      textarea.removeEventListener('click', handleSelectionChange);
+      textarea.removeEventListener('keyup', handleSelectionChange);
+    };
+  }, [inputRef]);
 
   return (
     <div className="border-t p-4 bg-white">
@@ -264,7 +299,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Textarea
               ref={inputRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Écrivez un message..."
               className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
               onKeyDown={(e) => {
@@ -291,13 +326,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   const cursorPos = textarea.selectionStart || 0;
                   const textBeforeCursor = message.substring(0, cursorPos);
                   const textAfterCursor = message.substring(cursorPos);
-                  setMessage(textBeforeCursor + '@' + textAfterCursor);
+                  const newMessage = textBeforeCursor + '@' + textAfterCursor;
+                  setMessage(newMessage);
                   
                   // Focus on textarea and place cursor after @
                   setTimeout(() => {
                     textarea.focus();
                     const newPos = cursorPos + 1;
                     textarea.setSelectionRange(newPos, newPos);
+                    setCursorPosition(newPos);
+                    
+                    // Trigger mention suggestions manually
+                    checkForMentions(newMessage, newPos);
                   }, 0);
                 }
               }}
@@ -377,6 +417,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             onSelect={handleMentionSelect}
             visible={mentionSuggestionsVisible}
             loading={isLoadingSuggestions}
+            searchTerm={mentionSearchTerm}
           />
         )}
       </div>

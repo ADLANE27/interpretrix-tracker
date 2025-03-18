@@ -12,30 +12,38 @@ interface MentionSuggestionsProps {
   onSelect: (suggestion: Suggestion) => void;
   visible: boolean;
   loading?: boolean;
+  searchTerm?: string;
 }
 
 export const MentionSuggestions = ({ 
   suggestions = [], 
   onSelect, 
   visible,
-  loading = false
+  loading = false,
+  searchTerm = ''
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
   // Convert standardized languages to suggestions format
-  const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
+  const standardLanguageSuggestions: LanguageSuggestion[] = Object.values(LANGUAGES).map(lang => ({
     name: lang,
     type: 'language'
   }));
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
-  const languageSuggestions = standardLanguageSuggestions;
+  
+  // Filter language suggestions based on search term if provided
+  const languageSuggestions = searchTerm 
+    ? standardLanguageSuggestions.filter(lang => 
+        lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
+    : standardLanguageSuggestions;
 
   if (loading) {
     return (
-      <div className="absolute bottom-full mb-1 w-64 z-50">
+      <div className="absolute bottom-full mb-1 w-64 z-50 bg-background shadow-md">
         <Command className="border rounded-lg shadow-md">
-          <CommandInput placeholder="Rechercher..." className="border-b" disabled />
+          <CommandInput placeholder="Rechercher..." className="border-b" disabled value={searchTerm} />
           <CommandList>
             <div className="p-4 text-center text-sm text-muted-foreground">
               Chargement des suggestions...
@@ -48,9 +56,9 @@ export const MentionSuggestions = ({
 
   if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
     return (
-      <div className="absolute bottom-full mb-1 w-64 z-50">
+      <div className="absolute bottom-full mb-1 w-64 z-50 bg-background shadow-md">
         <Command className="border rounded-lg shadow-md">
-          <CommandInput placeholder="Rechercher..." className="border-b" />
+          <CommandInput placeholder="Rechercher..." className="border-b" value={searchTerm} />
           <CommandList>
             <CommandEmpty>Aucune suggestion trouvée</CommandEmpty>
           </CommandList>
@@ -60,7 +68,7 @@ export const MentionSuggestions = ({
   }
 
   return (
-    <div className="absolute bottom-full mb-1 w-64 z-50">
+    <div className="absolute bottom-full mb-1 w-64 z-50 bg-background shadow-md">
       <Command
         className="border rounded-lg shadow-md"
         filter={(value, search) => {
@@ -74,7 +82,7 @@ export const MentionSuggestions = ({
           return 0;
         }}
       >
-        <CommandInput placeholder="Rechercher..." className="border-b" />
+        <CommandInput placeholder="Rechercher..." className="border-b" value={searchTerm} />
         <CommandList>
           <ScrollArea className="max-h-[200px] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
             {memberSuggestions.length > 0 && (
