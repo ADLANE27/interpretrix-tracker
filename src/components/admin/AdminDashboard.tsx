@@ -561,7 +561,7 @@ const AdminDashboard = () => {
           </TabsContent>
 
           <TabsContent value="guide" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6">
+            <div className="min-h-full p-4 sm:p-6 bg-slate-50">
               <AdminGuideContent />
             </div>
           </TabsContent>
