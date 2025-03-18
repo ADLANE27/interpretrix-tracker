@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { BeamsBackground } from '@/components/ui/beams-background';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -56,9 +55,8 @@ const Admin = () => {
   }, [navigate]);
 
   return (
-    <div className="h-screen w-full bg-dark-navy transition-colors duration-300 relative">
-      <BeamsBackground intensity="medium" />
-      <div className="h-full w-full relative z-10">
+    <div className="h-screen w-full bg-background transition-colors duration-300">
+      <div className="h-full w-full">
         <AdminDashboard />
       </div>
     </div>

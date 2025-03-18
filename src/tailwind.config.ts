@@ -21,7 +21,7 @@ export default {
     extend: {
       colors: {
         interpreter: {
-          navy: "#1eaedb", // Updated to match landing page button
+          navy: "#1EAEDB", // Updated to match landing page button
           available: "#10b981",
           unavailable: "#ef4444",
           pause: "#f97316",
@@ -62,7 +62,6 @@ export default {
         },
         dark: {
           background: "#1A1F2C",
-          navy: "#1A1F2C", 
           card: "#403E43",
           text: "#FFFFFF",
           muted: "#8A898C",
