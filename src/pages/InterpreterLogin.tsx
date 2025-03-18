@@ -1,3 +1,4 @@
+
 import { InterpreterLoginForm } from "@/components/auth/InterpreterLoginForm";
 
 const InterpreterLogin = () => {

@@ -90,13 +90,20 @@ export const InterpreterLoginForm = () => {
 
   return (
     <Card className="w-full max-w-md p-8 space-y-6 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl border-0">
-      <div className="space-y-2 text-center">
-        <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#1A1F2C] to-[#403E43] bg-clip-text text-transparent">
-          Espace interprète
-        </h2>
-        <p className="text-sm text-[#8E9196]">
-          Connectez-vous à votre espace interprète
-        </p>
+      <div className="flex flex-col items-center space-y-4">
+        <img 
+          src="/lovable-uploads/6e10035d-9f88-462d-8801-4e8385181993.png" 
+          alt="AFTraduction Logo" 
+          className="h-16 w-auto mb-2"
+        />
+        <div className="space-y-2 text-center">
+          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-[#1A1F2C] to-[#403E43] bg-clip-text text-transparent">
+            Espace interprète
+          </h2>
+          <p className="text-sm text-[#8E9196]">
+            Connectez-vous à votre espace interprète
+          </p>
+        </div>
       </div>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
