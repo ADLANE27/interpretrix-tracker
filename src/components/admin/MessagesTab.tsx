@@ -18,7 +18,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
-import { useChat } from "@/hooks/useChat"; // Import the useChat hook for consistent handling
+import { useChat } from "@/hooks/useChat"; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import Chat from "@/components/chat/Chat"; // Import the standardized Chat component
+import Chat from "@/components/chat/Chat";
 
 interface Channel {
   id: string;
@@ -40,20 +40,6 @@ interface Channel {
   updated_at: string;
   created_by: string;
 }
-
-interface MemberSuggestion {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'interpreter';
-}
-
-interface LanguageSuggestion {
-  name: string;
-  type: 'language';
-}
-
-type Suggestion = MemberSuggestion | LanguageSuggestion;
 
 export const MessagesTab = () => {
   const { formatMessageTime } = useTimestampFormat();
@@ -69,7 +55,9 @@ export const MessagesTab = () => {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const currentUser = useRef<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -78,8 +66,10 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
+  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
+      setIsLoading(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
@@ -92,6 +82,7 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
+          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -103,11 +94,13 @@ export const MessagesTab = () => {
           description: "Failed to fetch channels",
           variant: "destructive",
         });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchChannels();
-  }, [selectedChannel]);
+  }, []); // No dependencies, only run once on component mount
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -126,6 +119,11 @@ export const MessagesTab = () => {
         }
       } catch (error) {
         console.error("Error fetching channels:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch channels",
+          variant: "destructive",
+        });
       }
     };
     fetchChannels();
@@ -189,6 +187,13 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
+      // Update the channels list with the new name
+      setChannels(channels.map(channel => 
+        channel.id === channelId 
+          ? { ...channel, display_name: newName.trim() }
+          : channel
+      ));
+      
       toast({
         title: "Success",
         description: "Channel renamed successfully"
@@ -202,6 +207,15 @@ export const MessagesTab = () => {
       });
     }
   };
+
+  // Display a loading state while fetching channels
+  if (isLoading && channels.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p className="text-lg text-muted-foreground">Loading channels...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden bg-background">
@@ -332,7 +346,7 @@ export const MessagesTab = () => {
                 </Button>
               )}
               
-              {/* Use the standardized Chat component for both admin and interpreter */}
+              {/* Use the standardized Chat component */}
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"

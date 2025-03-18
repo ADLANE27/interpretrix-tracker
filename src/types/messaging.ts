@@ -67,3 +67,18 @@ export interface MessageListProps {
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
 }
+
+// Add dedicated mention interfaces
+export interface MemberSuggestion {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'interpreter';
+}
+
+export interface LanguageSuggestion {
+  name: string;
+  type: 'language';
+}
+
+export type Suggestion = MemberSuggestion | LanguageSuggestion;

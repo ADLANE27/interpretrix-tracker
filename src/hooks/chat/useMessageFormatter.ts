@@ -3,7 +3,7 @@ import { LANGUAGES } from '@/lib/constants';
 
 export const useMessageFormatter = () => {
   const formatMessage = (content: string) => {
-    // Replace language mentions with standardized versions from our constants
+    // Only replace language mentions with standardized versions if they closely match our constants
     let formattedContent = content;
     
     // Create a RegExp pattern that matches any language mention
@@ -12,17 +12,22 @@ export const useMessageFormatter = () => {
     formattedContent = formattedContent.replace(languageMentionPattern, (match, mentionedLanguage) => {
       const cleanedMention = mentionedLanguage.trim();
       
-      // Check if the mentioned language exists in our standardized list
-      const matchedLanguage = LANGUAGES.find(lang => 
-        lang.toLowerCase() === cleanedMention.toLowerCase() ||
-        lang.toLowerCase().startsWith(cleanedMention.toLowerCase())
-      );
+      // Only standardize if we have a very close match (at least 80% similar)
+      const matchedLanguage = LANGUAGES.find(lang => {
+        const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedMention = cleanedMention.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return normalizedLang === normalizedMention || 
+               normalizedLang.startsWith(normalizedMention) ||
+               normalizedMention.startsWith(normalizedLang);
+      });
       
       if (matchedLanguage) {
         return `@${matchedLanguage}`;
       }
       
-      return match; // Keep original if no match found
+      // If no close match found, preserve the original mention
+      return match;
     });
     
     return formattedContent;

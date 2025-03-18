@@ -4,20 +4,7 @@ import { Command, CommandGroup, CommandItem, CommandList, CommandInput } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Languages } from 'lucide-react';
 import { LANGUAGES } from '@/lib/constants';
-
-interface MemberSuggestion {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'interpreter';
-}
-
-interface LanguageSuggestion {
-  name: string;
-  type: 'language';
-}
-
-type Suggestion = MemberSuggestion | LanguageSuggestion;
+import { MemberSuggestion, LanguageSuggestion, Suggestion } from '@/types/messaging';
 
 interface MentionSuggestionsProps {
   suggestions: Suggestion[];
