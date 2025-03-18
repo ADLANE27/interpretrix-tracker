@@ -65,12 +65,16 @@ export const StatisticsCards = ({
         return (
           <Card
             key={index}
-            className={`bg-gradient-to-br ${card.color} text-white p-4 shadow-lg hover:shadow-xl transition-shadow`}
+            className={`bg-gradient-to-br ${card.color} text-white p-4 shadow-lg hover:shadow-xl transition-shadow relative overflow-hidden`}
           >
-            <div className="flex flex-col items-center justify-center space-y-2">
-              <Icon className="h-8 w-8 opacity-80" />
+            <div className="absolute inset-0 opacity-20 bg-white/10 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl bg-white"></div>
+            </div>
+            <div className="flex flex-col items-center justify-center space-y-2 relative z-10">
+              <Icon className="h-8 w-8 opacity-90" />
               <span className="text-2xl font-bold">{card.value}</span>
-              <span className="text-sm opacity-80">{card.title}</span>
+              <span className="text-sm opacity-90">{card.title}</span>
             </div>
           </Card>
         );

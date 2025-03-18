@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import GradientBackground from '@/components/GradientBackground';
 
 const Admin = () => {
   const { toast } = useToast();
@@ -55,8 +56,9 @@ const Admin = () => {
   }, [navigate]);
 
   return (
-    <div className="h-screen w-full bg-background transition-colors duration-300">
-      <div className="h-full w-full">
+    <div className="h-screen w-full bg-background/60 transition-colors duration-300 relative">
+      <GradientBackground />
+      <div className="h-full w-full relative z-0 backdrop-blur-[2px]">
         <AdminDashboard />
       </div>
     </div>
