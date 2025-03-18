@@ -56,9 +56,9 @@ export const useSubscriptions = (
       }
 
       try {
-        // Create a new channel with a unique name based on channelId and timestamp
-        const channelName = `chat-${channelId}-${Date.now()}`;
-        console.log('[Chat] Creating new channel:', channelName);
+        // Create a new channel with a unique name based on channelId and timestamp to avoid conflicts
+        const channelName = `chat-${channelId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        console.log('[Chat] Creating new channel with unique name:', channelName);
         
         channelRef.current = supabase.channel(channelName);
 
@@ -73,7 +73,7 @@ export const useSubscriptions = (
             },
             (payload) => {
               if (!isSubscribed) return;
-              console.log('[Chat] Message change received:', payload);
+              console.log('[Chat] Message change received:', payload.eventType, payload);
               onRealtimeEvent(payload);
             }
           );
@@ -83,14 +83,18 @@ export const useSubscriptions = (
           console.log('[Chat] Subscription status:', status);
           
           if (status === 'SUBSCRIBED') {
+            console.log('[Chat] Successfully subscribed to channel:', channelName);
             setSubscriptionStates({
               messages: { status: 'SUBSCRIBED' },
               ...(currentUserId && { mentions: { status: 'SUBSCRIBED' } })
             });
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('[Chat] Channel error for channel:', channelName);
+            handleSubscriptionError(new Error(`Channel error for ${channelName}`), 'messages');
           }
         });
 
-        console.log('[Chat] Channel subscribed:', channel);
+        console.log('[Chat] Channel subscription initiated:', channel);
       } catch (error) {
         console.error('[Chat] Error setting up subscriptions:', error);
         handleSubscriptionError(error as Error, 'messages');
@@ -116,6 +120,7 @@ export const useSubscriptions = (
 
   return {
     subscriptionStates,
-    handleSubscriptionError
+    handleSubscriptionError,
+    isSubscribed: subscriptionStates.messages?.status === 'SUBSCRIBED'
   };
 };

@@ -37,7 +37,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  // Change from HTMLInputElement to HTMLTextAreaElement to match ChatInput expectations
+  // Using HTMLTextAreaElement to match ChatInput expectations
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update newName when channel data is loaded
@@ -54,7 +54,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     deleteMessage,
     currentUserId,
     reactToMessage,
-    isSubscribed
+    isSubscribed,
+    subscriptionStatus
   } = useChat(channelId);
 
   const handleRename = async () => {
@@ -87,6 +88,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     if (!message.trim()) return;
     
     try {
+      // Send message and clear input
       await sendMessage(message);
       setMessage('');
       setReplyTo(null);
@@ -106,10 +108,10 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   };
 
   // Debug logging
-  console.log('[Chat Component] Rendering with messages:', messages.length);
-  console.log('[Chat Component] Is subscribed:', isSubscribed);
-  console.log('[Chat Component] Current user ID:', currentUserId);
-  console.log('[Chat Component] Channel ID:', channelId);
+  console.log(`[Chat ${userRole}] Rendering with messages:`, messages.length);
+  console.log(`[Chat ${userRole}] Is subscribed:`, isSubscribed);
+  console.log(`[Chat ${userRole}] Subscription status:`, subscriptionStatus);
+  console.log(`[Chat ${userRole}] Current user ID:`, currentUserId);
 
   return (
     <div className="flex flex-col h-full">
@@ -160,7 +162,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         />
       </div>
       
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" id="messages-container">
         <MessageList
           key={`message-list-${channelId}-${messages.length}`}
           messages={messages}
