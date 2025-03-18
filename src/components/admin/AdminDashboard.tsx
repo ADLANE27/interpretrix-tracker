@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import InterpreterCard from "../InterpreterCard";
 import { StatusFilter } from "../StatusFilter";
@@ -557,7 +558,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end lg:col-span-3">
                     <Button variant="outline" onClick={resetAllFilters} className="gap-2">
                       <X className="h-4 w-4" />
                       Supprimer tous les filtres
