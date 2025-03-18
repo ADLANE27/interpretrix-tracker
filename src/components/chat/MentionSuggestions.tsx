@@ -25,7 +25,7 @@ export const MentionSuggestions = ({
   if (!visible) return null;
 
   // Convert standardized languages to suggestions format
-  const standardLanguageSuggestions: LanguageSuggestion[] = Object.values(LANGUAGES).map(lang => ({
+  const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
     name: lang,
     type: 'language'
   }));
