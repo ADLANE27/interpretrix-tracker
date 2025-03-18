@@ -26,13 +26,13 @@ export const useChannelInitialization = ({
     if (!channel) return;
 
     channel
-      .on('presence', { event: 'join' }, () => {
+      .on('presence', { event: 'join' }, (payload) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
       })
-      // Fixed: Properly handling the heartbeat event with the correct parameters
-      .on('system', { event: 'heartbeat' }, (payload, context) => {
+      // Using the proper event type and function signature with all required parameters
+      .on('broadcast', { event: 'heartbeat' }, (payload) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }

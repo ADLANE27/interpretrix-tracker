@@ -63,6 +63,7 @@ export const useSubscriptions = (
         channelRef.current = supabase.channel(channelName);
 
         // Set up message changes subscription with explicit event types
+        // Use the updated pattern with proper types
         channelRef.current
           .on('postgres_changes',
             {
@@ -71,10 +72,10 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            async (payload) => {
+            (payload) => {
               if (!isSubscribed) return;
               console.log('[Chat] Message change received:', payload);
-              await fetchMessages(); // Refresh messages when changes occur
+              fetchMessages(); // Refresh messages when changes occur
             }
           );
 
