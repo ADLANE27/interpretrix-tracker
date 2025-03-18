@@ -29,67 +29,96 @@ export const useChat = (channelId: string) => {
       console.log('[Chat] Fetching messages for channel:', channelId);
       
       try {
-        // Using a direct SQL query with joins to fetch messages and sender details in one go
+        // Using a direct SQL query to fetch messages
         const { data: messagesWithSenders, error } = await supabase
-          .rpc('get_channel_messages_with_senders', { 
-            p_channel_id: channelId 
-          });
-        
+          .from('chat_messages')
+          .select(`
+            id,
+            content,
+            created_at,
+            channel_id,
+            sender_id,
+            parent_message_id,
+            reactions,
+            attachments,
+            chat_channels(channel_type)
+          `)
+          .eq('channel_id', channelId)
+          .order('created_at', { ascending: true });
+
         if (error) throw error;
         
         // Reset message cache on fresh fetch
         messageCache.current.clear();
         
         // Process and format the messages
-        const formattedMessages: Message[] = messagesWithSenders
-          .filter(msg => !messageCache.current.has(msg.id))
-          .map(msg => {
-            // Add to cache
-            messageCache.current.add(msg.id);
+        if (!Array.isArray(messagesWithSenders)) return [];
+        
+        const formattedMessages: Message[] = [];
+        
+        for (const msg of messagesWithSenders) {
+          // Skip if already in cache
+          if (messageCache.current.has(msg.id)) continue;
+          
+          // Add to cache
+          messageCache.current.add(msg.id);
+          
+          // Get sender details
+          const { data: senderData, error: senderError } = await supabase
+            .rpc('get_message_sender_details', { sender_id: msg.sender_id });
             
-            let parsedReactions = {};
-            try {
-              if (typeof msg.reactions === 'string') {
-                parsedReactions = JSON.parse(msg.reactions);
-              } else if (msg.reactions && typeof msg.reactions === 'object') {
-                parsedReactions = msg.reactions;
-              }
-            } catch (e) {
-              console.error('[Chat] Error parsing reactions:', e);
+          if (senderError) {
+            console.error('[Chat] Error fetching sender details:', senderError);
+            continue;
+          }
+          
+          const sender = Array.isArray(senderData) && senderData.length > 0 
+            ? senderData[0] 
+            : { id: msg.sender_id, name: 'Unknown User', avatar_url: '' };
+          
+          let parsedReactions = {};
+          try {
+            if (typeof msg.reactions === 'string') {
+              parsedReactions = JSON.parse(msg.reactions);
+            } else if (msg.reactions && typeof msg.reactions === 'object') {
+              parsedReactions = msg.reactions;
             }
+          } catch (e) {
+            console.error('[Chat] Error parsing reactions:', e);
+          }
 
-            const parsedAttachments: Attachment[] = [];
-            if (Array.isArray(msg.attachments)) {
-              msg.attachments.forEach(att => {
-                if (typeof att === 'object' && att !== null) {
-                  const attachment = {
-                    url: String(att['url'] || ''),
-                    filename: String(att['filename'] || ''),
-                    type: String(att['type'] || ''),
-                    size: Number(att['size'] || 0)
-                  };
-                  if (isAttachment(attachment)) {
-                    parsedAttachments.push(attachment);
-                  }
+          const parsedAttachments: Attachment[] = [];
+          if (Array.isArray(msg.attachments)) {
+            msg.attachments.forEach(att => {
+              if (typeof att === 'object' && att !== null) {
+                const attachment = {
+                  url: String(att['url'] || ''),
+                  filename: String(att['filename'] || ''),
+                  type: String(att['type'] || ''),
+                  size: Number(att['size'] || 0)
+                };
+                if (isAttachment(attachment)) {
+                  parsedAttachments.push(attachment);
                 }
-              });
-            }
+              }
+            });
+          }
 
-            return {
-              id: msg.id,
-              content: msg.content,
-              sender: {
-                id: msg.sender_id,
-                name: msg.sender_name || 'Unknown User',
-                avatarUrl: msg.sender_avatar || ''
-              },
-              timestamp: new Date(msg.created_at),
-              reactions: parsedReactions,
-              attachments: parsedAttachments,
-              channelType: msg.channel_type as 'group' | 'direct',
-              parent_message_id: msg.parent_message_id
-            };
+          formattedMessages.push({
+            id: msg.id,
+            content: msg.content,
+            sender: {
+              id: sender.id,
+              name: sender.name,
+              avatarUrl: sender.avatar_url
+            },
+            timestamp: new Date(msg.created_at),
+            reactions: parsedReactions,
+            attachments: parsedAttachments,
+            channelType: msg.chat_channels?.channel_type as 'group' | 'direct',
+            parent_message_id: msg.parent_message_id
           });
+        }
         
         return formattedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       } catch (error) {
