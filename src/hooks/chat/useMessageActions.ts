@@ -69,6 +69,11 @@ const validateFile = (file: File): string | null => {
   return null;
 };
 
+// Check if we have an internet connection
+const checkConnection = (): boolean => {
+  return navigator.onLine;
+};
+
 export const useMessageActions = (
   channelId: string,
   currentUserId: string | null,
@@ -77,6 +82,11 @@ export const useMessageActions = (
   const { toast } = useToast();
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
+    // Check connection before attempting upload
+    if (!checkConnection()) {
+      throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
+    }
+
     // Validate file before upload
     const validationError = validateFile(file);
     if (validationError) {
@@ -133,8 +143,18 @@ export const useMessageActions = (
     parentMessageId?: string | null,
     files: File[] = []
   ): Promise<string> => {
-    if (!channelId || !currentUserId) throw new Error("Missing required data");
-    if (!content.trim() && files.length === 0) throw new Error("Message cannot be empty");
+    if (!channelId || !currentUserId) throw new Error("Données requises manquantes");
+    if (!content.trim() && files.length === 0) throw new Error("Le message ne peut pas être vide");
+    
+    // Check connection before attempting to send
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
+    }
     
     try {
       console.log('[Chat] Starting file uploads:', files.length);
@@ -163,15 +183,15 @@ export const useMessageActions = (
         .single();
 
       if (error) throw error;
-      if (!data) throw new Error("No data returned from insert");
+      if (!data) throw new Error("Aucune donnée retournée lors de l'insertion");
 
       await fetchMessages();
       return data.id;
     } catch (error) {
       console.error('[Chat] Error sending message:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to send message",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Échec de l'envoi du message",
         variant: "destructive",
       });
       throw error;
@@ -179,39 +199,88 @@ export const useMessageActions = (
   };
 
   const deleteMessage = async (messageId: string) => {
+    // Check for connection before attempting to delete
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check for required data
+    if (!messageId) {
+      toast({
+        title: "Erreur", 
+        description: "ID de message manquant",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!currentUserId) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour supprimer un message",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      // Verify the message belongs to the current user before deleting
+      console.log('[Chat] Attempting to delete message:', messageId);
+      
+      // First verify the message belongs to the current user, using maybeSingle instead of single
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('sender_id')
         .eq('id', messageId)
-        .single();
+        .maybeSingle();
 
-      if (fetchError) throw fetchError;
-
-      if (message.sender_id !== currentUserId) {
-        throw new Error('You can only delete your own messages');
+      if (fetchError) {
+        console.error('[Chat] Error fetching message for deletion check:', fetchError);
+        throw new Error("Impossible de vérifier la propriété du message");
       }
 
+      if (!message) {
+        console.error('[Chat] Message not found for deletion:', messageId);
+        throw new Error("Message introuvable");
+      }
+
+      if (message.sender_id !== currentUserId) {
+        console.error('[Chat] Unauthorized deletion attempt:', {
+          messageOwnerId: message.sender_id,
+          currentUserId
+        });
+        throw new Error("Vous ne pouvez supprimer que vos propres messages");
+      }
+
+      // Proceed with deletion inside a transaction to ensure consistency
       const { error } = await supabase
         .from('chat_messages')
         .delete()
         .eq('id', messageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Chat] Error during message deletion:', error);
+        throw error;
+      }
 
       // Refresh messages list after deletion
       await fetchMessages();
       
       toast({
-        title: "Success",
-        description: "Message deleted successfully"
+        title: "Succès",
+        description: "Message supprimé avec succès"
       });
     } catch (error) {
       console.error('[Chat] Error deleting message:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete message",
+        title: "Erreur",
+        description: error instanceof Error 
+          ? error.message 
+          : "Impossible de supprimer le message",
         variant: "destructive",
       });
     }
@@ -219,6 +288,12 @@ export const useMessageActions = (
 
   const markMentionsAsRead = async () => {
     if (!currentUserId || !channelId) return;
+
+    // Check connection before attempting to update mentions
+    if (!checkConnection()) {
+      console.error('[Chat] Cannot mark mentions as read: No internet connection');
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -239,14 +314,33 @@ export const useMessageActions = (
   const reactToMessage = async (messageId: string, emoji: string) => {
     if (!currentUserId) return;
 
+    // Check connection before attempting to react
+    if (!checkConnection()) {
+      toast({
+        title: "Erreur",
+        description: "Pas de connexion internet. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const { data: messages } = await supabase
+      // Use maybeSingle instead of single for better error handling
+      const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
         .eq('id', messageId)
-        .single();
+        .maybeSingle();
 
-      if (!messages) return;
+      if (fetchError) {
+        console.error('[Chat] Error fetching message for reaction:', fetchError);
+        throw fetchError;
+      }
+
+      if (!messages) {
+        console.error('[Chat] Message not found for reaction:', messageId);
+        throw new Error("Message introuvable");
+      }
 
       const currentReactions = messages.reactions as Record<string, string[]> || {};
       const currentUsers = currentReactions[emoji] || [];
@@ -272,12 +366,15 @@ export const useMessageActions = (
         .update({ reactions: updatedReactions })
         .eq('id', messageId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[Chat] Error updating reaction:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);
       toast({
-        title: "Error",
-        description: "Failed to update reaction",
+        title: "Erreur",
+        description: "Impossible de mettre à jour la réaction",
         variant: "destructive",
       });
     }

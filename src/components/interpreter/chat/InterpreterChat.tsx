@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
-import { UnifiedMessageList } from "@/components/chat/UnifiedMessageList";
+import { MessageList } from "@/components/chat/MessageList";
 import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -11,7 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -49,6 +48,7 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
@@ -57,6 +57,8 @@ export const InterpreterChat = ({
   const {
     messages,
     isLoading,
+    isSubscribed,
+    subscriptionStatus,
     sendMessage,
     deleteMessage,
     currentUserId,
@@ -204,9 +206,9 @@ export const InterpreterChat = ({
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <h2 className="text-lg font-semibold truncate">{channel?.name}</h2>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">{channel?.name}</h2>
         <ChannelMembersPopover 
           channelId={channelId} 
           channelName={channel?.name || ''} 
@@ -215,39 +217,40 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 w-full overflow-hidden relative">
+      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
           </div>
-        ) : (
-          <ScrollArea className="h-full pr-2">
-            <UnifiedMessageList
-              messages={filteredMessages()}
-              currentUserId={currentUserId}
-              onDeleteMessage={deleteMessage}
-              onReactToMessage={reactToMessage}
-              replyTo={replyTo}
-              setReplyTo={setReplyTo}
-              channelId={channelId}
-            />
-          </ScrollArea>
-        )}
-      </div>
-
-      <div className="w-full bg-white border-t">
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onSendMessage={handleSendMessage}
-          handleFileChange={handleFileChange}
-          attachments={attachments}
-          handleRemoveAttachment={handleRemoveAttachment}
-          inputRef={inputRef}
+        ) : !isSubscribed ? (
+          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold">
+              Connexion en cours...
+            </p>
+          </div>
+        ) : null}
+        <MessageList
+          messages={filteredMessages()}
+          currentUserId={currentUserId}
+          onDeleteMessage={deleteMessage}
+          onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
+          channelId={channelId}
         />
       </div>
+
+      <ChatInput
+        message={message}
+        setMessage={setMessage}
+        onSendMessage={handleSendMessage}
+        handleFileChange={handleFileChange}
+        attachments={attachments}
+        handleRemoveAttachment={handleRemoveAttachment}
+        inputRef={inputRef}
+        replyTo={replyTo}
+        setReplyTo={setReplyTo}
+      />
     </div>
   );
 };

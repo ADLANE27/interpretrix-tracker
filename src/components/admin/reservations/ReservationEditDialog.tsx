@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
-import { format } from 'date-fns';
-import { toUTCString } from "@/utils/dateTimeUtils";
 
 interface ReservationEditDialogProps {
   reservation: PrivateReservation;
@@ -33,26 +31,11 @@ export const ReservationEditDialog = ({
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
   const [selectedInterpreter, setSelectedInterpreter] = useState(reservation.interpreter_id);
 
-  // Initialize form with Paris timezone dates
-  const [startDate, setStartDate] = useState(() => {
-    const zonedDate = toZonedTime(new Date(reservation.start_time), 'Europe/Paris');
-    return format(zonedDate, 'yyyy-MM-dd');
-  });
-  
-  const [startTime, setStartTime] = useState(() => {
-    const zonedDate = toZonedTime(new Date(reservation.start_time), 'Europe/Paris');
-    return format(zonedDate, 'HH:mm');
-  });
-  
-  const [endDate, setEndDate] = useState(() => {
-    const zonedDate = toZonedTime(new Date(reservation.end_time), 'Europe/Paris');
-    return format(zonedDate, 'yyyy-MM-dd');
-  });
-  
-  const [endTime, setEndTime] = useState(() => {
-    const zonedDate = toZonedTime(new Date(reservation.end_time), 'Europe/Paris');
-    return format(zonedDate, 'HH:mm');
-  });
+  // Convert UTC dates to local format for form inputs without any timezone adjustments
+  const [startDate, setStartDate] = useState(reservation.start_time.split('T')[0]);
+  const [startTime, setStartTime] = useState(reservation.start_time.split('T')[1].substring(0, 5));
+  const [endDate, setEndDate] = useState(reservation.end_time.split('T')[0]);
+  const [endTime, setEndTime] = useState(reservation.end_time.split('T')[1].substring(0, 5));
 
   useEffect(() => {
     const fetchEligibleInterpreters = async () => {
@@ -77,9 +60,9 @@ export const ReservationEditDialog = ({
     setIsSubmitting(true);
 
     try {
-      // Convert local times to UTC for storage
-      const newStartTime = toUTCString(startDate, startTime);
-      const newEndTime = toUTCString(endDate, endTime);
+      // Create new Date objects using the form values directly
+      const newStartTime = `${startDate}T${startTime}:00Z`;
+      const newEndTime = `${endDate}T${endTime}:00Z`;
       
       // Calculate duration in minutes
       const startTimeMs = new Date(newStartTime).getTime();

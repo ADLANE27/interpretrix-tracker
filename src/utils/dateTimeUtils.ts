@@ -2,38 +2,33 @@
 /**
  * Utility functions for handling dates and times consistently across the application
  */
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 export const formatTimeString = (dateString: string | null): string => {
   if (!dateString) return '';
-  return formatInTimeZone(new Date(dateString), 'Europe/Paris', 'HH:mm');
+  // Extract HH:mm from ISO string without any timezone conversion
+  return dateString.slice(11, 16);
 };
 
 export const formatDateDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
-  const zonedDate = toZonedTime(new Date(dateString), 'Europe/Paris');
-  return format(zonedDate, 'EEEE d MMMM yyyy', { locale: fr });
+  // Create Date object from ISO string
+  const date = new Date(dateString);
+  // Format the date in French locale using Intl
+  const formatter = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  return formatter.format(date);
 };
 
 export const formatDateTimeDisplay = (dateString: string | null): string => {
   if (!dateString) return '';
-  return formatInTimeZone(
-    new Date(dateString),
-    'Europe/Paris',
-    "EEEE d MMMM yyyy 'à' HH:mm",
-    { locale: fr }
-  );
+  return `${formatDateDisplay(dateString)} à ${formatTimeString(dateString)}`;
 };
 
 export const getTimezoneOffset = (): number => {
   return new Date().getTimezoneOffset();
-};
-
-export const toUTCString = (date: string, time: string): string => {
-  const localDate = new Date(`${date}T${time}`);
-  const zonedDate = fromZonedTime(localDate, 'Europe/Paris');
-  return zonedDate.toISOString();
 };
 

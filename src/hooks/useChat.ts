@@ -1,106 +1,97 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment, isAttachment, parseReactions } from '@/types/messaging';
-import { useMessageActions } from './chat/useMessageActions';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
+import { useMessageFormatter } from './chat/useMessageFormatter';
 import { useSubscriptions } from './chat/useSubscriptions';
+import { useMessageActions } from './chat/useMessageActions';
+
+// Add the type guard function at the top of the file
+const isValidChannelType = (type: string): type is 'group' | 'direct' => {
+  return type === 'group' || type === 'direct';
+};
 
 export const useChat = (channelId: string) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const queryClient = useQueryClient();
-  
-  // Fetch current user once
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
+  const [retryCount, setRetryCount] = useState(0);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<{
+    messages: boolean;
+    mentions: boolean;
+  }>({ messages: false, mentions: false });
 
-  // Fetch messages using a direct query since we can't use the stored procedure
-  const { data: messages = [], isLoading } = useQuery({
-    queryKey: ['channel-messages', channelId],
-    queryFn: async () => {
-      if (!channelId) return [];
-      
+  const { formatMessage } = useMessageFormatter();
+
+  const fetchMessages = useCallback(async () => {
+    if (!channelId) return;
+    
+    setIsLoading(true);
+    try {
       console.log('[Chat] Fetching messages for channel:', channelId);
       
-      try {
-        // Using a direct SQL query for efficient fetching
-        const { data, error } = await supabase
-          .from('chat_messages')
-          .select(`
-            id, 
-            content, 
-            created_at,
-            sender_id,
-            channel_id,
-            parent_message_id,
-            reactions,
-            attachments
-          `)
-          .eq('channel_id', channelId)
-          .order('created_at', { ascending: true });
+      // First get the channel type to check if it's a direct message
+      const { data: channelData, error: channelError } = await supabase
+        .from('chat_channels')
+        .select('channel_type, created_by')
+        .eq('id', channelId)
+        .single();
 
-        if (error) throw error;
-        
-        if (!Array.isArray(data)) return [];
-        
-        // Get unique sender IDs for batch fetching
-        const senderIds = [...new Set(data.map(msg => msg.sender_id))];
-        
-        // Batch fetch all sender details
-        const { data: senders, error: sendersError } = await supabase
-          .from('interpreter_profiles')
-          .select('id, first_name, last_name, profile_picture_url')
-          .in('id', senderIds);
-          
-        if (sendersError) {
-          console.error('[Chat] Error fetching sender details:', sendersError);
-        }
+      if (channelError) throw channelError;
 
-        // Create sender lookup map
-        const senderMap: {[key: string]: {id: string, name: string, avatarUrl: string}} = {};
-        if (senders) {
-          senders.forEach(sender => {
-            senderMap[sender.id] = {
-              id: sender.id,
-              name: `${sender.first_name} ${sender.last_name}`,
-              avatarUrl: sender.profile_picture_url || ''
-            };
-          });
-        }
+      if (!channelData?.channel_type || !isValidChannelType(channelData.channel_type)) {
+        throw new Error('Invalid channel type');
+      }
 
-        // For admin users not found in interpreter profiles, fetch from auth.users via function
-        const missingIds = senderIds.filter(id => !senderMap[id]);
-        if (missingIds.length > 0) {
-          const { data: adminSenders, error: adminError } = await supabase
-            .rpc('batch_get_message_sender_details', { p_sender_ids: missingIds });
-            
-          if (adminError) {
-            console.error('[Chat] Error fetching admin details:', adminError);
-          } else if (adminSenders) {
-            adminSenders.forEach((sender: any) => {
-              senderMap[sender.id] = {
-                id: sender.id,
-                name: sender.name,
-                avatarUrl: sender.avatar_url || ''
-              };
+      const channelType = channelData.channel_type as 'group' | 'direct';
+
+      // Modified query to fetch messages in descending order by creation date
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('channel_id', channelId)
+        .order('created_at', { ascending: false });  // Changed to descending order
+
+      if (messagesError) {
+        console.error('[Chat] Error fetching messages:', messagesError);
+        throw messagesError;
+      }
+
+      console.log('[Chat] Retrieved messages:', messagesData?.length);
+
+      const formattedMessages: Message[] = [];
+      const senderDetailsPromises = messagesData?.map(async (message) => {
+        try {
+          const { data: senderData, error: senderError } = await supabase
+            .rpc('get_message_sender_details', {
+              sender_id: message.sender_id
             });
+
+          if (senderError) {
+            console.error('[Chat] Error fetching sender details:', senderError);
+            return null;
           }
-        }
-        
-        // Transform the data into Message objects
-        const formattedMessages: Message[] = data.map(msg => {
-          // Parse reactions with type safety
-          const parsedReactions = parseReactions(msg.reactions);
-            
-          // Handle attachments with type safety
+
+          const sender = senderData?.[0];
+          if (!sender?.id || !sender?.name) {
+            console.error('[Chat] Invalid sender data:', sender);
+            return null;
+          }
+
+          let parsedReactions = {};
+          try {
+            if (typeof message.reactions === 'string') {
+              parsedReactions = JSON.parse(message.reactions);
+            } else if (message.reactions && typeof message.reactions === 'object') {
+              parsedReactions = message.reactions;
+            }
+          } catch (e) {
+            console.error('[Chat] Error parsing reactions:', e);
+          }
+
           const parsedAttachments: Attachment[] = [];
-          if (Array.isArray(msg.attachments)) {
-            msg.attachments.forEach(att => {
+          if (Array.isArray(message.attachments)) {
+            message.attachments.forEach(att => {
               if (typeof att === 'object' && att !== null) {
                 const attachment = {
                   url: String(att['url'] || ''),
@@ -115,89 +106,100 @@ export const useChat = (channelId: string) => {
             });
           }
 
-          // Use sender details from our map, or provide fallback
-          const sender = senderMap[msg.sender_id] || {
-            id: msg.sender_id,
-            name: 'Unknown User',
-            avatarUrl: ''
-          };
-
-          return {
-            id: msg.id,
-            content: msg.content,
-            sender: sender,
-            sender_id: msg.sender_id,
-            channel_id: msg.channel_id,
-            timestamp: new Date(msg.created_at),
-            created_at: msg.created_at,
+          const formattedMessage: Message = {
+            id: message.id,
+            content: message.content,
+            sender: {
+              id: sender.id,
+              name: sender.name,
+              avatarUrl: sender.avatar_url || ''
+            },
+            timestamp: new Date(message.created_at),
             reactions: parsedReactions,
             attachments: parsedAttachments,
-            channelType: 'group',  // Default, will be updated if needed
-            parent_message_id: msg.parent_message_id
+            channelType: channelType
           };
-        });
-        
-        console.log(`[Chat] Formatted ${formattedMessages.length} messages`);
-        return formattedMessages;
-      } catch (error) {
-        console.error('[Chat] Error fetching messages:', error);
-        return [];
-      }
-    },
-    staleTime: 10 * 1000, // Keep data fresh for 10 seconds to reduce excessive refetching
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-  });
 
-  // Set up real-time subscription using our shared hook
-  useEffect(() => {
-    if (!channelId) return;
-    
-    console.log('[Chat] Setting up realtime subscription for channel:', channelId);
-    
-    const channel = supabase.channel(`public:chat_messages:channel_id=eq.${channelId}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'chat_messages',
-        filter: `channel_id=eq.${channelId}`
-      }, (payload) => {
-        console.log('[Chat] Realtime update received:', payload);
-        // Invalidate only after a small delay to prevent multiple unnecessary fetches
-        setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['channel-messages', channelId] });
-        }, 100);
-      })
-      .subscribe();
-    
-    return () => {
-      console.log('[Chat] Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [channelId, queryClient]);
-  
-  // Add specialized subscription for mentions
-  useSubscriptions(channelId, currentUserId, () => {
-    queryClient.invalidateQueries({ queryKey: ['channel-messages', channelId] });
-  });
+          return formattedMessage;
+        } catch (error) {
+          console.error('[Chat] Error formatting message:', error, message);
+          return null;
+        }
+      }) || [];
 
-  // Get message actions with optimistic updates
+      const formattedMessagesResults = await Promise.all(senderDetailsPromises);
+      const validMessages = formattedMessagesResults.filter((msg): msg is Message => 
+        msg !== null && 
+        typeof msg === 'object' &&
+        typeof msg.id === 'string' &&
+        typeof msg.content === 'string' &&
+        typeof msg.sender === 'object' &&
+        typeof msg.sender.id === 'string' &&
+        typeof msg.sender.name === 'string' &&
+        msg.timestamp instanceof Date
+      );
+      
+      // Add messages in reversed order to have newest messages last (for correct display)
+      formattedMessages.push(...validMessages.reverse());
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error('[Chat] Error fetching messages:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [channelId]);
+
   const { 
-    sendMessage, 
-    deleteMessage, 
-    reactToMessage,
-    markMentionsAsRead
-  } = useMessageActions(
-    channelId, 
-    currentUserId, 
-    () => queryClient.invalidateQueries({ queryKey: ['channel-messages', channelId] })
+    subscriptionStates, 
+    handleSubscriptionError 
+  } = useSubscriptions(
+    channelId,
+    currentUserId,
+    retryCount,
+    setRetryCount,
+    fetchMessages // Pass fetchMessages to ensure it's called when subscription receives updates
   );
 
-  return {
-    messages: messages || [],
-    isLoading,
+  const { 
     sendMessage,
-    deleteMessage,
+    deleteMessage: handleDeleteMessage,
+    reactToMessage,
+    markMentionsAsRead,
+  } = useMessageActions(
+    channelId,
+    currentUserId,
+    fetchMessages
+  );
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (channelId) {
+      console.log('[Chat] Initial messages fetch for channel:', channelId);
+      fetchMessages();
+    }
+  }, [channelId, fetchMessages]);
+
+  useEffect(() => {
+    setSubscriptionStatus({
+      messages: subscriptionStates.messages?.status === 'SUBSCRIBED',
+      mentions: subscriptionStates.mentions?.status === 'SUBSCRIBED'
+    });
+  }, [subscriptionStates]);
+
+  return {
+    messages,
+    isLoading,
+    isSubscribed: subscriptionStatus.messages && subscriptionStatus.mentions,
+    subscriptionStatus,
+    sendMessage,
+    deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
