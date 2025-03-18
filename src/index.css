@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -25,6 +24,11 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
+    
+    /* Custom colors */
+    --dark-navy: 222 18% 14%; /* #1A1F2C */
+    --card-dark: 255 5% 25%; /* #403E43 */
+    --card-glow: 260 100% 80%;
   }
 
   .dark {
@@ -144,6 +148,35 @@
   
   .hover-elevate {
     @apply transition-all hover:shadow-lg hover:-translate-y-1;
+  }
+
+  /* New glassmorphism components */
+  .glass-card {
+    @apply bg-black/25 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+  
+  .glass-card-bright {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+  
+  .purple-glow {
+    box-shadow: 0 0 15px 1px rgba(149, 76, 233, 0.3);
+  }
+  
+  .purple-gradient {
+    @apply bg-gradient-to-r from-purple-600 to-indigo-600;
+  }
+  
+  .bg-dark-navy {
+    @apply bg-[#1A1F2C];
+  }
+  
+  .glass-nav {
+    @apply bg-black/30 backdrop-blur-md border-b border-white/10;
+  }
+  
+  .glass-button {
+    @apply bg-black/20 hover:bg-black/30 backdrop-blur-sm border border-white/10 text-white transition-all;
   }
 }
 

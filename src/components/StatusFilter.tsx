@@ -12,25 +12,25 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
     { 
       id: "available", 
       label: "Disponible", 
-      color: "from-green-400 to-green-600", 
+      color: "from-green-400/80 to-green-600/80", 
       icon: Clock 
     },
     { 
       id: "busy", 
       label: "En appel", 
-      color: "from-violet-400 to-violet-600", 
+      color: "from-violet-400/80 to-violet-600/80", 
       icon: Phone 
     },
     { 
       id: "pause", 
       label: "En pause", 
-      color: "from-orange-400 to-orange-600", 
+      color: "from-orange-400/80 to-orange-600/80", 
       icon: Coffee 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
-      color: "from-red-400 to-red-600", 
+      color: "from-red-400/80 to-red-600/80", 
       icon: X 
     },
   ];
@@ -56,8 +56,8 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             className={`
               transition-all duration-200 rounded-full px-5
               ${selectedStatus === status.id 
-                ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
-                : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
+                ? `bg-gradient-to-r ${status.color} text-white shadow-md purple-glow` 
+                : 'glass-button hover:bg-white/10'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
