@@ -74,6 +74,7 @@ export interface MemberSuggestion {
   name: string;
   email: string;
   role: 'admin' | 'interpreter';
+  avatarUrl?: string;
 }
 
 export interface LanguageSuggestion {

@@ -1,21 +1,24 @@
 
 import React from 'react';
-import { Command, CommandGroup, CommandItem, CommandList, CommandInput } from '@/components/ui/command';
+import { Command, CommandGroup, CommandItem, CommandList, CommandInput, CommandEmpty } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Languages } from 'lucide-react';
+import { Languages, User } from 'lucide-react';
 import { LANGUAGES } from '@/lib/constants';
 import { MemberSuggestion, LanguageSuggestion, Suggestion } from '@/types/messaging';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface MentionSuggestionsProps {
   suggestions: Suggestion[];
   onSelect: (suggestion: Suggestion) => void;
   visible: boolean;
+  loading?: boolean;
 }
 
 export const MentionSuggestions = ({ 
   suggestions = [], 
   onSelect, 
-  visible 
+  visible,
+  loading = false
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
@@ -28,8 +31,32 @@ export const MentionSuggestions = ({
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   const languageSuggestions = standardLanguageSuggestions;
 
+  if (loading) {
+    return (
+      <div className="absolute bottom-full mb-1 w-64 z-50">
+        <Command className="border rounded-lg shadow-md">
+          <CommandInput placeholder="Rechercher..." className="border-b" disabled />
+          <CommandList>
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Chargement des suggestions...
+            </div>
+          </CommandList>
+        </Command>
+      </div>
+    );
+  }
+
   if (!Array.isArray(suggestions) || (memberSuggestions.length === 0 && languageSuggestions.length === 0)) {
-    return null;
+    return (
+      <div className="absolute bottom-full mb-1 w-64 z-50">
+        <Command className="border rounded-lg shadow-md">
+          <CommandInput placeholder="Rechercher..." className="border-b" />
+          <CommandList>
+            <CommandEmpty>Aucune suggestion trouvée</CommandEmpty>
+          </CommandList>
+        </Command>
+      </div>
+    );
   }
 
   return (
@@ -59,9 +86,18 @@ export const MentionSuggestions = ({
                     onSelect={() => onSelect(member)}
                     className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
                   >
+                    <Avatar className="h-6 w-6">
+                      {member.avatarUrl ? (
+                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                      ) : (
+                        <AvatarFallback>
+                          {member.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
                     <div>
                       <div className="font-medium">{member.name}</div>
-                      <div className="text-sm text-muted-foreground">{member.email}</div>
+                      <div className="text-xs text-muted-foreground">{member.role}</div>
                     </div>
                   </CommandItem>
                 ))}
