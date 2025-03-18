@@ -31,13 +31,13 @@ export const useChannelInitialization = ({
           updateLastHeartbeat();
         }
       })
-      // Using the proper event type and function signature with all required parameters
+      // Use the correct event type for broadcast messages with proper parameters
       .on('broadcast', { event: 'heartbeat' }, (payload, context) => {
         if (!isExplicitDisconnect) {
           updateLastHeartbeat();
         }
       })
-      .on('error', (error) => {
+      .on('system', { event: 'error' }, (error) => {
         console.error('[useChannelInitialization] Channel error:', error);
         onChannelError();
       });
