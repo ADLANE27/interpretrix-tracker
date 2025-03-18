@@ -3,7 +3,7 @@ import React from 'react';
 import { Command, CommandGroup, CommandItem, CommandList, CommandInput, CommandEmpty } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Languages, User } from 'lucide-react';
-import { LANGUAGES } from '@/lib/constants';
+import { LANGUAGES, LANGUAGE_MAP } from '@/lib/constants';
 import { MemberSuggestion, LanguageSuggestion, Suggestion } from '@/types/messaging';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -24,19 +24,24 @@ export const MentionSuggestions = ({
 }: MentionSuggestionsProps) => {
   if (!visible) return null;
 
-  // Convert standardized languages to suggestions format
-  const standardLanguageSuggestions: LanguageSuggestion[] = LANGUAGES.map(lang => ({
-    name: lang,
+  // Convert standardized languages to suggestions format with both code and name
+  const standardLanguageSuggestions: LanguageSuggestion[] = Object.entries(LANGUAGE_MAP).map(([code, name]) => ({
+    name,
+    code,
     type: 'language'
   }));
 
   const memberSuggestions = suggestions.filter((s): s is MemberSuggestion => !('type' in s));
   
-  // Filter language suggestions based on search term if provided
+  // Enhanced filtering for language suggestions based on search term
   const languageSuggestions = searchTerm 
-    ? standardLanguageSuggestions.filter(lang => 
-        lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .includes(searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")))
+    ? standardLanguageSuggestions.filter(lang => {
+        const normalizedName = lang.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedCode = lang.code.toLowerCase();
+        const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return normalizedName.includes(normalizedSearch) || normalizedCode.includes(normalizedSearch);
+      })
     : standardLanguageSuggestions;
 
   if (loading) {
@@ -72,7 +77,7 @@ export const MentionSuggestions = ({
       <Command
         className="border rounded-lg shadow-md"
         filter={(value, search) => {
-          // Improved search to handle diacritics and case
+          // Improved search to handle diacritics, case, and language codes
           const normalizedSearch = search.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const normalizedValue = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           
@@ -115,13 +120,16 @@ export const MentionSuggestions = ({
             <CommandGroup heading="Langues">
               {languageSuggestions.map((lang) => (
                 <CommandItem
-                  key={lang.name}
-                  value={lang.name.toLowerCase()}
+                  key={lang.code || lang.name}
+                  value={`${lang.name.toLowerCase()} ${lang.code?.toLowerCase() || ''}`}
                   onSelect={() => onSelect(lang)}
                   className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
                 >
                   <Languages className="h-4 w-4" />
-                  <div className="font-medium">{lang.name}</div>
+                  <div>
+                    <div className="font-medium">{lang.name}</div>
+                    {lang.code && <div className="text-xs text-muted-foreground">{lang.code}</div>}
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
