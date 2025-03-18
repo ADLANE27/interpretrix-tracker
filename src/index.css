@@ -25,13 +25,6 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 262.1 83.3% 57.8%;
     --radius: 0.5rem;
-    
-    /* Gradient variables */
-    --gradient-primary: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
-    --gradient-secondary: linear-gradient(135deg, #3B82F6 0%, #2DD4BF 100%);
-    --gradient-purple: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.1));
-    --gradient-blue: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.1));
-    --gradient-pink: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(219, 39, 119, 0.1));
   }
 
   .dark {
@@ -54,13 +47,6 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-    
-    /* Dark mode gradient variables */
-    --gradient-primary: linear-gradient(135deg, #4338CA 0%, #7C3AED 50%, #BE185D 100%);
-    --gradient-secondary: linear-gradient(135deg, #1D4ED8 0%, #0F766E 100%);
-    --gradient-purple: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.05));
-    --gradient-blue: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.05));
-    --gradient-pink: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(219, 39, 119, 0.05));
   }
 }
 
@@ -158,76 +144,6 @@
   
   .hover-elevate {
     @apply transition-all hover:shadow-lg hover:-translate-y-1;
-  }
-  
-  /* Gradient background animation classes */
-  .particles {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    overflow: hidden;
-    z-index: -1;
-  }
-
-  .particle {
-    position: absolute;
-    border-radius: 50%;
-    opacity: 0.15;
-    filter: blur(40px);
-    animation: float 25s infinite linear;
-  }
-
-  .particle-purple {
-    background: var(--gradient-purple);
-  }
-
-  .particle-blue {
-    background: var(--gradient-blue);
-  }
-
-  .particle-pink {
-    background: var(--gradient-pink);
-  }
-
-  @keyframes float {
-    0% {
-      transform: translateY(0) translateX(0) rotate(0deg);
-      opacity: 0.05;
-    }
-    25% {
-      opacity: 0.15;
-    }
-    50% {
-      transform: translateY(-80px) translateX(60px) rotate(180deg);
-      opacity: 0.2;
-    }
-    75% {
-      opacity: 0.15;
-    }
-    100% {
-      transform: translateY(0) translateX(0) rotate(360deg);
-      opacity: 0.05;
-    }
-  }
-
-  .animated-gradient {
-    background: var(--gradient-primary);
-    background-size: 200% 200%;
-    animation: gradientAnimation 8s ease infinite;
-  }
-
-  @keyframes gradientAnimation {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  /* Glass card effect */
-  .glass-card {
-    @apply bg-white/10 dark:bg-white/5 backdrop-blur-lg border border-white/20 dark:border-white/10;
   }
 }
 
