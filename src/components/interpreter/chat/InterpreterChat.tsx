@@ -48,7 +48,6 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
-  const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
@@ -206,8 +205,8 @@ export const InterpreterChat = ({
   }, [messages, currentUserId]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b shrink-0">
         <h2 className="text-lg font-semibold">{channel?.name}</h2>
         <ChannelMembersPopover 
           channelId={channelId} 
@@ -217,7 +216,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
+      <div className="flex-1 h-full overflow-hidden">
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
@@ -228,29 +227,34 @@ export const InterpreterChat = ({
               Connexion en cours...
             </p>
           </div>
-        ) : null}
-        <MessageList
-          messages={filteredMessages()}
-          currentUserId={currentUserId}
-          onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
-          replyTo={replyTo}
-          setReplyTo={setReplyTo}
-          channelId={channelId}
-        />
+        ) : (
+          <div className="h-full overflow-hidden">
+            <MessageList
+              messages={filteredMessages()}
+              currentUserId={currentUserId}
+              onDeleteMessage={deleteMessage}
+              onReactToMessage={reactToMessage}
+              replyTo={replyTo}
+              setReplyTo={setReplyTo}
+              channelId={channelId}
+            />
+          </div>
+        )}
       </div>
 
-      <ChatInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        handleFileChange={handleFileChange}
-        attachments={attachments}
-        handleRemoveAttachment={handleRemoveAttachment}
-        inputRef={inputRef}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-      />
+      <div className="shrink-0">
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+        />
+      </div>
     </div>
   );
 };

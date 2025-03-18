@@ -8,6 +8,7 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
+import { cn } from '@/lib/utils';
 
 interface MessageListProps {
   messages: Message[];
@@ -133,11 +134,18 @@ export const MessageList: React.FC<MessageListProps> = ({
               {format(message.timestamp, 'HH:mm')}
             </span>
           </div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+          
+          {/* Action buttons in a more accessible mobile-friendly position */}
+          <div className={cn(
+            "flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity",
+            message.sender.id === currentUserId 
+              ? "absolute -left-16 top-1/2 -translate-y-1/2 flex-row-reverse" 
+              : "absolute -right-16 top-1/2 -translate-y-1/2"
+          )}>
             {message.sender.id === currentUserId && (
               <button
                 onClick={() => onDeleteMessage(message.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
+                className="p-2 rounded-full hover:bg-gray-100 bg-white/80 backdrop-blur-sm shadow-sm"
                 aria-label="Supprimer le message"
               >
                 <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -148,7 +156,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setReplyTo(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
+                className="p-2 rounded-full hover:bg-gray-100 bg-white/80 backdrop-blur-sm shadow-sm"
               >
                 <MessageCircle className="h-4 w-4 text-gray-500" />
               </Button>
@@ -169,7 +177,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col">
+    <div className="h-full overflow-y-auto p-4 md:p-6 bg-[#F8F9FA] rounded-md flex flex-col">
       <div className="flex-1">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
