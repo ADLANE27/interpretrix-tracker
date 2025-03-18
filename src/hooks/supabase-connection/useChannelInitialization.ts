@@ -6,7 +6,7 @@ import { useWakeLock } from './useWakeLock';
 
 interface UseChannelInitializationProps {
   onChannelError: () => void;
-  handleReconnect: (channel: RealtimeChannel | null) => void;
+  handleReconnect: (channel: RealtimeChannel | null) => Promise<void>;
   isExplicitDisconnect: boolean;
   isReconnecting: boolean;
   setConnectionStatus: (status: 'connected' | 'connecting' | 'disconnected') => void;
