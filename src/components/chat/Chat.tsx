@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +39,6 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messageListKey = useRef<number>(0);
 
-  // Update newName when channel data is loaded
   useEffect(() => {
     if (channel?.name) {
       setNewName(channel.name);
@@ -59,12 +57,10 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     forceFetch
   } = useChat(channelId);
 
-  // Force refresh of message list when channel changes
   useEffect(() => {
     messageListKey.current += 1;
   }, [channelId]);
 
-  // Force refresh periodically to ensure messages stay in sync
   useEffect(() => {
     const syncInterval = setInterval(() => {
       console.log(`[Chat ${userRole}] Forcing message sync`);
@@ -104,7 +100,6 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     if (!message.trim()) return;
     
     try {
-      // Send message and clear input
       await sendMessage(message);
       setMessage('');
       setReplyTo(null);
@@ -119,11 +114,9 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Placeholder for file attachment logic
     console.log("File attachment functionality placeholder");
   };
 
-  // Debug logging
   console.log(`[Chat ${userRole}] Rendering with messages:`, messages.length);
   console.log(`[Chat ${userRole}] Is subscribed:`, isSubscribed);
   console.log(`[Chat ${userRole}] Subscription status:`, subscriptionStatus);
@@ -179,7 +172,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         />
       </div>
       
-      <div className="flex-1 overflow-y-auto" id="messages-container">
+      <div className="flex-1 overflow-y-auto" id="messages-container" data-channel-id={channelId}>
         <MessageList
           key={`message-list-${channelId}-${messageListKey.current}`}
           messages={messages}
