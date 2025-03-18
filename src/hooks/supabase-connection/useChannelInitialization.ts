@@ -36,7 +36,7 @@ export const useChannelInitialization = ({
 
   const setupChannelSubscription = useCallback(async (
     channel: RealtimeChannel,
-  ) => {
+  ): Promise<void> => {
     if (!channel) return;
 
     let presenceValidationTimeout: NodeJS.Timeout;
@@ -74,7 +74,7 @@ export const useChannelInitialization = ({
         onChannelError();
       });
 
-    return channel.subscribe(async (status) => {
+    await channel.subscribe(async (status) => {
       console.log('[useChannelInitialization] Channel status:', status);
 
       if (status === 'SUBSCRIBED' && !isExplicitDisconnect) {
