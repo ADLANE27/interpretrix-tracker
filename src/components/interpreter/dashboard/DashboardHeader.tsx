@@ -23,7 +23,7 @@ export const DashboardHeader = ({
     <header className="h-auto border-b bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
       <div className="h-[56px] md:h-16 flex items-center justify-between">
         {isMobile && (
-          <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
+          <Button variant="ghost" size="icon" className="-ml-1 flex items-center justify-center" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
         )}

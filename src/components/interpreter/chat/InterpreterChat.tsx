@@ -207,17 +207,19 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
-        <ChannelMembersPopover 
-          channelId={channelId} 
-          channelName={channel?.name || ''} 
-          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-          userRole="interpreter"
-        />
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b">
+        <h2 className="text-lg font-semibold truncate max-w-[75%]">{channel?.name}</h2>
+        <div className="flex-shrink-0">
+          <ChannelMembersPopover 
+            channelId={channelId} 
+            channelName={channel?.name || ''} 
+            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+            userRole="interpreter"
+          />
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 relative" ref={messageContainerRef}>
+      <div className="flex-1 overflow-y-auto relative" ref={messageContainerRef}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft } from "lucide-react";
+import { Bell, ChevronLeft, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
@@ -64,32 +64,36 @@ export const MessagingTab = () => {
           isMobile && selectedChannelId && "fixed inset-0 z-50 m-0 rounded-none"
         )}>
           <div className="flex items-center justify-between mb-2 px-2">
-            <h2 className="text-base font-semibold">Conversations</h2>
-            <MentionsPopover
-              mentions={unreadMentions}
-              totalCount={totalUnreadCount}
-              onMentionClick={handleMentionClick}
-              onMarkAsRead={markMentionAsRead}
-              onDelete={deleteMention}
-            >
-              <div className={cn(
-                "transition-all duration-200 p-1.5",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                "border border-gray-100 dark:border-gray-700",
-                "rounded-lg flex items-center justify-center relative",
-                totalUnreadCount > 0 && "text-purple-500"
-              )}>
-                <Bell className="h-4 w-4" />
-                {totalUnreadCount > 0 && (
-                  <Badge 
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-                  >
-                    {totalUnreadCount}
-                  </Badge>
-                )}
-              </div>
-            </MentionsPopover>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">Conversations</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <MentionsPopover
+                mentions={unreadMentions}
+                totalCount={totalUnreadCount}
+                onMentionClick={handleMentionClick}
+                onMarkAsRead={markMentionAsRead}
+                onDelete={deleteMention}
+              >
+                <div className={cn(
+                  "transition-all duration-200 p-1.5",
+                  "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
+                  "border border-gray-100 dark:border-gray-700",
+                  "rounded-lg flex items-center justify-center relative",
+                  totalUnreadCount > 0 && "text-purple-500"
+                )}>
+                  <Bell className="h-4 w-4" />
+                  {totalUnreadCount > 0 && (
+                    <Badge 
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
+                    >
+                      {totalUnreadCount}
+                    </Badge>
+                  )}
+                </div>
+              </MentionsPopover>
+            </div>
           </div>
           <InterpreterChannelList 
             onChannelSelect={handleChannelSelect}
@@ -110,7 +114,7 @@ export const MessagingTab = () => {
               variant="ghost"
               size="sm"
               onClick={() => setShowChannels(true)}
-              className="absolute top-2 left-2 z-10 h-8 px-2"
+              className="absolute top-3 left-2 z-10 h-8 px-2"
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Retour
