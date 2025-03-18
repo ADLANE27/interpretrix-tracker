@@ -341,7 +341,7 @@ const AdminDashboard = () => {
   const unavailableCount = interpreters.filter(i => i.status === "unavailable").length;
   return <div className="flex flex-col h-full bg-[#1a2844]">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full scroll-smooth">
-        <div className="flex justify-between items-center sticky top-0 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b border-[#2a3854] shadow-sm bg-[#1a2844]">
+        <div className="flex justify-between items-center sticky top-0 backdrop-blur-sm z-20 py-3 px-4 sm:px-6 border-b border-[#2a3854] shadow-sm bg-slate-50">
           {isMobile ? <div className="flex items-center gap-3 w-full">
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
@@ -374,8 +374,8 @@ const AdminDashboard = () => {
         </div>
 
         <div className="flex-1 min-h-0 relative bg-[#1a2844]">
-          <TabsContent value="interpreters" className="absolute inset-0 overflow-auto bg-[#1a2844]">
-            <div className="min-h-full p-4 sm:p-6 space-y-6 bg-[#1a2844]">
+          <TabsContent value="interpreters" className="absolute inset-0 overflow-auto bg-slate-50">
+            <div className="min-h-full p-4 sm:p-6 space-y-6 bg-slate-50">
               <StatisticsCards totalInterpreters={interpreters.length} availableCount={availableCount} busyCount={busyCount} pauseCount={pauseCount} unavailableCount={unavailableCount} todayMissionsCount={todayMissionsCount} />
               
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
