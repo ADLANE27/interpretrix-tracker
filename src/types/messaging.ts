@@ -14,6 +14,8 @@ export interface Message {
   reactions?: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
+  channel_id?: string;
+  sender_id?: string;
 }
 
 export interface MessageData {
@@ -21,6 +23,7 @@ export interface MessageData {
   content: string;
   sender_id: string;
   created_at: string;
+  channel_id: string;
   parent_message_id?: string | null;
   reactions: Record<string, string[]>;
   attachments?: Array<{
@@ -36,15 +39,6 @@ export interface Attachment {
   filename: string;
   type: string;
   size: number;
-}
-
-export interface ChannelMember {
-  user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: string;
-  joined_at: string;
 }
 
 export function isAttachment(obj: any): obj is Attachment {
@@ -63,4 +57,13 @@ export interface MessageListProps {
   currentUserId: string | null;
   onDeleteMessage: (messageId: string) => Promise<void>;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
+}
+
+export interface ChannelMember {
+  user_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  joined_at: string;
 }

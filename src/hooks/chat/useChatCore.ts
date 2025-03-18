@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Message, Attachment } from '@/types/messaging';
+import { Message, Attachment, MessageData } from '@/types/messaging';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { playNotificationSound } from '@/utils/notificationSound';
@@ -104,13 +104,19 @@ export const useChatCore = ({
             avatarUrl: ''
           };
 
+          const parsedReactions = typeof msg.reactions === 'string' 
+            ? JSON.parse(msg.reactions || '{}') 
+            : (msg.reactions || {});
+
           return {
             id: msg.id,
             content: msg.content,
             sender: sender,
+            sender_id: msg.sender_id,
+            channel_id: msg.channel_id,
             timestamp: new Date(msg.created_at),
-            reactions: msg.reactions || {},
-            attachments: msg.attachments || [],
+            reactions: parsedReactions as Record<string, string[]>,
+            attachments: msg.attachments as Attachment[] || [],
             channelType: 'group',
             parent_message_id: msg.parent_message_id
           };
@@ -190,25 +196,28 @@ export const useChatCore = ({
           
           // We need to fetch the sender details for the new message
           supabase
-            .rpc('get_message_sender_detail', { p_sender_id: newMessage.sender_id })
-            .single()
+            .rpc('batch_get_message_sender_details', { p_sender_ids: [newMessage.sender_id] })
             .then(({ data: senderData, error }) => {
-              if (error || !senderData) {
+              if (error || !senderData || senderData.length === 0) {
                 console.error('[Chat] Error fetching sender details:', error);
                 return;
               }
+              
+              const sender = senderData[0];
               
               const formattedMessage: Message = {
                 id: newMessage.id,
                 content: newMessage.content,
                 sender: {
                   id: newMessage.sender_id,
-                  name: senderData.name || 'Unknown User',
-                  avatarUrl: senderData.avatar_url || '',
+                  name: sender.name || 'Unknown User',
+                  avatarUrl: sender.avatar_url || '',
                 },
+                sender_id: newMessage.sender_id,
+                channel_id: newMessage.channel_id,
                 timestamp: new Date(newMessage.created_at),
-                reactions: newMessage.reactions || {},
-                attachments: newMessage.attachments || [],
+                reactions: (newMessage.reactions as any as Record<string, string[]>) || {},
+                attachments: (newMessage.attachments as any as Attachment[]) || [],
                 channelType: 'group',
                 parent_message_id: newMessage.parent_message_id
               };
@@ -255,8 +264,8 @@ export const useChatCore = ({
               return {
                 ...msg,
                 content: payload.new.content,
-                reactions: payload.new.reactions || {},
-                attachments: payload.new.attachments || []
+                reactions: (payload.new.reactions as any as Record<string, string[]>) || {},
+                attachments: (payload.new.attachments as any as Attachment[]) || []
               };
             }
             return msg;
