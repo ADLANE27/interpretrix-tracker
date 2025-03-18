@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
 
@@ -14,12 +14,17 @@ interface SubscriptionStates {
   mentions?: SubscriptionState;
 }
 
+// Extended payload type to include our custom property
+interface ExtendedPayload extends RealtimePostgresChangesPayload<{ [key: string]: any }> {
+  receivedAt?: number;
+}
+
 export const useSubscriptions = (
   channelId: string,
   currentUserId: string | null,
   retryCount: number,
   setRetryCount: (count: number) => void,
-  onRealtimeEvent: (payload: any) => void
+  onRealtimeEvent: (payload: ExtendedPayload) => void
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
@@ -75,13 +80,15 @@ export const useSubscriptions = (
             (payload) => {
               if (!isSubscribed) return;
               
+              // Cast to our extended type and add timestamp
+              const extendedPayload = payload as ExtendedPayload;
               const now = Date.now();
               // Add timestamp to track when we received this event
-              payload.receivedAt = now;
+              extendedPayload.receivedAt = now;
               lastEventTimestamp.current = now;
               
-              console.log('[Chat] Message change received:', payload.eventType, payload);
-              onRealtimeEvent(payload);
+              console.log('[Chat] Message change received:', extendedPayload.eventType, extendedPayload);
+              onRealtimeEvent(extendedPayload);
             }
           );
 
@@ -119,9 +126,11 @@ export const useSubscriptions = (
       console.log(`[Chat] Health check: ${timeSinceLastEvent}ms since last event`);
       
       // If it's been too long since we received an event, reconnect
-      if (timeSinceLastEvent > CONNECTION_CONSTANTS.MAX_RECONNECT_DELAY && channelRef.current) {
+      // Use BASE_RECONNECT_DELAY instead of MAX_RECONNECT_DELAY which doesn't exist
+      if (timeSinceLastEvent > CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * 10 && channelRef.current) {
         console.log('[Chat] Subscription appears stalled, reconnecting...');
-        setRetryCount(prev => prev + 1);
+        // Fix: Pass a number directly instead of a function
+        setRetryCount(retryCount + 1);
       }
     }, 30000); // Check every 30 seconds
 
