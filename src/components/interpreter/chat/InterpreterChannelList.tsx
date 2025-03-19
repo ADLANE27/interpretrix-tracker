@@ -218,10 +218,10 @@ export const InterpreterChannelList = ({
                 key={channel.id}
                 className={`
                   flex items-center gap-3 p-3 rounded-lg 
-                  cursor-pointer
+                  cursor-pointer transition-all duration-200
                   ${selectedChannelId === channel.id 
                     ? 'bg-interpreter-navy text-white' 
-                    : 'hover:bg-gray-100/80 text-gray-900'}
+                    : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
                 `}
                 onClick={() => handleChannelSelect(channel.id)}
               >
