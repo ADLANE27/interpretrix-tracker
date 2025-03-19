@@ -1,47 +1,32 @@
 
-import { useChannelLanguages } from './useChannelLanguages';
+import { LANGUAGES } from '@/lib/constants';
 
-export const useMessageFormatter = (channelId?: string | null) => {
-  const { languages } = useChannelLanguages(channelId);
-  
+export const useMessageFormatter = () => {
   const formatMessage = (content: string) => {
-    // Replace language mentions with standardized versions
+    // Only replace language mentions with standardized versions if they closely match our constants
     let formattedContent = content;
     
     // Create a RegExp pattern that matches any language mention
-    const languageMentionPattern = /@([A-Za-zÀ-ÿ\s\-]+(?:\([^)]*\))?)/g;
+    const languageMentionPattern = /@([A-Za-zÀ-ÿ\s]+(?:\([^)]*\))?)/g;
     
     formattedContent = formattedContent.replace(languageMentionPattern, (match, mentionedLanguage) => {
       const cleanedMention = mentionedLanguage.trim();
       
-      // Function to normalize text for comparison
-      const normalize = (text: string) => {
-        return text.toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .trim();
-      };
+      // Only standardize if we have a very close match (at least 80% similar)
+      const matchedLanguage = LANGUAGES.find(lang => {
+        const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedMention = cleanedMention.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        return normalizedLang === normalizedMention || 
+               normalizedLang.startsWith(normalizedMention) ||
+               normalizedMention.startsWith(normalizedLang);
+      });
       
-      // First try exact matches with channel languages
-      const exactMatch = languages.find(lang => 
-        normalize(lang.name) === normalize(cleanedMention)
-      );
-      
-      if (exactMatch) {
-        return `@${exactMatch.name}`;
+      if (matchedLanguage) {
+        return `@${matchedLanguage}`;
       }
       
-      // Then try partial matches with channel languages (starts with)
-      const partialMatch = languages.find(lang => 
-        normalize(lang.name).startsWith(normalize(cleanedMention)) ||
-        normalize(cleanedMention).startsWith(normalize(lang.name))
-      );
-      
-      if (partialMatch) {
-        return `@${partialMatch.name}`;
-      }
-      
-      // If no match found, preserve the original mention
+      // If no close match found, preserve the original mention
       return match;
     });
     

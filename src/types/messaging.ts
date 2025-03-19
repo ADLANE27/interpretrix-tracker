@@ -79,7 +79,6 @@ export interface MemberSuggestion {
 
 export interface LanguageSuggestion {
   name: string;
-  code?: string;
   type: 'language';
 }
 

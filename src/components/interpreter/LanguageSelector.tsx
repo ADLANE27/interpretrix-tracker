@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { LANGUAGES } from "@/lib/constants";
 import { LanguagePair, isValidLanguagePair } from "@/types/languages";
-import { useAllLanguages } from "@/hooks/useAllLanguages";
 
 interface LanguageSelectorProps {
   languages: LanguagePair[];
@@ -16,7 +16,6 @@ interface LanguageSelectorProps {
 export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSelectorProps) => {
   const [newSource, setNewSource] = useState<string>("");
   const [newTarget, setNewTarget] = useState<string>("");
-  const { languages: allLanguages, isLoading: languagesLoading } = useAllLanguages();
 
   const handleAddLanguage = () => {
     if (newSource && newTarget) {
@@ -60,15 +59,11 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
               <SelectValue placeholder="Langue source" />
             </SelectTrigger>
             <SelectContent>
-              {languagesLoading ? (
-                <SelectItem value="loading" disabled>Chargement...</SelectItem>
-              ) : (
-                allLanguages.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))
-              )}
+              {LANGUAGES.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -77,15 +72,11 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
               <SelectValue placeholder="Langue cible" />
             </SelectTrigger>
             <SelectContent>
-              {languagesLoading ? (
-                <SelectItem value="loading" disabled>Chargement...</SelectItem>
-              ) : (
-                allLanguages.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))
-              )}
+              {LANGUAGES.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
