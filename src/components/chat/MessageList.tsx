@@ -131,34 +131,41 @@ export const MessageList: React.FC<MessageListProps> = ({
             : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
         } px-4 py-2.5 break-words overflow-hidden`}>
           <div className="text-[15px] mb-4 overflow-wrap-anywhere">{message.content}</div>
+          
+          {/* Timestamp repositionné pour mieux s'adapter aux icônes d'action */}
           <div className="absolute right-4 bottom-2 flex items-center gap-1">
             <span className="text-[11px] text-gray-500">
               {formatMessageTime(message.timestamp)}
             </span>
           </div>
           
-          {/* Actions pour mobile et desktop */}
-          <div className={`${isMobile ? 'absolute right-1 top-1 flex items-center gap-1 bg-white/70 dark:bg-gray-700/70 rounded-full p-0.5' : 'absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2'}`}>
-            {message.sender.id === currentUserId && (
-              <button
-                onClick={() => onDeleteMessage(message.id)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-                aria-label="Supprimer le message"
-              >
-                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-              </button>
-            )}
-            {!isThreadReply && setReplyTo && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setReplyTo(message)}
-                className="p-1.5 rounded-full hover:bg-gray-100"
-              >
-                <MessageCircle className="h-4 w-4 text-gray-500" />
-              </Button>
-            )}
-          </div>
+          {/* Actions pour mobile et desktop avec positionnement amélioré */}
+          {(message.sender.id === currentUserId || setReplyTo) && (
+            <div className={isMobile 
+              ? "absolute right-3 top-3 flex items-center gap-2 bg-white/90 dark:bg-gray-700/90 rounded-full p-1 shadow-sm" 
+              : "absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pl-2"
+            }>
+              {message.sender.id === currentUserId && (
+                <button
+                  onClick={() => onDeleteMessage(message.id)}
+                  className="p-1.5 rounded-full hover:bg-gray-100"
+                  aria-label="Supprimer le message"
+                >
+                  <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                </button>
+              )}
+              {!isThreadReply && setReplyTo && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setReplyTo(message)}
+                  className="p-1.5 rounded-full hover:bg-gray-100"
+                >
+                  <MessageCircle className="h-4 w-4 text-gray-500" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
         {message.attachments && message.attachments.map((attachment, index) => (
           <div key={index} className="relative group max-w-sm mt-2">
