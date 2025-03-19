@@ -9,8 +9,9 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { MessageSquare, X, Check, Bell } from "lucide-react";
+import { MessageSquare, X, Check, Bell, CheckCheck } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -20,6 +21,7 @@ interface MentionsPopoverProps {
   onMentionClick: (mention: UnreadMention) => void;
   onMarkAsRead: (mentionId: string) => void;
   onDelete: (mentionId: string) => void;
+  onMarkAllAsRead?: () => void;
   children: React.ReactNode;
 }
 
@@ -29,6 +31,7 @@ export const MentionsPopover = ({
   onMentionClick,
   onMarkAsRead,
   onDelete,
+  onMarkAllAsRead,
   children
 }: MentionsPopoverProps) => {
   const [open, setOpen] = useState(false);
@@ -44,11 +47,26 @@ export const MentionsPopover = ({
       >
         <div className="flex flex-col h-[500px]">
           <div className="p-4 border-b relative">
-            <div className="flex items-center">
-              <h3 className="font-medium">Mentions Récentes</h3>
-              <Badge variant="secondary" className="font-normal ml-3">
-                {totalCount} {totalCount === 1 ? 'mention' : 'mentions'}
-              </Badge>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <h3 className="font-medium">Mentions Récentes</h3>
+                <Badge variant="secondary" className="font-normal ml-3">
+                  {totalCount} {totalCount === 1 ? 'mention' : 'mentions'}
+                </Badge>
+              </div>
+              {mentions.length > 0 && onMarkAllAsRead && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1"
+                  onClick={() => {
+                    onMarkAllAsRead();
+                  }}
+                >
+                  <CheckCheck className="h-3 w-3" />
+                  Tout marquer comme lu
+                </Button>
+              )}
             </div>
           </div>
 

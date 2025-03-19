@@ -117,6 +117,13 @@ export const InterpreterChat = ({
 
   useEffect(() => {
     if (channelId) {
+      console.log('[InterpreterChat] Marking mentions as read for channel:', channelId);
+      markMentionsAsRead();
+    }
+  }, [channelId, markMentionsAsRead]);
+
+  useEffect(() => {
+    if (channelId) {
       const channel = supabase
         .channel(`chat-mentions-${channelId}`)
         .on(
@@ -130,7 +137,13 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
-              await playNotificationSound();
+              console.log('[InterpreterChat] New mention received:', payload.new);
+              
+              try {
+                await playNotificationSound();
+              } catch (error) {
+                console.error('[InterpreterChat] Error playing sound:', error);
+              }
               
               toast({
                 title: "💬 Nouvelle mention",
@@ -147,9 +160,12 @@ export const InterpreterChat = ({
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`[InterpreterChat] Mention subscription status:`, status);
+        });
 
       return () => {
+        console.log('[InterpreterChat] Cleaning up mention subscription');
         supabase.removeChannel(channel);
       };
     }

@@ -103,16 +103,20 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     };
   }, []);
 
-  // Effect to refresh mentions when the component mounts
+  // Effect to refresh mentions when the component mounts and periodically
   useEffect(() => {
+    console.log('[Sidebar] Setting up mention refresh');
     refreshMentions();
     
-    // Set up a regular refresh interval for mentions
     const intervalId = setInterval(() => {
+      console.log('[Sidebar] Running periodic mention refresh');
       refreshMentions();
-    }, 30000); // Refresh every 30 seconds
+    }, 20000); // Refresh every 20 seconds
     
-    return () => clearInterval(intervalId);
+    return () => {
+      console.log('[Sidebar] Cleaning up mention refresh interval');
+      clearInterval(intervalId);
+    };
   }, [refreshMentions]);
 
   console.log('[Sidebar] Current badge counts:', {

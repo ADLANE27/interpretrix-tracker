@@ -63,6 +63,7 @@ export const MessagesTab = () => {
     totalUnreadCount, 
     markMentionAsRead,
     deleteMention,
+    markAllMentionsAsRead,
     refreshMentions 
   } = useUnreadMentions();
 
@@ -134,6 +135,21 @@ export const MessagesTab = () => {
     };
     fetchChannels();
   };
+
+  useEffect(() => {
+    console.log('[MessagesTab] Setting up mention refresh');
+    refreshMentions();
+    
+    const intervalId = setInterval(() => {
+      console.log('[MessagesTab] Running periodic mention refresh');
+      refreshMentions();
+    }, 20000); // Refresh every 20 seconds
+    
+    return () => {
+      console.log('[MessagesTab] Cleaning up mention refresh interval');
+      clearInterval(intervalId);
+    };
+  }, [refreshMentions]);
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -256,6 +272,7 @@ export const MessagesTab = () => {
                   onMentionClick={handleMentionClick}
                   onMarkAsRead={markMentionAsRead}
                   onDelete={deleteMention}
+                  onMarkAllAsRead={markAllMentionsAsRead}
                 >
                   <Button
                     variant="ghost"

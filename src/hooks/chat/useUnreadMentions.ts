@@ -149,27 +149,41 @@ export const useUnreadMentions = () => {
           .map(async (mention) => {
             console.log('[Mentions Debug] Processing mention:', mention.id);
             
-            const { data: senderData } = await supabase
+            // Get sender details using the rpc function that works for both interpreters and admins
+            const { data: senderData, error: senderError } = await supabase
               .rpc('get_message_sender_details', {
                 sender_id: mention.chat_messages.sender_id
               });
+
+            if (senderError) {
+              console.error('[Mentions Debug] Error getting sender details:', senderError);
+              return null;
+            }
+
+            if (!senderData || senderData.length === 0) {
+              console.error('[Mentions Debug] No sender data found for:', mention.chat_messages.sender_id);
+              return null;
+            }
 
             return {
               mention_id: mention.id,
               message_id: mention.message_id,
               channel_id: mention.channel_id,
               message_content: mention.chat_messages.content || '',
-              mentioning_user_name: senderData?.[0]?.name || 'Unknown User',
+              mentioning_user_name: senderData[0]?.name || 'Unknown User',
               created_at: new Date(mention.created_at)
             };
           })
       );
 
-      console.log('[Mentions Debug] Processed mentions:', mentionsWithNames.length);
+      // Filter out null values and ensure we have valid mentions
+      const validMentions = mentionsWithNames.filter(mention => mention !== null) as UnreadMention[];
+
+      console.log('[Mentions Debug] Processed mentions:', validMentions.length);
       
       // Check if there's a new mention to show notification
-      if (mentionsWithNames.length > 0) {
-        const newestMention = mentionsWithNames[0];
+      if (validMentions.length > 0) {
+        const newestMention = validMentions[0];
         
         // If this is a new mention that we haven't seen before, show a notification
         if (lastMentionId !== newestMention.mention_id) {
@@ -201,14 +215,14 @@ export const useUnreadMentions = () => {
         }
       }
       
-      setUnreadMentions(mentionsWithNames);
+      setUnreadMentions(validMentions);
       setUnreadDirectMessages(unreadDMCount);
-      setTotalUnreadCount(mentionsWithNames.length + unreadDMCount);
+      setTotalUnreadCount(validMentions.length + unreadDMCount);
 
       console.log('[Mentions Debug] Updated counts:', {
-        mentions: mentionsWithNames.length,
+        mentions: validMentions.length,
         dms: unreadDMCount,
-        total: mentionsWithNames.length + unreadDMCount,
+        total: validMentions.length + unreadDMCount,
         userRole
       });
     } catch (error) {
@@ -264,9 +278,38 @@ export const useUnreadMentions = () => {
     }
   };
 
+  const markAllMentionsAsRead = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('[Mentions Debug] Marking all mentions as read');
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ status: 'read' })
+        .eq('mentioned_user_id', user.id)
+        .eq('status', 'unread');
+
+      if (error) {
+        console.error('[Mentions Debug] Error marking all mentions as read:', error);
+        throw error;
+      }
+
+      console.log('[Mentions Debug] Successfully marked all mentions as read');
+      await fetchUnreadMentions();
+    } catch (error) {
+      console.error('[Mentions Debug] Error marking all mentions as read:', error);
+    }
+  };
+
   useEffect(() => {
     // Initial fetch
     fetchUnreadMentions();
+
+    // Set up a regular refresh interval for mentions
+    const intervalId = setInterval(() => {
+      fetchUnreadMentions();
+    }, 30000); // Refresh every 30 seconds
 
     // Create a single channel for all subscriptions
     const channel = supabase.channel('mentions-and-messages')
@@ -300,7 +343,8 @@ export const useUnreadMentions = () => {
 
     // Cleanup function
     return () => {
-      console.log('[Mentions Debug] Cleaning up subscription');
+      console.log('[Mentions Debug] Cleaning up subscription and interval');
+      clearInterval(intervalId);
       supabase.removeChannel(channel);
     };
   }, [fetchUnreadMentions, userRole]);
@@ -311,6 +355,7 @@ export const useUnreadMentions = () => {
     unreadDirectMessages,
     markMentionAsRead,
     deleteMention,
+    markAllMentionsAsRead,
     refreshMentions: fetchUnreadMentions 
   };
 };
