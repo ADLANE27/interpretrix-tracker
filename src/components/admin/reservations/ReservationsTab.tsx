@@ -5,15 +5,17 @@ import { PrivateReservationList } from "./PrivateReservationList";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { LANGUAGES } from "@/lib/constants";
-import { Search, Calendar, X } from "lucide-react";
+import { COMPANY_TYPES, LANGUAGES } from "@/lib/constants";
+import { Search, Calendar, Building, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LanguageCombobox } from "@/components/interpreter/LanguageCombobox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const ReservationsTab = () => {
   const [nameFilter, setNameFilter] = useState("");
   const [sourceLanguageFilter, setSourceLanguageFilter] = useState("all");
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
 
@@ -21,6 +23,7 @@ export const ReservationsTab = () => {
     setNameFilter("");
     setSourceLanguageFilter("all");
     setTargetLanguageFilter("all");
+    setCompanyFilter("all");
     setStartDateFilter("");
     setEndDateFilter("");
   };
@@ -79,6 +82,23 @@ export const ReservationsTab = () => {
             </div>
 
             <div className="space-y-2">
+              <Label>Entreprise</Label>
+              <Select
+                value={companyFilter}
+                onValueChange={setCompanyFilter}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filtrer par entreprise" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les entreprises</SelectItem>
+                  <SelectItem value={COMPANY_TYPES.AFTRAD}>AFTrad</SelectItem>
+                  <SelectItem value={COMPANY_TYPES.AFTCOM}>AFTcom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="start-date">Date de début</Label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -115,6 +135,7 @@ export const ReservationsTab = () => {
         targetLanguageFilter={targetLanguageFilter}
         startDateFilter={startDateFilter}
         endDateFilter={endDateFilter}
+        companyFilter={companyFilter}
       />
     </div>
   );

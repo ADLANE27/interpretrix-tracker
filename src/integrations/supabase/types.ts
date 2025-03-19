@@ -528,6 +528,7 @@ export type Database = {
       private_reservations: {
         Row: {
           commentary: string | null
+          company: Database["public"]["Enums"]["company_type"]
           created_at: string
           created_by: string
           duration_minutes: number
@@ -542,6 +543,7 @@ export type Database = {
         }
         Insert: {
           commentary?: string | null
+          company?: Database["public"]["Enums"]["company_type"]
           created_at?: string
           created_by: string
           duration_minutes: number
@@ -556,6 +558,7 @@ export type Database = {
         }
         Update: {
           commentary?: string | null
+          company?: Database["public"]["Enums"]["company_type"]
           created_at?: string
           created_by?: string
           duration_minutes?: number
@@ -646,6 +649,7 @@ export type Database = {
       calendar_missions: {
         Row: {
           client_name: string | null
+          company: Database["public"]["Enums"]["company_type"] | null
           estimated_duration: number | null
           interpreter_first_name: string | null
           interpreter_id: string | null
@@ -1098,6 +1102,7 @@ export type Database = {
           }
     }
     Enums: {
+      company_type: "AFTcom" | "AFTrad"
       employment_status:
         | "salaried_aft"
         | "salaried_aftcom"

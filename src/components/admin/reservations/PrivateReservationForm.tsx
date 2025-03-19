@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { LANGUAGES } from "@/lib/constants";
+import { COMPANY_TYPES, LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CompanyType } from "@/types/privateReservation";
 
 interface Interpreter {
   id: string;
@@ -28,6 +29,7 @@ export const PrivateReservationForm = () => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [commentary, setCommentary] = useState("");
+  const [company, setCompany] = useState<CompanyType>("AFTrad");
   const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -141,6 +143,7 @@ export const PrivateReservationForm = () => {
           end_time: endTime,
           duration_minutes: durationMinutes,
           commentary,
+          company,
           created_by: user.id
         });
 
@@ -157,6 +160,7 @@ export const PrivateReservationForm = () => {
       setStartTime("");
       setEndTime("");
       setCommentary("");
+      setCompany("AFTrad");
       setAvailableInterpreters([]);
 
     } catch (error: any) {
@@ -222,6 +226,24 @@ export const PrivateReservationForm = () => {
                     {lang}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company">Entreprise</Label>
+            <Select 
+              value={company} 
+              onValueChange={(value: CompanyType) => {
+                setCompany(value);
+              }}
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Sélectionner une entreprise" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={COMPANY_TYPES.AFTRAD}>AFTrad</SelectItem>
+                <SelectItem value={COMPANY_TYPES.AFTCOM}>AFTcom</SelectItem>
               </SelectContent>
             </Select>
           </div>

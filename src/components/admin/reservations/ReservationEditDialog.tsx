@@ -1,14 +1,15 @@
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { PrivateReservation } from "@/types/privateReservation";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createLocalISOString } from "@/utils/dateTimeUtils";
+import { PrivateReservation, CompanyType } from "@/types/privateReservation";
+import { COMPANY_TYPES, LANGUAGES } from "@/lib/constants";
 
 interface ReservationEditDialogProps {
   reservation: PrivateReservation;
@@ -16,84 +17,46 @@ interface ReservationEditDialogProps {
   onSuccess: () => void;
 }
 
-interface Interpreter {
-  id: string;
-  first_name: string;
-  last_name: string;
-}
-
 export const ReservationEditDialog = ({
   reservation,
   onClose,
-  onSuccess,
+  onSuccess
 }: ReservationEditDialogProps) => {
+  const [sourceLanguage, setSourceLanguage] = useState(reservation.source_language);
+  const [targetLanguage, setTargetLanguage] = useState(reservation.target_language);
+  const [startTime, setStartTime] = useState(reservation.start_time.slice(0, 16));
+  const [endTime, setEndTime] = useState(reservation.end_time.slice(0, 16));
+  const [commentary, setCommentary] = useState(reservation.commentary || "");
+  const [company, setCompany] = useState<CompanyType>(reservation.company);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
-  const [selectedInterpreter, setSelectedInterpreter] = useState(reservation.interpreter_id);
 
-  // Convert dates to local format for form inputs without timezone adjustments
-  const [startDate, setStartDate] = useState(reservation.start_time.split('T')[0]);
-  const [startTime, setStartTime] = useState(reservation.start_time.split('T')[1].substring(0, 5));
-  const [endDate, setEndDate] = useState(reservation.end_time.split('T')[0]);
-  const [endTime, setEndTime] = useState(reservation.end_time.split('T')[1].substring(0, 5));
+  const handleUpdateReservation = async () => {
+    if (!startTime || !endTime || !sourceLanguage || !targetLanguage) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  useEffect(() => {
-    const fetchEligibleInterpreters = async () => {
-      try {
-        const { data: interpreterData, error } = await supabase
-          .from('interpreter_profiles')
-          .select('id, first_name, last_name, languages')
-          .filter('languages', 'cs', `{${reservation.source_language}→${reservation.target_language}}`);
-
-        if (error) throw error;
-        setInterpreters(interpreterData || []);
-      } catch (error) {
-        console.error('[ReservationEditDialog] Error fetching interpreters:', error);
-      }
-    };
-
-    fetchEligibleInterpreters();
-  }, [reservation.source_language, reservation.target_language]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
+    setIsLoading(true);
     try {
-      // Create new time strings without any timezone adjustment
-      const newStartTime = createLocalISOString(startDate, startTime);
-      const newEndTime = createLocalISOString(endDate, endTime);
-      
-      // Calculate duration in minutes
-      const startTimeMs = new Date(`${startDate}T${startTime}`).getTime();
-      const endTimeMs = new Date(`${endDate}T${endTime}`).getTime();
-      const durationMinutes = Math.round((endTimeMs - startTimeMs) / (1000 * 60));
-
-      // First check if the new interpreter is available for this time slot
-      if (selectedInterpreter !== reservation.interpreter_id) {
-        const { data: isAvailable, error: availabilityError } = await supabase
-          .rpc('check_interpreter_availability', {
-            p_interpreter_id: selectedInterpreter,
-            p_start_time: newStartTime,
-            p_end_time: newEndTime,
-            p_exclude_reservation_id: reservation.id
-          });
-
-        if (availabilityError) throw availabilityError;
-
-        if (!isAvailable) {
-          throw new Error("L'interprète sélectionné n'est pas disponible pour ce créneau");
-        }
-      }
+      const startDate = new Date(startTime);
+      const endDate = new Date(endTime);
+      const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
 
       const { error } = await supabase
         .from('private_reservations')
         .update({
-          start_time: newStartTime,
-          end_time: newEndTime,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+          start_time: startTime,
+          end_time: endTime,
           duration_minutes: durationMinutes,
-          interpreter_id: selectedInterpreter
+          commentary,
+          company
         })
         .eq('id', reservation.id);
 
@@ -106,98 +69,124 @@ export const ReservationEditDialog = ({
 
       onSuccess();
     } catch (error: any) {
-      console.error('[ReservationEditDialog] Error:', error);
+      console.error('[ReservationEditDialog] Error updating reservation:', error);
       toast({
         title: "Erreur",
         description: error.message || "Impossible de mettre à jour la réservation",
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open onOpenChange={() => !isSubmitting && onClose()}>
-      <DialogContent>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Modifier la réservation</DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        
+        <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="start-date">Date de début</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-              />
+              <Label htmlFor="edit-source-language">Langue source</Label>
+              <Select 
+                value={sourceLanguage} 
+                onValueChange={setSourceLanguage}
+              >
+                <SelectTrigger id="edit-source-language">
+                  <SelectValue placeholder="Sélectionner une langue" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="start-time">Heure de début</Label>
+              <Label htmlFor="edit-target-language">Langue cible</Label>
+              <Select 
+                value={targetLanguage} 
+                onValueChange={setTargetLanguage}
+              >
+                <SelectTrigger id="edit-target-language">
+                  <SelectValue placeholder="Sélectionner une langue" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-start-time">Date et heure de début</Label>
               <Input
-                id="start-time"
-                type="time"
+                type="datetime-local"
+                id="edit-start-time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="end-date">Date de fin</Label>
+              <Label htmlFor="edit-end-time">Date et heure de fin</Label>
               <Input
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="end-time">Heure de fin</Label>
-              <Input
-                id="end-time"
-                type="time"
+                type="datetime-local"
+                id="edit-end-time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                required
+                min={startTime}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="interpreter">Interprète</Label>
-            <Select value={selectedInterpreter} onValueChange={setSelectedInterpreter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un interprète" />
+            <Label htmlFor="edit-company">Entreprise</Label>
+            <Select 
+              value={company} 
+              onValueChange={(value: CompanyType) => setCompany(value)}
+            >
+              <SelectTrigger id="edit-company">
+                <SelectValue placeholder="Sélectionner une entreprise" />
               </SelectTrigger>
               <SelectContent>
-                {interpreters.map((interpreter) => (
-                  <SelectItem key={interpreter.id} value={interpreter.id}>
-                    {interpreter.first_name} {interpreter.last_name}
-                  </SelectItem>
-                ))}
+                <SelectItem value={COMPANY_TYPES.AFTRAD}>AFTrad</SelectItem>
+                <SelectItem value={COMPANY_TYPES.AFTCOM}>AFTcom</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Mise à jour..." : "Mettre à jour"}
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="edit-commentary">Commentaire (optionnel)</Label>
+            <Textarea
+              id="edit-commentary"
+              value={commentary}
+              onChange={(e) => setCommentary(e.target.value)}
+              placeholder="Ajouter un commentaire..."
+            />
           </div>
-        </form>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annuler</Button>
+          <Button 
+            onClick={handleUpdateReservation}
+            disabled={isLoading}
+          >
+            {isLoading ? "Mise à jour..." : "Enregistrer"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -7,6 +7,8 @@ interface InterpreterProfile {
   profile_picture_url: string | null;
 }
 
+export type CompanyType = 'AFTcom' | 'AFTrad';
+
 export interface PrivateReservation {
   id: string;
   interpreter_id: string;
@@ -20,5 +22,6 @@ export interface PrivateReservation {
   created_at: string;
   updated_at: string;
   status: PrivateReservationStatus;
+  company: CompanyType;
   interpreter_profiles?: InterpreterProfile;
 }

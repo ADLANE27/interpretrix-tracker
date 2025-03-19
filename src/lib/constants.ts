@@ -195,3 +195,8 @@ export const ANIMATION = {
   SLOW: 500,
 };
 
+// Company types
+export const COMPANY_TYPES = {
+  AFTCOM: 'AFTcom',
+  AFTRAD: 'AFTrad',
+};

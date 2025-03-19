@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,9 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PrivateReservation } from "@/types/privateReservation";
 import { ReservationEditDialog } from "./ReservationEditDialog";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
-import { Clock, Languages, User } from "lucide-react";
+import { Clock, Languages, User, Building } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMissionUpdates } from "@/hooks/useMissionUpdates";
+import { COMPANY_TYPES } from "@/lib/constants";
 
 interface PrivateReservationListProps {
   nameFilter: string;
@@ -16,6 +18,7 @@ interface PrivateReservationListProps {
   targetLanguageFilter: string;
   startDateFilter: string;
   endDateFilter: string;
+  companyFilter: string;
 }
 
 export const PrivateReservationList = ({
@@ -23,7 +26,8 @@ export const PrivateReservationList = ({
   sourceLanguageFilter,
   targetLanguageFilter,
   startDateFilter,
-  endDateFilter
+  endDateFilter,
+  companyFilter
 }: PrivateReservationListProps) => {
   const [reservations, setReservations] = useState<PrivateReservation[]>([]);
   const [selectedReservation, setSelectedReservation] = useState<PrivateReservation | null>(null);
@@ -53,6 +57,10 @@ export const PrivateReservationList = ({
 
       if (targetLanguageFilter !== 'all') {
         query = query.eq('target_language', targetLanguageFilter);
+      }
+
+      if (companyFilter !== 'all') {
+        query = query.eq('company', companyFilter);
       }
 
       if (startDateFilter) {
@@ -104,7 +112,7 @@ export const PrivateReservationList = ({
 
   useEffect(() => {
     fetchReservations();
-  }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter]);
+  }, [nameFilter, sourceLanguageFilter, targetLanguageFilter, startDateFilter, endDateFilter, companyFilter]);
 
   useMissionUpdates(() => {
     console.log('[PrivateReservationList] Received update, refreshing reservations');
@@ -154,6 +162,13 @@ export const PrivateReservationList = ({
                         {reservation.interpreter_profiles?.first_name}{' '}
                         {reservation.interpreter_profiles?.last_name}
                       </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Building className="h-4 w-4 text-amber-500" />
+                      <Badge variant={reservation.company === COMPANY_TYPES.AFTCOM ? "secondary" : "default"}>
+                        {reservation.company}
+                      </Badge>
                     </div>
                   </div>
 
