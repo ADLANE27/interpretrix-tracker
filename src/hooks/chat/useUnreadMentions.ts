@@ -30,6 +30,7 @@ export const useUnreadMentions = () => {
   const [unreadDirectMessages, setUnreadDirectMessages] = useState<number>(0);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
   const [lastMentionId, setLastMentionId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { showNotification, requestPermission } = useBrowserNotification();
 
   // Request notification permission when the hook is first used
@@ -37,8 +38,33 @@ export const useUnreadMentions = () => {
     requestPermission();
   }, [requestPermission]);
 
+  // Determine the user role early
+  useEffect(() => {
+    const getUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          setUserRole(data.role);
+          console.log(`[Mentions Debug] User role determined: ${data.role}`);
+        }
+      } catch (error) {
+        console.error("[Mentions Debug] Error determining user role:", error);
+      }
+    };
+
+    getUserRole();
+  }, []);
+
   const fetchUnreadMentions = useCallback(async () => {
-    console.log('[Mentions Debug] Fetching unread mentions...');
+    console.log(`[Mentions Debug] Fetching unread mentions... (Role: ${userRole || 'unknown'})`);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -149,10 +175,13 @@ export const useUnreadMentions = () => {
         
         // If this is a new mention that we haven't seen before, show a notification
         if (lastMentionId !== newestMention.mention_id) {
+          console.log('[Mentions Debug] New mention detected:', newestMention.mention_id);
           setLastMentionId(newestMention.mention_id);
           
           // If this isn't the first load (lastMentionId is set), show notification
           if (lastMentionId !== null) {
+            console.log('[Mentions Debug] Showing notification for mention');
+            
             // Play sound for new mention
             playNotificationSound();
             
@@ -181,7 +210,8 @@ export const useUnreadMentions = () => {
       console.log('[Mentions Debug] Updated counts:', {
         mentions: mentionsWithNames.length,
         dms: unreadDMCount,
-        total: mentionsWithNames.length + unreadDMCount
+        total: mentionsWithNames.length + unreadDMCount,
+        userRole
       });
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
@@ -189,7 +219,7 @@ export const useUnreadMentions = () => {
       setUnreadDirectMessages(0);
       setTotalUnreadCount(0);
     }
-  }, [lastMentionId, showNotification]);
+  }, [lastMentionId, showNotification, userRole]);
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
@@ -259,28 +289,30 @@ export const useUnreadMentions = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
-        () => {
-          console.log('[Mentions Debug] Message mentions table changed');
+        (payload) => {
+          console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
           fetchUnreadMentions();
         }
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        () => {
-          console.log('[Messages Debug] New message received');
+        (payload) => {
+          console.log(`[Messages Debug] New message received (role: ${userRole})`, payload);
           fetchUnreadMentions();
         }
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-        () => {
-          console.log('[Messages Debug] Channel membership updated');
+        (payload) => {
+          console.log(`[Messages Debug] Channel membership updated (role: ${userRole})`, payload);
           fetchUnreadMentions();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Mentions Debug] Subscription status (role: ${userRole}):`, status);
+      });
 
     // Cleanup function
     return () => {
@@ -288,7 +320,7 @@ export const useUnreadMentions = () => {
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, [fetchUnreadMentions]);
+  }, [fetchUnreadMentions, userRole]);
 
   return { 
     unreadMentions, 
