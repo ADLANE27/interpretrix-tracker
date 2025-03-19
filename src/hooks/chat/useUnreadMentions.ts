@@ -317,44 +317,65 @@ export const useUnreadMentions = () => {
       fetchUnreadMentions();
     }, 30000); // Refresh every 30 seconds
 
+    // Get the current authenticated user
+    const getCurrentUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      return currentUser;
+    };
+
     // Create a single channel for all subscriptions
-    const channel = supabase.channel('mentions-and-messages')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'message_mentions' },
-        (payload) => {
-          console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
-          // Only refresh if the mention is for the current user
-          if (payload.new && payload.new.mentioned_user_id === user.id) {
+    getCurrentUser().then(currentUser => {
+      if (!currentUser) {
+        console.log('[Mentions Debug] No authenticated user for subscription');
+        return;
+      }
+
+      const channel = supabase.channel('mentions-and-messages')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'message_mentions' },
+          (payload) => {
+            console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
+            
+            // Make sure payload.new exists and has the expected structure
+            if (payload.new && typeof payload.new === 'object' && 'mentioned_user_id' in payload.new) {
+              // Only refresh if the mention is for the current user
+              if (payload.new.mentioned_user_id === currentUser.id) {
+                fetchUnreadMentions();
+              }
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+          (payload) => {
+            console.log(`[Messages Debug] New message received (role: ${userRole})`, payload);
             fetchUnreadMentions();
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          console.log(`[Messages Debug] New message received (role: ${userRole})`, payload);
-          fetchUnreadMentions();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-        (payload) => {
-          console.log(`[Messages Debug] Channel membership updated (role: ${userRole})`, payload);
-          fetchUnreadMentions();
-        }
-      )
-      .subscribe((status) => {
-        console.log(`[Mentions Debug] Subscription status (role: ${userRole}):`, status);
-      });
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'channel_members' },
+          (payload) => {
+            console.log(`[Messages Debug] Channel membership updated (role: ${userRole})`, payload);
+            fetchUnreadMentions();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`[Mentions Debug] Subscription status (role: ${userRole}):`, status);
+        });
 
-    // Cleanup function
+      return () => {
+        console.log('[Mentions Debug] Cleaning up subscription and interval');
+        clearInterval(intervalId);
+        supabase.removeChannel(channel);
+      };
+    });
+
+    // Cleanup function for the interval
     return () => {
-      console.log('[Mentions Debug] Cleaning up subscription and interval');
       clearInterval(intervalId);
-      supabase.removeChannel(channel);
     };
   }, [fetchUnreadMentions, userRole]);
 
@@ -362,9 +383,75 @@ export const useUnreadMentions = () => {
     unreadMentions, 
     totalUnreadCount,
     unreadDirectMessages,
-    markMentionAsRead,
-    deleteMention,
-    markAllMentionsAsRead,
+    markMentionAsRead: async (mentionId: string) => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        console.log('[Mentions Debug] Marking mention as read:', mentionId);
+        const { error } = await supabase
+          .from('message_mentions')
+          .update({ status: 'read' })
+          .eq('id', mentionId)
+          .eq('mentioned_user_id', user.id);
+
+        if (error) {
+          console.error('[Mentions Debug] Error marking mention as read:', error);
+          throw error;
+        }
+        
+        console.log('[Mentions Debug] Successfully marked mention as read');
+        await fetchUnreadMentions();
+      } catch (error) {
+        console.error('[Mentions Debug] Error marking mention as read:', error);
+      }
+    },
+    deleteMention: async (mentionId: string) => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        console.log('[Mentions Debug] Deleting mention:', mentionId);
+        const { error } = await supabase
+          .from('message_mentions')
+          .update({ status: 'deleted' })
+          .eq('id', mentionId)
+          .eq('mentioned_user_id', user.id);
+
+        if (error) {
+          console.error('[Mentions Debug] Error deleting mention:', error);
+          throw error;
+        }
+
+        console.log('[Mentions Debug] Successfully deleted mention');
+        await fetchUnreadMentions();
+      } catch (error) {
+        console.error('[Mentions Debug] Error deleting mention:', error);
+      }
+    },
+    markAllMentionsAsRead: async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        console.log('[Mentions Debug] Marking all mentions as read');
+        const { error } = await supabase
+          .from('message_mentions')
+          .update({ status: 'read' })
+          .eq('mentioned_user_id', user.id)
+          .eq('status', 'unread');
+
+        if (error) {
+          console.error('[Mentions Debug] Error marking all mentions as read:', error);
+          throw error;
+        }
+
+        console.log('[Mentions Debug] Successfully marked all mentions as read');
+        await fetchUnreadMentions();
+      } catch (error) {
+        console.error('[Mentions Debug] Error marking all mentions as read:', error);
+      }
+    },
     refreshMentions: fetchUnreadMentions 
   };
 };
