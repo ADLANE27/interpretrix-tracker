@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -218,20 +217,18 @@ export const InterpreterChat = ({
     <div className="flex flex-col h-full">
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
         <div className="h-[56px] md:h-16 flex items-center justify-between">
-          {isMobile && (
-            <div className="flex items-center gap-2">
-              {onBackToChannels && (
-                <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              )}
-              {onMenuClick && (
-                <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {isMobile && onBackToChannels && (
+              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+            {isMobile && onMenuClick && (
+              <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
+                <Menu className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
           
           <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
           
