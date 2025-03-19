@@ -106,7 +106,8 @@ export const useUserManagement = () => {
             private_phone: interpreter.private_phone || '',
             professional_phone: interpreter.professional_phone || '',
             tarif_15min: interpreter.tarif_15min,
-            tarif_5min: interpreter.tarif_5min
+            tarif_5min: interpreter.tarif_5min,
+            work_location: interpreter.work_location as WorkLocation
           };
         });
 

@@ -5,7 +5,7 @@ import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
-import { workLocationLabels } from '@/utils/workLocationStatus';
+import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -31,7 +31,7 @@ interface InterpreterCardProps {
       start_afternoon?: string;
       end_afternoon?: string;
     } | null;
-    work_location?: "remote" | "on_site";
+    work_location?: WorkLocation;
   };
 }
 

@@ -62,6 +62,7 @@ interface Interpreter {
   connection_status?: Profile['status'];
   next_mission_source_language?: string | null;
   next_mission_target_language?: string | null;
+  work_location?: string | null;
 }
 
 const AdminDashboard = () => {
@@ -527,7 +528,8 @@ const AdminDashboard = () => {
                 booth_number: interpreter.booth_number,
                 private_phone: interpreter.private_phone,
                 professional_phone: interpreter.professional_phone,
-                work_hours: interpreter.work_hours
+                work_hours: interpreter.work_hours,
+                work_location: interpreter.work_location
               }} /> : <InterpreterListItem key={interpreter.id} interpreter={{
                 id: interpreter.id,
                 name: `${interpreter.first_name} ${interpreter.last_name}`,

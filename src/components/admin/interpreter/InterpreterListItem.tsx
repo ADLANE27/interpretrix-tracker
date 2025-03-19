@@ -1,9 +1,10 @@
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Globe } from "lucide-react";
+import { Globe, Home, Building } from "lucide-react";
 import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
+import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -14,6 +15,7 @@ interface InterpreterListItemProps {
     languages: string[];
     next_mission_start?: string | null;
     next_mission_duration?: number | null;
+    work_location?: WorkLocation;
   };
 }
 
@@ -36,6 +38,17 @@ const statusConfig = {
   },
 };
 
+const workLocationConfig = {
+  remote: {
+    color: "bg-purple-100 text-purple-800 border border-purple-300",
+    icon: Home
+  },
+  on_site: {
+    color: "bg-blue-100 text-blue-800 border border-blue-300",
+    icon: Building
+  }
+};
+
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
   const parsedLanguages = interpreter.languages
     .map(lang => {
@@ -43,6 +56,9 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
       return { source, target };
     })
     .filter(lang => lang.source && lang.target);
+
+  const workLocation = interpreter.work_location || "on_site";
+  const LocationIcon = workLocationConfig[workLocation].icon;
 
   return (
     <Card className="p-4 hover-elevate gradient-border">
@@ -74,6 +90,11 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
 
             <div className="text-sm text-white font-medium bg-gradient-to-r from-palette-vivid-purple to-indigo-500 px-3 py-1 rounded-full shadow-sm">
               {employmentStatusLabels[interpreter.employment_status]}
+            </div>
+
+            <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+              <LocationIcon className="h-3 w-3" />
+              <span>{workLocationLabels[workLocation]}</span>
             </div>
 
             {interpreter.next_mission_start && (
