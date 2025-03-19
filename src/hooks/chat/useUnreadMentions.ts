@@ -78,7 +78,7 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
-      // Fetch unread mentions
+      // Fetch unread mentions where the current user is the mentioned user (not the sender)
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
@@ -148,6 +148,12 @@ export const useUnreadMentions = () => {
           .filter(mention => mention.chat_messages) // Only include mentions with existing messages
           .map(async (mention) => {
             console.log('[Mentions Debug] Processing mention:', mention.id);
+            
+            // Make sure we're not processing mentions where the current user is the sender
+            if (mention.chat_messages.sender_id === user.id) {
+              console.log('[Mentions Debug] Skipping mention created by current user');
+              return null;
+            }
             
             // Get sender details using the rpc function that works for both interpreters and admins
             const { data: senderData, error: senderError } = await supabase
@@ -318,7 +324,10 @@ export const useUnreadMentions = () => {
         { event: '*', schema: 'public', table: 'message_mentions' },
         (payload) => {
           console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
-          fetchUnreadMentions();
+          // Only refresh if the mention is for the current user
+          if (payload.new && payload.new.mentioned_user_id === user.id) {
+            fetchUnreadMentions();
+          }
         }
       )
       .on(

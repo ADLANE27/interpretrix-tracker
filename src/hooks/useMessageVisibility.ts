@@ -10,6 +10,8 @@ export const useMessageVisibility = (channelId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      console.log('[MessageVisibility] Marking mentions as read in channel:', channelId);
+
       // Update channel_members last_read_at
       await supabase
         .from('channel_members')
@@ -17,7 +19,7 @@ export const useMessageVisibility = (channelId: string) => {
         .eq('channel_id', channelId)
         .eq('user_id', user.id);
 
-      // Mark all unread mentions in this channel as read
+      // Mark all unread mentions in this channel as read, only for current user
       const { data: mentions, error: mentionsError } = await supabase
         .from('message_mentions')
         .select('id')
@@ -31,6 +33,8 @@ export const useMessageVisibility = (channelId: string) => {
       }
 
       if (mentions && mentions.length > 0) {
+        console.log('[MessageVisibility] Found', mentions.length, 'mentions to mark as read');
+        
         const { error: updateError } = await supabase
           .from('message_mentions')
           .update({ status: 'read' })
@@ -54,7 +58,7 @@ export const useMessageVisibility = (channelId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Mark individual message mention as read
+      // Mark individual message mention as read, only for current user
       await supabase
         .from('message_mentions')
         .update({ status: 'read' })

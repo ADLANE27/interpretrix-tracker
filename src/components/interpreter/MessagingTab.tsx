@@ -22,20 +22,10 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
     setFilters({});
   };
 
-  // Refresh mentions periodically to ensure badge counts are up to date
+  // Refresh mentions initially to ensure badge counts are up to date
   useEffect(() => {
-    console.log('[MessagingTab] Setting up mention refresh');
+    console.log('[MessagingTab] Initial mention refresh');
     refreshMentions();
-    
-    const intervalId = setInterval(() => {
-      console.log('[MessagingTab] Running periodic mention refresh');
-      refreshMentions();
-    }, 20000); // Refresh every 20 seconds
-    
-    return () => {
-      console.log('[MessagingTab] Cleaning up mention refresh interval');
-      clearInterval(intervalId);
-    };
   }, [refreshMentions]);
 
   return (
