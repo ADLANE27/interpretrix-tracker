@@ -56,26 +56,30 @@ export const ReservationsTab = () => {
 
             <div className="space-y-2">
               <Label>Langue source</Label>
-              <LanguageCombobox
-                languages={LANGUAGES}
-                value={sourceLanguageFilter}
-                onChange={setSourceLanguageFilter}
-                placeholder="Sélectionner une langue source"
-                emptyMessage="Aucune langue trouvée"
-                allLanguagesLabel="Toutes les langues"
-              />
+              <div className="relative">
+                <LanguageCombobox
+                  languages={LANGUAGES}
+                  value={sourceLanguageFilter}
+                  onChange={setSourceLanguageFilter}
+                  placeholder="Sélectionner une langue source"
+                  emptyMessage="Aucune langue trouvée"
+                  allLanguagesLabel="Toutes les langues"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label>Langue cible</Label>
-              <LanguageCombobox
-                languages={LANGUAGES}
-                value={targetLanguageFilter}
-                onChange={setTargetLanguageFilter}
-                placeholder="Sélectionner une langue cible" 
-                emptyMessage="Aucune langue trouvée"
-                allLanguagesLabel="Toutes les langues"
-              />
+              <div className="relative">
+                <LanguageCombobox
+                  languages={LANGUAGES}
+                  value={targetLanguageFilter}
+                  onChange={setTargetLanguageFilter}
+                  placeholder="Sélectionner une langue cible" 
+                  emptyMessage="Aucune langue trouvée"
+                  allLanguagesLabel="Toutes les langues"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

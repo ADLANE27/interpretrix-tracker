@@ -41,21 +41,32 @@ export function LanguageCombobox({
   const [searchQuery, setSearchQuery] = useState("");
   
   // Sort languages alphabetically once
-  const sortedLanguages = useMemo(() => 
-    [...languages].sort((a, b) => a.localeCompare(b)),
-  [languages]);
+  const sortedLanguages = useMemo(() => {
+    try {
+      return [...languages].sort((a, b) => a.localeCompare(b));
+    } catch (error) {
+      console.error("Error sorting languages:", error);
+      return languages || [];
+    }
+  }, [languages]);
   
   // Filter languages based on search query
   const filteredLanguages = useMemo(() => {
     if (!searchQuery) return sortedLanguages;
-    return sortedLanguages.filter(lang => 
-      lang.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    try {
+      return sortedLanguages.filter(lang => 
+        lang.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    } catch (error) {
+      console.error("Error filtering languages:", error);
+      return sortedLanguages;
+    }
   }, [sortedLanguages, searchQuery]);
   
   // When displaying the selected value, handle the "all" special case
-  const displayValue = value === "all" ? allLanguagesLabel : 
-    sortedLanguages.find(lang => lang === value) || placeholder;
+  const displayValue = value === "all" 
+    ? allLanguagesLabel 
+    : sortedLanguages.find(lang => lang === value) || placeholder;
   
   // Handle search input
   const handleSearchChange = useCallback((input: string) => {
@@ -64,67 +75,81 @@ export function LanguageCombobox({
   
   // Handle language selection
   const handleSelectLanguage = useCallback((selectedValue: string) => {
-    onChange(selectedValue);
-    setOpen(false);
-    setSearchQuery("");
+    try {
+      onChange(selectedValue);
+      setOpen(false);
+      // Clean up search query when selection is made
+      setSearchQuery("");
+    } catch (error) {
+      console.error("Error selecting language:", error);
+    }
   }, [onChange]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("w-full justify-between", className)}
+    <div className="relative">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("w-full justify-between", className)}
+          >
+            <span className="truncate">{displayValue}</span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent 
+          className="w-full p-0" 
+          align="start"
+          sideOffset={4}
         >
-          <span className="truncate">{displayValue}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder={`Rechercher une langue...`} 
-            className="h-9"
-            value={searchQuery}
-            onValueChange={handleSearchChange}
-          />
-          <CommandEmpty>{emptyMessage}</CommandEmpty>
-          <CommandGroup className="max-h-[300px] overflow-y-auto">
-            {allLanguagesOption && (
-              <CommandItem
-                key="all-languages"
-                value="all"
-                onSelect={() => handleSelectLanguage("all")}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === "all" ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {allLanguagesLabel}
-              </CommandItem>
+          <Command shouldFilter={false} className="max-h-[400px]">
+            <CommandInput 
+              placeholder="Rechercher une langue..." 
+              className="h-9"
+              value={searchQuery}
+              onValueChange={handleSearchChange}
+            />
+            {filteredLanguages.length === 0 ? (
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+            ) : (
+              <CommandGroup className="max-h-[300px] overflow-y-auto">
+                {allLanguagesOption && (
+                  <CommandItem
+                    key="all-languages"
+                    value="all"
+                    onSelect={() => handleSelectLanguage("all")}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === "all" ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {allLanguagesLabel}
+                  </CommandItem>
+                )}
+                {filteredLanguages.map((language) => (
+                  <CommandItem
+                    key={language}
+                    value={language}
+                    onSelect={() => handleSelectLanguage(language)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        value === language ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {language}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
             )}
-            {filteredLanguages.map((language) => (
-              <CommandItem
-                key={language}
-                value={language}
-                onSelect={() => handleSelectLanguage(language)}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === language ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {language}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
