@@ -280,29 +280,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [inputRef]);
 
   return (
-    <div className="p-3 bg-white">
+    <div className="p-3 bg-white dark:bg-gray-900">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 rounded-lg text-sm text-gray-600">
+        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
           <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            className="h-6 px-2 text-xs hover:bg-gray-200"
+            className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             Annuler
           </Button>
         </div>
       )}
       <div className="relative">
-        <div className="flex items-end gap-1 bg-white rounded-2xl border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
           <div className="flex-1 min-h-[40px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={handleInputChange}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2 px-3 text-base"
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 text-base rounded-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -425,8 +425,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {attachments.length > 0 && (
         <div className="mt-2 space-y-1.5 px-1">
           {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-700 truncate flex-1">{file.name}</span>
+            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
