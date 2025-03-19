@@ -66,28 +66,28 @@ export const LANGUAGE_MAP = {
 
 // Complete list of languages that exactly match what's shown on interpreter cards
 export const LANGUAGES = [
-  // Main languages (verify these match exactly with cards)
+  // Main languages as they appear on interpreter cards
   "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais",
   
   // Arabic variants as they appear on interpreter cards
   "Arabe", "Arabe Maghrébin", "Arabe Soudanais", "Arabe Moyen-Orient",
   
   // English variants as they appear on interpreter cards
-  "Anglais", "Anglais Américain", "Anglais Britannique", "Anglais Africain", "Anglais Australien",
+  "Anglais", "Anglais Standard",
   
   // French variants as they appear on interpreter cards
   "Français", "Français Canadien", "Français Africain", "Français Belge", "Français Suisse",
   
   // Spanish variants as they appear on interpreter cards
-  "Espagnol", "Espagnol Castillan", "Espagnol Latino-américain", "Espagnol Argentin", "Espagnol Mexicain",
+  "Espagnol", "Espagnol Castillan",
   
   // Chinese variants as they appear on interpreter cards
-  "Chinois", "Chinois Mandarin", "Chinois Cantonais", "Chinois Wu", "Chinois Min",
+  "Chinois", "Chinois Mandarin", "Chinois Cantonais",
   
   // Other languages with variants as they appear on interpreter cards
-  "Portugais", "Portugais Brésilien", "Portugais Européen",
+  "Portugais", "Portugais Brésilien",
   "Russe", "Russe Standard",
-  "Bengali", "Bengali Indien", "Bengali Bangladais",
+  "Bengali", "Bengali Indien",
 
   // Standard languages continued
   "Araméen", "Assamais", "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse",
