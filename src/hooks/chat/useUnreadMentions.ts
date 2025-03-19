@@ -31,6 +31,7 @@ export const useUnreadMentions = () => {
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
   const [lastMentionId, setLastMentionId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const { showNotification, requestPermission } = useBrowserNotification();
 
@@ -39,12 +40,14 @@ export const useUnreadMentions = () => {
     requestPermission();
   }, [requestPermission]);
 
-  // Determine the user role early
+  // Determine the user role early and store current user ID
   useEffect(() => {
     const getUserRole = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+        setCurrentUserId(user.id);
 
         const { data } = await supabase
           .from('user_roles')
@@ -317,19 +320,10 @@ export const useUnreadMentions = () => {
       fetchUnreadMentions();
     }, 30000); // Refresh every 30 seconds
 
-    // Get the current authenticated user
-    const getCurrentUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      return currentUser;
-    };
-
     // Create a single channel for all subscriptions
-    getCurrentUser().then(currentUser => {
-      if (!currentUser) {
-        console.log('[Mentions Debug] No authenticated user for subscription');
-        return;
-      }
-
+    if (currentUserId) {
+      console.log('[Mentions Debug] Setting up real-time subscriptions for user:', currentUserId);
+      
       const channel = supabase.channel('mentions-and-messages')
         .on(
           'postgres_changes',
@@ -337,11 +331,17 @@ export const useUnreadMentions = () => {
           (payload) => {
             console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
             
-            // Make sure payload.new exists and has the expected structure
-            if (payload.new && typeof payload.new === 'object' && 'mentioned_user_id' in payload.new) {
+            // Type safety for payload.new
+            if (payload.new && 
+                typeof payload.new === 'object' && 
+                'mentioned_user_id' in payload.new) {
+              
               // Only refresh if the mention is for the current user
-              if (payload.new.mentioned_user_id === currentUser.id) {
+              if (payload.new.mentioned_user_id === currentUserId) {
+                console.log('[Mentions Debug] Refreshing mentions - this mention is for current user');
                 fetchUnreadMentions();
+              } else {
+                console.log('[Mentions Debug] Ignoring mention - not for current user');
               }
             }
           }
@@ -371,87 +371,21 @@ export const useUnreadMentions = () => {
         clearInterval(intervalId);
         supabase.removeChannel(channel);
       };
-    });
+    }
 
-    // Cleanup function for the interval
+    // Cleanup function for the interval if currentUserId is not available yet
     return () => {
       clearInterval(intervalId);
     };
-  }, [fetchUnreadMentions, userRole]);
+  }, [fetchUnreadMentions, userRole, currentUserId]);
 
   return { 
     unreadMentions, 
     totalUnreadCount,
     unreadDirectMessages,
-    markMentionAsRead: async (mentionId: string) => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        console.log('[Mentions Debug] Marking mention as read:', mentionId);
-        const { error } = await supabase
-          .from('message_mentions')
-          .update({ status: 'read' })
-          .eq('id', mentionId)
-          .eq('mentioned_user_id', user.id);
-
-        if (error) {
-          console.error('[Mentions Debug] Error marking mention as read:', error);
-          throw error;
-        }
-        
-        console.log('[Mentions Debug] Successfully marked mention as read');
-        await fetchUnreadMentions();
-      } catch (error) {
-        console.error('[Mentions Debug] Error marking mention as read:', error);
-      }
-    },
-    deleteMention: async (mentionId: string) => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        console.log('[Mentions Debug] Deleting mention:', mentionId);
-        const { error } = await supabase
-          .from('message_mentions')
-          .update({ status: 'deleted' })
-          .eq('id', mentionId)
-          .eq('mentioned_user_id', user.id);
-
-        if (error) {
-          console.error('[Mentions Debug] Error deleting mention:', error);
-          throw error;
-        }
-
-        console.log('[Mentions Debug] Successfully deleted mention');
-        await fetchUnreadMentions();
-      } catch (error) {
-        console.error('[Mentions Debug] Error deleting mention:', error);
-      }
-    },
-    markAllMentionsAsRead: async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        console.log('[Mentions Debug] Marking all mentions as read');
-        const { error } = await supabase
-          .from('message_mentions')
-          .update({ status: 'read' })
-          .eq('mentioned_user_id', user.id)
-          .eq('status', 'unread');
-
-        if (error) {
-          console.error('[Mentions Debug] Error marking all mentions as read:', error);
-          throw error;
-        }
-
-        console.log('[Mentions Debug] Successfully marked all mentions as read');
-        await fetchUnreadMentions();
-      } catch (error) {
-        console.error('[Mentions Debug] Error marking all mentions as read:', error);
-      }
-    },
+    markMentionAsRead,
+    deleteMention,
+    markAllMentionsAsRead,
     refreshMentions: fetchUnreadMentions 
   };
 };
