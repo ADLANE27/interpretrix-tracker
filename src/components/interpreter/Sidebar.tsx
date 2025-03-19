@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -171,7 +170,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-2 px-2">
+      <nav className="flex-1 space-y-2 px-2 mx-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
