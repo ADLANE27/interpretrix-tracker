@@ -159,13 +159,13 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               disabled={isLoading}
               className={`
                 w-full transition-all duration-200
-                h-14 sm:h-10 text-base sm:text-sm font-medium px-3 sm:px-3
+                h-12 sm:h-10 text-sm font-medium px-2 sm:px-3
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-5 w-5 min-w-5 mr-2 sm:mr-1 flex-shrink-0" />
+              <Icon className="h-4 w-4 min-w-4 mr-1 flex-shrink-0" />
               <span className="truncate whitespace-nowrap">{statusConfig[statusKey].label}</span>
             </Button>
           </motion.div>

@@ -56,15 +56,15 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             key={status.id}
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              transition-all duration-200 rounded-full h-12 
-              ${isMobile ? 'px-4 text-base' : 'px-4 text-sm'}
+              transition-all duration-200 rounded-full h-10 
+              ${isMobile ? 'px-3 text-sm' : 'px-4 text-sm'}
               ${selectedStatus === status.id 
                 ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
                 : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
-            <Icon className="mr-2 h-4 w-4 min-w-[16px] flex-shrink-0" />
+            <Icon className="mr-1 h-3.5 w-3.5 min-w-[14px] flex-shrink-0" />
             <span className="truncate whitespace-nowrap">{status.label}</span>
           </Button>
         )}
