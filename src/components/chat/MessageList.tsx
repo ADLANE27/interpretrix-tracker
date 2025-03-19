@@ -144,7 +144,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onDeleteMessage(message.id)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+              className="p-1 rounded-full bg-white/90 shadow-sm h-auto"
               aria-label="Supprimer le message"
             >
               <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -155,7 +155,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(message)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+              className="p-1 rounded-full bg-white/90 shadow-sm h-auto"
             >
               <MessageCircle className="h-4 w-4 text-gray-500" />
             </Button>
@@ -195,7 +195,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 h-auto"
+                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 rounded-full px-3 py-1 h-auto"
                 >
                   {expandedThreads.has(message.id) ? (
                     <ChevronDown className="h-3.5 w-3.5 mr-1" />
