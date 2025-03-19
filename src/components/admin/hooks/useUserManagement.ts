@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UsersData, UserData } from "../types/user-management";
 import { Profile } from "@/types/profile";
 import { convertLanguagePairsToStrings, parseLanguageString } from "@/types/languages";
+import { WorkLocation } from "@/utils/workLocationStatus";
 
 export const useUserManagement = () => {
   const { toast } = useToast();
@@ -261,7 +262,7 @@ export const useUserManagement = () => {
         private_phone: updatedData[0].private_phone,
         professional_phone: updatedData[0].professional_phone,
         password_changed: updatedData[0].password_changed || false,
-        work_location: updatedData[0].work_location as Profile['work_location']
+        work_location: updatedData[0].work_location as WorkLocation
       };
 
       setSelectedUser(transformedProfile);
@@ -317,3 +318,4 @@ export const useUserManagement = () => {
     setSelectedUser
   };
 };
+
