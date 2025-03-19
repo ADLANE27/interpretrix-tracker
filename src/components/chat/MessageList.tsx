@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -139,13 +140,15 @@ export const MessageList: React.FC<MessageListProps> = ({
         
         <div className="flex items-center gap-2 mt-1 mr-1">
           {message.sender.id === currentUserId && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onDeleteMessage(message.id)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm"
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
               aria-label="Supprimer le message"
             >
               <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </button>
+            </Button>
           )}
           {!isThreadReply && setReplyTo && (
             <Button
