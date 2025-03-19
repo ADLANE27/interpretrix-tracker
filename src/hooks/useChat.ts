@@ -349,9 +349,33 @@ export const useChat = (channelId: string) => {
     handleRealtimeMessage
   );
 
+  // Modified function to handle message deletion with optimistic UI update
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      // Optimistic UI update - remove the message from state immediately
+      messagesMap.current.delete(messageId);
+      
+      // Update the messages array based on the updated map
+      const updatedMessages = Array.from(messagesMap.current.values())
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      setMessages(updatedMessages);
+      
+      // Then perform the actual deletion on the server
+      await deleteMessage(messageId);
+      
+      // No need to fetch messages again since we've already updated the UI
+      console.log(`[useChat ${userRole.current}] Message deleted locally:`, messageId);
+    } catch (error) {
+      console.error(`[useChat ${userRole.current}] Error handling message deletion:`, error);
+      // If there was an error, refresh messages to ensure UI is in sync
+      fetchMessages(0);
+    }
+  };
+
   const { 
     sendMessage,
-    deleteMessage: handleDeleteMessage,
+    deleteMessage,
     reactToMessage,
     markMentionsAsRead,
   } = useMessageActions(
@@ -406,7 +430,7 @@ export const useChat = (channelId: string) => {
     isSubscribed,
     subscriptionStatus: subscriptionStates,
     sendMessage,
-    deleteMessage: handleDeleteMessage,
+    deleteMessage: handleDeleteMessage, // Use our optimistic UI update function
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
