@@ -7,9 +7,11 @@ export const WelcomeContent = () => {
   return (
     <div className="relative z-10 px-4 py-16 sm:py-24 flex flex-col items-center">
       <div className="mb-6">
-        <h2 className="text-3xl sm:text-4xl font-bold text-palette-vivid-purple">
-          Interpretix
-        </h2>
+        <img 
+          src="/lovable-uploads/8c2eb9e9-dd86-4595-a223-f02a04957846.png" 
+          alt="Interpretix Logo" 
+          className="h-16 sm:h-20 w-auto"
+        />
       </div>
       
       <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-center mb-6">
