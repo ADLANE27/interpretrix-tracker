@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +66,6 @@ export const MessagesTab = () => {
     refreshMentions 
   } = useUnreadMentions();
 
-  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +74,6 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
-  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true);
@@ -92,7 +89,6 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
-          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -110,7 +106,7 @@ export const MessagesTab = () => {
     };
 
     fetchChannels();
-  }, []); // No dependencies, only run once on component mount
+  }, []);
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -197,7 +193,6 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
-      // Update the channels list with the new name
       setChannels(channels.map(channel => 
         channel.id === channelId 
           ? { ...channel, display_name: newName.trim() }
@@ -218,27 +213,19 @@ export const MessagesTab = () => {
     }
   };
 
-  // Handle mention click to navigate to the referenced message
   const handleMentionClick = (mention: any) => {
-    // Find the channel containing the message
     const channelId = mention.channel_id;
-    
-    // Select the channel
     const channel = channels.find(c => c.id === channelId);
     if (channel) {
       setSelectedChannel(channel);
       if (isMobile) setShowChannelList(false);
       
-      // Mark the mention as read
       markMentionAsRead(mention.mention_id);
       
-      // The Chat component will handle scrolling to the message
-      // by using the messageId from the URL hash
       window.location.hash = `message-${mention.message_id}`;
     }
   };
 
-  // Display a loading state while fetching channels
   if (isLoading && channels.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -263,7 +250,6 @@ export const MessagesTab = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
-                {/* Mentions notifications button */}
                 <MentionsPopover
                   mentions={unreadMentions}
                   totalCount={totalUnreadCount}
@@ -401,7 +387,6 @@ export const MessagesTab = () => {
                 </Button>
               )}
               
-              {/* Use the standardized Chat component */}
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"
