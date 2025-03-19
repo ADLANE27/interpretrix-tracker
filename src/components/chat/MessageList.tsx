@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -8,6 +9,7 @@ import { fr } from 'date-fns/locale';
 import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { useTimestampFormat } from '@/hooks/useTimestampFormat';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MessageListProps {
   messages: Message[];
@@ -32,6 +34,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { observeMessage } = useMessageVisibility(channelId);
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -114,7 +117,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           </AvatarFallback>
         </Avatar>
       )}
-      <div className={`flex-1 max-w-[75%] space-y-1.5 ${
+      <div className={`flex-1 max-w-[75%] space-y-1.5 relative ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
         {!isThreadReply && message.sender.id !== currentUserId && (
@@ -134,7 +137,13 @@ export const MessageList: React.FC<MessageListProps> = ({
             </span>
           </div>
         </div>
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+        
+        {/* Message action buttons - repositioned and always visible */}
+        <div className={`flex items-center gap-1 ${
+          message.sender.id === currentUserId 
+            ? 'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[120%]' 
+            : 'absolute right-0 top-1/2 -translate-y-1/2 translate-x-[120%]'
+        } ${isMobile ? 'bg-white/80 backdrop-blur-sm rounded-full p-1 shadow-sm' : ''}`}>
           {message.sender.id === currentUserId && (
             <button
               onClick={() => onDeleteMessage(message.id)}
@@ -155,6 +164,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             </Button>
           )}
         </div>
+
         {message.attachments && message.attachments.map((attachment, index) => (
           <div key={index} className="relative group max-w-sm mt-2">
             <MessageAttachment
