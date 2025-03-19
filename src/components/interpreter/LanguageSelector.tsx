@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LANGUAGES } from "@/lib/constants";
 import { LanguagePair, isValidLanguagePair } from "@/types/languages";
+import { LanguageCombobox } from "./LanguageCombobox";
 
 interface LanguageSelectorProps {
   languages: LanguagePair[];
@@ -53,39 +53,35 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
       ))}
 
       {isEditing && (
-        <div className="flex items-center gap-2">
-          <Select value={newSource} onValueChange={setNewSource}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Langue source" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={newTarget} onValueChange={setNewTarget}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Langue cible" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex-1">
+            <LanguageCombobox
+              languages={LANGUAGES}
+              value={newSource}
+              onChange={setNewSource}
+              placeholder="Langue source"
+              emptyMessage="Aucune langue trouvée"
+              allLanguagesOption={false}
+            />
+          </div>
+          
+          <div className="flex-1">
+            <LanguageCombobox
+              languages={LANGUAGES}
+              value={newTarget}
+              onChange={setNewTarget}
+              placeholder="Langue cible"
+              emptyMessage="Aucune langue trouvée"
+              allLanguagesOption={false}
+            />
+          </div>
 
           <Button
             variant="ghost"
             size="icon"
             onClick={handleAddLanguage}
             disabled={!newSource || !newTarget}
-            className="h-8 w-8"
+            className="h-10 w-10 shrink-0"
           >
             <Plus className="h-4 w-4" />
           </Button>
