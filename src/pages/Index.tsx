@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { InterpreterDashboard } from "@/components/InterpreterDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
@@ -24,7 +23,6 @@ const Index = () => {
           return;
         }
 
-        // Get user's roles from the user_roles table
         const { data: role, error: roleError } = await supabase
           .from('user_roles')
           .select('role')
@@ -39,7 +37,6 @@ const Index = () => {
             description: "Impossible de vérifier vos permissions. Veuillez vous reconnecter.",
             variant: "destructive",
           });
-          // Sign out user if we can't verify their role
           await supabase.auth.signOut();
           setLoading(false);
           return;
@@ -85,21 +82,17 @@ const Index = () => {
     return (
       <div className="min-h-screen w-full bg-white dark:bg-gray-900">
         <div className="relative z-10 min-h-screen flex flex-col">
-          {/* Header */}
           <header className="py-4 px-6 flex items-center justify-between">
             <div className="text-xl font-bold text-palette-vivid-purple">
-              AFT
             </div>
           </header>
           
-          {/* Main content */}
           <div className="flex-1 flex items-center justify-center">
             <WelcomeContent />
           </div>
           
-          {/* Footer */}
           <footer className="text-center py-6 text-slate-600 dark:text-slate-400 text-sm">
-            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+            © {new Date().getFullYear()} Tous droits réservés.
           </footer>
         </div>
       </div>
