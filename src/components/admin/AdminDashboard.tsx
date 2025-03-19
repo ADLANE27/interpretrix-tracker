@@ -32,6 +32,7 @@ import { StatisticsCards } from "./dashboard/StatisticsCards";
 import { Card } from "@/components/ui/card";
 import { LanguageCombobox } from "../interpreter/LanguageCombobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 
 interface WorkHours {
   start_morning?: string;
