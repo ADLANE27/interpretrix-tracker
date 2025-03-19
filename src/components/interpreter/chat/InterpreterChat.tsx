@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -203,7 +204,7 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between px-4 py-3 shadow-sm bg-white">
         <h2 className="text-lg font-semibold">{channel?.name}</h2>
         <ChannelMembersPopover 
           channelId={channelId} 
@@ -213,7 +214,7 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none p-3 relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
