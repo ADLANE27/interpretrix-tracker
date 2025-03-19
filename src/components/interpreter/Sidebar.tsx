@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -170,33 +171,37 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-2 px-2 mx-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <Button
-              key={tab.id}
-              variant={activeTab === tab.id ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start gap-2 relative",
-                "transition-all duration-200 font-medium rounded-md",
-                activeTab === tab.id && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-              )}
-              onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-              {tab.badge !== undefined && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute right-2 animate-pulse"
-                >
-                  {tab.badge}
-                </Badge>
-              )}
-            </Button>
-          );
-        })}
+      <nav className="flex-1 mx-4 my-2">
+        <div className="space-y-2 rounded-lg p-1 bg-background/50">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <Button
+                key={tab.id}
+                variant={activeTab === tab.id ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start gap-2 relative",
+                  "transition-all duration-200 font-medium rounded-md",
+                  activeTab === tab.id 
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 
+                    : "hover:bg-background"
+                )}
+                onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {tab.badge !== undefined && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute right-2 animate-pulse"
+                  >
+                    {tab.badge}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })}
+        </div>
       </nav>
 
       <HowToUseGuide open={isGuideOpen} onOpenChange={setIsGuideOpen} />
