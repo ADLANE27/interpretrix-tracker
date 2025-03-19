@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
-import { Phone, Clock, User } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
@@ -23,6 +23,7 @@ interface InterpreterCardProps {
     booth_number?: string | null;
     private_phone?: string | null;
     professional_phone?: string | null;
+    landline_phone?: string | null;
     work_hours?: {
       start_morning?: string;
       end_morning?: string;
@@ -59,6 +60,13 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
     })
     .filter(lang => lang.source && lang.target);
 
+  const hasAnyPhoneNumber = 
+    interpreter.phone_number || 
+    interpreter.landline_phone || 
+    interpreter.private_phone || 
+    interpreter.professional_phone || 
+    interpreter.booth_number;
+
   return (
     <Card className="hover-elevate gradient-border">
       <CardHeader className="card-header-gradient">
@@ -92,32 +100,57 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
         </div>
 
         {/* Contact Section */}
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium uppercase text-muted-foreground">CONTACT</h4>
+        {hasAnyPhoneNumber && (
           <div className="space-y-2">
-            {interpreter.booth_number && (
-              <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-palette-ocean-blue" />
-                <span>Cabine {interpreter.booth_number}</span>
-              </div>
-            )}
-            {interpreter.phone_number && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-palette-ocean-blue" />
-                <span>{interpreter.phone_number}</span>
-              </div>
-            )}
-            {interpreter.work_hours && (
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4 text-palette-ocean-blue" />
-                <span>
-                  {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning}, {' '}
-                  {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
-                </span>
-              </div>
-            )}
+            <h4 className="text-sm font-medium uppercase text-muted-foreground">CONTACT</h4>
+            <div className="space-y-2">
+              {interpreter.booth_number && (
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>Cabine {interpreter.booth_number}</span>
+                </div>
+              )}
+              
+              {interpreter.phone_number && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>Mobile: {interpreter.phone_number}</span>
+                </div>
+              )}
+              
+              {interpreter.landline_phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <PhoneCall className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>Fixe: {interpreter.landline_phone}</span>
+                </div>
+              )}
+              
+              {interpreter.private_phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>Tél. personnel: {interpreter.private_phone}</span>
+                </div>
+              )}
+              
+              {interpreter.professional_phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>Tél. professionnel: {interpreter.professional_phone}</span>
+                </div>
+              )}
+              
+              {interpreter.work_hours && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-palette-ocean-blue" />
+                  <span>
+                    {interpreter.work_hours.start_morning} - {interpreter.work_hours.end_morning}, {' '}
+                    {interpreter.work_hours.start_afternoon} - {interpreter.work_hours.end_afternoon}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
 
       {/* Additional Info */}
