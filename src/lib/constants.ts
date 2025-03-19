@@ -1,3 +1,4 @@
+
 // Constants for the application
 
 // Theme constants
@@ -73,13 +74,13 @@ export const LANGUAGES = [
   "Arabe", "Arabe Maghrébin", "Arabe Soudanais", "Arabe Moyen-Orient",
   
   // English variants as they appear on interpreter cards
-  "Anglais", "Anglais Standard",
+  "Anglais", "Anglais Standard", "Anglais Africain", "Anglais Pidgin",
   
   // French variants as they appear on interpreter cards
   "Français", "Français Canadien", "Français Africain", "Français Belge", "Français Suisse",
   
   // Spanish variants as they appear on interpreter cards
-  "Espagnol", "Espagnol Castillan",
+  "Espagnol", "Espagnol Castillan", "Espagnol Latino-américain",
   
   // Chinese variants as they appear on interpreter cards
   "Chinois", "Chinois Mandarin", "Chinois Cantonais",
@@ -121,7 +122,8 @@ export const LANGUAGES = [
   
   // Other language variants
   "Hindi Ourdou", "Finnois Suédois", "Berbère", "Berbère Kabyle", "Berbère Chleuh", "Berbère Rifain",
-  "Papiamento", "Comorien", "Amazigh"
+  "Papiamento", "Comorien", "Amazigh", "Kabyle", "Wolof", "Patois", "Dialecte Jamaïcain", 
+  "Patois Jamaïcain", "Créole Jamaïcain"
 ];
 
 export const TRANSLATIONS = {
