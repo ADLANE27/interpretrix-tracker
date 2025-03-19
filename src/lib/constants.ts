@@ -120,7 +120,7 @@ export const LANGUAGES = [
   "Créole martiniquais", "Créole guyanais",
   
   // Other language variants
-  "Hindi Ourdou", "Finnois Suédois", "Kabyle", "Wolof", "Patois", "Dialecte Jamaïcain", 
+  "Hindi Ourdou", "Finnois Suédois", "Kabyle", "Patois", "Dialecte Jamaïcain", 
   "Patois Jamaïcain", "Créole Jamaïcain"
 ];
 
