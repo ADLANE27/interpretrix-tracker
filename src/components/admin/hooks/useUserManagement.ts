@@ -261,7 +261,7 @@ export const useUserManagement = () => {
         private_phone: updatedData[0].private_phone,
         professional_phone: updatedData[0].professional_phone,
         password_changed: updatedData[0].password_changed || false,
-        work_location: updatedData[0].work_location || "on_site"
+        work_location: updatedData[0].work_location as Profile['work_location']
       };
 
       setSelectedUser(transformedProfile);

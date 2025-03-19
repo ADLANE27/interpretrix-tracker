@@ -122,6 +122,7 @@ export const InterpreterDashboard = () => {
       const status = isValidStatus(data.status) ? data.status : 'available';
       const address = isValidAddress(data.address) ? data.address : null;
       const workHours = isValidWorkHours(data.work_hours) ? data.work_hours : null;
+      const workLocation = data.work_location as WorkLocation;
 
       const transformedProfile: Profile = {
         ...data,
@@ -139,7 +140,8 @@ export const InterpreterDashboard = () => {
         siret_number: data.siret_number || null,
         vat_number: data.vat_number || null,
         profile_picture_url: data.profile_picture_url || null,
-        specializations: data.specializations || []
+        specializations: data.specializations || [],
+        work_location: workLocation
       };
 
       setProfile(transformedProfile);
