@@ -8,7 +8,7 @@ export const WelcomeContent = () => {
     <div className="relative z-10 px-4 py-16 sm:py-24 flex flex-col items-center">
       <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-center mb-6">
         <span className="text-palette-vivid-purple">
-          AFTraduction
+          Bienvenu
         </span>
       </h1>
       
