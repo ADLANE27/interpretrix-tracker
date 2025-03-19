@@ -116,7 +116,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           </AvatarFallback>
         </Avatar>
       )}
-      <div className={`flex-1 max-w-[75%] space-y-1.5 relative ${
+      <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
         message.sender.id === currentUserId ? 'items-end' : 'items-start'
       }`}>
         {!isThreadReply && message.sender.id !== currentUserId && (
@@ -137,15 +137,11 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
         
-        <div className={`flex items-center gap-1 message-actions ${
-          message.sender.id === currentUserId 
-            ? 'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[105%]' 
-            : 'absolute right-0 top-1/2 -translate-y-1/2 translate-x-[105%]'
-        }`}>
+        <div className="flex items-center gap-2 mt-1 mr-1">
           {message.sender.id === currentUserId && (
             <button
               onClick={() => onDeleteMessage(message.id)}
-              className="p-1.5 rounded-full hover:bg-gray-100"
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm"
               aria-label="Supprimer le message"
             >
               <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -156,7 +152,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => setReplyTo(message)}
-              className="p-1.5 rounded-full hover:bg-gray-100"
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
             >
               <MessageCircle className="h-4 w-4 text-gray-500" />
             </Button>

@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -168,17 +167,6 @@
   .overflow-wrap-anywhere {
     overflow-wrap: anywhere;
     word-break: break-word;
-  }
-  
-  /* Message action buttons */
-  .message-actions {
-    @apply flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-full p-1 shadow-sm;
-  }
-
-  @media (min-width: 768px) {
-    .message-actions {
-      @apply bg-transparent shadow-none;
-    }
   }
 }
 
