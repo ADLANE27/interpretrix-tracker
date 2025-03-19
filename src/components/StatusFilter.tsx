@@ -14,24 +14,28 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
     { 
       id: "available", 
       label: "Disponible", 
+      mobileLabel: "Dispo",
       color: "from-green-400 to-green-600", 
       icon: Clock 
     },
     { 
       id: "busy", 
       label: "En appel", 
+      mobileLabel: "Appel",
       color: "from-violet-400 to-violet-600", 
       icon: Phone 
     },
     { 
       id: "pause", 
       label: "En pause", 
+      mobileLabel: "Pause",
       color: "from-orange-400 to-orange-600", 
       icon: Coffee 
     },
     { 
       id: "unavailable", 
       label: "Indisponible", 
+      mobileLabel: "Indispo",
       color: "from-red-400 to-red-600", 
       icon: X 
     },
@@ -57,15 +61,17 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
               transition-all duration-200 rounded-full h-10 
-              ${isMobile ? 'px-3 text-sm' : 'px-4 text-sm'}
+              ${isMobile ? 'px-2 text-xs' : 'px-4 text-sm'}
               ${selectedStatus === status.id 
                 ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
                 : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
-            <Icon className="mr-1 h-3.5 w-3.5 min-w-[14px] flex-shrink-0" />
-            <span className="truncate whitespace-nowrap">{status.label}</span>
+            <Icon className={`${isMobile ? 'h-3 w-3 mr-0.5' : 'h-3.5 w-3.5 mr-1'} min-w-[12px] flex-shrink-0`} />
+            <span className="truncate whitespace-nowrap">
+              {isMobile ? status.mobileLabel : status.label}
+            </span>
           </Button>
         )}
       )}

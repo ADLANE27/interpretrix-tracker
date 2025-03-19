@@ -77,22 +77,26 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     available: {
       color: "bg-interpreter-available hover:bg-interpreter-available/90",
       label: "Disponible",
-      icon: Clock
+      icon: Clock,
+      mobileLabel: "Dispo"
     },
     busy: {
       color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
       label: "En appel",
-      icon: Phone
+      icon: Phone,
+      mobileLabel: "Appel"
     },
     pause: {
       color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
       label: "En pause",
-      icon: Coffee
+      icon: Coffee,
+      mobileLabel: "Pause"
     },
     unavailable: {
       color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
       label: "Indisponible",
-      icon: X
+      icon: X,
+      mobileLabel: "Indispo"
     }
   };
 
@@ -159,14 +163,16 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               disabled={isLoading}
               className={`
                 w-full transition-all duration-200
-                h-12 sm:h-10 text-sm font-medium px-2 sm:px-3
+                h-12 text-xs sm:text-sm font-medium px-1 sm:px-3
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-4 w-4 min-w-4 mr-1 flex-shrink-0" />
-              <span className="truncate whitespace-nowrap">{statusConfig[statusKey].label}</span>
+              <Icon className="h-3 w-3 sm:h-4 sm:w-4 min-w-3 sm:min-w-4 mr-0.5 sm:mr-1 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">
+                {isMobile ? statusConfig[statusKey].mobileLabel : statusConfig[statusKey].label}
+              </span>
             </Button>
           </motion.div>
         );
