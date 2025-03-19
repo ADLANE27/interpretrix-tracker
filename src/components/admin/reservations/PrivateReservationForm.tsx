@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { LANGUAGES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAllLanguages } from "@/hooks/useAllLanguages";
 
 interface Interpreter {
   id: string;
@@ -31,6 +31,7 @@ export const PrivateReservationForm = () => {
   const [availableInterpreters, setAvailableInterpreters] = useState<Interpreter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { languages, isLoading: languagesLoading } = useAllLanguages();
 
   // Normalize language strings for consistent comparison
   const normalizeLanguageString = (str: string): string => {
@@ -192,11 +193,15 @@ export const PrivateReservationForm = () => {
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))}
+                {languagesLoading ? (
+                  <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                ) : (
+                  languages.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -217,11 +222,15 @@ export const PrivateReservationForm = () => {
                 <SelectValue placeholder="Sélectionner une langue" />
               </SelectTrigger>
               <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang}
-                  </SelectItem>
-                ))}
+                {languagesLoading ? (
+                  <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                ) : (
+                  languages.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

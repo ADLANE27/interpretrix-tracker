@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { PrivateReservationForm } from "./PrivateReservationForm";
 import { PrivateReservationList } from "./PrivateReservationList";
@@ -5,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
-import { LANGUAGES } from "@/lib/constants";
 import { Search, Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAllLanguages } from "@/hooks/useAllLanguages";
 
 export const ReservationsTab = () => {
   const [nameFilter, setNameFilter] = useState("");
@@ -15,6 +16,7 @@ export const ReservationsTab = () => {
   const [targetLanguageFilter, setTargetLanguageFilter] = useState("all");
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const { languages, isLoading: languagesLoading } = useAllLanguages();
 
   const resetFilters = () => {
     setNameFilter("");
@@ -61,11 +63,15 @@ export const ReservationsTab = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes les langues</SelectItem>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang} value={lang}>
-                      {lang}
-                    </SelectItem>
-                  ))}
+                  {languagesLoading ? (
+                    <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                  ) : (
+                    languages.map((lang) => (
+                      <SelectItem key={lang} value={lang}>
+                        {lang}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -78,11 +84,15 @@ export const ReservationsTab = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes les langues</SelectItem>
-                  {LANGUAGES.map((lang) => (
-                    <SelectItem key={lang} value={lang}>
-                      {lang}
-                    </SelectItem>
-                  ))}
+                  {languagesLoading ? (
+                    <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                  ) : (
+                    languages.map((lang) => (
+                      <SelectItem key={lang} value={lang}>
+                        {lang}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
