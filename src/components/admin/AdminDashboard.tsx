@@ -62,7 +62,7 @@ interface Interpreter {
   connection_status?: Profile['status'];
   next_mission_source_language?: string | null;
   next_mission_target_language?: string | null;
-  work_location?: string | null;
+  work_location?: WorkLocation | null;
 }
 
 const AdminDashboard = () => {
@@ -207,6 +207,11 @@ const AdminDashboard = () => {
         // Find next scheduled private reservation
         const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
         console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name} next reservation:`, nextReservation);
+        
+        // Make sure work_location is correctly typed
+        const workLocation = interpreter.work_location as WorkLocation || "on_site";
+        console.log(`[AdminDashboard] Interpreter ${interpreter.first_name} ${interpreter.last_name} work location:`, workLocation);
+        
         return {
           id: interpreter.id || "",
           first_name: interpreter.first_name || "",
@@ -227,7 +232,8 @@ const AdminDashboard = () => {
           booth_number: interpreter.booth_number || null,
           private_phone: interpreter.private_phone || null,
           professional_phone: interpreter.professional_phone || null,
-          work_hours: workHours
+          work_hours: workHours,
+          work_location: workLocation
         };
       });
       setInterpreters(mappedInterpreters);
@@ -529,7 +535,7 @@ const AdminDashboard = () => {
                 private_phone: interpreter.private_phone,
                 professional_phone: interpreter.professional_phone,
                 work_hours: interpreter.work_hours,
-                work_location: interpreter.work_location
+                work_location: interpreter.work_location as WorkLocation
               }} /> : <InterpreterListItem key={interpreter.id} interpreter={{
                 id: interpreter.id,
                 name: `${interpreter.first_name} ${interpreter.last_name}`,
@@ -537,7 +543,8 @@ const AdminDashboard = () => {
                 employment_status: interpreter.employment_status,
                 languages: interpreter.languages,
                 next_mission_start: interpreter.next_mission_start,
-                next_mission_duration: interpreter.next_mission_duration
+                next_mission_duration: interpreter.next_mission_duration,
+                work_location: interpreter.work_location as WorkLocation
               }} />)}
               </div>
             </div>
