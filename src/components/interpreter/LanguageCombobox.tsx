@@ -1,20 +1,9 @@
 
-import React, { useState, useMemo, useCallback } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -37,119 +26,143 @@ export function LanguageCombobox({
   allLanguagesOption = true,
   allLanguagesLabel = "Toutes les langues",
 }: LanguageComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   
-  // Sort languages alphabetically once
-  const sortedLanguages = useMemo(() => {
-    try {
-      return [...languages].sort((a, b) => a.localeCompare(b));
-    } catch (error) {
-      console.error("Error sorting languages:", error);
-      return languages || [];
-    }
-  }, [languages]);
-  
-  // Filter languages based on search query
-  const filteredLanguages = useMemo(() => {
-    if (!searchQuery) return sortedLanguages;
-    try {
-      return sortedLanguages.filter(lang => 
-        lang.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    } catch (error) {
-      console.error("Error filtering languages:", error);
-      return sortedLanguages;
-    }
-  }, [sortedLanguages, searchQuery]);
-  
-  // When displaying the selected value, handle the "all" special case
-  const displayValue = value === "all" 
-    ? allLanguagesLabel 
-    : sortedLanguages.find(lang => lang === value) || placeholder;
-  
-  // Handle search input
-  const handleSearchChange = useCallback((input: string) => {
-    setSearchQuery(input);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-language-selector]")) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   
-  // Handle language selection
-  const handleSelectLanguage = useCallback((selectedValue: string) => {
-    try {
-      onChange(selectedValue);
-      setOpen(false);
-      // Clean up search query when selection is made
-      setSearchQuery("");
-    } catch (error) {
-      console.error("Error selecting language:", error);
+  // Reset search when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
     }
-  }, [onChange]);
+  }, [isOpen]);
+
+  // Sort and filter languages
+  const filteredLanguages = useMemo(() => {
+    try {
+      if (!searchTerm) {
+        return [...languages].sort((a, b) => a.localeCompare(b));
+      }
+      
+      return [...languages]
+        .filter(lang => 
+          lang.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => a.localeCompare(b));
+    } catch (error) {
+      console.error("Error filtering languages:", error);
+      return [];
+    }
+  }, [languages, searchTerm]);
+
+  // Get display name for selected value
+  const displayValue = useMemo(() => {
+    if (value === "all" && allLanguagesOption) {
+      return allLanguagesLabel;
+    }
+    return value || placeholder;
+  }, [value, allLanguagesOption, allLanguagesLabel, placeholder]);
+
+  // Handle clicking the main button
+  const handleButtonClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  // Handle selecting a language
+  const handleSelectLanguage = (lang: string) => {
+    onChange(lang);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
 
   return (
-    <div className="relative">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className={cn("w-full justify-between", className)}
-          >
-            <span className="truncate">{displayValue}</span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent 
-          className="w-full p-0" 
-          align="start"
-          sideOffset={4}
-        >
-          <Command shouldFilter={false} className="max-h-[400px]">
-            <CommandInput 
-              placeholder="Rechercher une langue..." 
-              className="h-9"
-              value={searchQuery}
-              onValueChange={handleSearchChange}
+    <div className="relative w-full" data-language-selector>
+      {/* Main selector button */}
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
+        className={cn(
+          "w-full justify-between text-left font-normal",
+          !value && "text-muted-foreground",
+          className
+        )}
+        onClick={handleButtonClick}
+        aria-expanded={isOpen}
+      >
+        <span className="truncate">{displayValue}</span>
+        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute top-full left-0 z-50 w-full mt-1 rounded-md border border-input bg-white shadow-lg">
+          {/* Search input */}
+          <div className="p-2 border-b">
+            <Input
+              autoFocus
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8"
             />
-            {filteredLanguages.length === 0 ? (
-              <CommandEmpty>{emptyMessage}</CommandEmpty>
-            ) : (
-              <CommandGroup className="max-h-[300px] overflow-y-auto">
-                {allLanguagesOption && (
-                  <CommandItem
-                    key="all-languages"
-                    value="all"
-                    onSelect={() => handleSelectLanguage("all")}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === "all" ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {allLanguagesLabel}
-                  </CommandItem>
-                )}
-                {filteredLanguages.map((language) => (
-                  <CommandItem
-                    key={language}
-                    value={language}
-                    onSelect={() => handleSelectLanguage(language)}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === language ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {language}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+          </div>
+          
+          {/* Language list */}
+          <div className="max-h-[200px] overflow-auto p-1">
+            {allLanguagesOption && (
+              <Button
+                variant={value === "all" ? "secondary" : "ghost"}
+                className="w-full justify-start font-normal mb-1"
+                onClick={() => handleSelectLanguage("all")}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === "all" ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {allLanguagesLabel}
+              </Button>
             )}
-          </Command>
-        </PopoverContent>
-      </Popover>
+            
+            {filteredLanguages.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              filteredLanguages.map((language) => (
+                <Button
+                  key={language}
+                  variant={value === language ? "secondary" : "ghost"}
+                  className="w-full justify-start font-normal mb-1"
+                  onClick={() => handleSelectLanguage(language)}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === language ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {language}
+                </Button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

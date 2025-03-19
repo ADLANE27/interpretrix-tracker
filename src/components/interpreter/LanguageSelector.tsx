@@ -54,7 +54,7 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
 
       {isEditing && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <div className="flex-1 relative">
+          <div className="flex-1">
             <LanguageCombobox
               languages={LANGUAGES}
               value={newSource}
@@ -65,7 +65,7 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
             />
           </div>
           
-          <div className="flex-1 relative">
+          <div className="flex-1">
             <LanguageCombobox
               languages={LANGUAGES}
               value={newTarget}
