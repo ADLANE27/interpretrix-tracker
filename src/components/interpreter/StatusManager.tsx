@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -18,6 +19,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // Update local state when prop changes
   useEffect(() => {
@@ -136,7 +138,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   return (
     <motion.div 
-      className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm"
+      className="flex flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -148,7 +150,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
             key={statusKey}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-auto"
+            className="flex-1 min-w-0"
           >
             <Button
               variant={status === statusKey ? "default" : "outline"}
@@ -156,15 +158,15 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               onClick={() => handleStatusChange(statusKey)}
               disabled={isLoading}
               className={`
-                w-full sm:w-auto transition-all duration-200 whitespace-nowrap 
-                min-w-[120px] h-11 sm:h-10 text-sm font-medium
+                w-full transition-all duration-200 whitespace-nowrap 
+                h-11 sm:h-10 text-xs sm:text-sm font-medium px-2 sm:px-4
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-4 w-4" />
-              {statusConfig[statusKey].label}
+              <Icon className="h-4 w-4 mr-0.5 sm:mr-1 flex-shrink-0" />
+              <span className="truncate">{statusConfig[statusKey].label}</span>
             </Button>
           </motion.div>
         );
