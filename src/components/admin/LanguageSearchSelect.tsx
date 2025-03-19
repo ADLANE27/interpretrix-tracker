@@ -35,16 +35,35 @@ export function LanguageSearchSelect({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   
-  // Ensure LANGUAGES is always an array
+  // Safely create language options and memoize to prevent unnecessary re-renders
   const languageOptions = React.useMemo(() => {
-    const allLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
+    // Ensure LANGUAGES is an array and handle potential undefined/null
+    const safeLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
+    
     return [
       { value: "all", label: "Toutes les langues" },
-      ...allLanguages.map(lang => ({ value: lang, label: lang }))
+      ...safeLanguages.map(lang => ({ value: lang, label: lang }))
     ];
   }, []);
-
+  
+  // Get the currently selected option
   const selectedOption = languageOptions.find((option) => option.value === value);
+  
+  // Filter languages based on search query
+  const filteredOptions = React.useMemo(() => {
+    if (!searchQuery) return languageOptions;
+    
+    return languageOptions.filter(option => 
+      option.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [languageOptions, searchQuery]);
+  
+  // Reset search when popover closes
+  React.useEffect(() => {
+    if (!open) {
+      setSearchQuery("");
+    }
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -70,15 +89,21 @@ export function LanguageSearchSelect({
             placeholder={placeholder} 
             value={searchQuery}
             onValueChange={setSearchQuery}
+            className="h-9"
           />
-          <CommandEmpty>{emptyMessage}</CommandEmpty>
+          {filteredOptions.length === 0 && (
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
+          )}
           <CommandGroup className="max-h-[300px] overflow-y-auto">
-            {languageOptions.map((option) => (
+            {filteredOptions.map((option) => (
               <CommandItem
                 key={option.value}
                 value={option.value}
                 onSelect={(currentValue) => {
+                  // Handle value selection
                   onValueChange(currentValue === value ? "all" : currentValue);
+                  
+                  // Close the popover and reset search
                   setOpen(false);
                   setSearchQuery("");
                 }}
