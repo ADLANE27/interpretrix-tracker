@@ -202,14 +202,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       const targetLanguageSuggestions: LanguageSuggestion[] = Array.isArray(channelLanguages) ? channelLanguages.map(
         (lang: { target_language: string }) => ({
           name: lang.target_language,
-          type: 'language'
+          type: 'language' as const
         })
       ) : [];
 
       const sourceLanguageSuggestions: LanguageSuggestion[] = Array.isArray(sourceLanguages) ? sourceLanguages.map(
         (lang: { source_language: string }) => ({
           name: lang.source_language,
-          type: 'language'
+          type: 'language' as const
         })
       ) : [];
 
