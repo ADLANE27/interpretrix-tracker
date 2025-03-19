@@ -172,7 +172,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
         />
       </div>
       
-      <div className="flex-1 overflow-y-auto" id="messages-container" data-channel-id={channelId}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none" id="messages-container" data-channel-id={channelId}>
         <MessageList
           key={`message-list-${channelId}-${messageListKey.current}`}
           messages={messages}

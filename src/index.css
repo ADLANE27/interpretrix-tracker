@@ -163,6 +163,12 @@
   .card-glass {
     @apply backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20;
   }
+  
+  /* Add new utility for proper text wrapping */
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }
 
 .gradient-bg-subtle {

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -34,7 +33,6 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change or component mounts
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
@@ -128,8 +126,8 @@ export const MessageList: React.FC<MessageListProps> = ({
           message.sender.id === currentUserId 
             ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
             : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
-        } px-4 py-2.5 break-words`}>
-          <div className="text-[15px] mb-4">{message.content}</div>
+        } px-4 py-2.5 break-words overflow-hidden`}>
+          <div className="text-[15px] mb-4 overflow-wrap-anywhere">{message.content}</div>
           <div className="absolute right-4 bottom-2 flex items-center gap-1">
             <span className="text-[11px] text-gray-500">
               {formatMessageTime(message.timestamp)}
@@ -171,7 +169,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   );
 
   return (
-    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col">
+    <div className="space-y-6 p-4 md:p-6 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
         {messages.map((message, index) => (
           <React.Fragment key={message.id}>
