@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -137,14 +136,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         `)
         .in('id', memberIds);
       
-      // Get admin profiles with better filtering
-      const { data: admins, error: adminsError } = await supabase
-        .from('admin_profiles')
+      // Get admin users directly from auth.users table
+      const { data: adminUsers, error: adminUsersError } = await supabase
+        .from('auth.users')
         .select(`
           id,
-          first_name,
-          last_name,
-          email
+          email,
+          raw_user_meta_data
         `)
         .in('id', memberIds);
 
@@ -152,8 +150,57 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         console.error('Error fetching interpreter profiles:', interpretersError);
       }
 
-      if (adminsError) {
-        console.error('Error fetching admin profiles:', adminsError);
+      if (adminUsersError) {
+        console.error('Error fetching admin users:', adminUsersError);
+        
+        // Since we can't directly query auth.users through Supabase client,
+        // use the RPC function to get admin details
+        const { data: adminData, error: adminRpcError } = await supabase
+          .rpc('get_channel_members', { channel_id: channelId });
+          
+        if (adminRpcError) {
+          console.error('Error fetching admin data via RPC:', adminRpcError);
+        } else if (adminData) {
+          // Filter to only include admins
+          const admins = adminData.filter(user => user.role === 'admin');
+          
+          // Format admin suggestions
+          const adminSuggestions: MemberSuggestion[] = admins.map(profile => ({
+            id: profile.user_id,
+            name: `${profile.first_name} ${profile.last_name}`,
+            email: profile.email,
+            role: 'admin'
+          }));
+          
+          // Format interpreter suggestions
+          const interpreterSuggestions: MemberSuggestion[] = (interpreters || []).map(profile => {
+            const name = `${profile.first_name} ${profile.last_name}`;
+            return {
+              id: profile.id,
+              name,
+              email: profile.email,
+              role: 'interpreter',
+              avatarUrl: profile.profile_picture_url || undefined
+            };
+          });
+          
+          // Combine and filter suggestions based on search term
+          const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
+          
+          // Client-side filtering based on search term
+          const filteredSuggestions = searchTerm 
+            ? combinedSuggestions.filter(suggestion => {
+                const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return normalizedName.includes(normalizedSearch);
+              })
+            : combinedSuggestions;
+          
+          console.log("Found suggestions:", filteredSuggestions.length);
+          setSuggestions(filteredSuggestions);
+          setIsLoadingSuggestions(false);
+          return;
+        }
       }
 
       // Get user roles to determine who is admin vs interpreter
@@ -186,16 +233,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         };
       });
 
-      // Format admin suggestions
-      const adminSuggestions: MemberSuggestion[] = (admins || []).map(profile => {
-        const name = `${profile.first_name} ${profile.last_name}`;
-        return {
-          id: profile.id,
-          name,
-          email: profile.email,
-          role: roleMap.get(profile.id) || 'admin'
-        };
-      });
+      // Since we can't directly access auth.users, use the RPC function
+      const { data: channelMembers, error: membersRpcError } = await supabase
+        .rpc('get_channel_members', { channel_id: channelId });
+        
+      if (membersRpcError) {
+        console.error('Error fetching channel members via RPC:', membersRpcError);
+      }
+      
+      // Format admin suggestions from RPC function results
+      const adminSuggestions: MemberSuggestion[] = channelMembers 
+        ? channelMembers
+            .filter(member => member.role === 'admin')
+            .map(admin => ({
+              id: admin.user_id,
+              name: `${admin.first_name} ${admin.last_name}`,
+              email: admin.email,
+              role: 'admin' as 'admin'
+            }))
+        : [];
 
       // Filter suggestions based on search term
       const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
