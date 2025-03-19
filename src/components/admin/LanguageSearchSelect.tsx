@@ -33,62 +33,55 @@ export function LanguageSearchSelect({
   className,
 }: LanguageSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [inputValue, setInputValue] = React.useState("");
   
-  // Safely initialize the language options with defensive coding
-  const languageOptions = React.useMemo(() => {
+  // Create a safe copy of LANGUAGES with error handling
+  const languages = React.useMemo(() => {
     try {
-      // Ensure LANGUAGES exists and is an array
-      const safeLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
-      
-      return [
-        { value: "all", label: "Toutes les langues" },
-        ...safeLanguages.map(lang => ({ value: lang, label: lang }))
-      ];
+      return Array.isArray(LANGUAGES) ? LANGUAGES : [];
     } catch (error) {
-      console.error("Error creating language options:", error);
-      // Provide fallback options if something goes wrong
-      return [{ value: "all", label: "Toutes les langues" }];
+      console.error("Failed to load languages:", error);
+      return [];
     }
   }, []);
   
-  // Get the currently selected option with safe fallback
-  const selectedOption = React.useMemo(() => {
-    return languageOptions.find((option) => option.value === value) || 
-      { value: "all", label: "Toutes les langues" };
-  }, [languageOptions, value]);
+  // Create language options with "all" option first
+  const languageOptions = React.useMemo(() => {
+    return [
+      { value: "all", label: "Toutes les langues" },
+      ...languages.map(lang => ({ value: lang, label: lang }))
+    ];
+  }, [languages]);
   
-  // Filter languages based on search query with error handling
+  // Get the currently selected language label
+  const selectedLabel = React.useMemo(() => {
+    const selected = languageOptions.find(option => option.value === value);
+    return selected ? selected.label : "Toutes les langues";
+  }, [value, languageOptions]);
+  
+  // Filter languages based on input
   const filteredOptions = React.useMemo(() => {
-    try {
-      if (!searchQuery.trim()) return languageOptions;
-      
-      const lowerQuery = searchQuery.toLowerCase().trim();
-      return languageOptions.filter(option => 
-        option.label.toLowerCase().includes(lowerQuery)
-      );
-    } catch (error) {
-      console.error("Error filtering options:", error);
-      return languageOptions;
-    }
-  }, [languageOptions, searchQuery]);
+    const query = inputValue.toLowerCase().trim();
+    if (!query) return languageOptions;
+    
+    return languageOptions.filter(option => 
+      option.label.toLowerCase().includes(query)
+    );
+  }, [languageOptions, inputValue]);
   
-  // Reset search when popover closes
+  // Handle selection of a language
+  const handleSelect = React.useCallback((currentValue: string) => {
+    onValueChange(currentValue === value ? "all" : currentValue);
+    setOpen(false);
+  }, [onValueChange, value]);
+  
+  // Reset search input when popover closes
   React.useEffect(() => {
     if (!open) {
-      setSearchQuery("");
+      // Small delay to avoid flashing empty content before closing
+      setTimeout(() => setInputValue(""), 100);
     }
   }, [open]);
-
-  const handleSelect = React.useCallback((currentValue: string) => {
-    try {
-      onValueChange(currentValue === value ? "all" : currentValue);
-      setOpen(false);
-      setSearchQuery("");
-    } catch (error) {
-      console.error("Error handling selection:", error);
-    }
-  }, [onValueChange, value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -98,45 +91,42 @@ export function LanguageSearchSelect({
           role="combobox"
           aria-expanded={open}
           className={cn("w-full justify-between", className)}
+          onClick={() => setOpen(prev => !prev)}
+          type="button"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 truncate">
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="truncate">
-              {selectedOption ? selectedOption.label : placeholder}
-            </span>
+            <span className="truncate">{selectedLabel}</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0">
-        <Command>
+      <PopoverContent className="w-[300px] p-0" align="start">
+        <Command className="w-full">
           <CommandInput 
             placeholder={placeholder} 
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            className="h-9"
+            value={inputValue}
+            onValueChange={setInputValue}
+            autoFocus
           />
-          {filteredOptions.length === 0 ? (
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
-          ) : (
-            <CommandGroup className="max-h-[300px] overflow-y-auto">
-              {filteredOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={handleSelect}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
+          <CommandEmpty>{emptyMessage}</CommandEmpty>
+          <CommandGroup className="max-h-[300px] overflow-y-auto">
+            {filteredOptions.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={handleSelect}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === option.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {option.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
         </Command>
       </PopoverContent>
     </Popover>
