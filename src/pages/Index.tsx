@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { InterpreterDashboard } from "@/components/InterpreterDashboard";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { AnimatedGlobe } from "@/components/AnimatedGlobe";
+import { WelcomeContent } from "@/components/WelcomeContent";
 import { motion } from "framer-motion";
 
 const Index = () => {
@@ -83,34 +85,41 @@ const Index = () => {
 
   if (!userRole) {
     return (
-      <div className="min-h-screen flex flex-col justify-between">
-        <div className="flex items-center justify-center flex-1">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+      <div className="min-h-screen w-full overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <AnimatedGlobe />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/60 to-white/90 dark:from-gray-900/80 dark:via-gray-900/60 dark:to-gray-900/90" />
+        </div>
+        
+        <div className="relative z-10 min-h-screen flex flex-col">
+          {/* Header */}
+          <motion.header
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-center space-y-4 px-4"
+            className="py-4 px-6 flex items-center justify-between"
           >
-            <h1 className="text-3xl font-bold mb-8">Bienvenue</h1>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link 
-                to="/admin/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#1a2844] to-[#2a3854] text-white rounded-lg hover:from-[#2a3854] hover:to-[#3a4864] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-              >
-                Espace Administrateur
-              </Link>
-              <Link 
-                to="/interpreter/login" 
-                className="px-6 py-3 bg-gradient-to-r from-[#f5a51d] to-[#f6b53d] text-white rounded-lg hover:from-[#f6b53d] hover:to-[#f7c55d] transition-all duration-200 shadow-md hover:shadow-lg text-center"
-              >
-                Espace Interprète
-              </Link>
+            <div className="text-xl font-bold bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue bg-clip-text text-transparent">
+              AFT
             </div>
-          </motion.div>
+          </motion.header>
+          
+          {/* Main content */}
+          <div className="flex-1 flex items-center justify-center">
+            <WelcomeContent />
+          </div>
+          
+          {/* Footer */}
+          <motion.footer
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1 }}
+            className="text-center py-6 text-slate-600 dark:text-slate-400 text-sm"
+          >
+            © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
+          </motion.footer>
         </div>
-        <footer className="text-center py-4 text-gray-600 text-sm">
-          © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-        </footer>
       </div>
     );
   }
