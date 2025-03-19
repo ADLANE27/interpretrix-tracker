@@ -1,13 +1,13 @@
-
 import { useState } from "react";
 import { PrivateReservationForm } from "./PrivateReservationForm";
 import { PrivateReservationList } from "./PrivateReservationList";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { LANGUAGES } from "@/lib/constants";
 import { Search, Calendar, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LanguageSearchSelect } from "../LanguageSearchSelect";
 
 export const ReservationsTab = () => {
   const [nameFilter, setNameFilter] = useState("");
@@ -55,20 +55,36 @@ export const ReservationsTab = () => {
 
             <div className="space-y-2">
               <Label>Langue source</Label>
-              <LanguageSearchSelect
-                value={sourceLanguageFilter}
-                onValueChange={setSourceLanguageFilter}
-                placeholder="Toutes les langues"
-              />
+              <Select value={sourceLanguageFilter} onValueChange={setSourceLanguageFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les langues" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les langues</SelectItem>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <Label>Langue cible</Label>
-              <LanguageSearchSelect
-                value={targetLanguageFilter}
-                onValueChange={setTargetLanguageFilter}
-                placeholder="Toutes les langues"
-              />
+              <Select value={targetLanguageFilter} onValueChange={setTargetLanguageFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les langues" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les langues</SelectItem>
+                  {LANGUAGES.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
