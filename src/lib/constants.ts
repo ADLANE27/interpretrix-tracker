@@ -95,7 +95,7 @@ export const LANGUAGES = [
   "Bulgare", "Bihari", "Bichelamar", "Bambara", "Tibétain", "Breton", "Bosnien", "Catalan",
   "Tchétchène", "Chamorro", "Corse", "Cri", "Tchèque", "Vieux-slave", "Tchouvache", "Gallois",
   "Danois", "Allemand", "Maldivien", "Dzongkha", "Ewe", "Grec", "Espéranto", "Estonien", 
-  "Basque", "Persan", "Peul", "Finnois", "Fidjien", "Féroïen", "Frison", "Irlandais",
+  "Basque", "Persan", "Farsi", "Peul", "Finnois", "Fidjien", "Féroïen", "Frison", "Irlandais",
   "Gaélique", "Galicien", "Guarani", "Gujarati", "Mannois", "Haoussa", "Hébreu", "Hindi",
   "Hiri Motu", "Croate", "Haïtien", "Hongrois", "Arménien", "Hérèro", "Interlingua", "Indonésien",
   "Occidental", "Igbo", "Yi", "Inupiaq", "Ido", "Islandais", "Italien", "Inuktitut", "Japonais",
@@ -194,3 +194,4 @@ export const ANIMATION = {
   NORMAL: 300,
   SLOW: 500,
 };
+
