@@ -1,135 +1,50 @@
 
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import React, { useState } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Bell, ChevronLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { MentionsPopover } from "@/components/chat/MentionsPopover";
-import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
-import { Badge } from "@/components/ui/badge";
+import { Profile } from "@/types/profile";
 
-export const MessagingTab = () => {
+interface MessagingTabProps {
+  profile?: Profile | null;
+  onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
+  onMenuClick?: () => void;
+}
+
+export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: MessagingTabProps) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
-  const [showChannels, setShowChannels] = useState(true);
-  const [filters, setFilters] = useState<{
-    userId?: string;
-    keyword?: string;
-    date?: Date;
-  }>({});
+  const [filters, setFilters] = useState<any>({});
   const isMobile = useIsMobile();
-  const { 
-    unreadMentions,
-    totalUnreadCount,
-    markMentionAsRead,
-    deleteMention,
-    refreshMentions 
-  } = useUnreadMentions();
-
-  const handleFiltersChange = (newFilters: typeof filters) => {
-    setFilters(newFilters);
-  };
 
   const handleClearFilters = () => {
     setFilters({});
   };
 
-  const handleChannelSelect = (channelId: string) => {
-    setSelectedChannelId(channelId);
-    if (isMobile) {
-      setShowChannels(false);
-    }
-  };
-
-  const handleMentionClick = async (mention: any) => {
-    if (mention.channel_id) {
-      setSelectedChannelId(mention.channel_id);
-      if (isMobile) {
-        setShowChannels(false);
-      }
-    }
-    await markMentionAsRead(mention.mention_id);
-    await refreshMentions();
-  };
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full relative">
-      {(!selectedChannelId || showChannels || !isMobile) && (
-        <Card className={cn(
-          "p-2 lg:col-span-1 overflow-hidden",
-          "bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm",
-          "transition-all duration-200 rounded-lg",
-          isMobile && selectedChannelId && "fixed inset-0 z-50 m-0 rounded-none"
-        )}>
-          <div className="flex items-center justify-between mb-2 px-2">
-            <h2 className="text-base font-semibold">Conversations</h2>
-            <MentionsPopover
-              mentions={unreadMentions}
-              totalCount={totalUnreadCount}
-              onMentionClick={handleMentionClick}
-              onMarkAsRead={markMentionAsRead}
-              onDelete={deleteMention}
-            >
-              <div className={cn(
-                "transition-all duration-200 p-1.5",
-                "bg-white/80 hover:bg-white shadow-sm hover:shadow cursor-pointer dark:bg-gray-800/80 dark:hover:bg-gray-800",
-                "border border-gray-100 dark:border-gray-700",
-                "rounded-lg flex items-center justify-center relative",
-                totalUnreadCount > 0 && "text-purple-500"
-              )}>
-                <Bell className="h-4 w-4" />
-                {totalUnreadCount > 0 && (
-                  <Badge 
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0 text-[10px]"
-                  >
-                    {totalUnreadCount}
-                  </Badge>
-                )}
-              </div>
-            </MentionsPopover>
-          </div>
+    <div className="flex h-full">
+      {(!selectedChannelId || !isMobile) && (
+        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6`}>
           <InterpreterChannelList 
-            onChannelSelect={handleChannelSelect}
+            onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
+            selectedChannelId={selectedChannelId}
           />
-        </Card>
+        </div>
       )}
-      
-      {(selectedChannelId && (!showChannels || !isMobile)) ? (
-        <Card className={cn(
-          "p-2 overflow-hidden backdrop-blur-sm relative transition-all duration-200",
-          "bg-white/90 dark:bg-gray-800/90",
-          "rounded-lg",
-          "lg:col-span-2",
-          isMobile && "fixed inset-0 z-50 m-0 rounded-none"
-        )}>
-          {isMobile && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChannels(true)}
-              className="absolute top-2 left-2 z-10 h-8 px-2"
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Retour
-            </Button>
-          )}
+
+      {selectedChannelId && (
+        <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
           <InterpreterChat 
-            channelId={selectedChannelId}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
+            channelId={selectedChannelId} 
+            filters={filters} 
+            onFiltersChange={setFilters} 
             onClearFilters={handleClearFilters}
+            onBackToChannels={() => setSelectedChannelId(null)}
+            profile={profile}
+            onStatusChange={onStatusChange}
+            onMenuClick={onMenuClick}
           />
-        </Card>
-      ) : !selectedChannelId && !isMobile ? (
-        <Card className="p-3 lg:col-span-2 flex items-center justify-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm transition-all duration-200 rounded-lg">
-          <div className="text-center text-muted-foreground">
-            <p className="text-base font-light animate-fade-in">Sélectionnez une conversation pour commencer à discuter</p>
-          </div>
-        </Card>
-      ) : null}
+        </div>
+      )}
     </div>
   );
 };

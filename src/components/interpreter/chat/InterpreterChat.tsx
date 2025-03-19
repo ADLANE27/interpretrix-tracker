@@ -11,6 +11,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { StatusManager } from "@/components/interpreter/StatusManager";
+import { Menu, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Profile } from "@/types/profile";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -21,13 +25,21 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
+  onBackToChannels?: () => void;
+  profile?: Profile | null;
+  onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
+  onMenuClick?: () => void;
 }
 
 export const InterpreterChat = ({ 
   channelId, 
   filters, 
   onFiltersChange, 
-  onClearFilters 
+  onClearFilters,
+  onBackToChannels,
+  profile,
+  onStatusChange,
+  onMenuClick
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -204,14 +216,41 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 shadow-sm bg-white">
-        <h2 className="text-lg font-semibold">{channel?.name}</h2>
-        <ChannelMembersPopover 
-          channelId={channelId} 
-          channelName={channel?.name || ''} 
-          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-          userRole="interpreter"
-        />
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
+        <div className="h-[56px] md:h-16 flex items-center justify-between">
+          {isMobile && (
+            <div className="flex items-center gap-2">
+              {onBackToChannels && (
+                <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              {onMenuClick && (
+                <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
+                  <Menu className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
+          
+          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
+          
+          <ChannelMembersPopover 
+            channelId={channelId} 
+            channelName={channel?.name || ''} 
+            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+            userRole="interpreter"
+          />
+        </div>
+        
+        {profile && isMobile && (
+          <div className="pb-2 w-full overflow-visible">
+            <StatusManager 
+              currentStatus={profile?.status}
+              onStatusChange={onStatusChange} 
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
