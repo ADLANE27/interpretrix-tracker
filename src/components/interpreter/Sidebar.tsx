@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -170,7 +171,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-2 px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -179,7 +180,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
               variant={activeTab === tab.id ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start gap-2 relative",
-                "transition-all duration-200 font-medium",
+                "transition-all duration-200 font-medium rounded-md",
                 activeTab === tab.id && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
               )}
               onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
