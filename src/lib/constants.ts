@@ -1,4 +1,3 @@
-
 // Constants for the application
 
 // Theme constants
@@ -65,30 +64,64 @@ export const LANGUAGE_MAP = {
   ko: "한국어"
 };
 
-// Liste complète des langues (version complète restaurée)
+// Complete list of languages including variants found on interpreter cards
 export const LANGUAGES = [
-  "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais", "Arabe", "Araméen", "Assamais", 
-  "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse", "Bulgare", "Bihari", "Bichelamar", "Bambara", 
-  "Bengali", "Tibétain", "Breton", "Bosnien", "Catalan", "Tchétchène", "Chamorro", "Corse", "Cri", "Tchèque", 
-  "Vieux-slave", "Tchouvache", "Gallois", "Danois", "Allemand", "Maldivien", "Dzongkha", "Ewe", "Grec", "Anglais", 
-  "Espéranto", "Espagnol", "Estonien", "Basque", "Persan", "Peul", "Finnois", "Fidjien", "Féroïen", "Français", 
-  "Frison", "Irlandais", "Gaélique", "Galicien", "Guarani", "Gujarati", "Mannois", "Haoussa", "Hébreu", "Hindi", 
-  "Hiri Motu", "Croate", "Haïtien", "Hongrois", "Arménien", "Hérèro", "Interlingua", "Indonésien", "Occidental", 
-  "Igbo", "Yi", "Inupiaq", "Ido", "Islandais", "Italien", "Inuktitut", "Japonais", "Javanais", "Géorgien", 
-  "Kongo", "Kikuyu", "Kuanyama", "Kazakh", "Groenlandais", "Khmer", "Kannada", "Coréen", "Kanouri", "Cachemiri", 
-  "Kurde", "Kom", "Cornique", "Kirghize", "Latin", "Luxembourgeois", "Ganda", "Limbourgeois", "Lingala", "Lao", 
-  "Lituanien", "Louba", "Letton", "Malgache", "Marshallais", "Maori", "Macédonien", "Malayalam", "Mongol", 
-  "Moldave", "Marathe", "Malais", "Maltais", "Birman", "Nauru", "Norvégien bokmål", "Ndébélé", "Népalais", 
-  "Ndonga", "Néerlandais", "Norvégien nynorsk", "Norvégien", "Sotho du Sud", "Occitan", "Ojibwé", "Oromo", 
-  "Oriya", "Ossète", "Pendjabi", "Pali", "Polonais", "Pachto", "Portugais", "Quechua", "Romanche", "Kirundi", 
-  "Roumain", "Russe", "Kinyarwanda", "Sanskrit", "Sarde", "Sindhi", "Sami", "Sango", "Singhalais", "Slovaque", 
-  "Slovène", "Samoan", "Shona", "Somali", "Albanais", "Serbe", "Swati", "Sotho", "Soundanais", "Suédois", "Swahili", 
-  "Tamoul", "Télougou", "Tadjik", "Thaï", "Tigrinya", "Turkmène", "Tagalog", "Tswana", "Tongien", "Turc", "Tsonga", 
-  "Tatar", "Twi", "Tahitien", "Ouïghour", "Ukrainien", "Ourdou", "Ouzbek", "Venda", "Vietnamien", "Volapük", 
-  "Wallon", "Wolof", "Xhosa", "Yiddish", "Yorouba", "Zhuang", "Zoulou", "Chinois (Mandarin)", "Chinois (Cantonais)",
-  "Langue des signes internationale", "Langue des signes française", "Langue des signes américaine", 
-  "Lingala", "Romani", "Pachto", "Créole haïtien", "Créole mauricien", "Créole réunionnais",
-  "Hindi (Ourdou)", "Finnois (Suédois)", "Berbère", "Papiamento", "Comorien", "Amazigh"
+  // Standard languages
+  "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais", 
+  
+  // Arabic variants
+  "Arabe", "Arabe (Maghrébin)", "Arabe (Soudanais)", "Arabe (Moyen-Orient)", "Arabe (Littéraire)", "Arabe (Égyptien)",
+  
+  // English variants
+  "Anglais", "Anglais (Américain)", "Anglais (Britannique)", "Anglais (Africain)", "Anglais (Australien)",
+  
+  // French variants
+  "Français", "Français (Canadien)", "Français (Africain)", "Français (Belge)", "Français (Suisse)",
+  
+  // Spanish variants
+  "Espagnol", "Espagnol (Castillan)", "Espagnol (Latino-américain)", "Espagnol (Argentin)", "Espagnol (Mexicain)",
+  
+  // Chinese variants
+  "Chinois", "Chinois (Mandarin)", "Chinois (Cantonais)", "Chinois (Wu)", "Chinois (Min)",
+  
+  // Other languages with variants
+  "Portugais", "Portugais (Brésilien)", "Portugais (Européen)",
+  "Russe", "Russe (Standard)", "Russe (Littéraire)",
+  "Bengali", "Bengali (Indien)", "Bengali (Bangladais)",
+  
+  // Standard languages continued
+  "Araméen", "Assamais", "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse",
+  "Bulgare", "Bihari", "Bichelamar", "Bambara", "Tibétain", "Breton", "Bosnien", "Catalan",
+  "Tchétchène", "Chamorro", "Corse", "Cri", "Tchèque", "Vieux-slave", "Tchouvache", "Gallois",
+  "Danois", "Allemand", "Maldivien", "Dzongkha", "Ewe", "Grec", "Espéranto", "Estonien", 
+  "Basque", "Persan", "Peul", "Finnois", "Fidjien", "Féroïen", "Frison", "Irlandais",
+  "Gaélique", "Galicien", "Guarani", "Gujarati", "Mannois", "Haoussa", "Hébreu", "Hindi",
+  "Hiri Motu", "Croate", "Haïtien", "Hongrois", "Arménien", "Hérèro", "Interlingua", "Indonésien",
+  "Occidental", "Igbo", "Yi", "Inupiaq", "Ido", "Islandais", "Italien", "Inuktitut", "Japonais",
+  "Javanais", "Géorgien", "Kongo", "Kikuyu", "Kuanyama", "Kazakh", "Groenlandais", "Khmer",
+  "Kannada", "Coréen", "Kanouri", "Cachemiri", "Kurde", "Kom", "Cornique", "Kirghize", "Latin",
+  "Luxembourgeois", "Ganda", "Limbourgeois", "Lingala", "Lao", "Lituanien", "Louba", "Letton",
+  "Malgache", "Marshallais", "Maori", "Macédonien", "Malayalam", "Mongol", "Moldave", "Marathe",
+  "Malais", "Maltais", "Birman", "Nauru", "Norvégien bokmål", "Ndébélé", "Népalais", "Ndonga",
+  "Néerlandais", "Norvégien nynorsk", "Norvégien", "Sotho du Sud", "Occitan", "Ojibwé", "Oromo",
+  "Oriya", "Ossète", "Pendjabi", "Pali", "Polonais", "Pachto", "Quechua", "Romanche", "Kirundi",
+  "Roumain", "Kinyarwanda", "Sanskrit", "Sarde", "Sindhi", "Sami", "Sango", "Singhalais", "Slovaque",
+  "Slovène", "Samoan", "Shona", "Somali", "Albanais", "Serbe", "Swati", "Sotho", "Soundanais", "Suédois",
+  "Swahili", "Swahili (Tanzanie)", "Swahili (Kenya)", "Tamoul", "Télougou", "Tadjik", "Thaï", "Tigrinya",
+  "Turkmène", "Tagalog", "Tswana", "Tongien", "Turc", "Tsonga", "Tatar", "Twi", "Tahitien", "Ouïghour",
+  "Ukrainien", "Ourdou", "Ouzbek", "Venda", "Vietnamien", "Volapük", "Wallon", "Wolof", "Xhosa", "Yiddish",
+  "Yorouba", "Zhuang", "Zoulou",
+  
+  // Sign languages
+  "Langue des signes internationale", "Langue des signes française", "Langue des signes américaine",
+  
+  // Creole languages
+  "Créole haïtien", "Créole mauricien", "Créole réunionnais", "Créole seychellois", "Créole guadeloupéen",
+  "Créole martiniquais", "Créole guyanais",
+  
+  // Other language variants
+  "Hindi (Ourdou)", "Finnois (Suédois)", "Berbère", "Berbère (Kabyle)", "Berbère (Chleuh)", "Berbère (Rifain)",
+  "Papiamento", "Comorien", "Amazigh"
 ];
 
 export const TRANSLATIONS = {
@@ -104,7 +137,7 @@ export const TRANSLATIONS = {
     ar: "تحميل",
     zh: "下载",
     ja: "ダウンロード",
-    ko: "다운로드"
+    ko: "다운ロード"
   },
   preview: {
     fr: "Aperçu",

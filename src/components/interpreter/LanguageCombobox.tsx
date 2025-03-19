@@ -49,18 +49,53 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
-  // Sort and filter languages
+  // Sort and filter languages with improved search to match language variants
   const filteredLanguages = useMemo(() => {
     try {
       if (!searchTerm) {
         return [...languages].sort((a, b) => a.localeCompare(b));
       }
       
+      const searchTermLower = searchTerm.toLowerCase();
+      
       return [...languages]
-        .filter(lang => 
-          lang.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a, b) => a.localeCompare(b));
+        .filter(lang => {
+          // Check if main language or variant contains search term
+          const langLower = lang.toLowerCase();
+          
+          // Check if language is a variant (e.g. "Arabe (Maghrébin)")
+          if (langLower.includes("(") && langLower.includes(")")) {
+            const mainPart = langLower.split("(")[0].trim();
+            const variantPart = langLower.split("(")[1].split(")")[0].trim();
+            
+            // Match either in main language name or variant
+            return mainPart.includes(searchTermLower) || variantPart.includes(searchTermLower);
+          }
+          
+          // Regular language without variants
+          return langLower.includes(searchTermLower);
+        })
+        .sort((a, b) => {
+          // Sort exact matches first
+          const aLower = a.toLowerCase();
+          const bLower = b.toLowerCase();
+          
+          const aExactMatch = aLower === searchTermLower;
+          const bExactMatch = bLower === searchTermLower;
+          
+          if (aExactMatch && !bExactMatch) return -1;
+          if (!aExactMatch && bExactMatch) return 1;
+          
+          // Then sort by whether it starts with the search term
+          const aStartsWith = aLower.startsWith(searchTermLower);
+          const bStartsWith = bLower.startsWith(searchTermLower);
+          
+          if (aStartsWith && !bStartsWith) return -1;
+          if (!aStartsWith && bStartsWith) return 1;
+          
+          // Fall back to alphabetical
+          return a.localeCompare(b);
+        });
     } catch (error) {
       console.error("Error filtering languages:", error);
       return [];
@@ -121,7 +156,7 @@ export function LanguageCombobox({
           </div>
           
           {/* Language list */}
-          <div className="max-h-[200px] overflow-auto p-1">
+          <div className="max-h-[300px] overflow-auto p-1">
             {allLanguagesOption && (
               <Button
                 variant={value === "all" ? "secondary" : "ghost"}
