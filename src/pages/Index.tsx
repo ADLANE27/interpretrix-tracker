@@ -5,9 +5,7 @@ import AdminDashboard from "@/components/admin/AdminDashboard";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { AnimatedGlobe } from "@/components/AnimatedGlobe";
 import { WelcomeContent } from "@/components/WelcomeContent";
-import { motion } from "framer-motion";
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -85,25 +83,14 @@ const Index = () => {
 
   if (!userRole) {
     return (
-      <div className="min-h-screen w-full overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <AnimatedGlobe />
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/60 to-white/90 dark:from-gray-900/80 dark:via-gray-900/60 dark:to-gray-900/90" />
-        </div>
-        
+      <div className="min-h-screen w-full bg-white dark:bg-gray-900">
         <div className="relative z-10 min-h-screen flex flex-col">
           {/* Header */}
-          <motion.header
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="py-4 px-6 flex items-center justify-between"
-          >
-            <div className="text-xl font-bold bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue bg-clip-text text-transparent">
+          <header className="py-4 px-6 flex items-center justify-between">
+            <div className="text-xl font-bold text-palette-vivid-purple">
               AFT
             </div>
-          </motion.header>
+          </header>
           
           {/* Main content */}
           <div className="flex-1 flex items-center justify-center">
@@ -111,14 +98,9 @@ const Index = () => {
           </div>
           
           {/* Footer */}
-          <motion.footer
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1 }}
-            className="text-center py-6 text-slate-600 dark:text-slate-400 text-sm"
-          >
+          <footer className="text-center py-6 text-slate-600 dark:text-slate-400 text-sm">
             © {new Date().getFullYear()} AFTraduction. Tous droits réservés.
-          </motion.footer>
+          </footer>
         </div>
       </div>
     );
