@@ -1,11 +1,11 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LANGUAGES } from "@/lib/constants";
 import { LanguagePair, isValidLanguagePair } from "@/types/languages";
+import { LanguageSearchSelect } from "@/components/admin/LanguageSearchSelect";
 
 interface LanguageSelectorProps {
   languages: LanguagePair[];
@@ -54,31 +54,21 @@ export const LanguageSelector = ({ languages, onChange, isEditing }: LanguageSel
 
       {isEditing && (
         <div className="flex items-center gap-2">
-          <Select value={newSource} onValueChange={setNewSource}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Langue source" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[200px]">
+            <LanguageSearchSelect
+              value={newSource}
+              onValueChange={(value) => setNewSource(value === "all" ? "" : value)}
+              placeholder="Langue source"
+            />
+          </div>
 
-          <Select value={newTarget} onValueChange={setNewTarget}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Langue cible" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="w-[200px]">
+            <LanguageSearchSelect
+              value={newTarget}
+              onValueChange={(value) => setNewTarget(value === "all" ? "" : value)}
+              placeholder="Langue cible"
+            />
+          </div>
 
           <Button
             variant="ghost"
