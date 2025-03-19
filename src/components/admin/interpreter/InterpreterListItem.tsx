@@ -5,6 +5,7 @@ import { UpcomingMissionBadge } from "@/components/UpcomingMissionBadge";
 import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStatus";
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
+import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -18,25 +19,6 @@ interface InterpreterListItemProps {
     work_location?: WorkLocation;
   };
 }
-
-const statusConfig = {
-  available: { 
-    color: "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm", 
-    label: "Disponible" 
-  },
-  unavailable: { 
-    color: "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-sm", 
-    label: "Indisponible" 
-  },
-  pause: { 
-    color: "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm", 
-    label: "En pause" 
-  },
-  busy: { 
-    color: "bg-gradient-to-r from-indigo-400 to-purple-500 text-white shadow-sm", 
-    label: "En appel" 
-  },
-};
 
 const workLocationConfig = {
   remote: {
@@ -65,9 +47,11 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
       <CardContent className="p-0">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`px-3 py-1.5 rounded-full text-sm font-medium ${statusConfig[interpreter.status].color}`}>
-              {statusConfig[interpreter.status].label}
-            </div>
+            <InterpreterStatusDropdown 
+              interpreterId={interpreter.id}
+              currentStatus={interpreter.status}
+              displayFormat="badge"
+            />
             <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
           </div>
 

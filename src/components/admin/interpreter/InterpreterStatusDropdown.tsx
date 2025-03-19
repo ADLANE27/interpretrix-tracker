@@ -1,0 +1,164 @@
+
+import { useState } from "react";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { Clock, Coffee, X, Phone } from "lucide-react";
+import { Profile } from "@/types/profile";
+
+type Status = Profile['status'];
+
+interface StatusConfigItem {
+  color: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface InterpreterStatusDropdownProps {
+  interpreterId: string;
+  currentStatus: Status;
+  className?: string;
+  displayFormat?: "badge" | "button";
+}
+
+const statusConfig: Record<Status, StatusConfigItem> = {
+  available: {
+    color: "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm",
+    label: "Disponible",
+    icon: Clock
+  },
+  busy: {
+    color: "bg-gradient-to-r from-indigo-400 to-purple-500 text-white shadow-sm", 
+    label: "En appel",
+    icon: Phone
+  },
+  pause: {
+    color: "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm", 
+    label: "En pause",
+    icon: Coffee
+  },
+  unavailable: {
+    color: "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-sm", 
+    label: "Indisponible",
+    icon: X
+  }
+};
+
+export const InterpreterStatusDropdown = ({ 
+  interpreterId, 
+  currentStatus, 
+  className = "", 
+  displayFormat = "badge" 
+}: InterpreterStatusDropdownProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const handleStatusSelect = (status: Status) => {
+    if (status === currentStatus) {
+      setIsOpen(false);
+      return;
+    }
+    setPendingStatus(status);
+    setIsConfirmDialogOpen(true);
+    setIsOpen(false);
+  };
+
+  const handleConfirm = async () => {
+    if (!pendingStatus) return;
+    
+    try {
+      // Update interpreter status
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: pendingStatus
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
+      });
+    } catch (error: any) {
+      console.error('[InterpreterStatusDropdown] Error:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConfirmDialogOpen(false);
+      setPendingStatus(null);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsConfirmDialogOpen(false);
+    setPendingStatus(null);
+  };
+
+  // Content based on display format
+  const triggerContent = () => {
+    const StatusIcon = statusConfig[currentStatus].icon;
+    
+    if (displayFormat === "badge") {
+      return (
+        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
+          {statusConfig[currentStatus].label}
+        </div>
+      );
+    } else {
+      return (
+        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
+          <StatusIcon className="h-4 w-4" />
+          <span>{statusConfig[currentStatus].label}</span>
+        </div>
+      );
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          {triggerContent()}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="min-w-[180px]">
+          {Object.entries(statusConfig).map(([status, config]) => {
+            const StatusIcon = config.icon;
+            return (
+              <DropdownMenuItem 
+                key={status}
+                onClick={() => handleStatusSelect(status as Status)}
+                className={`flex items-center gap-2 ${currentStatus === status ? 'bg-muted' : ''}`}
+              >
+                <StatusIcon className="h-4 w-4" />
+                <span>{config.label}</span>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmationDialog
+        isOpen={isConfirmDialogOpen}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        title="Modifier le statut de l'interprète"
+        description={pendingStatus ? 
+          `Êtes-vous sûr de vouloir modifier le statut de cet interprète en "${statusConfig[pendingStatus].label}" ?` : 
+          "Êtes-vous sûr de vouloir modifier le statut de cet interprète ?"}
+        confirmText="Confirmer"
+        cancelText="Annuler"
+      />
+    </>
+  );
+};

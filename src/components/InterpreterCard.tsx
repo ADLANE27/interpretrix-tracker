@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
 import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
@@ -6,6 +5,7 @@ import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
 import { WorkLocation, workLocationLabels } from '@/utils/workLocationStatus';
+import { InterpreterStatusDropdown } from './admin/interpreter/InterpreterStatusDropdown';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -34,25 +34,6 @@ interface InterpreterCardProps {
     work_location?: WorkLocation;
   };
 }
-
-const statusConfig = {
-  available: { 
-    color: 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm', 
-    label: 'Disponible' 
-  },
-  busy: { 
-    color: 'bg-gradient-to-r from-indigo-400 to-purple-500 text-white shadow-sm', 
-    label: 'En appel' 
-  },
-  pause: { 
-    color: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm', 
-    label: 'En pause' 
-  },
-  unavailable: { 
-    color: 'bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-sm', 
-    label: 'Indisponible' 
-  },
-};
 
 const workLocationConfig = {
   remote: {
@@ -88,9 +69,11 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
       <CardHeader className="card-header-gradient">
         <div className="flex items-center justify-between">
           <CardTitle className="text-gradient-primary">{interpreter.name}</CardTitle>
-          <div className={`px-3 py-1 rounded-full text-sm ${statusConfig[interpreter.status].color}`}>
-            {statusConfig[interpreter.status].label}
-          </div>
+          <InterpreterStatusDropdown 
+            interpreterId={interpreter.id}
+            currentStatus={interpreter.status}
+            displayFormat="badge"
+          />
         </div>
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
@@ -104,7 +87,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
-        {/* Languages Section */}
         <div className="space-y-2">
           <h4 className="text-sm font-medium uppercase text-muted-foreground">LANGUES</h4>
           <div className="flex flex-wrap gap-2">
@@ -121,7 +103,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
           </div>
         </div>
 
-        {/* Contact Section */}
         {hasAnyPhoneNumber && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium uppercase text-muted-foreground">CONTACT</h4>
@@ -175,7 +156,6 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
         )}
       </CardContent>
 
-      {/* Additional Info */}
       {(interpreter.next_mission_start || interpreter.tarif_15min || interpreter.tarif_5min) && (
         <CardFooter className="flex flex-col items-start border-t pt-4 space-y-3">
           {interpreter.next_mission_start && (
