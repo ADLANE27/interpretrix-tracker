@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -11,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { playNotificationSound } from "@/utils/notificationSound";
 
 interface ChatInputProps {
   message: string;
@@ -35,6 +38,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   replyTo,
   setReplyTo,
 }) => {
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);

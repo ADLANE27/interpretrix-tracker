@@ -1,6 +1,9 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { playNotificationSound } from "@/utils/notificationSound";
+import { useBrowserNotification } from "@/hooks/useBrowserNotification";
 
 export interface UnreadMention {
   mention_id: string;
@@ -26,8 +29,15 @@ export const useUnreadMentions = () => {
   const [unreadMentions, setUnreadMentions] = useState<UnreadMention[]>([]);
   const [unreadDirectMessages, setUnreadDirectMessages] = useState<number>(0);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
+  const [lastMentionId, setLastMentionId] = useState<string | null>(null);
+  const { showNotification, requestPermission } = useBrowserNotification();
 
-  const fetchUnreadMentions = async () => {
+  // Request notification permission when the hook is first used
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
+
+  const fetchUnreadMentions = useCallback(async () => {
     console.log('[Mentions Debug] Fetching unread mentions...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -133,6 +143,37 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Processed mentions:', mentionsWithNames);
       
+      // Check if there's a new mention to show notification
+      if (mentionsWithNames.length > 0) {
+        const newestMention = mentionsWithNames[0];
+        
+        // If this is a new mention that we haven't seen before, show a notification
+        if (lastMentionId !== newestMention.mention_id) {
+          setLastMentionId(newestMention.mention_id);
+          
+          // If this isn't the first load (lastMentionId is set), show notification
+          if (lastMentionId !== null) {
+            // Play sound for new mention
+            playNotificationSound();
+            
+            // Show toast notification
+            toast({
+              title: "Nouvelle mention",
+              description: `${newestMention.mentioning_user_name} vous a mentionné`,
+              variant: "default",
+            });
+            
+            // Show browser notification
+            showNotification(
+              "Nouvelle mention", 
+              { 
+                body: `${newestMention.mentioning_user_name} vous a mentionné: ${newestMention.message_content}`
+              }
+            );
+          }
+        }
+      }
+      
       setUnreadMentions(mentionsWithNames);
       setUnreadDirectMessages(unreadDMCount);
       setTotalUnreadCount(mentionsWithNames.length + unreadDMCount);
@@ -148,7 +189,7 @@ export const useUnreadMentions = () => {
       setUnreadDirectMessages(0);
       setTotalUnreadCount(0);
     }
-  };
+  }, [lastMentionId, showNotification]);
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
@@ -247,7 +288,7 @@ export const useUnreadMentions = () => {
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchUnreadMentions]);
 
   return { 
     unreadMentions, 

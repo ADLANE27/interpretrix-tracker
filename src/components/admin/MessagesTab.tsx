@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil, Bell } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
@@ -19,6 +19,9 @@ import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { useChat } from "@/hooks/useChat"; 
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
+import { Badge } from "@/components/ui/badge";
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +59,13 @@ export const MessagesTab = () => {
   const isMobile = useIsMobile();
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { 
+    unreadMentions, 
+    totalUnreadCount, 
+    markMentionAsRead,
+    deleteMention,
+    refreshMentions 
+  } = useUnreadMentions();
 
   // First effect: just get the current user once
   useEffect(() => {
@@ -208,6 +218,26 @@ export const MessagesTab = () => {
     }
   };
 
+  // Handle mention click to navigate to the referenced message
+  const handleMentionClick = (mention: any) => {
+    // Find the channel containing the message
+    const channelId = mention.channel_id;
+    
+    // Select the channel
+    const channel = channels.find(c => c.id === channelId);
+    if (channel) {
+      setSelectedChannel(channel);
+      if (isMobile) setShowChannelList(false);
+      
+      // Mark the mention as read
+      markMentionAsRead(mention.mention_id);
+      
+      // The Chat component will handle scrolling to the message
+      // by using the messageId from the URL hash
+      window.location.hash = `message-${mention.message_id}`;
+    }
+  };
+
   // Display a loading state while fetching channels
   if (isLoading && channels.length === 0) {
     return (
@@ -233,6 +263,31 @@ export const MessagesTab = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
+                {/* Mentions notifications button */}
+                <MentionsPopover
+                  mentions={unreadMentions}
+                  totalCount={totalUnreadCount}
+                  onMentionClick={handleMentionClick}
+                  onMarkAsRead={markMentionAsRead}
+                  onDelete={deleteMention}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 relative"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {totalUnreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {totalUnreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </MentionsPopover>
+
                 <Button
                   variant="ghost"
                   size="sm"
