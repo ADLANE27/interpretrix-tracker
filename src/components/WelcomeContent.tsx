@@ -24,7 +24,7 @@ export const WelcomeContent = () => {
         <motion.img 
           src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
           alt="Interpretix Logo" 
-          className="h-32 sm:h-48 w-auto"
+          className="h-48 sm:h-64 w-auto"
           initial={{ y: -20 }}
           animate={{ y: 0 }}
           transition={{
