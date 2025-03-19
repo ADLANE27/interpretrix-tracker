@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -217,10 +218,10 @@ export const InterpreterChannelList = ({
                 key={channel.id}
                 className={`
                   flex items-center gap-3 p-3 rounded-lg 
-                  cursor-pointer 
+                  cursor-pointer transition-all duration-200
                   ${selectedChannelId === channel.id 
                     ? 'bg-interpreter-navy text-white' 
-                    : 'hover:bg-gray-100/80 text-gray-900'}
+                    : 'hover:bg-gray-100 text-gray-900 hover:text-gray-900'}
                 `}
                 onClick={() => handleChannelSelect(channel.id)}
               >
@@ -261,7 +262,7 @@ export const InterpreterChannelList = ({
                         e.stopPropagation();
                         console.log("Settings clicked for channel:", channel.id);
                       }}
-                      className="p-1 rounded-md hover:bg-gray-200"
+                      className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
                     >
                       <Settings className="h-4 w-4 text-gray-500 hover:text-blue-500" />
                     </button>
@@ -275,7 +276,7 @@ export const InterpreterChannelList = ({
                             channelName: channel.display_name
                           });
                         }}
-                        className="p-1 rounded-md hover:bg-gray-200"
+                        className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"
                       >
                         <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
                       </button>

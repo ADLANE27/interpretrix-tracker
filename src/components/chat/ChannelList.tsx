@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -118,8 +117,8 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
               key={channel.id}
               className={`
                 flex items-center justify-between p-2 rounded-lg 
-                cursor-pointer
-                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/30'}
+                cursor-pointer transition-colors
+                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
               `}
               onClick={() => handleChannelSelect(channel.id)}
             >
