@@ -117,9 +117,9 @@ export const InterpreterStatusDropdown = ({
       );
     } else {
       return (
-        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
-          <StatusIcon className="h-4 w-4" />
-          <span>{statusConfig[currentStatus].label}</span>
+        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
+          <StatusIcon className="h-4 w-4 min-w-[16px]" />
+          <span className="whitespace-nowrap">{statusConfig[currentStatus].label}</span>
         </div>
       );
     }
