@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Clock, Coffee, Phone, X } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StatusFilterProps {
   selectedStatus: string | null;
@@ -8,6 +9,7 @@ interface StatusFilterProps {
 }
 
 export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterProps) => {
+  const isMobile = useIsMobile();
   const statuses = [
     { 
       id: "available", 
@@ -54,15 +56,16 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
             key={status.id}
             variant={selectedStatus === status.id ? "default" : "outline"}
             className={`
-              transition-all duration-200 rounded-full px-4 py-1 text-sm
+              transition-all duration-200 rounded-full h-10 
+              ${isMobile ? 'px-3 text-sm' : 'px-4 text-sm'}
               ${selectedStatus === status.id 
                 ? `bg-gradient-to-r ${status.color} text-white shadow-md` 
                 : 'hover:bg-slate-100 dark:hover:bg-slate-800'}
             `}
             onClick={() => handleStatusClick(status.id)}
           >
-            <Icon className="mr-1 h-3.5 w-3.5" />
-            {status.label}
+            <Icon className="mr-1 h-3.5 w-3.5 min-w-[14px] flex-shrink-0" />
+            <span className="truncate whitespace-nowrap">{status.label}</span>
           </Button>
         )}
       )}

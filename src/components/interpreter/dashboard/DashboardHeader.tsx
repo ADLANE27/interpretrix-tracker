@@ -32,7 +32,7 @@ export const DashboardHeader = ({
         </div>
       </div>
       
-      <div className="pb-2 md:py-3 w-full overflow-visible">
+      <div className="pb-3 md:py-3 w-full overflow-visible">
         <StatusManager currentStatus={profile?.status} onStatusChange={onStatusChange} />
       </div>
     </header>

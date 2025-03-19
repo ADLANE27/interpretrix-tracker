@@ -241,7 +241,7 @@ export const InterpreterChat = ({
         </div>
         
         {profile && isMobile && (
-          <div className="pb-2 w-full overflow-visible">
+          <div className="pb-3 w-full overflow-visible">
             <StatusManager 
               currentStatus={profile?.status}
               onStatusChange={onStatusChange} 

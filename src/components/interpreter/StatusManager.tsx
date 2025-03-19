@@ -158,15 +158,15 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
               onClick={() => handleStatusChange(statusKey)}
               disabled={isLoading}
               className={`
-                w-full transition-all duration-200 whitespace-nowrap 
-                h-11 sm:h-10 text-xs sm:text-sm font-medium px-2 sm:px-4
+                w-full transition-all duration-200
+                h-12 sm:h-10 text-sm font-medium px-2 sm:px-3
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
               `}
             >
-              <Icon className="h-4 w-4 mr-0.5 sm:mr-1 flex-shrink-0" />
-              <span className="truncate">{statusConfig[statusKey].label}</span>
+              <Icon className="h-4 w-4 min-w-4 mr-1 flex-shrink-0" />
+              <span className="truncate whitespace-nowrap">{statusConfig[statusKey].label}</span>
             </Button>
           </motion.div>
         );
