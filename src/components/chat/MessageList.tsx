@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -138,12 +137,11 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
         
-        {/* Message action buttons - repositioned and always visible */}
-        <div className={`flex items-center gap-1 ${
+        <div className={`flex items-center gap-1 message-actions ${
           message.sender.id === currentUserId 
-            ? 'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[120%]' 
-            : 'absolute right-0 top-1/2 -translate-y-1/2 translate-x-[120%]'
-        } ${isMobile ? 'bg-white/80 backdrop-blur-sm rounded-full p-1 shadow-sm' : ''}`}>
+            ? 'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[105%]' 
+            : 'absolute right-0 top-1/2 -translate-y-1/2 translate-x-[105%]'
+        }`}>
           {message.sender.id === currentUserId && (
             <button
               onClick={() => onDeleteMessage(message.id)}
