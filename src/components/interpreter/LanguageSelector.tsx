@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { LANGUAGES } from "@/lib/constants";
 import { LanguagePair, isValidLanguagePair } from "@/types/languages";
 import { LanguageSearchSelect } from "@/components/admin/LanguageSearchSelect";
 

@@ -33,14 +33,18 @@ export function LanguageSearchSelect({
   className,
 }: LanguageSearchSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
   
-  // Add "Toutes les langues" option to the languages
-  const options = [
-    { value: "all", label: "Toutes les langues" },
-    ...LANGUAGES.map(lang => ({ value: lang, label: lang }))
-  ];
+  // Ensure LANGUAGES is always an array
+  const languageOptions = React.useMemo(() => {
+    const allLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
+    return [
+      { value: "all", label: "Toutes les langues" },
+      ...allLanguages.map(lang => ({ value: lang, label: lang }))
+    ];
+  }, []);
 
-  const selectedOption = options.find((option) => option.value === value);
+  const selectedOption = languageOptions.find((option) => option.value === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -62,16 +66,21 @@ export function LanguageSearchSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
         <Command>
-          <CommandInput placeholder={placeholder} />
+          <CommandInput 
+            placeholder={placeholder} 
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
           <CommandGroup className="max-h-[300px] overflow-y-auto">
-            {options.map((option) => (
+            {languageOptions.map((option) => (
               <CommandItem
                 key={option.value}
                 value={option.value}
                 onSelect={(currentValue) => {
                   onValueChange(currentValue === value ? "all" : currentValue);
                   setOpen(false);
+                  setSearchQuery("");
                 }}
               >
                 <Check
