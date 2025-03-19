@@ -8,7 +8,7 @@ export const WelcomeContent = () => {
   return (
     <div className="relative z-10 px-4 py-8 sm:py-16 flex flex-col items-center justify-between min-h-[80vh]">
       <motion.div 
-        className="mb-4 bg-white p-4 rounded-lg mt-4"
+        className="bg-white p-4 rounded-lg"
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ 
@@ -36,31 +36,33 @@ export const WelcomeContent = () => {
         />
       </motion.div>
       
-      <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center mb-6">
-        <motion.span 
-          className="text-palette-vivid-purple"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-        >
-          Bienvenue
-        </motion.span>
-      </h1>
-      
-      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto mb-8">
-        <Button asChild size="lg" className="flex-1">
-          <Link to="/admin/login" className="flex items-center justify-center gap-2">
-            <Building className="w-5 h-5" />
-            <span>Espace Administrateur</span>
-          </Link>
-        </Button>
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-center mb-6">
+          <motion.span 
+            className="text-palette-vivid-purple"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.8 }}
+          >
+            Bienvenue
+          </motion.span>
+        </h1>
         
-        <Button asChild variant="secondary" size="lg" className="flex-1">
-          <Link to="/interpreter/login" className="flex items-center justify-center gap-2">
-            <Headset className="w-5 h-5" />
-            <span>Espace Interprète</span>
-          </Link>
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto">
+          <Button asChild size="lg" className="flex-1">
+            <Link to="/admin/login" className="flex items-center justify-center gap-2">
+              <Building className="w-5 h-5" />
+              <span>Espace Administrateur</span>
+            </Link>
+          </Button>
+          
+          <Button asChild variant="secondary" size="lg" className="flex-1">
+            <Link to="/interpreter/login" className="flex items-center justify-center gap-2">
+              <Headset className="w-5 h-5" />
+              <span>Espace Interprète</span>
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
