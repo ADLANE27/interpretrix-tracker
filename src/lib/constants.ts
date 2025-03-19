@@ -64,31 +64,31 @@ export const LANGUAGE_MAP = {
   ko: "한국어"
 };
 
-// Complete list of languages including variants found on interpreter cards
+// Complete list of languages that exactly match what's shown on interpreter cards
 export const LANGUAGES = [
-  // Standard languages
-  "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais", 
+  // Main languages (verify these match exactly with cards)
+  "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais",
   
-  // Arabic variants
-  "Arabe", "Arabe (Maghrébin)", "Arabe (Soudanais)", "Arabe (Moyen-Orient)", "Arabe (Littéraire)", "Arabe (Égyptien)",
+  // Arabic variants as they appear on interpreter cards
+  "Arabe", "Arabe Maghrébin", "Arabe Soudanais", "Arabe Moyen-Orient",
   
-  // English variants
-  "Anglais", "Anglais (Américain)", "Anglais (Britannique)", "Anglais (Africain)", "Anglais (Australien)",
+  // English variants as they appear on interpreter cards
+  "Anglais", "Anglais Américain", "Anglais Britannique", "Anglais Africain", "Anglais Australien",
   
-  // French variants
-  "Français", "Français (Canadien)", "Français (Africain)", "Français (Belge)", "Français (Suisse)",
+  // French variants as they appear on interpreter cards
+  "Français", "Français Canadien", "Français Africain", "Français Belge", "Français Suisse",
   
-  // Spanish variants
-  "Espagnol", "Espagnol (Castillan)", "Espagnol (Latino-américain)", "Espagnol (Argentin)", "Espagnol (Mexicain)",
+  // Spanish variants as they appear on interpreter cards
+  "Espagnol", "Espagnol Castillan", "Espagnol Latino-américain", "Espagnol Argentin", "Espagnol Mexicain",
   
-  // Chinese variants
-  "Chinois", "Chinois (Mandarin)", "Chinois (Cantonais)", "Chinois (Wu)", "Chinois (Min)",
+  // Chinese variants as they appear on interpreter cards
+  "Chinois", "Chinois Mandarin", "Chinois Cantonais", "Chinois Wu", "Chinois Min",
   
-  // Other languages with variants
-  "Portugais", "Portugais (Brésilien)", "Portugais (Européen)",
-  "Russe", "Russe (Standard)", "Russe (Littéraire)",
-  "Bengali", "Bengali (Indien)", "Bengali (Bangladais)",
-  
+  // Other languages with variants as they appear on interpreter cards
+  "Portugais", "Portugais Brésilien", "Portugais Européen",
+  "Russe", "Russe Standard",
+  "Bengali", "Bengali Indien", "Bengali Bangladais",
+
   // Standard languages continued
   "Araméen", "Assamais", "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse",
   "Bulgare", "Bihari", "Bichelamar", "Bambara", "Tibétain", "Breton", "Bosnien", "Catalan",
@@ -107,7 +107,7 @@ export const LANGUAGES = [
   "Oriya", "Ossète", "Pendjabi", "Pali", "Polonais", "Pachto", "Quechua", "Romanche", "Kirundi",
   "Roumain", "Kinyarwanda", "Sanskrit", "Sarde", "Sindhi", "Sami", "Sango", "Singhalais", "Slovaque",
   "Slovène", "Samoan", "Shona", "Somali", "Albanais", "Serbe", "Swati", "Sotho", "Soundanais", "Suédois",
-  "Swahili", "Swahili (Tanzanie)", "Swahili (Kenya)", "Tamoul", "Télougou", "Tadjik", "Thaï", "Tigrinya",
+  "Swahili", "Swahili Tanzanie", "Swahili Kenya", "Tamoul", "Télougou", "Tadjik", "Thaï", "Tigrinya",
   "Turkmène", "Tagalog", "Tswana", "Tongien", "Turc", "Tsonga", "Tatar", "Twi", "Tahitien", "Ouïghour",
   "Ukrainien", "Ourdou", "Ouzbek", "Venda", "Vietnamien", "Volapük", "Wallon", "Wolof", "Xhosa", "Yiddish",
   "Yorouba", "Zhuang", "Zoulou",
@@ -120,7 +120,7 @@ export const LANGUAGES = [
   "Créole martiniquais", "Créole guyanais",
   
   // Other language variants
-  "Hindi (Ourdou)", "Finnois (Suédois)", "Berbère", "Berbère (Kabyle)", "Berbère (Chleuh)", "Berbère (Rifain)",
+  "Hindi Ourdou", "Finnois Suédois", "Berbère", "Berbère Kabyle", "Berbère Chleuh", "Berbère Rifain",
   "Papiamento", "Comorien", "Amazigh"
 ];
 

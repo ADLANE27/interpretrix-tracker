@@ -49,7 +49,7 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
-  // Sort and filter languages with improved search to match language variants
+  // Sort and filter languages with improved search to match language variants exactly as they appear on cards
   const filteredLanguages = useMemo(() => {
     try {
       if (!searchTerm) {
@@ -60,19 +60,9 @@ export function LanguageCombobox({
       
       return [...languages]
         .filter(lang => {
-          // Check if main language or variant contains search term
           const langLower = lang.toLowerCase();
           
-          // Check if language is a variant (e.g. "Arabe (Maghrébin)")
-          if (langLower.includes("(") && langLower.includes(")")) {
-            const mainPart = langLower.split("(")[0].trim();
-            const variantPart = langLower.split("(")[1].split(")")[0].trim();
-            
-            // Match either in main language name or variant
-            return mainPart.includes(searchTermLower) || variantPart.includes(searchTermLower);
-          }
-          
-          // Regular language without variants
+          // Simple matching by checking if language name contains the search term
           return langLower.includes(searchTermLower);
         })
         .sort((a, b) => {
@@ -93,8 +83,17 @@ export function LanguageCombobox({
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
           
-          // Fall back to alphabetical
-          return a.localeCompare(b);
+          // Group variants of the same base language together
+          const aBaseLang = aLower.split(" ")[0];
+          const bBaseLang = bLower.split(" ")[0];
+          
+          if (aBaseLang === bBaseLang) {
+            // If they're variants of the same language, sort them alphabetically
+            return a.localeCompare(b);
+          }
+          
+          // Fall back to alphabetical sorting by base language
+          return aBaseLang.localeCompare(bBaseLang);
         });
     } catch (error) {
       console.error("Error filtering languages:", error);
