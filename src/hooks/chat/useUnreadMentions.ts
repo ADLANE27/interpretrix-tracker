@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { playNotificationSound } from "@/utils/notificationSound";
 import { useBrowserNotification } from "@/hooks/useBrowserNotification";
 
@@ -31,6 +31,7 @@ export const useUnreadMentions = () => {
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
   const [lastMentionId, setLastMentionId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const { toast } = useToast();
   const { showNotification, requestPermission } = useBrowserNotification();
 
   // Request notification permission when the hook is first used
@@ -77,11 +78,6 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
-      // Clear existing state before fetching new data
-      setUnreadMentions([]);
-      setUnreadDirectMessages(0);
-      setTotalUnreadCount(0);
-
       // Fetch unread mentions
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
@@ -104,7 +100,7 @@ export const useUnreadMentions = () => {
         return;
       }
 
-      console.log('[Mentions Debug] Raw mentions data:', mentionsData);
+      console.log('[Mentions Debug] Raw mentions data:', mentionsData?.length || 0, 'mentions');
 
       // Fetch unread direct messages count
       const { data: directChannels, error: channelsError } = await supabase
@@ -151,6 +147,8 @@ export const useUnreadMentions = () => {
         (mentionsData as UnreadMentionResponse[] || [])
           .filter(mention => mention.chat_messages) // Only include mentions with existing messages
           .map(async (mention) => {
+            console.log('[Mentions Debug] Processing mention:', mention.id);
+            
             const { data: senderData } = await supabase
               .rpc('get_message_sender_details', {
                 sender_id: mention.chat_messages.sender_id
@@ -160,14 +158,14 @@ export const useUnreadMentions = () => {
               mention_id: mention.id,
               message_id: mention.message_id,
               channel_id: mention.channel_id,
-              message_content: mention.chat_messages.content,
+              message_content: mention.chat_messages.content || '',
               mentioning_user_name: senderData?.[0]?.name || 'Unknown User',
               created_at: new Date(mention.created_at)
             };
           })
       );
 
-      console.log('[Mentions Debug] Processed mentions:', mentionsWithNames);
+      console.log('[Mentions Debug] Processed mentions:', mentionsWithNames.length);
       
       // Check if there's a new mention to show notification
       if (mentionsWithNames.length > 0) {
@@ -215,11 +213,8 @@ export const useUnreadMentions = () => {
       });
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
-      setUnreadMentions([]);
-      setUnreadDirectMessages(0);
-      setTotalUnreadCount(0);
     }
-  }, [lastMentionId, showNotification, userRole]);
+  }, [lastMentionId, showNotification, userRole, toast]);
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
@@ -273,17 +268,6 @@ export const useUnreadMentions = () => {
     // Initial fetch
     fetchUnreadMentions();
 
-    // Auth subscription
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setUnreadMentions([]);
-        setUnreadDirectMessages(0);
-        setTotalUnreadCount(0);
-      } else if (event === 'SIGNED_IN') {
-        fetchUnreadMentions();
-      }
-    });
-
     // Create a single channel for all subscriptions
     const channel = supabase.channel('mentions-and-messages')
       .on(
@@ -316,8 +300,7 @@ export const useUnreadMentions = () => {
 
     // Cleanup function
     return () => {
-      console.log('[Mentions Debug] Cleaning up subscriptions');
-      authSubscription.unsubscribe();
+      console.log('[Mentions Debug] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }, [fetchUnreadMentions, userRole]);

@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,18 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // Effect to refresh mentions when the component mounts
+  useEffect(() => {
+    refreshMentions();
+    
+    // Set up a regular refresh interval for mentions
+    const intervalId = setInterval(() => {
+      refreshMentions();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [refreshMentions]);
 
   console.log('[Sidebar] Current badge counts:', {
     pendingMissions: pendingMissionsCount,
