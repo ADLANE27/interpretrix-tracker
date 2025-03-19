@@ -6,11 +6,11 @@ import { Building, Headset } from "lucide-react";
 export const WelcomeContent = () => {
   return (
     <div className="relative z-10 px-4 py-16 sm:py-24 flex flex-col items-center">
-      <div className="mb-6 bg-white p-2 rounded-lg">
+      <div className="mb-8 bg-white p-3 rounded-lg">
         <img 
           src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
           alt="Interpretix Logo" 
-          className="h-16 sm:h-20 w-auto"
+          className="h-24 sm:h-32 w-auto"
         />
       </div>
       
