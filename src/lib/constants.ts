@@ -1,3 +1,4 @@
+
 // Constants for the application
 
 // Theme constants
@@ -121,7 +122,14 @@ export const LANGUAGES = [
   
   // Other language variants
   "Hindi Ourdou", "Finnois Suédois", "Kabyle", "Patois", "Dialecte Jamaïcain", 
-  "Patois Jamaïcain", "Créole Jamaïcain"
+  "Patois Jamaïcain", "Créole Jamaïcain",
+  
+  // Adding missing languages exactly as they appear on interpreter cards
+  "Dari", "Dari (Afghanistan)", "Diakhanké", "Dioula", "Hassaniya", 
+  "Konianké", "Krio", "Kurde (Kurmandji)", "Kurde (Sorani)",
+  "Malinké", "Mandingo", "Perse Afghanistan", "Perse Iran",
+  "Peul Mali", "Peul Mauritanie", "Peul Sénégal", "Soninké", 
+  "Soussou", "Tamoul (Inde)", "Tigrigna"
 ];
 
 export const TRANSLATIONS = {
