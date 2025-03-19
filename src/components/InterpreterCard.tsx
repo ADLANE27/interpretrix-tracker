@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
-import { Phone, Clock, User, PhoneCall } from 'lucide-react';
+import { Phone, Clock, User, PhoneCall, Home, Building } from 'lucide-react';
 import { UpcomingMissionBadge } from './UpcomingMissionBadge';
 import { EmploymentStatus, employmentStatusLabels } from '@/utils/employmentStatus';
 import { Profile } from '@/types/profile';
+import { workLocationLabels } from '@/utils/workLocationStatus';
 
 interface InterpreterCardProps {
   interpreter: {
@@ -30,6 +31,7 @@ interface InterpreterCardProps {
       start_afternoon?: string;
       end_afternoon?: string;
     } | null;
+    work_location?: "remote" | "on_site";
   };
 }
 
@@ -52,6 +54,17 @@ const statusConfig = {
   },
 };
 
+const workLocationConfig = {
+  remote: {
+    color: 'bg-purple-100 text-purple-800 border border-purple-300',
+    icon: Home
+  },
+  on_site: {
+    color: 'bg-blue-100 text-blue-800 border border-blue-300',
+    icon: Building
+  }
+};
+
 const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
   const parsedLanguages = interpreter.languages
     .map(lang => {
@@ -67,6 +80,9 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
     interpreter.professional_phone || 
     interpreter.booth_number;
 
+  const workLocation = interpreter.work_location || "on_site";
+  const LocationIcon = workLocationConfig[workLocation].icon;
+
   return (
     <Card className="hover-elevate gradient-border">
       <CardHeader className="card-header-gradient">
@@ -76,9 +92,15 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
             {statusConfig[interpreter.status].label}
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {employmentStatusLabels[interpreter.employment_status]}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {employmentStatusLabels[interpreter.employment_status]}
+          </p>
+          <div className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${workLocationConfig[workLocation].color}`}>
+            <LocationIcon className="h-3 w-3" />
+            <span>{workLocationLabels[workLocation]}</span>
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">

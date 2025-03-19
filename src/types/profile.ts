@@ -1,5 +1,6 @@
 
 import { EmploymentStatus } from "@/utils/employmentStatus";
+import { WorkLocation } from "@/utils/workLocationStatus";
 
 export interface Profile {
   id: string;
@@ -37,5 +38,5 @@ export interface Profile {
     start_afternoon: string;
     end_afternoon: string;
   } | null;
+  work_location: WorkLocation;
 }
-

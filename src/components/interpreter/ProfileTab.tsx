@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { EmploymentStatus, getEmploymentStatusLabel } from "@/utils/employmentStatus";
+import { getWorkLocationLabel } from "@/utils/workLocationStatus";
+import { Building, Home } from "lucide-react";
 
 interface ProfileProps {
   profile: {
@@ -38,6 +40,7 @@ interface ProfileProps {
     tarif_15min: number;
     specializations: string[];
     landline_phone: string | null;
+    work_location?: "remote" | "on_site";
   };
   onProfileUpdate: () => Promise<void>;
   onProfilePictureUpload: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
@@ -222,6 +225,20 @@ export const InterpreterProfile = ({ profile, onProfileUpdate, onProfilePictureU
                 readOnly 
                 className="bg-muted"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-medium">Lieu de travail</Label>
+              <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded border border-muted">
+                {profile.work_location === "remote" ? (
+                  <Home className="h-4 w-4 text-purple-600" />
+                ) : (
+                  <Building className="h-4 w-4 text-blue-600" />
+                )}
+                <span>
+                  {getWorkLocationLabel(profile.work_location || "on_site")}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LanguageSelector } from "@/components/interpreter/LanguageSelector";
 import { LanguagePair } from "@/types/languages";
+import { getWorkLocationOptions } from "@/utils/workLocationStatus";
 
 interface Address {
   street: string;
@@ -46,6 +47,7 @@ export interface InterpreterFormData {
     start_afternoon: string;
     end_afternoon: string;
   };
+  work_location: "remote" | "on_site";
   languages: LanguagePair[];
   address?: Address;
   phone_number?: string;
@@ -73,6 +75,8 @@ const employmentStatuses = [
   { value: "permanent_interpreter_aftcom", label: "Interprète Permanent AFTcom" },
   { value: "self_employed", label: "Externe" }
 ];
+
+const workLocationOptions = getWorkLocationOptions();
 
 export const InterpreterProfileForm = ({ 
   isEditing,
@@ -104,6 +108,7 @@ export const InterpreterProfileForm = ({
       start_afternoon: "14:00",
       end_afternoon: "17:00"
     },
+    work_location: initialData?.work_location || "on_site",
     languages: languages,
     address: initialData?.address || { street: "", postal_code: "", city: "" },
     phone_number: initialData?.phone_number || "",
@@ -361,6 +366,34 @@ export const InterpreterProfileForm = ({
                       {employmentStatuses.map(status => (
                         <SelectItem key={status.value} value={status.value}>
                           {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="work_location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Lieu de travail</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez un lieu de travail" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {workLocationOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

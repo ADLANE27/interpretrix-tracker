@@ -196,7 +196,8 @@ export const useUserManagement = () => {
         specializations: data.specializations,
         landline_phone: data.landline_phone,
         tarif_15min: data.tarif_15min,
-        tarif_5min: data.tarif_5min
+        tarif_5min: data.tarif_5min,
+        work_location: data.work_location
       };
       
       console.log('Complete transformed data:', transformedData);
@@ -260,6 +261,7 @@ export const useUserManagement = () => {
         private_phone: updatedData[0].private_phone,
         professional_phone: updatedData[0].professional_phone,
         password_changed: updatedData[0].password_changed || false,
+        work_location: updatedData[0].work_location || "on_site"
       };
 
       setSelectedUser(transformedProfile);

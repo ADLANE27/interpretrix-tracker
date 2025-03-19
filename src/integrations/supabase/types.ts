@@ -403,6 +403,7 @@ export type Database = {
           updated_at: string
           vat_number: string | null
           work_hours: Json | null
+          work_location: string | null
         }
         Insert: {
           address?: Json | null
@@ -431,6 +432,7 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
           work_hours?: Json | null
+          work_location?: string | null
         }
         Update: {
           address?: Json | null
@@ -459,6 +461,7 @@ export type Database = {
           updated_at?: string
           vat_number?: string | null
           work_hours?: Json | null
+          work_location?: string | null
         }
         Relationships: [
           {
