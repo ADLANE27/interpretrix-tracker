@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -205,8 +206,8 @@ export const InterpreterChannelList = ({
 
   return (
     <>
-      <ScrollArea className="h-[calc(100vh-400px)]">
-        <div className="space-y-2 pr-4">
+      <ScrollArea className="h-[calc(100vh-400px)] overflow-x-hidden">
+        <div className="space-y-2 pr-4 overflow-x-hidden overscroll-x-none">
           {channels.length === 0 ? (
             <div className="text-center text-muted-foreground p-4">
               You are not a member of any chat channels
