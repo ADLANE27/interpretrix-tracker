@@ -35,27 +35,42 @@ export function LanguageSearchSelect({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   
-  // Safely create language options and memoize to prevent unnecessary re-renders
+  // Safely initialize the language options with defensive coding
   const languageOptions = React.useMemo(() => {
-    // Ensure LANGUAGES is an array and handle potential undefined/null
-    const safeLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
-    
-    return [
-      { value: "all", label: "Toutes les langues" },
-      ...safeLanguages.map(lang => ({ value: lang, label: lang }))
-    ];
+    try {
+      // Ensure LANGUAGES exists and is an array
+      const safeLanguages = Array.isArray(LANGUAGES) ? LANGUAGES : [];
+      
+      return [
+        { value: "all", label: "Toutes les langues" },
+        ...safeLanguages.map(lang => ({ value: lang, label: lang }))
+      ];
+    } catch (error) {
+      console.error("Error creating language options:", error);
+      // Provide fallback options if something goes wrong
+      return [{ value: "all", label: "Toutes les langues" }];
+    }
   }, []);
   
-  // Get the currently selected option
-  const selectedOption = languageOptions.find((option) => option.value === value);
+  // Get the currently selected option with safe fallback
+  const selectedOption = React.useMemo(() => {
+    return languageOptions.find((option) => option.value === value) || 
+      { value: "all", label: "Toutes les langues" };
+  }, [languageOptions, value]);
   
-  // Filter languages based on search query
+  // Filter languages based on search query with error handling
   const filteredOptions = React.useMemo(() => {
-    if (!searchQuery) return languageOptions;
-    
-    return languageOptions.filter(option => 
-      option.label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    try {
+      if (!searchQuery.trim()) return languageOptions;
+      
+      const lowerQuery = searchQuery.toLowerCase().trim();
+      return languageOptions.filter(option => 
+        option.label.toLowerCase().includes(lowerQuery)
+      );
+    } catch (error) {
+      console.error("Error filtering options:", error);
+      return languageOptions;
+    }
   }, [languageOptions, searchQuery]);
   
   // Reset search when popover closes
@@ -64,6 +79,16 @@ export function LanguageSearchSelect({
       setSearchQuery("");
     }
   }, [open]);
+
+  const handleSelect = React.useCallback((currentValue: string) => {
+    try {
+      onValueChange(currentValue === value ? "all" : currentValue);
+      setOpen(false);
+      setSearchQuery("");
+    } catch (error) {
+      console.error("Error handling selection:", error);
+    }
+  }, [onValueChange, value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -91,33 +116,27 @@ export function LanguageSearchSelect({
             onValueChange={setSearchQuery}
             className="h-9"
           />
-          {filteredOptions.length === 0 && (
+          {filteredOptions.length === 0 ? (
             <CommandEmpty>{emptyMessage}</CommandEmpty>
+          ) : (
+            <CommandGroup className="max-h-[300px] overflow-y-auto">
+              {filteredOptions.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  onSelect={handleSelect}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === option.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
           )}
-          <CommandGroup className="max-h-[300px] overflow-y-auto">
-            {filteredOptions.map((option) => (
-              <CommandItem
-                key={option.value}
-                value={option.value}
-                onSelect={(currentValue) => {
-                  // Handle value selection
-                  onValueChange(currentValue === value ? "all" : currentValue);
-                  
-                  // Close the popover and reset search
-                  setOpen(false);
-                  setSearchQuery("");
-                }}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === option.value ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {option.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
         </Command>
       </PopoverContent>
     </Popover>
