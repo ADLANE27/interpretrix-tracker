@@ -65,8 +65,31 @@ export const LANGUAGE_MAP = {
   ko: "한국어"
 };
 
-// Standardized language list for mentions and iterations (array format)
-export const LANGUAGES = Object.values(LANGUAGE_MAP);
+// Liste complète des langues (version complète restaurée)
+export const LANGUAGES = [
+  "Afar", "Abkhaze", "Avestique", "Afrikaans", "Akan", "Amharique", "Aragonais", "Arabe", "Araméen", "Assamais", 
+  "Asturien", "Avarique", "Aymara", "Azéri", "Bachkir", "Biélorusse", "Bulgare", "Bihari", "Bichelamar", "Bambara", 
+  "Bengali", "Tibétain", "Breton", "Bosnien", "Catalan", "Tchétchène", "Chamorro", "Corse", "Cri", "Tchèque", 
+  "Vieux-slave", "Tchouvache", "Gallois", "Danois", "Allemand", "Maldivien", "Dzongkha", "Ewe", "Grec", "Anglais", 
+  "Espéranto", "Espagnol", "Estonien", "Basque", "Persan", "Peul", "Finnois", "Fidjien", "Féroïen", "Français", 
+  "Frison", "Irlandais", "Gaélique", "Galicien", "Guarani", "Gujarati", "Mannois", "Haoussa", "Hébreu", "Hindi", 
+  "Hiri Motu", "Croate", "Haïtien", "Hongrois", "Arménien", "Hérèro", "Interlingua", "Indonésien", "Occidental", 
+  "Igbo", "Yi", "Inupiaq", "Ido", "Islandais", "Italien", "Inuktitut", "Japonais", "Javanais", "Géorgien", 
+  "Kongo", "Kikuyu", "Kuanyama", "Kazakh", "Groenlandais", "Khmer", "Kannada", "Coréen", "Kanouri", "Cachemiri", 
+  "Kurde", "Kom", "Cornique", "Kirghize", "Latin", "Luxembourgeois", "Ganda", "Limbourgeois", "Lingala", "Lao", 
+  "Lituanien", "Louba", "Letton", "Malgache", "Marshallais", "Maori", "Macédonien", "Malayalam", "Mongol", 
+  "Moldave", "Marathe", "Malais", "Maltais", "Birman", "Nauru", "Norvégien bokmål", "Ndébélé", "Népalais", 
+  "Ndonga", "Néerlandais", "Norvégien nynorsk", "Norvégien", "Sotho du Sud", "Occitan", "Ojibwé", "Oromo", 
+  "Oriya", "Ossète", "Pendjabi", "Pali", "Polonais", "Pachto", "Portugais", "Quechua", "Romanche", "Kirundi", 
+  "Roumain", "Russe", "Kinyarwanda", "Sanskrit", "Sarde", "Sindhi", "Sami", "Sango", "Singhalais", "Slovaque", 
+  "Slovène", "Samoan", "Shona", "Somali", "Albanais", "Serbe", "Swati", "Sotho", "Soundanais", "Suédois", "Swahili", 
+  "Tamoul", "Télougou", "Tadjik", "Thaï", "Tigrinya", "Turkmène", "Tagalog", "Tswana", "Tongien", "Turc", "Tsonga", 
+  "Tatar", "Twi", "Tahitien", "Ouïghour", "Ukrainien", "Ourdou", "Ouzbek", "Venda", "Vietnamien", "Volapük", 
+  "Wallon", "Wolof", "Xhosa", "Yiddish", "Yorouba", "Zhuang", "Zoulou", "Chinois (Mandarin)", "Chinois (Cantonais)",
+  "Langue des signes internationale", "Langue des signes française", "Langue des signes américaine", 
+  "Lingala", "Romani", "Pachto", "Créole haïtien", "Créole mauricien", "Créole réunionnais",
+  "Hindi (Ourdou)", "Finnois (Suédois)", "Berbère", "Papiamento", "Comorien", "Amazigh"
+];
 
 export const TRANSLATIONS = {
   download: {

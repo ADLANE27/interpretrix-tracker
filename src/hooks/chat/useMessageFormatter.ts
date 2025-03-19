@@ -12,15 +12,8 @@ export const useMessageFormatter = () => {
     formattedContent = formattedContent.replace(languageMentionPattern, (match, mentionedLanguage) => {
       const cleanedMention = mentionedLanguage.trim();
       
-      // Only standardize if we have a very close match (at least 80% similar)
-      const matchedLanguage = LANGUAGES.find(lang => {
-        const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const normalizedMention = cleanedMention.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        
-        return normalizedLang === normalizedMention || 
-               normalizedLang.startsWith(normalizedMention) ||
-               normalizedMention.startsWith(normalizedLang);
-      });
+      // Only standardize if we have a very close match using a more flexible comparison
+      const matchedLanguage = findBestLanguageMatch(cleanedMention);
       
       if (matchedLanguage) {
         return `@${matchedLanguage}`;
@@ -31,6 +24,42 @@ export const useMessageFormatter = () => {
     });
     
     return formattedContent;
+  };
+
+  // Helper function to find the best matching language with improved matching
+  const findBestLanguageMatch = (query: string): string | null => {
+    if (!query || query.length < 2) return null;
+    
+    // Normalize the query for comparison
+    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // First try for exact match
+    const exactMatch = LANGUAGES.find(lang => {
+      const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return normalizedLang === normalizedQuery;
+    });
+    
+    if (exactMatch) return exactMatch;
+    
+    // Then try for a starts-with match
+    const startsWithMatch = LANGUAGES.find(lang => {
+      const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return normalizedLang.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedLang);
+    });
+    
+    if (startsWithMatch) return startsWithMatch;
+    
+    // Finally try for a contains match with minimum length to avoid false positives
+    if (normalizedQuery.length >= 3) {
+      const containsMatch = LANGUAGES.find(lang => {
+        const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return normalizedLang.includes(normalizedQuery);
+      });
+      
+      if (containsMatch) return containsMatch;
+    }
+    
+    return null;
   };
 
   return {
