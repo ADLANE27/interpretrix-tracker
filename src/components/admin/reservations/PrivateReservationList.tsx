@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { PrivateReservation } from "@/types/privateReservation";
+import { PrivateReservation, CompanyType } from "@/types/privateReservation";
 import { ReservationEditDialog } from "./ReservationEditDialog";
 import { formatDateTimeDisplay, formatTimeString } from "@/utils/dateTimeUtils";
 import { Clock, Languages, User, Building } from "lucide-react";
@@ -60,7 +59,7 @@ export const PrivateReservationList = ({
       }
 
       if (companyFilter !== 'all') {
-        query = query.eq('company', companyFilter);
+        query = query.eq('company', companyFilter as CompanyType);
       }
 
       if (startDateFilter) {
