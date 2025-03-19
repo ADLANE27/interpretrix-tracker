@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -34,22 +33,17 @@ export const PrivateReservationForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Normalize language strings for consistent comparison
   const normalizeLanguageString = (str: string): string => {
     return str.toLowerCase().replace(/\s+/g, '').replace(/[→⟶\->/]+/g, '→');
   };
 
-  // Check if two language pairs match, regardless of formatting
   const doesLanguagePairMatch = (interpreterLang: string, sourceLang: string, targetLang: string): boolean => {
-    // Normalize all strings for comparison
     const normalizedInterpreterLang = normalizeLanguageString(interpreterLang);
     const normalizedSourceLang = normalizeLanguageString(sourceLang);
     const normalizedTargetLang = normalizeLanguageString(targetLang);
     
-    // Direct match with arrow notation
     const directMatch = normalizedInterpreterLang === `${normalizedSourceLang}→${normalizedTargetLang}`;
     
-    // Check if the interpreter language includes both source and target
     const includesMatch = normalizedInterpreterLang.includes(normalizedSourceLang) && 
                           normalizedInterpreterLang.includes(normalizedTargetLang);
     
@@ -62,7 +56,6 @@ export const PrivateReservationForm = () => {
     try {
       console.log('[PrivateReservationForm] Recherche des interprètes pour les langues:', { sourceLang, targetLang });
       
-      // Fetch all interpreters regardless of status
       const { data: interpreters, error } = await supabase
         .from("interpreter_profiles")
         .select(`
@@ -79,14 +72,11 @@ export const PrivateReservationForm = () => {
         throw error;
       }
 
-      // Log all interpreters and their languages for debugging
       interpreters?.forEach(interpreter => {
         console.log(`[PrivateReservationForm] Interprète ${interpreter.first_name} ${interpreter.last_name} languages:`, interpreter.languages);
       });
 
-      // Filter interpreters with more flexible language matching
       const filteredInterpreters = interpreters?.filter(interpreter => {
-        // Check each language pair the interpreter supports
         return interpreter.languages.some(lang => {
           const matches = doesLanguagePairMatch(lang, sourceLang, targetLang);
           console.log(`[PrivateReservationForm] Vérification de ${interpreter.first_name} ${interpreter.last_name}:`, {
@@ -231,24 +221,6 @@ export const PrivateReservationForm = () => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="company">Entreprise</Label>
-            <Select 
-              value={company} 
-              onValueChange={(value: CompanyType) => {
-                setCompany(value);
-              }}
-            >
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Sélectionner une entreprise" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={COMPANY_TYPES.AFTRAD}>AFTrad</SelectItem>
-                <SelectItem value={COMPANY_TYPES.AFTCOM}>AFTcom</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="start_time">Date et heure de début</Label>
             <Input
               type="datetime-local"
@@ -270,6 +242,24 @@ export const PrivateReservationForm = () => {
               min={startTime}
               className="bg-background"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company">Entreprise</Label>
+            <Select 
+              value={company} 
+              onValueChange={(value: CompanyType) => {
+                setCompany(value);
+              }}
+            >
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Sélectionner une entreprise" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={COMPANY_TYPES.AFTRAD}>AFTrad</SelectItem>
+                <SelectItem value={COMPANY_TYPES.AFTCOM}>AFTcom</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
