@@ -8,7 +8,7 @@ export const WelcomeContent = () => {
     <div className="relative z-10 px-4 py-16 sm:py-24 flex flex-col items-center">
       <div className="mb-6 bg-white p-2 rounded-lg">
         <img 
-          src="/lovable-uploads/8c2eb9e9-dd86-4595-a223-f02a04957846.png" 
+          src="/lovable-uploads/11def498-ac10-463b-96fd-1a8fe4db9127.png" 
           alt="Interpretix Logo" 
           className="h-16 sm:h-20 w-auto"
         />
