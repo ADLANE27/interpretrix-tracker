@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,11 +38,36 @@ export function LanguageCombobox({
   allLanguagesLabel = "Toutes les langues",
 }: LanguageComboboxProps) {
   const [open, setOpen] = useState(false);
-  const sortedLanguages = [...languages].sort((a, b) => a.localeCompare(b));
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Sort languages alphabetically once
+  const sortedLanguages = useMemo(() => 
+    [...languages].sort((a, b) => a.localeCompare(b)),
+  [languages]);
+  
+  // Filter languages based on search query
+  const filteredLanguages = useMemo(() => {
+    if (!searchQuery) return sortedLanguages;
+    return sortedLanguages.filter(lang => 
+      lang.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [sortedLanguages, searchQuery]);
   
   // When displaying the selected value, handle the "all" special case
   const displayValue = value === "all" ? allLanguagesLabel : 
     sortedLanguages.find(lang => lang === value) || placeholder;
+  
+  // Handle search input
+  const handleSearchChange = useCallback((input: string) => {
+    setSearchQuery(input);
+  }, []);
+  
+  // Handle language selection
+  const handleSelectLanguage = useCallback((selectedValue: string) => {
+    onChange(selectedValue);
+    setOpen(false);
+    setSearchQuery("");
+  }, [onChange]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,19 +82,21 @@ export function LanguageCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
-        <Command>
-          <CommandInput placeholder={`Rechercher une langue...`} className="h-9" />
+      <PopoverContent className="w-full p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput 
+            placeholder={`Rechercher une langue...`} 
+            className="h-9"
+            value={searchQuery}
+            onValueChange={handleSearchChange}
+          />
           <CommandEmpty>{emptyMessage}</CommandEmpty>
           <CommandGroup className="max-h-[300px] overflow-y-auto">
             {allLanguagesOption && (
               <CommandItem
                 key="all-languages"
                 value="all"
-                onSelect={() => {
-                  onChange("all");
-                  setOpen(false);
-                }}
+                onSelect={() => handleSelectLanguage("all")}
               >
                 <Check
                   className={cn(
@@ -80,14 +107,11 @@ export function LanguageCombobox({
                 {allLanguagesLabel}
               </CommandItem>
             )}
-            {sortedLanguages.map((language) => (
+            {filteredLanguages.map((language) => (
               <CommandItem
                 key={language}
                 value={language}
-                onSelect={() => {
-                  onChange(language);
-                  setOpen(false);
-                }}
+                onSelect={() => handleSelectLanguage(language)}
               >
                 <Check
                   className={cn(
