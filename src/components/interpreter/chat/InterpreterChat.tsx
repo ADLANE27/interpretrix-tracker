@@ -230,12 +230,18 @@ export const InterpreterChat = ({
   }, [isFullScreen, onToggleFullScreen]);
 
   const handleReactToMessage = async (messageId: string, emoji: string) => {
+    if (!messageId || !emoji || !currentUserId) {
+      toast({
+        title: "Erreur",
+        description: "Informations manquantes pour la réaction",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      console.log('[InterpreterChat] Sending reaction:', { messageId, emoji });
       await reactToMessage(messageId, emoji);
-      console.log('[InterpreterChat] Reaction sent successfully');
     } catch (error) {
-      console.error('[InterpreterChat] Error adding reaction:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter la réaction",

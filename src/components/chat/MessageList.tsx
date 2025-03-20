@@ -157,7 +157,7 @@ export const MessageList: React.FC<MessageListProps> = ({
           <div className={`${message.sender.id === currentUserId ? 'justify-end' : 'justify-start'} flex`}>
             <MessageReaction 
               messageId={message.id}
-              reactions={message.reactions}
+              reactions={message.reactions || {}}
               currentUserId={currentUserId}
               onReactToMessage={onReactToMessage}
             />

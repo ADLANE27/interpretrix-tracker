@@ -2,7 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { checkConnection } from './utils/fileUtils';
-import type { Json } from '@/integrations/supabase/types';
 
 export const useReactions = (
   channelId: string,
@@ -22,26 +21,21 @@ export const useReactions = (
     }
 
     if (!messageId || !emoji || !currentUserId) {
-      console.error('[Chat] Invalid reaction parameters:', { messageId, emoji, currentUserId });
+      console.error('Invalid reaction parameters:', { messageId, emoji, currentUserId });
       return;
     }
 
     try {
-      console.log('[Chat] Adding/toggling reaction:', { messageId, emoji, userId: currentUserId });
-      
-      // Récupérer d'abord le message pour obtenir les réactions actuelles
+      // Get the current reactions
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
         .eq('id', messageId)
         .single();
 
-      if (fetchError) {
-        console.error('[Chat] Error fetching message for reaction:', fetchError);
-        throw new Error("Impossible de récupérer le message");
-      }
+      if (fetchError) throw new Error("Impossible de récupérer le message");
 
-      // Initialiser ou parser les réactions actuelles
+      // Initialize or parse reactions
       let currentReactions: Record<string, string[]> = {};
       
       if (message?.reactions) {
@@ -49,7 +43,6 @@ export const useReactions = (
           try {
             currentReactions = JSON.parse(message.reactions);
           } catch (e) {
-            console.error('[Chat] Error parsing reactions string:', e);
             currentReactions = {};
           }
         } else if (typeof message.reactions === 'object') {
@@ -57,48 +50,37 @@ export const useReactions = (
         }
       }
 
-      console.log('[Chat] Current reactions before update:', currentReactions);
-
-      // Vérifier si l'utilisateur a déjà ajouté cette réaction
-      const hasReacted = currentReactions[emoji]?.includes(currentUserId);
+      // Check if user already reacted with this emoji
+      const userReactionIndex = currentReactions[emoji]?.findIndex(id => id === currentUserId) ?? -1;
       
-      // Mettre à jour les réactions
-      if (hasReacted) {
-        // Retirer la réaction
-        currentReactions[emoji] = (currentReactions[emoji] || []).filter(id => id !== currentUserId);
-        // Supprimer l'entrée si plus de réactions
+      // Toggle the reaction
+      if (userReactionIndex >= 0) {
+        // Remove the reaction
+        currentReactions[emoji] = currentReactions[emoji].filter(id => id !== currentUserId);
+        // Remove empty arrays
         if (currentReactions[emoji].length === 0) {
           delete currentReactions[emoji];
         }
-        console.log('[Chat] Removing reaction:', { emoji, userId: currentUserId });
       } else {
-        // Ajouter la réaction
+        // Add the reaction
         if (!currentReactions[emoji]) {
           currentReactions[emoji] = [];
         }
         currentReactions[emoji].push(currentUserId);
-        console.log('[Chat] Adding reaction:', { emoji, userId: currentUserId });
       }
 
-      console.log('[Chat] Updated reactions to save:', currentReactions);
-
-      // Mettre à jour le message dans la base de données
+      // Update the message in the database - always save as object, not JSON string
       const { error: updateError } = await supabase
         .from('chat_messages')
-        .update({ reactions: currentReactions as Json })
+        .update({ reactions: currentReactions })
         .eq('id', messageId);
 
-      if (updateError) {
-        console.error('[Chat] Error updating message reactions:', updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      // Mettre à jour l'UI
+      // Update the UI with fresh data
       await fetchMessages();
-      console.log('[Chat] Reaction saved successfully, UI refresh requested');
-
     } catch (error) {
-      console.error('[Chat] Error handling reaction:', error);
+      console.error('Error handling reaction:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error 
@@ -106,6 +88,7 @@ export const useReactions = (
           : "Impossible d'ajouter la réaction",
         variant: "destructive",
       });
+      throw error;
     }
   };
 
