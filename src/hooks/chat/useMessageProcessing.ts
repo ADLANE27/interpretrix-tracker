@@ -17,6 +17,7 @@ export const useMessageProcessing = (channelId: string) => {
   const updateCounter = useRef<number>(0);
   const updateScheduled = useRef<boolean>(false);
   const pendingMessageUpdates = useRef<Set<string>>(new Set());
+  const messagesVersion = useRef<number>(0);
 
   // Check user role
   const checkUserRole = useCallback(async () => {
@@ -30,6 +31,8 @@ export const useMessageProcessing = (channelId: string) => {
   const updateMessagesArray = useCallback(() => {
     updateCounter.current += 1;
     const currentUpdateId = updateCounter.current;
+    messagesVersion.current += 1;
+    const currentVersion = messagesVersion.current;
     
     if (updateScheduled.current) {
       // Already scheduled an update, just mark we have more pending updates
@@ -40,8 +43,20 @@ export const useMessageProcessing = (channelId: string) => {
     
     // Use requestAnimationFrame for smoother UI updates
     requestAnimationFrame(() => {
+      // If the version has changed during the animation frame, don't update
+      if (currentVersion !== messagesVersion.current) {
+        updateScheduled.current = false;
+        return;
+      }
+      
       updateScheduled.current = false;
       
+      // Don't update if there are no messages and we've already set empty array
+      if (messagesMap.current.size === 0 && messages.length === 0) {
+        console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: No messages, skipping update`);
+        return;
+      }
+
       if (messagesMap.current.size === 0) {
         console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Setting empty messages array`);
         setMessages([]);
@@ -51,10 +66,17 @@ export const useMessageProcessing = (channelId: string) => {
       const updatedMessages = Array.from(messagesMap.current.values())
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       
+      // Don't update if nothing changed (prevents re-renders)
+      if (messages.length === updatedMessages.length && 
+          messages.every((m, i) => m.id === updatedMessages[i].id)) {
+        console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Messages unchanged, skipping update`);
+        return;
+      }
+      
       console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
       setMessages(updatedMessages);
     });
-  }, [userRole]);
+  }, [messages, userRole]);
 
   // Process a single message with improved error handling
   const processMessage = useCallback(async (messageData: MessageData, channelType: ChatChannelType) => {
@@ -204,6 +226,7 @@ export const useMessageProcessing = (channelId: string) => {
     updateMessagesArray,
     processMessage,
     checkUserRole,
-    pendingMessageUpdates
+    pendingMessageUpdates,
+    messagesVersion
   };
 };

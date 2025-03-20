@@ -3,6 +3,7 @@ import { useCallback, useState, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useMessageProcessing } from './useMessageProcessing';
 import { RealtimeMessageHandler } from './types/chatHooks';
+import { toast } from "@/hooks/use-toast";
 
 export const useRealtimeMessages = (
   channelId: string,
@@ -51,6 +52,7 @@ export const useRealtimeMessages = (
         }
         
         try {
+          // Get channel type for proper processing
           const { data: channelData } = await supabase
             .from('chat_channels')
             .select('channel_type')
@@ -63,24 +65,25 @@ export const useRealtimeMessages = (
           // Update the messages array
           updateMessagesArray();
           
-          console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message added/updated:`, messageData.id, 'For channel:', channelId);
+          console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
           
-          const messageTimestamp = new Date(messageData.created_at);
           setLastFetchTime(new Date());
         } catch (error) {
           console.error(`[useRealtimeMessages ${userRole.current}] Error processing realtime message:`, error);
-          // If we fail to process a realtime message, trigger a full refresh
-          // This ensures we don't miss messages due to processing errors
-          setTimeout(() => forceFetch(), 500);
+          // Do not trigger a full refresh immediately to avoid race conditions
+          // Instead, schedule a refresh after a short delay
+          setTimeout(() => forceFetch(), 1000);
         }
       } 
       else if (payload.eventType === 'DELETE') {
         const deletedId = payload.old.id;
-        messagesMap.current.delete(deletedId);
-        
-        // Update the messages array
-        updateMessagesArray();
-        console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message deleted:`, deletedId);
+        if (messagesMap.current.has(deletedId)) {
+          messagesMap.current.delete(deletedId);
+          
+          // Update the messages array
+          updateMessagesArray();
+          console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message deleted:`, deletedId);
+        }
       }
     } catch (error) {
       console.error(`[useRealtimeMessages ${userRole.current}] Error handling realtime message:`, error);

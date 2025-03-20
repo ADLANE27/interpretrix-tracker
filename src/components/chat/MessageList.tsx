@@ -31,11 +31,21 @@ export const MessageList: React.FC<MessageListProps> = ({
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  // Track if we've ever had messages to prevent flickering of empty state
+  const hadMessagesRef = useRef<boolean>(false); 
 
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
   });
+
+  // If we have messages, remember that forever to prevent flickering
+  useEffect(() => {
+    if (messages.length > 0) {
+      hadMessagesRef.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [messages.length]);
 
   const memoizedOrganizeThreads = useCallback(() => {
     return organizeMessageThreads(messages);
@@ -44,14 +54,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { rootMessages, messageThreads } = memoizedOrganizeThreads();
 
   useEffect(() => {
-    if (messages.length > 0 && isInitialLoad) {
-      setIsInitialLoad(false);
-    }
-  }, [messages.length, isInitialLoad]);
-
-  useEffect(() => {
     if (!messageContainerRef.current) return;
     
+    // Save current scroll position
     scrollPositionRef.current = messageContainerRef.current.scrollTop;
     
     const isNewMessage = messages.length > lastMessageCountRef.current;
@@ -68,7 +73,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages]);
 
-  // This effect forces a scroll to bottom when messages are first loaded
+  // Force scroll to bottom when messages are first loaded
   useEffect(() => {
     if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current) {
       console.log(`[MessageList] Scrolling to bottom due to first message load`);
@@ -76,7 +81,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages.length > 0]);
 
-  if (messages.length === 0) {
+  // Don't show empty state if we're still in initial load or if we've ever had messages
+  if (messages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
            ref={messageContainerRef}>
