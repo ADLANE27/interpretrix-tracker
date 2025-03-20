@@ -138,12 +138,28 @@ export const useFetchMessages = (
         messagesMap.current.clear();
       }
 
-      const { data: messages, error } = await supabase
+      // Calculate date from 5 days ago for initial load
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      const fiveDaysAgoStr = fiveDaysAgo.toISOString();
+
+      // Modify the query to include the date filter for initial loads
+      let query = supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('created_at', { ascending: false });
+        
+      // Only apply date filter on initial load, not when loading more
+      if (isInitialFetch) {
+        query = query.gte('created_at', fiveDaysAgoStr);
+        console.log(`[useFetchMessages] Limiting initial load to messages from ${fiveDaysAgoStr}`);
+      }
+      
+      // Apply limit
+      query = query.limit(limit);
+
+      const { data: messages, error } = await query;
 
       if (error) {
         console.error('[useFetchMessages] Error fetching messages:', error);

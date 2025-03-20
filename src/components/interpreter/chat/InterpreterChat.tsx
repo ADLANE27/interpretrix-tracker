@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -13,6 +14,7 @@ import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { Menu, ArrowLeft, Expand, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
+import { StatusManager } from '../StatusManager';
 
 interface InterpreterChatProps {
   channelId: string;
@@ -281,18 +283,21 @@ export const InterpreterChat = ({
           <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
           
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={onToggleFullScreen}
-              title={isFullScreen ? "Quitter le plein écran (Esc)" : "Plein écran"}
-            >
-              {isFullScreen ? (
-                <Minimize className="h-5 w-5" />
-              ) : (
-                <Expand className="h-5 w-5" />
-              )}
-            </Button>
+            {!isMobile && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onToggleFullScreen}
+                title={isFullScreen ? "Quitter le plein écran (Esc)" : "Plein écran"}
+                className="hidden md:flex"
+              >
+                {isFullScreen ? (
+                  <Minimize className="h-5 w-5" />
+                ) : (
+                  <Expand className="h-5 w-5" />
+                )}
+              </Button>
+            )}
             
             <ChannelMembersPopover 
               channelId={channelId} 
@@ -303,6 +308,14 @@ export const InterpreterChat = ({
           </div>
         </div>
         
+        {channel?.channel_type === 'group' && profile && onStatusChange && (
+          <div className="pb-2">
+            <StatusManager
+              selectedStatus={profile.status}
+              onStatusChange={onStatusChange}
+            />
+          </div>
+        )}
       </div>
 
       <div 
