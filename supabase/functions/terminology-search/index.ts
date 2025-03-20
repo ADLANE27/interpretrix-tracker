@@ -72,7 +72,7 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator specialized in terminology. Translate precisely the following term from ${sourceLanguage} to ${targetLanguage}. Provide only the direct translation without any explanation, commentary, or additional text. If it's a specific term or jargon, provide the exact equivalent in the target language.`
+              content: `You are a professional translator specialized in terminology. Your task is to provide an exact, precise, and direct translation of a term from ${sourceLanguage} to ${targetLanguage}. Respond ONLY with the translation itself - no explanations, commentary, or additional text. Provide the exact equivalent term in the target language, nothing more. If multiple translations are possible, provide only the most commonly used equivalent.`
             },
             {
               role: 'user',
@@ -80,7 +80,7 @@ serve(async (req) => {
             }
           ],
           temperature: 0.2,
-          max_tokens: 300,
+          max_tokens: 100,
         }),
         signal: controller.signal
       });
@@ -154,6 +154,20 @@ serve(async (req) => {
       }
 
       const result = data.choices[0].message.content.trim();
+      
+      // Check if result is empty or just whitespace
+      if (!result || !result.trim()) {
+        console.error(`Request ID: ${requestId} - Empty result returned from OpenRouter API`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'No translation result received. Please try again.' 
+          }),
+          { 
+            status: 422, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
 
       // Create Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL');

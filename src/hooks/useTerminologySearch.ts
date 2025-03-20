@@ -59,14 +59,28 @@ export const useTerminologySearch = (userId?: string) => {
   const searchMutation = useMutation({
     mutationFn: async (searchParams: TermSearchRequest): Promise<TermSearchResponse> => {
       setIsSearching(true);
+      console.log("Starting terminology search:", searchParams);
       
       try {
         const response = await supabase.functions.invoke('terminology-search', {
           body: searchParams,
         });
 
+        console.log("Terminology search response:", response);
+
         if (response.error) {
-          throw new Error(response.error.message || "Failed to search terminology");
+          console.error("Terminology search error:", response.error);
+          throw new Error(response.error.message || "Échec de la recherche terminologique");
+        }
+
+        if (!response.data) {
+          console.error("Terminology search returned no data");
+          throw new Error("Aucun résultat reçu du service de traduction");
+        }
+
+        if (response.data.error) {
+          console.error("Terminology search returned error in data:", response.data.error);
+          throw new Error(response.data.error);
         }
 
         return response.data as TermSearchResponse;
@@ -74,13 +88,22 @@ export const useTerminologySearch = (userId?: string) => {
         setIsSearching(false);
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Search successful:", data);
       queryClient.invalidateQueries({ queryKey: ['terminology-history', userId] });
+      
+      // Show success toast
+      toast({
+        title: "Recherche réussie",
+        description: "La traduction a été trouvée",
+        variant: "default"
+      });
     },
     onError: (error: Error) => {
+      console.error("Search error in onError handler:", error);
       toast({
         title: "Erreur de recherche",
-        description: error.message,
+        description: error.message || "Une erreur s'est produite lors de la recherche",
         variant: "destructive"
       });
     }

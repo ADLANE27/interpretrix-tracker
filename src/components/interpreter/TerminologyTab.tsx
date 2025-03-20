@@ -28,6 +28,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
   const [targetLanguage, setTargetLanguage] = useState<string>("Anglais");
   const [searchResult, setSearchResult] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("search");
+  const [searchError, setSearchError] = useState<string | null>(null);
   
   const { toast } = useToast();
   
@@ -52,16 +53,36 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       return;
     }
 
+    // Clear previous results and errors
+    setSearchResult("");
+    setSearchError(null);
+    
     try {
+      console.log("Initiating search for term:", term.trim());
       const result = await searchTerm({
         term: term.trim(),
         sourceLanguage,
         targetLanguage,
       });
-      setSearchResult(result.result);
+      
+      console.log("Search result received:", result);
+      
+      if (result && result.result) {
+        setSearchResult(result.result);
+        setSearchError(null);
+      } else {
+        setSearchError("Aucun résultat de traduction reçu");
+        toast({
+          title: "Problème de recherche",
+          description: "La recherche n'a pas retourné de résultat",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error("Search error:", error);
-      // Error handling is done in the hook
+      console.error("Search error in component:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur de recherche inconnue";
+      setSearchError(errorMessage);
+      // Error toast is handled in the hook
     }
   };
 
@@ -116,6 +137,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     setSourceLanguage(item.source_language);
     setTargetLanguage(item.target_language);
     setSearchResult(item.result);
+    setSearchError(null);
     setActiveTab("search");
   };
 
@@ -226,7 +248,18 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
             </Button>
           </div>
 
-          {searchResult && (
+          {searchError && (
+            <Card className="mb-4 border-red-200">
+              <CardContent className="p-4">
+                <div className="text-red-500">
+                  <p className="font-medium">Erreur de recherche:</p>
+                  <p>{searchError}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {searchResult && !searchError && (
             <Card className="mb-4">
               <CardContent className="p-6">
                 <div className="flex justify-between mb-2">
