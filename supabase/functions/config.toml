@@ -16,3 +16,5 @@ verify_jwt = true
 [functions.send-mission-notification]
 verify_jwt = true
 
+[functions.terminology-search]
+verify_jwt = false
