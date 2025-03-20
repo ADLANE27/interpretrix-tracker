@@ -10,19 +10,31 @@ export const useMessageScroll = (
   scrollToBottomFlag: React.MutableRefObject<boolean>,
   messageContainerRef: React.MutableRefObject<HTMLDivElement | null>
 ) => {
-  // Force scroll to bottom with high priority using useLayoutEffect
+  // Utilisation de useLayoutEffect pour garantir que le défilement se produit avant le rendu visuel
   useLayoutEffect(() => {
-    if (!messageContainerRef.current) return;
+    if (!messageContainerRef.current || messages.length === 0) return;
     
     const isNewMessageBatch = messages.length > lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length;
     
-    // Always scroll to bottom on first load when messages arrive
-    if ((messages.length > 0 && scrollToBottomFlag.current) || isNewMessageBatch) {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
-        scrollToBottomFlag.current = false;
-      }
+    // Déterminer si nous devons défiler vers le bas
+    const shouldScrollToBottom = scrollToBottomFlag.current || isNewMessageBatch || isInitialLoad;
+    
+    if (shouldScrollToBottom && messagesEndRef.current) {
+      // Utiliser requestAnimationFrame pour assurer que le défilement se produit après le rendu
+      requestAnimationFrame(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ 
+            behavior: isInitialLoad ? 'auto' : 'smooth',
+            block: 'end'
+          });
+          
+          // Réinitialiser le flag après le défilement
+          if (scrollToBottomFlag.current) {
+            scrollToBottomFlag.current = false;
+          }
+        }
+      });
     }
   }, [messages, isInitialLoad, messagesEndRef, lastMessageCountRef, scrollToBottomFlag, messageContainerRef]);
 };

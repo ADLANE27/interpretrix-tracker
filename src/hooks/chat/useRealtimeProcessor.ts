@@ -16,6 +16,7 @@ export const useRealtimeProcessor = (
     getNextFromQueue: () => any | null,
     processingTimeout: React.MutableRefObject<NodeJS.Timeout | null>
   ) => {
+    // Éviter les traitements concurrents
     if (processingMessage.current || isProcessingEvent.current) {
       return false;
     }
@@ -38,6 +39,7 @@ export const useRealtimeProcessor = (
       }
       
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        // Éviter les doublons
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useRealtimeProcessor ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
@@ -46,15 +48,23 @@ export const useRealtimeProcessor = (
         }
         
         try {
+          // Récupérer le type de canal
           const { data: channelData } = await supabase
             .from('chat_channels')
             .select('channel_type')
             .eq('id', channelId)
             .single();
           
+          // Traiter le message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
+          // Mettre à jour l'interface utilisateur après le traitement
           updateMessagesArray();
+          
+          // Mettre à jour une seconde fois après un court délai pour assurer la stabilité
+          setTimeout(() => {
+            updateMessagesArray();
+          }, 300);
           
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
         } catch (error) {
@@ -67,7 +77,12 @@ export const useRealtimeProcessor = (
         if (messagesMap.current.has(deletedId)) {
           messagesMap.current.delete(deletedId);
           
+          // Mises à jour multiples pour stabilité
           updateMessagesArray();
+          setTimeout(() => {
+            updateMessagesArray();
+          }, 100);
+          
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message deleted:`, deletedId);
         }
       }
@@ -80,13 +95,14 @@ export const useRealtimeProcessor = (
       processingMessage.current = false;
       isProcessingEvent.current = false;
       
-      // If there are more items in the queue, schedule processing the next one
+      // S'il y a plus d'éléments dans la file d'attente, planifier le traitement du suivant
       if (!isProcessingEvent.current && !processingMessage.current) {
         const nextItem = getNextFromQueue();
         if (nextItem) {
+          // Délai augmenté pour plus de stabilité
           processingTimeout.current = setTimeout(() => {
             processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
-          }, 50);
+          }, 100);
         }
       }
     }

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef } from 'react';
 import { Message } from '@/types/messaging';
 import { normalizeTimestampForSorting } from '@/utils/dateTimeUtils';
@@ -9,32 +10,31 @@ export const useMessageMap = () => {
   const updateScheduled = useRef<boolean>(false);
   const messagesVersion = useRef<number>(0);
   const lastSortedMessages = useRef<Message[]>([]);
+  const batchUpdateTimer = useRef<NodeJS.Timeout | null>(null);
   
-  // Update messages array with debouncing to prevent too many state updates
+  // Mise à jour du tableau de messages avec limitation du taux pour éviter les rendus trop fréquents
   const updateMessagesArray = useCallback(() => {
     updateCounter.current += 1;
     const currentUpdateId = updateCounter.current;
     messagesVersion.current += 1;
-    const currentVersion = messagesVersion.current;
     
+    // Éviter les mises à jour trop fréquentes
     if (updateScheduled.current) {
-      // Already scheduled an update, just mark we have more pending updates
       return;
     }
     
     updateScheduled.current = true;
     
-    // Use requestAnimationFrame for smoother UI updates
-    requestAnimationFrame(() => {
-      // If the version has changed during the animation frame, don't update
-      if (currentVersion !== messagesVersion.current) {
-        updateScheduled.current = false;
-        return;
-      }
-      
+    // Utiliser setTimeout au lieu de requestAnimationFrame pour plus de stabilité
+    if (batchUpdateTimer.current) {
+      clearTimeout(batchUpdateTimer.current);
+    }
+    
+    batchUpdateTimer.current = setTimeout(() => {
       updateScheduled.current = false;
+      batchUpdateTimer.current = null;
       
-      // Don't update if there are no messages and we've already set empty array
+      // Ne pas mettre à jour s'il n'y a pas de messages et que nous avons déjà défini un tableau vide
       if (messagesMap.current.size === 0 && messages.length === 0) {
         console.log(`[useMessageMap] Update ${currentUpdateId}: No messages, skipping update`);
         return;
@@ -47,7 +47,7 @@ export const useMessageMap = () => {
         return;
       }
 
-      // Sort messages by their normalized timestamp for consistency
+      // Trier les messages par leur horodatage normalisé pour plus de cohérence
       const updatedMessages = Array.from(messagesMap.current.values())
         .sort((a, b) => {
           const timeA = normalizeTimestampForSorting(a.timestamp);
@@ -55,7 +55,7 @@ export const useMessageMap = () => {
           return timeA - timeB;
         });
       
-      // Keep a stable reference to avoid unnecessary re-renders
+      // Vérifier si les messages ont réellement changé pour éviter les rendus inutiles
       const messagesChanged = 
         updatedMessages.length !== lastSortedMessages.current.length ||
         updatedMessages.some((msg, idx) => {
@@ -63,16 +63,16 @@ export const useMessageMap = () => {
           return !prevMsg || msg.id !== prevMsg.id;
         });
       
-      // Don't update if nothing changed (prevents re-renders)
-      if (!messagesChanged) {
+      // Ne mettre à jour que si quelque chose a changé
+      if (messagesChanged) {
+        console.log(`[useMessageMap] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
+        lastSortedMessages.current = updatedMessages;
+        setMessages([...updatedMessages]); // Créer une nouvelle référence pour garantir le re-rendu
+      } else {
         console.log(`[useMessageMap] Update ${currentUpdateId}: Messages unchanged, skipping update`);
-        return;
       }
-      
-      console.log(`[useMessageMap] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
-      lastSortedMessages.current = updatedMessages;
-      setMessages(updatedMessages);
-    });
+    }, 100); // Délai plus long pour la stabilité
+    
   }, [messages]);
 
   return {

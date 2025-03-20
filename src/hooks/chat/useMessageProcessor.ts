@@ -6,7 +6,7 @@ import { ChatChannelType } from './types/chatHooks';
 import { normalizeTimestampForSorting } from '@/utils/dateTimeUtils';
 
 export const useMessageProcessor = (userRole: React.MutableRefObject<string>) => {
-  // Process a single message with improved error handling
+  // Traiter un seul message avec une meilleure gestion des erreurs
   const processMessage = useCallback(async (
     messageData: MessageData, 
     channelType: ChatChannelType,
@@ -15,19 +15,19 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
     updateMessagesArray: () => void
   ) => {
     try {
-      // Track this message ID as pending an update
+      // Suivre cet ID de message comme en attente d'une mise à jour
       pendingMessageUpdates.add(messageData.id);
       
-      // Check if message already exists in map
+      // Vérifier si le message existe déjà dans la carte
       if (messagesMap.has(messageData.id)) {
-        // Update existing message if needed
+        // Mettre à jour le message existant si nécessaire
         const existingMessage = messagesMap.get(messageData.id)!;
         
-        // Process reactions
+        // Traiter les réactions
         let messageReactions: Record<string, string[]> = {};
         
         if (messageData.reactions) {
-          // Handle reactions as string or object
+          // Gérer les réactions sous forme de chaîne ou d'objet
           if (typeof messageData.reactions === 'string') {
             try {
               messageReactions = JSON.parse(messageData.reactions);
@@ -40,7 +40,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           }
         }
         
-        // Process attachments - ensure they're properly formatted
+        // Traiter les pièces jointes - s'assurer qu'elles sont correctement formatées
         const attachments = messageData.attachments 
           ? messageData.attachments.map(attachment => {
               if (typeof attachment === 'object' && attachment !== null) {
@@ -55,13 +55,13 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
             }) 
           : existingMessage.attachments;
         
-        // Only update if something changed (reactions, etc.)
+        // Ne mettre à jour que si quelque chose a changé (réactions, etc.)
         const updatedMessage = {
           ...existingMessage,
           content: messageData.content || existingMessage.content,
           reactions: messageReactions,
           attachments,
-          // Ensure we keep the original timestamp for consistency
+          // S'assurer que nous gardons l'horodatage d'origine pour la cohérence
           timestamp: existingMessage.timestamp
         };
         
@@ -71,7 +71,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
         return;
       }
 
-      // Get sender details
+      // Obtenir les détails de l'expéditeur
       const { data: senderDetails, error: senderError } = await supabase
         .rpc('get_message_sender_details', {
           sender_id: messageData.sender_id,
@@ -89,11 +89,11 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
         return;
       }
 
-      // Process reactions
+      // Traiter les réactions
       let messageReactions: Record<string, string[]> = {};
       
       if (messageData.reactions) {
-        // Handle reactions as string or object
+        // Gérer les réactions sous forme de chaîne ou d'objet
         if (typeof messageData.reactions === 'string') {
           try {
             messageReactions = JSON.parse(messageData.reactions);
@@ -106,7 +106,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
         }
       }
 
-      // Process attachments with better error handling
+      // Traiter les pièces jointes avec une meilleure gestion des erreurs
       const attachments = messageData.attachments 
         ? messageData.attachments.map(attachment => {
             if (typeof attachment === 'object' && attachment !== null) {
@@ -121,10 +121,12 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           }) 
         : [];
 
-      // Create a stable date object that won't change on re-renders
-      const messageTimestamp = new Date(messageData.created_at);
+      // Créer un objet Date stable qui ne changera pas lors des rerenders
+      // Utiliser new Date().setTime() pour éviter les problèmes de fuseaux horaires
+      const messageDate = new Date();
+      messageDate.setTime(new Date(messageData.created_at).getTime());
       
-      // Create message object with a normalized timestamp
+      // Créer un objet message avec un horodatage normalisé
       const message: Message = {
         id: messageData.id,
         content: messageData.content,
@@ -133,17 +135,17 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           name: senderDetails[0].name,
           avatarUrl: senderDetails[0].avatar_url,
         },
-        // Store the timestamp as a Date object for better stability
-        timestamp: messageTimestamp,
+        // Stocker l'horodatage en tant qu'objet Date pour une meilleure stabilité
+        timestamp: messageDate,
         parent_message_id: messageData.parent_message_id,
         attachments,
         channelType: channelType,
         reactions: messageReactions
       };
 
-      // Add to map
+      // Ajouter à la carte
       messagesMap.set(message.id, message);
-      console.log(`[useMessageProcessor ${userRole.current}] Processed new message:`, message.id, 'at', messageTimestamp.toISOString());
+      console.log(`[useMessageProcessor ${userRole.current}] Processed new message:`, message.id, 'at', messageDate.toISOString());
       pendingMessageUpdates.delete(messageData.id);
 
     } catch (error) {

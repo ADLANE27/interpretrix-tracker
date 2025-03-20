@@ -4,7 +4,7 @@ import { convertToMessageData, fetchChannelType, fetchMessagesFromDb, sortMessag
 import { useFetchState } from './useFetchState';
 import { useBatchProcessor } from './useBatchProcessor';
 
-// Define a type for the message processing interface
+// Définir un type pour l'interface de traitement des messages
 interface MessageProcessingHook {
   messagesMap: React.MutableRefObject<Map<string, any>>;
   updateMessagesArray: () => void;
@@ -29,21 +29,21 @@ export const useFetchMessages = (
     processMessage
   } = messageProcessing;
 
-  // Get fetch state management
+  // Obtenir la gestion de l'état de récupération
   const { controls, state, debouncedSetLoading, resetFetchState } = useFetchState();
   
-  // Get batch processor
+  // Obtenir le processeur par lots
   const { processBatch } = useBatchProcessor({
     processMessage,
     updateMessagesArray
   });
 
-  // Main fetch function
+  // Fonction de récupération principale
   const fetchMessages = useCallback(async (limit = 100) => {
     const now = Date.now();
     const timeSinceLastFetch = now - controls.lastFetchStartTime.current;
     
-    // Apply throttling for repeated fetches
+    // Appliquer la limitation pour les récupérations répétées
     if (controls.fetchLock.current && 
         !controls.forceInitialLoad.current && 
         timeSinceLastFetch < controls.minimumFetchDelay.current && 
@@ -77,47 +77,47 @@ export const useFetchMessages = (
       controls.activeFetch.current = true;
       processingMessage.current = true;
       
-      // Only show loading indicator on very first load
+      // Montrer l'indicateur de chargement seulement lors du tout premier chargement
       if (!controls.initialFetchDone.current) {
         setIsLoading(true);
       } else {
         debouncedSetLoading(true, setIsLoading);
       }
       
-      // Get channel type
+      // Obtenir le type de canal
       const channelType = await fetchChannelType(channelId);
 
-      // Clear messages if this is a full refresh or first load
-      if (limit === 100 || limit >= 150 || controls.refreshInProgress.current || !controls.initialFetchDone.current) {
+      // Effacer les messages s'il s'agit d'une actualisation complète ou du premier chargement
+      if (limit >= 150 || controls.refreshInProgress.current || !controls.initialFetchDone.current) {
         messagesMap.current.clear();
       }
 
       const effectiveLimit = Math.max(limit, 100);
       
-      // Fetch messages from database - always fetch a decent amount
+      // Récupérer les messages de la base de données - toujours récupérer une quantité décente
       const messages = await fetchMessagesFromDb(channelId, effectiveLimit);
       
       if (!messages || messages.length === 0) {
-        // Still update the UI even when no messages to show empty state
+        // Toujours mettre à jour l'interface utilisateur même lorsqu'il n'y a pas de messages pour afficher l'état vide
         updateMessagesArray();
         setHasMoreMessages(false);
         controls.initialFetchDone.current = true;
         return;
       }
       
-      // Sort messages by timestamp before processing for more stable order
+      // Trier les messages par horodatage avant de les traiter pour un ordre plus stable
       const sortedMessages = sortMessagesByTimestamp(messages);
       
       console.log(`[useFetchMessages] Processing ${sortedMessages.length} messages in stable order`);
       
-      // Process messages in batches
+      // Traiter les messages par lots
       await processBatch(
         sortedMessages.map(msg => convertToMessageData(msg)), 
         channelType, 
         20
       );
       
-      // Update last fetch timestamp and hasMore state
+      // Mettre à jour le dernier horodatage de récupération et l'état hasMore
       if (sortedMessages.length > 0) {
         lastFetchTimestamp.current = sortedMessages[0].created_at;
         setHasMoreMessages(sortedMessages.length >= effectiveLimit);
@@ -125,12 +125,17 @@ export const useFetchMessages = (
         setHasMoreMessages(false);
       }
       
-      // Update state
+      // Mettre à jour l'état
       state.lastFetchTime.current = new Date();
       controls.initialFetchDone.current = true;
       
-      // Important: update messages array to ensure UI reflects the latest state
+      // Important: mettre à jour le tableau de messages pour s'assurer que l'interface utilisateur reflète l'état le plus récent
       updateMessagesArray();
+      
+      // Planifier une mise à jour supplémentaire après un court délai pour s'assurer que tous les messages sont affichés
+      setTimeout(() => {
+        updateMessagesArray();
+      }, 500);
       
       console.log(`[useFetchMessages] Processed ${messagesMap.current.size} messages`);
       
@@ -142,19 +147,19 @@ export const useFetchMessages = (
         controls.initialLoadingTimer.current = null;
       }
       
-      // Short delay before hiding loading indicator
+      // Court délai avant de masquer l'indicateur de chargement
       setTimeout(() => {
         debouncedSetLoading(false, setIsLoading);
-      }, 50);
+      }, 300); // Délai augmenté pour une meilleure expérience utilisateur
       
       processingMessage.current = false;
       controls.activeFetch.current = false;
       controls.refreshInProgress.current = false;
       
-      // Release fetch lock with slight delay
+      // Libérer le verrou de récupération avec un léger délai
       setTimeout(() => {
         controls.fetchLock.current = false;
-      }, 100);
+      }, 200); // Délai augmenté pour éviter les récupérations répétitives
     }
   }, [
     channelId,
@@ -171,7 +176,7 @@ export const useFetchMessages = (
     processBatch
   ]);
 
-  // Load more messages
+  // Charger plus de messages
   const loadMoreMessages = useCallback(async (
     currentCount: number,
     isCurrentlyLoading: boolean,
@@ -179,14 +184,14 @@ export const useFetchMessages = (
   ) => {
     if (!channelId || isCurrentlyLoading || !hasMore || controls.activeFetch.current) return;
     
-    // Increase the fetch limit when loading more messages
+    // Augmenter la limite de récupération lors du chargement de plus de messages
     await fetchMessages(currentCount + 50);
   }, [channelId, fetchMessages, controls.activeFetch]);
 
-  // Force refresh
+  // Forcer l'actualisation
   const forceRefresh = useCallback(() => {
     resetFetchState();
-    return fetchMessages(200); // Fetch more messages on force refresh
+    return fetchMessages(200); // Récupérer plus de messages lors de l'actualisation forcée
   }, [fetchMessages, resetFetchState]);
 
   return {

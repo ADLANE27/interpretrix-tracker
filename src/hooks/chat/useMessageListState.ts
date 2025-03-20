@@ -1,44 +1,24 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 
 export const useMessageListState = (messages: Message[], channelId: string) => {
+  // Références pour gérer le scroll et l'état
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
+  
+  // État simplifié sans dépendances circulaires
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const hadMessagesRef = useRef<boolean>(false);
-  const stableMessages = useRef<Message[]>([]);
-  const messageIdsRef = useRef<string[]>([]);
-  const lastStableUpdateTimestamp = useRef<number>(Date.now());
   const [showSkeletons, setShowSkeletons] = useState(true);
+  
+  // Flags pour contrôler le comportement
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
 
-  // Check if message list actually changed (by content, not just by reference)
-  useEffect(() => {
-    if (messages.length > 0) {
-      const currentMessageIds = messages.map(m => m.id).join(',');
-      const previousMessageIds = messageIdsRef.current.join(',');
-      
-      if (currentMessageIds !== previousMessageIds) {
-        messageIdsRef.current = messages.map(m => m.id);
-        
-        // Only update stable messages if content actually changed
-        stableMessages.current = [...messages];
-        lastStableUpdateTimestamp.current = Date.now();
-        hadMessagesRef.current = true;
-      }
-      
-      // Once we have real messages, we're no longer in initial load state
-      if (isInitialLoad) {
-        setIsInitialLoad(false);
-      }
-    }
-  }, [messages, isInitialLoad]);
-
-  // Show skeletons immediately on mount, keep them until real messages arrive
+  // Transition des squelettes vers les messages réels
   useEffect(() => {
     if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
@@ -48,30 +28,29 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     }
     
     if (messages.length > 0) {
-      // Remove skeletons once we have real messages with a very small delay
+      // Délai légèrement plus long pour assurer la stabilité
       const timer = setTimeout(() => {
         setShowSkeletons(false);
-      }, 50); // Very short delay for smoother transition
+      }, 200); // Délai augmenté pour une transition plus stable
       
       return () => clearTimeout(timer);
     }
   }, [messages.length, channelId]);
 
-  // When channel changes, reset auto-scroll flag
+  // Réinitialisation lors du changement de canal
   useEffect(() => {
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
     setShowSkeletons(true);
-    messageIdsRef.current = [];
     
-    // Force scroll to bottom after a small delay when channel changes
+    // Forcer le défilement après un délai lors du changement de canal
     if (messageContainerRef.current) {
       setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
         }
-      }, 200);
+      }, 300); // Délai augmenté pour assurer que les messages sont chargés
     }
   }, [channelId]);
 
@@ -80,8 +59,6 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     messageContainerRef,
     lastMessageCountRef,
     isInitialLoad,
-    hadMessagesRef,
-    stableMessages,
     showSkeletons,
     scrollToBottomFlag,
     setIsInitialLoad
