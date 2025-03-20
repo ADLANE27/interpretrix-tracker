@@ -25,7 +25,7 @@ export const useRealtimeMessages = (
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // Define forceFetch before using it in processNextInQueue
+  // Define forceFetch function first before using it
   const forceFetch = useCallback(() => {
     console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
     // Clear any processing state to avoid deadlocks
@@ -38,7 +38,7 @@ export const useRealtimeMessages = (
     processQueue.current = [];
     
     return fetchMessages();
-  }, [fetchMessages, userRole]);
+  }, [fetchMessages, userRole, processingMessage]);
   
   // Process messages in queue one by one to avoid race conditions
   const processNextInQueue = useCallback(async () => {
