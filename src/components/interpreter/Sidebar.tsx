@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -65,11 +66,19 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     };
   }, []);
 
+  // Always refresh mentions when component mounts, regardless of active tab
   useEffect(() => {
-    if (activeTab === "messages") {
+    refreshMentions();
+    
+    // Set up a regular refresh interval
+    const intervalId = setInterval(() => {
       refreshMentions();
-    }
-  }, [activeTab, refreshMentions]);
+    }, 60000); // Refresh every minute
+    
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [refreshMentions]);
 
   useEffect(() => {
     console.log('[Sidebar] Setting up mission notification listener');
