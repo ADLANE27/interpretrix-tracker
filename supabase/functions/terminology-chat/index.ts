@@ -124,7 +124,8 @@ GUIDELINES:
 5. If a user asks about a term in ${sourceLanguage}, translate it to ${targetLanguage} and vice versa
 6. If you're unsure about a translation, explain your uncertainty and offer your best suggestion
 7. Focus on being accurate and educational rather than just providing direct translations
-8. Respond in the same language as the user's query when possible`
+8. Respond in the same language as the user's query when possible
+9. Provide your answer in a simple text format with no special formatting, markdown, or LaTeX`
       }
     ];
 
@@ -186,6 +187,7 @@ GUIDELINES:
         throw new Error('Unexpected response format from API');
       }
 
+      // Get the raw response without any additional processing
       const assistantResponse = data.choices[0].message.content.trim();
 
       // Save the assistant response to the database
