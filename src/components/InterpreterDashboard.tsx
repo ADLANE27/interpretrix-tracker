@@ -13,6 +13,7 @@ import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
+import { Toaster } from "@/components/ui/toaster";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -336,6 +337,8 @@ export const InterpreterDashboard = () => {
           />
         </div>
       </main>
+
+      <Toaster />
 
       <PasswordChangeDialog
         open={!profile?.password_changed}

@@ -52,7 +52,7 @@ export const useGlobalNotification = () => {
               Voir
             </button>
           ),
-          duration: 5000, // Longer duration for better visibility
+          duration: 5000, // Keep longer duration for better visibility
         });
       } catch (error) {
         console.error('[GlobalNotification] Error processing message notification:', error);

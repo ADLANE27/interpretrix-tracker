@@ -143,6 +143,7 @@ export const useSubscriptions = (
                   extendedPayload.new && 
                   extendedPayload.new.sender_id !== currentUserId) {
                 console.log(`[Chat ${userRole.current}] Emitting new message event`, extendedPayload.new);
+                
                 eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
                   message: extendedPayload.new,
                   channelId

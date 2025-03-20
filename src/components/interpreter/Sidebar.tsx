@@ -280,4 +280,3 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     </div>
   );
 };
-
