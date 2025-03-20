@@ -65,11 +65,10 @@ serve(async (req) => {
     console.log(`[${requestId}] Searching for term: "${term}" from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
-      // Use more complete URL and include timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      console.log(`[${requestId}] Making API call to OpenRouter with DeepSeek-R1-Zero model`);
+      console.log(`[${requestId}] Making API call to OpenRouter with Mistral model`);
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -82,19 +81,19 @@ serve(async (req) => {
           'X-Request-ID': requestId
         },
         body: JSON.stringify({
-          model: 'deepseek/deepseek-r1-zero:free',
+          model: 'mistralai/mistral-7b-instruct:free',
           messages: [
             {
               role: 'system',
-              content: `Translate the term from ${sourceLanguage} to ${targetLanguage}. Reply only with the translation, no explanations.`
+              content: `Translate the following term from ${sourceLanguage} to ${targetLanguage}. Only provide the translation without explanations or additional text.`
             },
             {
               role: 'user',
               content: term
             }
           ],
-          temperature: 0.2,
-          max_tokens: 100,
+          temperature: 0.1,
+          max_tokens: 50,
         }),
         signal: controller.signal
       });
@@ -131,7 +130,6 @@ serve(async (req) => {
         try {
           const errorJson = JSON.parse(errorText);
           errorDetail = JSON.stringify(errorJson);
-          // Log detailed error information for debugging
           console.error(`[${requestId}] OpenRouter API error details:`, JSON.stringify(errorJson, null, 2));
         } catch (e) {
           errorDetail = errorText;
@@ -150,7 +148,7 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log(`[${requestId}] OpenRouter API response received`);
+      console.log(`[${requestId}] OpenRouter API response received:`, JSON.stringify(data));
 
       // Extract the result from the response structure that OpenRouter returns
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
@@ -168,6 +166,7 @@ serve(async (req) => {
       }
 
       const result = data.choices[0].message.content.trim();
+      console.log(`[${requestId}] Extracted result: "${result}"`);
       
       // Check if result is empty or just whitespace
       if (!result || !result.trim()) {
@@ -223,7 +222,7 @@ serve(async (req) => {
         console.log(`[${requestId}] Search saved to history successfully`);
       }
 
-      console.log(`[${requestId}] Returning successful response`);
+      console.log(`[${requestId}] Returning successful response with result: "${result}"`);
       return new Response(
         JSON.stringify({ 
           result,

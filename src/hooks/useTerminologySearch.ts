@@ -62,11 +62,17 @@ export const useTerminologySearch = (userId?: string) => {
       console.log("Starting terminology search:", searchParams);
       
       try {
-        // Make the edge function call
+        // Make the edge function call with a timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
         const response = await supabase.functions.invoke('terminology-search', {
           body: searchParams,
+          signal: controller.signal,
         });
-
+        
+        clearTimeout(timeoutId);
+        
         console.log("Terminology search response:", response);
 
         if (response.error) {
@@ -87,6 +93,9 @@ export const useTerminologySearch = (userId?: string) => {
         return response.data as TermSearchResponse;
       } catch (error) {
         console.error("Terminology search exception:", error);
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          throw new Error("La recherche a pris trop de temps. Veuillez réessayer.");
+        }
         throw error;
       } finally {
         setIsSearching(false);
