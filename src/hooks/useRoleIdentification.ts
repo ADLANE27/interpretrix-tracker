@@ -29,7 +29,7 @@ export const useRoleIdentification = () => {
         return 'admin';
       }
       
-      // Check if user is an interpreter - fix table name from "interpreters" to "interpreter_profiles"
+      // Check if user is an interpreter using interpreter_profiles table
       const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('id')
