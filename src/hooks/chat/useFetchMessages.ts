@@ -56,6 +56,10 @@ export const useFetchMessages = (
   const initialFetchDone = useRef<boolean>(false);
   const activeFetch = useRef<boolean>(false);
   const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const stableMessageCount = useRef<number>(0);
+  const fetchLock = useRef<boolean>(false);
+  const minimumFetchDelay = useRef<number>(3000); // Minimum time between fetches
+  const lastFetchStartTime = useRef<number>(0);
 
   const debouncedSetLoading = useCallback((loading: boolean) => {
     // Only show loading state after a delay to prevent flickering
@@ -69,7 +73,7 @@ export const useFetchMessages = (
         if (activeFetch.current) {
           setIsLoading(true);
         }
-      }, 500);
+      }, 1000); // Longer delay to avoid flickering for quick operations
     } else {
       if (fetchDebounceTimer.current) {
         clearTimeout(fetchDebounceTimer.current);
@@ -80,12 +84,24 @@ export const useFetchMessages = (
   }, [setIsLoading]);
 
   const fetchMessages = useCallback(async (limit = 50) => {
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchStartTime.current;
+    
+    // Prevent too frequent fetches
+    if (fetchLock.current || 
+        (timeSinceLastFetch < minimumFetchDelay.current && initialFetchDone.current)) {
+      console.log(`[useFetchMessages] Skipping fetch, too soon (${timeSinceLastFetch}ms since last fetch)`);
+      return;
+    }
+    
     if (!channelId || processingMessage.current || activeFetch.current) {
       console.log(`[useFetchMessages] Skipping fetch, already in progress or invalid state`);
       return;
     }
 
     try {
+      fetchLock.current = true;
+      lastFetchStartTime.current = now;
       activeFetch.current = true;
       processingMessage.current = true;
       debouncedSetLoading(true);
@@ -132,6 +148,9 @@ export const useFetchMessages = (
       }
 
       console.log(`[useFetchMessages] Processing ${messages.length} messages`);
+      
+      // Track if we're changing the message count significantly
+      const previousCount = messagesMap.current.size;
 
       // Process all messages in parallel for faster loading
       const processPromises = messages.map(messageData => 
@@ -147,10 +166,19 @@ export const useFetchMessages = (
       } else {
         setHasMoreMessages(false);
       }
-
-      // Force update the messages array immediately
-      console.log(`[useFetchMessages] Calling updateMessagesArray with ${messagesMap.current.size} messages`);
-      updateMessagesArray();
+      
+      const newCount = messagesMap.current.size;
+      
+      // Only update the UI if we actually have messages or the count changed significantly
+      if (newCount > 0 && (Math.abs(newCount - previousCount) > 0 || !initialFetchDone.current)) {
+        console.log(`[useFetchMessages] Calling updateMessagesArray with ${messagesMap.current.size} messages (changed from ${previousCount})`);
+        
+        // Force update the messages array immediately
+        updateMessagesArray();
+        stableMessageCount.current = newCount;
+      } else {
+        console.log(`[useFetchMessages] Skipping update, no significant changes (${previousCount} -> ${newCount})`);
+      }
       
       lastFetchTime.current = new Date();
       initialFetchDone.current = true;
@@ -162,14 +190,27 @@ export const useFetchMessages = (
           console.log(`[useFetchMessages] Triggering secondary update with ${messagesMap.current.size} messages`);
           updateMessagesArray();
         }
-      }, 100);
+      }, 200);
+      
+      // Release the fetch lock after a minimum delay
+      setTimeout(() => {
+        fetchLock.current = false;
+      }, minimumFetchDelay.current);
       
     } catch (error) {
       console.error('[useFetchMessages] Error in fetchMessages:', error);
     } finally {
-      debouncedSetLoading(false);
+      setTimeout(() => {
+        debouncedSetLoading(false);
+      }, 200); // Small delay to ensure loading isn't removed too quickly
+      
       processingMessage.current = false;
       activeFetch.current = false;
+      
+      // Schedule releasing the lock after minimum delay
+      setTimeout(() => {
+        fetchLock.current = false;
+      }, minimumFetchDelay.current);
     }
   }, [
     channelId,
@@ -195,6 +236,8 @@ export const useFetchMessages = (
 
   const forceRefresh = useCallback(() => {
     console.log('[useFetchMessages] Forcing a refresh of messages');
+    // Bypass the lock for force refreshes
+    fetchLock.current = false;
     initialFetchDone.current = false;
     return fetchMessages(50);
   }, [fetchMessages]);

@@ -31,14 +31,20 @@ export const MessageList: React.FC<MessageListProps> = ({
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  // Track if we've ever had messages to prevent flickering of empty state
   const hadMessagesRef = useRef<boolean>(false); 
   const stableMessages = useRef<Message[]>([]);
+  const lastStableUpdateTimestamp = useRef<number>(Date.now());
 
   // Store the latest valid messages to prevent flickering
   useEffect(() => {
     if (messages.length > 0) {
-      stableMessages.current = messages;
+      // Only update stable messages every 2 seconds to prevent loops
+      const now = Date.now();
+      if (now - lastStableUpdateTimestamp.current > 2000) {
+        console.log(`[MessageList] Updating stable messages with ${messages.length} messages`);
+        stableMessages.current = [...messages]; // Create a new array to ensure reference changes
+        lastStableUpdateTimestamp.current = now;
+      }
       hadMessagesRef.current = true;
       setIsInitialLoad(false);
     }
@@ -50,9 +56,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   });
 
   const memoizedOrganizeThreads = useCallback(() => {
-    // Use stable messages when current messages are empty but we previously had messages
+    // Always use stable messages when they exist and current messages are empty
     const messagesToUse = messages.length > 0 ? messages : 
-      (hadMessagesRef.current ? stableMessages.current : messages);
+      (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
     
     return organizeMessageThreads(messagesToUse);
   }, [messages]);
@@ -89,7 +95,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   // Use the stable messages if current messages are empty to prevent flickering
   const displayMessages = messages.length > 0 ? messages : 
-    (hadMessagesRef.current ? stableMessages.current : messages);
+    (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
 
   // Don't show empty state if we're still in initial load or if we've ever had messages
   if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {

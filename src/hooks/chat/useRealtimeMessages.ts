@@ -1,5 +1,5 @@
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useMessageProcessing } from './useMessageProcessing';
 import { RealtimeMessageHandler } from './types/chatHooks';
@@ -22,18 +22,34 @@ export const useRealtimeMessages = (
   const [retryCount, setRetryCount] = useState(0);
   const isProcessingEvent = useRef(false);
   const cooldownPeriod = useRef(false);
+  const processQueue = useRef<Array<any>>([]);
+  const processingTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  const handleRealtimeMessage = useCallback(async (payload: any) => {
-    if (processingMessage.current || isProcessingEvent.current) return;
+  // Process messages in queue one by one to avoid race conditions
+  const processNextInQueue = useCallback(async () => {
+    if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0) {
+      if (processingTimeout.current) {
+        clearTimeout(processingTimeout.current);
+        processingTimeout.current = null;
+      }
+      return;
+    }
     
     isProcessingEvent.current = true;
     processingMessage.current = true;
-    console.log(`[useRealtimeMessages ${userRole.current}] Realtime message received:`, payload.eventType, payload);
     
     try {
+      const payload = processQueue.current.shift();
+      console.log(`[useRealtimeMessages ${userRole.current}] Processing queued message:`, payload?.eventType);
+      
       if (!payload || !payload.new || !channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
+        
+        // Schedule next item processing
+        if (processQueue.current.length > 0) {
+          processingTimeout.current = setTimeout(processNextInQueue, 100);
+        }
         return;
       }
       
@@ -41,6 +57,11 @@ export const useRealtimeMessages = (
       if (messageData.channel_id !== channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
+        
+        // Schedule next item processing
+        if (processQueue.current.length > 0) {
+          processingTimeout.current = setTimeout(processNextInQueue, 100);
+        }
         return;
       }
       
@@ -49,6 +70,11 @@ export const useRealtimeMessages = (
           console.log(`[useRealtimeMessages ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
           isProcessingEvent.current = false;
+          
+          // Schedule next item processing
+          if (processQueue.current.length > 0) {
+            processingTimeout.current = setTimeout(processNextInQueue, 100);
+          }
           return;
         }
         
@@ -96,13 +122,49 @@ export const useRealtimeMessages = (
     } finally {
       processingMessage.current = false;
       isProcessingEvent.current = false;
+      
+      // Schedule next item processing with a small delay
+      if (processQueue.current.length > 0) {
+        processingTimeout.current = setTimeout(processNextInQueue, 100);
+      }
     }
-  }, [channelId, messagesMap, processingMessage, userRole, processMessage, updateMessagesArray]);
+  }, [channelId, messagesMap, processingMessage, userRole, processMessage, updateMessagesArray, forceFetch]);
+  
+  const handleRealtimeMessage = useCallback(async (payload: any) => {
+    // Add message to processing queue instead of processing immediately
+    console.log(`[useRealtimeMessages ${userRole.current}] Received realtime message:`, payload.eventType);
+    
+    // Add to queue
+    processQueue.current.push(payload);
+    
+    // Start processing if not already processing
+    if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current) {
+      processingTimeout.current = setTimeout(processNextInQueue, 50);
+    }
+  }, [userRole, processNextInQueue]);
 
   const forceFetch = useCallback(() => {
     console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
+    // Clear any processing state to avoid deadlocks
+    if (processingTimeout.current) {
+      clearTimeout(processingTimeout.current);
+      processingTimeout.current = null;
+    }
+    isProcessingEvent.current = false;
+    processingMessage.current = false;
+    processQueue.current = [];
+    
     return fetchMessages();
   }, [fetchMessages, userRole]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (processingTimeout.current) {
+        clearTimeout(processingTimeout.current);
+      }
+    };
+  }, []);
 
   return {
     lastFetchTime,
