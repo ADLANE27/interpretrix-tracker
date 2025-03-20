@@ -25,6 +25,21 @@ export const useRealtimeMessages = (
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
   
+  // Define forceFetch before using it in processNextInQueue
+  const forceFetch = useCallback(() => {
+    console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
+    // Clear any processing state to avoid deadlocks
+    if (processingTimeout.current) {
+      clearTimeout(processingTimeout.current);
+      processingTimeout.current = null;
+    }
+    isProcessingEvent.current = false;
+    processingMessage.current = false;
+    processQueue.current = [];
+    
+    return fetchMessages();
+  }, [fetchMessages, userRole]);
+  
   // Process messages in queue one by one to avoid race conditions
   const processNextInQueue = useCallback(async () => {
     if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0) {
@@ -142,20 +157,6 @@ export const useRealtimeMessages = (
       processingTimeout.current = setTimeout(processNextInQueue, 50);
     }
   }, [userRole, processNextInQueue]);
-
-  const forceFetch = useCallback(() => {
-    console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
-    // Clear any processing state to avoid deadlocks
-    if (processingTimeout.current) {
-      clearTimeout(processingTimeout.current);
-      processingTimeout.current = null;
-    }
-    isProcessingEvent.current = false;
-    processingMessage.current = false;
-    processQueue.current = [];
-    
-    return fetchMessages();
-  }, [fetchMessages, userRole]);
 
   // Cleanup on unmount
   useEffect(() => {
