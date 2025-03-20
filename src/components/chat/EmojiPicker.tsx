@@ -1,10 +1,12 @@
-
 import React, { useState } from 'react';
-import { SmilePlus } from 'lucide-react';
+import { SmilePlus, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 
-const commonEmojis = ['👍', '❤️', '😊', '🎉', '👏', '🙌', '🔥', '✅'];
+const commonEmojis = ['👍', '❤️', '😊', '🎉', '👏', '🙌', '🔥', '✅', '👋', '🤔', '👀', '💯', '🙏', '🤝'];
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;
@@ -13,10 +15,18 @@ interface EmojiPickerProps {
 
 export const EmojiPicker = ({ onEmojiSelect, size = 'md' }: EmojiPickerProps) => {
   const [open, setOpen] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
 
   const handleEmojiClick = (emoji: string) => {
     onEmojiSelect(emoji);
     setOpen(false);
+    setShowFullPicker(false);
+  };
+
+  const handleEmojiSelect = (emoji: any) => {
+    onEmojiSelect(emoji.native);
+    setOpen(false);
+    setShowFullPicker(false);
   };
 
   return (
@@ -34,17 +44,41 @@ export const EmojiPicker = ({ onEmojiSelect, size = 'md' }: EmojiPickerProps) =>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="start">
-        <div className="flex flex-wrap gap-2 max-w-[240px]">
-          {commonEmojis.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => handleEmojiClick(emoji)}
-              className="text-xl hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+        {!showFullPicker ? (
+          <>
+            <div className="flex flex-wrap gap-2 max-w-[280px] mb-2">
+              {commonEmojis.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleEmojiClick(emoji)}
+                  className="text-xl hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-xs mt-1 text-gray-500"
+              onClick={() => setShowFullPicker(true)}
             >
-              {emoji}
-            </button>
-          ))}
-        </div>
+              <Search className="h-3.5 w-3.5 mr-1" />
+              Search all emojis
+            </Button>
+          </>
+        ) : (
+          <div className="w-[300px]">
+            <Picker 
+              data={data} 
+              onEmojiSelect={handleEmojiSelect}
+              theme="light"
+              locale="fr"
+              previewPosition="none"
+              skinTonePosition="none"
+            />
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

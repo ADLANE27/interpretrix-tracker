@@ -70,7 +70,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     
     return (
       currentDate.getDate() !== previousDate.getDate() ||
-      currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
+      currentDate.getMonth() !== previousDate.getMonth() ||
       currentDate.getFullYear() !== previousDate.getFullYear()
     );
   };
