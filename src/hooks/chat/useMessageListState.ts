@@ -3,16 +3,16 @@ import { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 
 export const useMessageListState = (messages: Message[], channelId: string) => {
-  // References for scroll management and state
+  // Références pour la gestion du défilement et de l'état
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   
-  // Simplified state without circular dependencies
+  // État simplifié sans dépendances circulaires
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showSkeletons, setShowSkeletons] = useState(true);
   
-  // Flags to control behavior
+  // Drapeaux pour contrôler le comportement
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
@@ -20,23 +20,33 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const stableRenderRef = useRef<boolean>(false);
   const messageStabilityTimer = useRef<NodeJS.Timeout | null>(null);
   const updateLockRef = useRef<boolean>(false);
+  const renderStabilityCounter = useRef<number>(0);
+  const lastStableMessagesSignature = useRef<string>("");
 
-  // Check if we've received messages
+  // Vérifier si nous avons reçu des messages
   useEffect(() => {
     if (messages.length > 0) {
       hadMessagesRef.current = true;
+      
+      // Créer une signature stable des messages pour éviter les rendus inutiles
+      const currentMessagesSignature = messages.map(m => m.id).join(',');
+      if (currentMessagesSignature === lastStableMessagesSignature.current) {
+        // Éviter les mises à jour d'état si les messages sont les mêmes
+        return;
+      }
+      lastStableMessagesSignature.current = currentMessagesSignature;
     }
-  }, [messages.length]);
+  }, [messages]);
 
-  // Transition from skeletons to real messages with fixed delay and lock
+  // Transition des squelettes aux messages réels avec délai fixe et verrou
   useEffect(() => {
-    // Return immediately if update is locked
+    // Retourner immédiatement si une mise à jour est verrouillée
     if (updateLockRef.current) return;
     
-    // Set update lock to prevent concurrent updates
+    // Définir le verrou de mise à jour pour éviter les mises à jour simultanées
     updateLockRef.current = true;
     
-    // Clear any existing timer to prevent stacking effects
+    // Effacer tout minuteur existant pour éviter les effets d'accumulation
     if (messageStabilityTimer.current) {
       clearTimeout(messageStabilityTimer.current);
       messageStabilityTimer.current = null;
@@ -48,20 +58,22 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
       lastChannelIdRef.current = channelId;
       scrollToBottomFlag.current = true;
       stableRenderRef.current = false;
+      renderStabilityCounter.current = 0;
     }
     
     if (messages.length > 0) {
-      // Use a fixed delay to avoid fluctuations
+      // Utiliser un délai fixe pour éviter les fluctuations
       messageStabilityTimer.current = setTimeout(() => {
         setShowSkeletons(false);
-        // Mark rendering as stable after delay
+        // Marquer le rendu comme stable après délai
         stableRenderRef.current = true;
+        renderStabilityCounter.current++;
         
-        // Release lock after state is updated
+        // Libérer le verrou après la mise à jour de l'état
         setTimeout(() => {
           updateLockRef.current = false;
-        }, 100);
-      }, 750); // Increased delay for more stability
+        }, 150);
+      }, 1000); // Délai augmenté pour plus de stabilité
       
       return () => {
         if (messageStabilityTimer.current) {
@@ -71,49 +83,52 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
         updateLockRef.current = false;
       };
     } else {
-      // Release lock if no messages
+      // Libérer le verrou s'il n'y a pas de messages
       updateLockRef.current = false;
     }
   }, [messages.length, channelId]);
 
-  // More thorough reset when channel changes
+  // Réinitialisation plus complète lorsque le canal change
   useEffect(() => {
-    // Stop any running timers
+    // Arrêter les minuteries en cours
     if (messageStabilityTimer.current) {
       clearTimeout(messageStabilityTimer.current);
       messageStabilityTimer.current = null;
     }
     
-    // Set update lock during channel change
+    // Définir le verrou de mise à jour pendant le changement de canal
     updateLockRef.current = true;
     
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
     stableRenderRef.current = false;
+    renderStabilityCounter.current = 0;
+    lastStableMessagesSignature.current = "";
     setShowSkeletons(true);
     
-    // Force scroll after a delay when channel changes
+    // Forcer le défilement après un délai lorsque le canal change
     if (messageContainerRef.current) {
       const timer = setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          // Mark as stable after scrolling
+          // Marquer comme stable après défilement
           stableRenderRef.current = true;
+          renderStabilityCounter.current++;
           
-          // Release lock after state is updated
+          // Libérer le verrou après la mise à jour de l'état
           setTimeout(() => {
             updateLockRef.current = false;
-          }, 100);
+          }, 150);
         }
-      }, 800); // Longer delay for stability
+      }, 1200); // Délai plus long pour la stabilité
       
       return () => {
         clearTimeout(timer);
         updateLockRef.current = false;
       };
     } else {
-      // Release lock if no container
+      // Libérer le verrou s'il n'y a pas de conteneur
       updateLockRef.current = false;
     }
   }, [channelId]);
@@ -127,6 +142,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     scrollToBottomFlag,
     hadMessagesRef,
     stableRenderRef,
+    renderStabilityCounter,
     updateLockRef,
     setIsInitialLoad
   };

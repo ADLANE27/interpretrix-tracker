@@ -29,7 +29,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   setReplyTo,
   channelId,
 }) => {
-  // Use custom hooks for state management and scroll behavior
+  // Utiliser des hooks personnalisés pour la gestion de l'état et le comportement de défilement
   const {
     messagesEndRef,
     messageContainerRef,
@@ -39,9 +39,10 @@ export const MessageList: React.FC<MessageListProps> = ({
     showSkeletons,
     scrollToBottomFlag,
     stableRenderRef,
+    renderStabilityCounter
   } = useMessageListState(messages, channelId);
 
-  // Handle scroll behavior
+  // Gérer le comportement de défilement
   useMessageScroll(
     messages, 
     isInitialLoad, 
@@ -51,16 +52,17 @@ export const MessageList: React.FC<MessageListProps> = ({
     messageContainerRef
   );
 
-  // Message organization helper with better caching
+  // Aide à l'organisation des messages avec une mise en cache améliorée
   const { organizeThreads, cacheVersion } = useMessageOrganizer(messages);
 
-  // Use memoized message organization to prevent unnecessary recalculations
+  // Utiliser une organisation de messages mémorisée pour éviter les recalculs inutiles
   const { rootMessages, messageThreads } = useMemo(() => {
-    console.log(`[MessageList] Organizing messages for channel: ${channelId}, message count: ${messages.length}`);
+    // Utilisation d'un console.log pour le débogage
+    console.log(`[MessageList] Organizing messages for channel: ${channelId}, message count: ${messages.length}, render version: ${renderStabilityCounter}`);
     return organizeThreads();
-  }, [organizeThreads, messages, cacheVersion, channelId]);
+  }, [organizeThreads, messages, cacheVersion, channelId, renderStabilityCounter]);
 
-  // Show skeletons during initial load
+  // Afficher les squelettes pendant le chargement initial
   if (showSkeletons && (isInitialLoad || messages.length === 0)) {
     return (
       <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
@@ -71,7 +73,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
-  // Don't show empty state if we're still in initial load or if we've ever had messages
+  // Ne pas afficher l'état vide si nous sommes toujours en chargement initial ou si nous avons déjà eu des messages
   if (rootMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
@@ -82,16 +84,18 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
-  // Render the message list with memoized message threads
+  // Rendre la liste de messages avec des fils de messages mémorisés
   return (
     <div 
       className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
       ref={messageContainerRef}
-      data-stable-render={stableRenderRef.current.toString()}
+      data-stable-render={String(renderStabilityCounter.current)}
+      data-message-count={rootMessages.length}
+      data-channel-id={channelId}
     >
       <div className="flex-1">
         {rootMessages.map((message, index) => {
-          // Get replies for this message (if any)
+          // Obtenir les réponses pour ce message (s'il y en a)
           const replies = messageThreads[message.id]?.filter(m => m.id !== message.id) || [];
           
           return (

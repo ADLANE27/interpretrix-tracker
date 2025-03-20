@@ -8,11 +8,13 @@ export const useMessageOrganizer = (messages: Message[]) => {
   const organizedCache = useRef<ReturnType<typeof organizeMessageThreads> | null>(null);
   const cacheVersion = useRef<number>(0);
   const processingFlag = useRef<boolean>(false);
+  const cacheInvalidationTimer = useRef<NodeJS.Timeout | null>(null);
+  const messagesStableVersionRef = useRef<string>("");
   
-  // Improved function to organize message threads with strong caching
-  // to avoid expensive reorganizations
+  // Fonction améliorée pour organiser les fils de messages avec mise en cache renforcée
+  // pour éviter les réorganisations coûteuses
   const organizeThreads = useCallback(() => {
-    // Don't reorganize if already processing
+    // Ne pas réorganiser si déjà en cours de traitement
     if (processingFlag.current) {
       return organizedCache.current || { rootMessages: [], messageThreads: {} };
     }
@@ -20,12 +22,21 @@ export const useMessageOrganizer = (messages: Message[]) => {
     processingFlag.current = true;
     
     try {
-      // Check if we have the same messages (by reference comparison first for speed)
+      // Vérification rapide par référence pour la performance
       if (messages === lastOrganizedMessages.current && organizedCache.current) {
         return organizedCache.current;
       }
       
-      // Deep equality check (only id-based for performance)
+      // Créer une signature stable des messages pour la comparaison
+      const newMessagesStableVersion = messages.length > 0 ? 
+        messages.map(m => m.id).join(',') : "";
+      
+      // Si la signature est la même, utiliser le cache
+      if (newMessagesStableVersion === messagesStableVersionRef.current && organizedCache.current) {
+        return organizedCache.current;
+      }
+      
+      // Vérification d'égalité profonde (basée uniquement sur l'ID pour la performance)
       const sameMessageList = messages.length === lastOrganizedMessages.current.length &&
         messages.every((msg, i) => msg.id === lastOrganizedMessages.current[i]?.id);
       
@@ -33,16 +44,26 @@ export const useMessageOrganizer = (messages: Message[]) => {
         return organizedCache.current;
       }
       
-      // If messages changed, reorganize and update cache
+      // Si les messages ont changé, réorganiser et mettre à jour le cache
       const result = organizeMessageThreads(messages);
+      
+      // Nettoyer les anciennes références pour éviter les fuites de mémoire
+      if (cacheInvalidationTimer.current) {
+        clearTimeout(cacheInvalidationTimer.current);
+      }
+      
+      // Mettre à jour le cache
       lastOrganizedMessages.current = [...messages];
       organizedCache.current = result;
       cacheVersion.current += 1;
+      messagesStableVersionRef.current = newMessagesStableVersion;
       
       return result;
     } finally {
-      // Ensure the flag is released even if there's an error
-      processingFlag.current = false;
+      // Assurer que le drapeau est libéré même en cas d'erreur
+      setTimeout(() => {
+        processingFlag.current = false;
+      }, 50);
     }
   }, [messages]);
 
