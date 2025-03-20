@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Chat } from "@/components/chat/Chat";
+import Chat from "@/components/chat/Chat";
 import { ChannelList } from "@/components/admin/ChannelList";
 import { MentionsPopover } from "@/components/admin/MentionsPopover";
 import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
@@ -153,9 +153,8 @@ export const MessagesTab = () => {
         
         <div className="flex-1 overflow-auto">
           <ChannelList 
-            selectedChannelId={selectedChannelId} 
-            onSelectChannel={handleChannelSelect}
-            activeTab={activeTab}
+            onChannelSelect={handleChannelSelect}
+            activeType={activeTab}
           />
         </div>
       </div>
@@ -166,7 +165,7 @@ export const MessagesTab = () => {
           isAddMembersMode ? (
             <ChannelMemberManagement 
               channelId={selectedChannelId}
-              onBack={() => setIsAddMembersMode(false)}
+              onClose={() => setIsAddMembersMode(false)}
             />
           ) : (
             <div className="flex flex-col h-full">
@@ -210,13 +209,13 @@ export const MessagesTab = () => {
       <CreateChannelDialog 
         isOpen={isCreateChannelDialogOpen} 
         onClose={() => setIsCreateChannelDialogOpen(false)}
-        onSuccess={handleCreateChannelSuccess}
+        onChannelCreated={() => handleCreateChannelSuccess(selectedChannelId || '')}
       />
       
       <NewDirectMessageDialog
         isOpen={isDirectMessageDialogOpen}
         onClose={() => setIsDirectMessageDialogOpen(false)}
-        onSuccess={handleDirectMessageSuccess}
+        onChannelCreated={() => handleDirectMessageSuccess(selectedChannelId || '')}
       />
     </div>
   );

@@ -13,6 +13,7 @@ import { useUnreadMentions, UnreadMention } from "@/hooks/chat/useUnreadMentions
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 export const MentionsPopover = () => {
   const { 
@@ -26,6 +27,7 @@ export const MentionsPopover = () => {
   
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Automatically refresh mentions when popover opens
   useEffect(() => {
@@ -35,14 +37,41 @@ export const MentionsPopover = () => {
   }, [open, refreshMentions]);
 
   const handleMentionClick = async (mention: UnreadMention) => {
-    await markMentionAsRead(mention.mention_id);
-    navigate(`/admin?tab=messages&channelId=${mention.channel_id}&messageId=${mention.message_id}`);
-    setOpen(false);
+    try {
+      await markMentionAsRead(mention.mention_id);
+      navigate(`/admin?tab=messages&channelId=${mention.channel_id}&messageId=${mention.message_id}`);
+      setOpen(false);
+      
+      toast({
+        title: "Notification marquée comme lue",
+        description: "Vous avez été redirigé vers le message"
+      });
+    } catch (error) {
+      console.error("Error handling mention click:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de marquer la notification comme lue",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteMention = async (e: React.MouseEvent, mentionId: string) => {
     e.stopPropagation();
-    await deleteMention(mentionId);
+    try {
+      await deleteMention(mentionId);
+      toast({
+        title: "Notification supprimée",
+        description: "La notification a été supprimée avec succès"
+      });
+    } catch (error) {
+      console.error("Error deleting mention:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la notification",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -91,7 +120,7 @@ export const MentionsPopover = () => {
                       </p>
                       <span className="text-xs text-muted-foreground">
                         {format(
-                          mention.created_at,
+                          new Date(mention.created_at),
                           "dd MMM HH:mm",
                           { locale: fr }
                         )}
@@ -104,7 +133,7 @@ export const MentionsPopover = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100"
+                    className="h-6 w-6 rounded-full"
                     onClick={(e) => handleDeleteMention(e, mention.mention_id)}
                   >
                     <span className="sr-only">Supprimer</span>

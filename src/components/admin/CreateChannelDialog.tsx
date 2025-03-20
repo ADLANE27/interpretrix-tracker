@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface CreateChannelDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onChannelCreated: () => void | Promise<any>;
+  onChannelCreated: () => void;
 }
 
 export const CreateChannelDialog = ({ isOpen, onClose, onChannelCreated }: CreateChannelDialogProps) => {
@@ -27,13 +28,15 @@ export const CreateChannelDialog = ({ isOpen, onClose, onChannelCreated }: Creat
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const { error: channelError } = await supabase
+      const { data, error: channelError } = await supabase
         .from('chat_channels')
         .insert({
           name,
           description,
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
       if (channelError) throw channelError;
 

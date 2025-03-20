@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 import { useSupabaseConnection } from "@/hooks/useSupabaseConnection";
+import { MentionsPopover } from "./MentionsPopover";
 
 export const AdminDashboard = () => {
   const [isLogoutLoading, setIsLogoutLoading] = useState(false);
@@ -25,7 +26,7 @@ export const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { totalUnreadCount } = useUnreadMentions();
-  const { tab, setTab } = useTabPersistence('admin', 'dashboard');
+  const { activeTab, setActiveTab } = useTabPersistence('admin', 'dashboard');
   
   // Initialise Supabase realtime connection
   useSupabaseConnection();
@@ -35,13 +36,13 @@ export const AdminDashboard = () => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     if (tabParam) {
-      setTab(tabParam);
+      setActiveTab(tabParam);
     }
-  }, [location.search, setTab]);
+  }, [location.search, setActiveTab]);
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {
-    setTab(value);
+    setActiveTab(value);
     navigate(`/admin?tab=${value}`);
   };
 
@@ -62,6 +63,16 @@ export const AdminDashboard = () => {
     }
   };
 
+  // Mock statistics data for the dashboard
+  const statisticsData = {
+    totalInterpreters: 25,
+    availableCount: 12,
+    busyCount: 5,
+    pauseCount: 3,
+    unavailableCount: 5,
+    todayMissionsCount: 8
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
@@ -71,6 +82,7 @@ export const AdminDashboard = () => {
           <span className="text-xl font-normal text-muted-foreground ml-2">Admin</span>
           
           <div className="ml-auto flex items-center space-x-4">
+            <MentionsPopover />
             <Button 
               variant="ghost" 
               size="sm" 
@@ -97,7 +109,7 @@ export const AdminDashboard = () => {
       {/* Main content with tabs */}
       <div className="flex-1 overflow-hidden">
         <Tabs 
-          value={tab} 
+          value={activeTab} 
           onValueChange={handleTabChange} 
           className="h-full flex flex-col"
         >
@@ -141,7 +153,7 @@ export const AdminDashboard = () => {
           
           <div className="flex-1 overflow-auto">
             <TabsContent value="dashboard" className="h-full m-0 p-4 sm:p-6">
-              <StatisticsCards />
+              <StatisticsCards {...statisticsData} />
             </TabsContent>
             <TabsContent value="interpreters" className="h-full m-0">
               <InterpreterList />
@@ -169,6 +181,13 @@ export const AdminDashboard = () => {
       <PasswordChangeDialog
         open={isPasswordDialogOpen}
         onOpenChange={setIsPasswordDialogOpen}
+        onPasswordChanged={() => {
+          // Handle password change success
+          toast({
+            title: "Succès",
+            description: "Votre mot de passe a été modifié avec succès",
+          });
+        }}
       />
     </div>
   );
