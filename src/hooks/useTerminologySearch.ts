@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,8 +61,8 @@ export const useTerminologySearch = (userId?: string) => {
       console.log("Starting terminology search:", searchParams);
       
       try {
-        // Create the timeout ID outside the promise
-        let timeoutId: number | undefined;
+        // Create the timeout ID with the correct type
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
         
         // Create the timeout promise with proper closure
         const timeoutPromise = new Promise<never>((_, reject) => {
