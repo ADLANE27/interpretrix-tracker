@@ -240,14 +240,6 @@ export const InterpreterChat = ({
           />
         </div>
         
-        {profile && isMobile && (
-          <div className="pb-3 w-full overflow-visible">
-            <StatusManager 
-              currentStatus={profile?.status}
-              onStatusChange={onStatusChange} 
-            />
-          </div>
-        )}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
