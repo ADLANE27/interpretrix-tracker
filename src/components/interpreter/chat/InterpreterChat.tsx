@@ -76,7 +76,7 @@ export const InterpreterChat = ({
     sendMessage,
     deleteMessage,
     currentUserId,
-    reactToMessage: originalReactToMessage,
+    reactToMessage,
     markMentionsAsRead,
   } = useChat(channelId);
 
@@ -229,32 +229,11 @@ export const InterpreterChat = ({
     };
   }, [isFullScreen, onToggleFullScreen]);
 
-  const reactToMessage = async (messageId: string, emoji: string) => {
-    console.log('[InterpreterChat] Reacting to message with emoji:', { 
-      messageId, 
-      emoji, 
-      currentUserId,
-      timestamp: new Date().toISOString(),
-      channelId
-    });
-    
-    try {
-      await originalReactToMessage(messageId, emoji);
-      console.log('[InterpreterChat] Reaction completed successfully');
-    } catch (error) {
-      console.error('[InterpreterChat] Error when reacting to message:', error);
-    }
+  const handleReactToMessage = async (messageId: string, emoji: string) => {
+    // Cette fonctionnalité a été supprimée
   };
 
   const filteredMessages = getFilteredMessages();
-
-  console.log('[InterpreterChat] Messages with reactions:', 
-    messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0).map(msg => ({
-      messageId: msg.id,
-      reactions: msg.reactions,
-      content: msg.content.substring(0, 20)
-    }))
-  );
 
   return (
     <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
@@ -326,7 +305,7 @@ export const InterpreterChat = ({
           messages={filteredMessages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
+          onReactToMessage={handleReactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}

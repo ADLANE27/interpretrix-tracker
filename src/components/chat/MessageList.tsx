@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -9,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { useTimestampFormat } from '@/hooks/useTimestampFormat';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { EmojiPicker } from './EmojiPicker';
-import { MessageReaction } from './MessageReaction';
 
 interface MessageListProps {
   messages: Message[];
@@ -112,48 +111,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  const renderReactions = (message: Message) => {
-    console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
-    
-    if (!message.reactions || Object.keys(message.reactions).length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="flex flex-wrap gap-1 mt-1">
-        {Object.entries(message.reactions).map(([emoji, userIds]) => {
-          if (!userIds || userIds.length === 0) return null;
-          
-          const isActive = currentUserId ? userIds.includes(currentUserId) : false;
-          
-          console.log(`[MessageList] Rendering reaction ${emoji} for message ${message.id}:`, {
-            userIds,
-            isActive,
-            currentUserId
-          });
-          
-          return (
-            <MessageReaction
-              key={`${message.id}-${emoji}`}
-              emoji={emoji}
-              count={userIds.length}
-              isActive={isActive}
-              onClick={() => {
-                console.log(`[MessageList] Reaction clicked: ${emoji} for message ${message.id}`);
-                
-                if (messageContainerRef.current) {
-                  scrollPositionRef.current = messageContainerRef.current.scrollTop;
-                }
-                
-                onReactToMessage(message.id, emoji);
-              }}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
   const renderMessage = (message: Message, isThreadReply = false) => {
     return (
       <div 
@@ -197,22 +154,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           </div>
           
-          {renderReactions(message)}
-          
           <div className="flex items-center gap-2 mt-1 mr-1">
-            <EmojiPicker 
-              onEmojiSelect={(emoji) => {
-                console.log(`[MessageList] Emoji selected from picker: ${emoji} for message ${message.id}`);
-                
-                if (messageContainerRef.current) {
-                  scrollPositionRef.current = messageContainerRef.current.scrollTop;
-                }
-                
-                onReactToMessage(message.id, emoji);
-              }}
-              size="sm"
-            />
-            
             {message.sender.id === currentUserId && (
               <Button
                 variant="ghost"

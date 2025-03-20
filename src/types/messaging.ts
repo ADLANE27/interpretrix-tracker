@@ -1,3 +1,4 @@
+
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -10,7 +11,6 @@ export interface Message {
   };
   timestamp: Date;
   parent_message_id?: string | null;
-  reactions?: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
 }
@@ -21,7 +21,6 @@ export interface MessageData {
   sender_id: string;
   created_at: string;
   parent_message_id?: string | null;
-  reactions: Record<string, string[]>;
   attachments?: Array<{
     url: string;
     filename: string;
@@ -54,18 +53,6 @@ export function isAttachment(obj: any): obj is Attachment {
     typeof obj.filename === 'string' &&
     typeof obj.type === 'string' &&
     typeof obj.size === 'number'
-  );
-}
-
-export function isReactionValid(reaction: any): boolean {
-  return (
-    reaction !== null &&
-    typeof reaction === 'object' &&
-    Object.entries(reaction).every(([emoji, users]) => 
-      typeof emoji === 'string' && 
-      Array.isArray(users) &&
-      users.every(id => typeof id === 'string')
-    )
   );
 }
 
