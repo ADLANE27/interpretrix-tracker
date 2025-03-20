@@ -1,6 +1,5 @@
-
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,14 +54,11 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
-  // Listen for unread mentions count updates
   useEffect(() => {
     console.log('[Sidebar] Setting up mentions count listener');
     
-    // Initialize with current unread mentions
     setRealtimeUnreadCount(unreadMentions.length);
     
-    // Listen for global events
     const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
       console.log('[Sidebar] Received unread mentions update event:', count);
       setRealtimeUnreadCount(count);
@@ -73,7 +69,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     };
   }, [unreadMentions.length]);
   
-  // Initial fetch of mentions
   useEffect(() => {
     console.log('[Sidebar] Refreshing mentions on mount');
     refreshMentions();
@@ -202,7 +197,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             </AvatarFallback>
           </Avatar>
           
-          {/* Bell icon with notification badge */}
           <MentionsPopover
             mentions={unreadMentions}
             totalCount={realtimeUnreadCount}
@@ -210,7 +204,21 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             onMarkAsRead={markMentionAsRead}
             onDelete={deleteMention}
           >
-            {/* The button is now defined inside MentionsPopover */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative"
+            >
+              <Bell className="h-5 w-5" />
+              {realtimeUnreadCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                >
+                  {realtimeUnreadCount}
+                </Badge>
+              )}
+            </Button>
           </MentionsPopover>
         </div>
         <Button
