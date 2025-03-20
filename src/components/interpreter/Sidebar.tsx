@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -183,22 +184,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
       <div className="flex flex-col items-center justify-center py-6 space-y-4">
         <div className="relative flex items-center gap-2">
-          <div className={cn(
-            "w-3 h-3 rounded-full absolute -right-1 -top-1",
-            getStatusColor(),
-            "animate-pulse"
-          )} />
-          <Avatar className="w-12 h-12">
-            <AvatarImage 
-              src={profilePictureUrl} 
-              alt="Photo de profil"
-              className="rounded-full object-cover"
-            />
-            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30">
-              <Headset className="w-6 h-6 text-primary" />
-            </AvatarFallback>
-          </Avatar>
-          
           <MentionsPopover
             mentions={unreadMentions}
             totalCount={realtimeUnreadCount}
@@ -222,6 +207,22 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
               )}
             </Button>
           </MentionsPopover>
+          
+          <div className={cn(
+            "w-3 h-3 rounded-full absolute -right-1 -top-1",
+            getStatusColor(),
+            "animate-pulse"
+          )} />
+          <Avatar className="w-12 h-12">
+            <AvatarImage 
+              src={profilePictureUrl} 
+              alt="Photo de profil"
+              className="rounded-full object-cover"
+            />
+            <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/30">
+              <Headset className="w-6 h-6 text-primary" />
+            </AvatarFallback>
+          </Avatar>
         </div>
         <Button
           variant="ghost"
