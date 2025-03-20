@@ -56,7 +56,7 @@ export const useChat = (channelId: string) => {
     checkUserRole();
   }, []);
 
-  const fetchMessages = useCallback(async (offset = 0, limit = MAX_MESSAGES) => {
+  const fetchMessages = useCallback(async (offset = 0, limit = 100) => {
     if (!channelId) return;
     
     setIsLoading(true);
@@ -104,6 +104,20 @@ export const useChat = (channelId: string) => {
           if (messagesMap.current.has(message.id)) {
             const existingMessage = messagesMap.current.get(message.id)!;
             existingMessage.timestamp = new Date(message.created_at);
+            if (message.reactions) {
+              let parsedReactions = {};
+              if (typeof message.reactions === 'string') {
+                try {
+                  parsedReactions = JSON.parse(message.reactions);
+                } catch (e) {
+                  console.error(`[useChat ${userRole.current}] Error parsing reactions string:`, e);
+                }
+              } else if (message.reactions && typeof message.reactions === 'object') {
+                parsedReactions = message.reactions;
+              }
+              existingMessage.reactions = parsedReactions as Record<string, string[]>;
+              console.log(`[useChat ${userRole.current}] Updated reactions for message:`, message.id, existingMessage.reactions);
+            }
             return existingMessage;
           }
           
@@ -133,6 +147,9 @@ export const useChat = (channelId: string) => {
           } catch (e) {
             console.error(`[useChat ${userRole.current}] Error parsing reactions:`, e);
           }
+
+          console.log(`[useChat ${userRole.current}] Message reactions raw:`, message.reactions);
+          console.log(`[useChat ${userRole.current}] Message reactions parsed:`, parsedReactions);
 
           const parsedAttachments: Attachment[] = [];
           if (Array.isArray(message.attachments)) {
@@ -265,6 +282,9 @@ export const useChat = (channelId: string) => {
           } else if (messageData.reactions && typeof messageData.reactions === 'object') {
             parsedReactions = messageData.reactions;
           }
+          
+          console.log(`[useChat ${userRole.current}] Realtime: Message reactions raw:`, messageData.reactions);
+          console.log(`[useChat ${userRole.current}] Realtime: Message reactions parsed:`, parsedReactions);
         } catch (e) {
           console.error(`[useChat ${userRole.current}] Error parsing realtime reactions:`, e);
         }

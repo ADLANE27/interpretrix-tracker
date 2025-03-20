@@ -9,8 +9,8 @@ export const shouldShowDate = (currentMessage: Message, previousMessage?: Messag
   
   return (
     currentDate.getDate() !== previousDate.getDate() ||
-    currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
-    currentDate.getFullYear() !== previousMessage.timestamp.getFullYear()
+    currentDate.getMonth() !== previousDate.getMonth() ||
+    currentDate.getFullYear() !== previousDate.getFullYear()
   );
 };
 

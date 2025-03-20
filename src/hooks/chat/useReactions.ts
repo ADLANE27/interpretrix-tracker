@@ -79,7 +79,7 @@ export const useReactions = (
 
       console.log('[useReactions] Updated reactions:', currentReactions);
 
-      // Étape 3: Mettre à jour le message dans la base de données - toujours enregistrer en tant qu'objet JSON
+      // Étape 3: Mettre à jour le message dans la base de données
       const { error: updateError } = await supabase
         .from('chat_messages')
         .update({ 
