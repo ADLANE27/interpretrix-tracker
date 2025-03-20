@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { HowToUseGuide } from "./HowToUseGuide";
 import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
 
 interface SidebarProps {
   activeTab: string;
@@ -24,7 +25,14 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
-  const { totalUnreadCount, unreadMentions, unreadDirectMessages, refreshMentions } = useUnreadMentions();
+  const { 
+    totalUnreadCount, 
+    unreadMentions, 
+    unreadDirectMessages, 
+    refreshMentions,
+    markMentionAsRead,
+    deleteMention 
+  } = useUnreadMentions();
   
   const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
 
@@ -164,10 +172,14 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
+  const handleMentionClick = (mention: any) => {
+    onTabChange("messages");
+  };
+
   return (
     <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
       <div className="flex flex-col items-center justify-center py-6 space-y-4">
-        <div className="relative">
+        <div className="relative flex items-center gap-2">
           <div className={cn(
             "w-3 h-3 rounded-full absolute -right-1 -top-1",
             getStatusColor(),
@@ -183,6 +195,30 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
               <Headset className="w-6 h-6 text-primary" />
             </AvatarFallback>
           </Avatar>
+          
+          <MentionsPopover
+            mentions={unreadMentions}
+            totalCount={realtimeUnreadCount}
+            onMentionClick={handleMentionClick}
+            onMarkAsRead={markMentionAsRead}
+            onDelete={deleteMention}
+          >
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative"
+            >
+              <Bell className="h-5 w-5" />
+              {realtimeUnreadCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                >
+                  {realtimeUnreadCount}
+                </Badge>
+              )}
+            </Button>
+          </MentionsPopover>
         </div>
         <Button
           variant="ghost"
