@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
@@ -41,7 +40,6 @@ export const MessageList: React.FC<MessageListProps> = ({
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
 
-  // Organize messages into parent/reply structure
   const rootMessages = messages.filter(message => !message.parent_message_id);
   const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
     const threadId = message.parent_message_id || message.id;
@@ -52,21 +50,17 @@ export const MessageList: React.FC<MessageListProps> = ({
     return acc;
   }, {});
 
-  // Only scroll to bottom on new messages, not on reactions or other updates
   useEffect(() => {
     if (!messageContainerRef.current) return;
     
-    // Save current scroll position before any updates
     scrollPositionRef.current = messageContainerRef.current.scrollTop;
     
-    // Check if the message count has increased (new message added)
     const isNewMessage = messages.length > lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length;
     
     if (isNewMessage && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     } else {
-      // Restore scroll position after updates that weren't new messages
       requestAnimationFrame(() => {
         if (messageContainerRef.current) {
           messageContainerRef.current.scrollTop = scrollPositionRef.current;
@@ -119,10 +113,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderReactions = (message: Message) => {
-    // Enhanced debug logging to trace reaction data
     console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
     
-    // Return early if no reactions
     if (!message.reactions || Object.keys(message.reactions).length === 0) {
       return null;
     }
@@ -130,11 +122,15 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Object.entries(message.reactions).map(([emoji, userIds]) => {
-          // Skip entries with no users
           if (!userIds || userIds.length === 0) return null;
           
-          // Check if current user has reacted with this emoji
           const isActive = currentUserId ? userIds.includes(currentUserId) : false;
+          
+          console.log(`[MessageList] Rendering reaction ${emoji} for message ${message.id}:`, {
+            userIds,
+            isActive,
+            currentUserId
+          });
           
           return (
             <MessageReaction
@@ -145,7 +141,6 @@ export const MessageList: React.FC<MessageListProps> = ({
               onClick={() => {
                 console.log(`[MessageList] Reaction clicked: ${emoji} for message ${message.id}`);
                 
-                // Save scroll position before updating
                 if (messageContainerRef.current) {
                   scrollPositionRef.current = messageContainerRef.current.scrollTop;
                 }
@@ -202,7 +197,6 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           </div>
           
-          {/* Render reactions */}
           {renderReactions(message)}
           
           <div className="flex items-center gap-2 mt-1 mr-1">
@@ -210,7 +204,6 @@ export const MessageList: React.FC<MessageListProps> = ({
               onEmojiSelect={(emoji) => {
                 console.log(`[MessageList] Emoji selected from picker: ${emoji} for message ${message.id}`);
                 
-                // Save scroll position before updating
                 if (messageContainerRef.current) {
                   scrollPositionRef.current = messageContainerRef.current.scrollTop;
                 }

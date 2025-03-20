@@ -1,4 +1,3 @@
-
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -55,6 +54,18 @@ export function isAttachment(obj: any): obj is Attachment {
     typeof obj.filename === 'string' &&
     typeof obj.type === 'string' &&
     typeof obj.size === 'number'
+  );
+}
+
+export function isReactionValid(reaction: any): boolean {
+  return (
+    reaction !== null &&
+    typeof reaction === 'object' &&
+    Object.entries(reaction).every(([emoji, users]) => 
+      typeof emoji === 'string' && 
+      Array.isArray(users) &&
+      users.every(id => typeof id === 'string')
+    )
   );
 }
 

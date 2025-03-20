@@ -30,6 +30,7 @@ export const MessageReaction = ({ emoji, count, isActive, onClick }: MessageReac
         isActive ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
       }`}
       onClick={handleClick}
+      data-testid={`reaction-${emoji}`}
     >
       <span className="mr-1 text-base">{emoji}</span>
       <span className={`text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>{count}</span>

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -317,9 +318,11 @@ const useMessageActions = (
         messageId, 
         emoji, 
         currentUserId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        origin: window.location.pathname
       });
       
+      // First, fetch the current message reactions
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
@@ -336,6 +339,7 @@ const useMessageActions = (
         throw new Error("Message introuvable");
       }
 
+      // Parse reactions - handle different formats
       let currentReactions = {};
       if (messages.reactions && typeof messages.reactions === 'object') {
         currentReactions = messages.reactions;
@@ -348,42 +352,51 @@ const useMessageActions = (
         }
       }
       
-      console.log('[useMessageActions] Current reactions:', currentReactions);
+      console.log('[useMessageActions] Current reactions from DB:', currentReactions);
       
+      // Get current users who reacted with this emoji
       const currentUsers = Array.isArray(currentReactions[emoji]) ? currentReactions[emoji] : [];
+      console.log('[useMessageActions] Current users who reacted with this emoji:', currentUsers);
       
+      // Toggle the current user's reaction
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
+        // Remove the reaction
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
         console.log('[useMessageActions] Removing user reaction');
       } else {
+        // Add the reaction
         updatedUsers = [...currentUsers, currentUserId];
         console.log('[useMessageActions] Adding user reaction');
       }
 
+      // Create updated reactions object
       const updatedReactions = {
         ...currentReactions,
         [emoji]: updatedUsers
       };
 
+      // If no users left for this emoji, remove it from reactions
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
       }
 
       console.log('[useMessageActions] Updated reactions to be saved:', updatedReactions);
 
+      // Update the reaction in the database
       const { error } = await supabase
         .from('chat_messages')
         .update({ reactions: updatedReactions })
         .eq('id', messageId);
 
       if (error) {
-        console.error('[useMessageActions] Error updating reaction:', error);
+        console.error('[useMessageActions] Error updating reaction in DB:', error);
         throw error;
       }
       
       console.log('[useMessageActions] Reaction updated successfully in database');
       
+      // Fetch updated messages to reflect changes
       await fetchMessages();
       
       console.log('[useMessageActions] Messages refreshed after reaction update');

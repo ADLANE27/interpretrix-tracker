@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -77,13 +76,12 @@ export const InterpreterChat = ({
     sendMessage,
     deleteMessage,
     currentUserId,
-    reactToMessage,
+    reactToMessage: originalReactToMessage,
     markMentionsAsRead,
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  // Function to filter messages based on filters
   const getFilteredMessages = useCallback(() => {
     let filtered = messages;
 
@@ -231,12 +229,32 @@ export const InterpreterChat = ({
     };
   }, [isFullScreen, onToggleFullScreen]);
 
-  // Debug logging for reactions
-  console.log('[InterpreterChat] Messages with reactions:', 
-    messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0)
-  );
+  const reactToMessage = async (messageId: string, emoji: string) => {
+    console.log('[InterpreterChat] Reacting to message with emoji:', { 
+      messageId, 
+      emoji, 
+      currentUserId,
+      timestamp: new Date().toISOString(),
+      channelId
+    });
+    
+    try {
+      await originalReactToMessage(messageId, emoji);
+      console.log('[InterpreterChat] Reaction completed successfully');
+    } catch (error) {
+      console.error('[InterpreterChat] Error when reacting to message:', error);
+    }
+  };
 
   const filteredMessages = getFilteredMessages();
+
+  console.log('[InterpreterChat] Messages with reactions:', 
+    messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0).map(msg => ({
+      messageId: msg.id,
+      reactions: msg.reactions,
+      content: msg.content.substring(0, 20)
+    }))
+  );
 
   return (
     <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
