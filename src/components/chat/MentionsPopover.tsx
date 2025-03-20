@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { MessageSquare, X, Check, Bell } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
