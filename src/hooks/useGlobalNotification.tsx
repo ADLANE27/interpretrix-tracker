@@ -2,8 +2,7 @@
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from '@/lib/events';
-import { EVENT_NEW_MESSAGE_RECEIVED } from '@/hooks/chat/useSubscriptions';
+import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 
 export const useGlobalNotification = () => {
@@ -25,7 +24,11 @@ export const useGlobalNotification = () => {
           });
           
         const sender = senderData?.[0];
-        if (!sender) return;
+        console.log('[GlobalNotification] Sender details:', sender);
+        if (!sender) {
+          console.log('[GlobalNotification] No sender details found, skipping toast');
+          return;
+        }
         
         // Get channel name for context
         const { data: channelData } = await supabase
@@ -34,7 +37,10 @@ export const useGlobalNotification = () => {
           .eq('id', data.channelId)
           .single();
           
+        console.log('[GlobalNotification] Channel details:', channelData);
+        
         // Show toast notification with message preview
+        console.log('[GlobalNotification] Displaying toast notification');
         toast({
           title: `Nouveau message de ${sender.name}`,
           description: `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`,
@@ -46,6 +52,7 @@ export const useGlobalNotification = () => {
               Voir
             </button>
           ),
+          duration: 5000, // Longer duration for better visibility
         });
       } catch (error) {
         console.error('[GlobalNotification] Error processing message notification:', error);
@@ -54,9 +61,11 @@ export const useGlobalNotification = () => {
 
     // Subscribe to new message events
     eventEmitter.on(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
+    console.log('[GlobalNotification] Successfully subscribed to new message events');
     
     // Cleanup function
     return () => {
+      console.log('[GlobalNotification] Cleaning up global notification listeners');
       eventEmitter.off(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     };
   }, [toast, navigate]);

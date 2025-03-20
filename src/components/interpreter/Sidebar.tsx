@@ -12,7 +12,6 @@ import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 
 interface SidebarProps {
   activeTab: string;
@@ -36,8 +35,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   } = useUnreadMentions();
   
   const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
-  
-  useGlobalNotification();
 
   const handleLogout = async () => {
     try {
@@ -283,3 +280,4 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     </div>
   );
 };
+
