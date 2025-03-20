@@ -16,7 +16,7 @@ interface MessageListProps {
   channelId: string;
 }
 
-// MessageSkeleton component for showing loading state
+// Optimized MessageSkeleton component for showing loading state
 const MessageSkeleton = () => (
   <div className="animate-pulse space-y-3 py-2">
     <div className="flex items-center gap-2">
@@ -48,33 +48,32 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [showSkeletons, setShowSkeletons] = useState(true);
   const initialSkeletonsShown = useRef(false);
   const autoScrolledRef = useRef(false);
+  const lastChannelIdRef = useRef<string>('');
 
   // Show skeletons immediately on mount, keep them until real messages arrive
   useEffect(() => {
-    if (!initialSkeletonsShown.current) {
+    if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
       initialSkeletonsShown.current = true;
+      lastChannelIdRef.current = channelId;
     }
     
     if (messages.length > 0) {
       // Remove skeletons once we have real messages with a very small delay
       const timer = setTimeout(() => {
         setShowSkeletons(false);
-      }, 100); // Shorter delay for smoother transition
+      }, 50); // Very short delay for smoother transition
       
       return () => clearTimeout(timer);
     }
-  }, [messages.length]);
+  }, [messages.length, channelId]);
 
   // Store the latest valid messages to prevent flickering
   useEffect(() => {
     if (messages.length > 0) {
-      // Update stable messages more frequently for faster display
-      const now = Date.now();
-      if (now - lastStableUpdateTimestamp.current > 500) { // Reduced time for more responsive updates
-        stableMessages.current = [...messages]; // Create a new array to ensure reference changes
-        lastStableUpdateTimestamp.current = now;
-      }
+      // Update stable messages immediately for faster display
+      stableMessages.current = [...messages]; // Create a new array to ensure reference changes
+      lastStableUpdateTimestamp.current = Date.now();
       hadMessagesRef.current = true;
       
       // Once we have real messages, we're no longer in initial load state
@@ -142,18 +141,27 @@ export const MessageList: React.FC<MessageListProps> = ({
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
     setShowSkeletons(true);
+    
+    // Force scroll to bottom after a small delay when channel changes
+    if (messagesEndRef.current) {
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+        }
+      }, 300);
+    }
   }, [channelId]);
 
   // Use the stable messages if current messages are empty to prevent flickering
   const displayMessages = messages.length > 0 ? messages : 
     (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
 
-  // Show skeletons during initial load - now with more skeletons for a better experience
+  // Show skeletons during initial load with more skeletons for a better experience
   if (showSkeletons && (isInitialLoad || displayMessages.length === 0)) {
     return (
       <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
            ref={messageContainerRef}>
-        {Array.from({ length: 8 }).map((_, index) => (
+        {Array.from({ length: 10 }).map((_, index) => (
           <MessageSkeleton key={index} />
         ))}
         <div ref={messagesEndRef} />

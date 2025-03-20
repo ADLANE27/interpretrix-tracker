@@ -1,4 +1,3 @@
-
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useMessageProcessing } from './useMessageProcessing';
@@ -26,28 +25,37 @@ export const useRealtimeMessages = (
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
   const forceFetchInProgress = useRef(false);
   
-  // Define forceFetch function first before using it
   const forceFetch = useCallback(() => {
-    if (forceFetchInProgress.current) return;
+    if (forceFetchInProgress.current) {
+      console.log(`[useRealtimeMessages ${userRole.current}] Force fetch already in progress, skipping`);
+      return;
+    }
     
     console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
     forceFetchInProgress.current = true;
     
-    // Clear any processing state to avoid deadlocks
     if (processingTimeout.current) {
       clearTimeout(processingTimeout.current);
       processingTimeout.current = null;
     }
+    
     isProcessingEvent.current = false;
     processingMessage.current = false;
     processQueue.current = [];
     
     return fetchMessages().finally(() => {
+      console.log(`[useRealtimeMessages ${userRole.current}] Force fetch completed`);
       forceFetchInProgress.current = false;
+      
+      setTimeout(() => {
+        if (messagesMap.current.size > 0) {
+          console.log(`[useRealtimeMessages ${userRole.current}] Running post-fetch update`);
+          updateMessagesArray();
+        }
+      }, 500);
     });
-  }, [fetchMessages, userRole, processingMessage]);
+  }, [fetchMessages, userRole, processingMessage, messagesMap, updateMessagesArray]);
   
-  // Process messages in queue one by one to avoid race conditions
   const processNextInQueue = useCallback(async () => {
     if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0) {
       if (processingTimeout.current) {
@@ -68,7 +76,6 @@ export const useRealtimeMessages = (
         processingMessage.current = false;
         isProcessingEvent.current = false;
         
-        // Schedule next item processing
         if (processQueue.current.length > 0) {
           processingTimeout.current = setTimeout(processNextInQueue, 100);
         }
@@ -80,7 +87,6 @@ export const useRealtimeMessages = (
         processingMessage.current = false;
         isProcessingEvent.current = false;
         
-        // Schedule next item processing
         if (processQueue.current.length > 0) {
           processingTimeout.current = setTimeout(processNextInQueue, 100);
         }
@@ -93,7 +99,6 @@ export const useRealtimeMessages = (
           processingMessage.current = false;
           isProcessingEvent.current = false;
           
-          // Schedule next item processing
           if (processQueue.current.length > 0) {
             processingTimeout.current = setTimeout(processNextInQueue, 100);
           }
@@ -101,17 +106,14 @@ export const useRealtimeMessages = (
         }
         
         try {
-          // Get channel type for proper processing
           const { data: channelData } = await supabase
             .from('chat_channels')
             .select('channel_type')
             .eq('id', channelId)
             .single();
           
-          // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
-          // Update the messages array
           updateMessagesArray();
           
           console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
@@ -125,7 +127,7 @@ export const useRealtimeMessages = (
             setTimeout(() => {
               forceFetch();
               cooldownPeriod.current = false;
-            }, 2000);
+            }, 1000);
           }
         }
       } 
@@ -134,7 +136,6 @@ export const useRealtimeMessages = (
         if (messagesMap.current.has(deletedId)) {
           messagesMap.current.delete(deletedId);
           
-          // Update the messages array
           updateMessagesArray();
           console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message deleted:`, deletedId);
         }
@@ -145,7 +146,6 @@ export const useRealtimeMessages = (
       processingMessage.current = false;
       isProcessingEvent.current = false;
       
-      // Schedule next item processing with a small delay
       if (processQueue.current.length > 0) {
         processingTimeout.current = setTimeout(processNextInQueue, 100);
       }
@@ -153,19 +153,24 @@ export const useRealtimeMessages = (
   }, [channelId, messagesMap, processingMessage, userRole, processMessage, updateMessagesArray, forceFetch]);
   
   const handleRealtimeMessage = useCallback(async (payload: any) => {
-    // Add message to processing queue instead of processing immediately
     console.log(`[useRealtimeMessages ${userRole.current}] Received realtime message:`, payload.eventType);
     
-    // Add to queue
     processQueue.current.push(payload);
     
-    // Start processing if not already processing
     if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current) {
       processingTimeout.current = setTimeout(processNextInQueue, 50);
     }
   }, [userRole, processNextInQueue]);
-
-  // Cleanup on unmount
+  
+  useEffect(() => {
+    if (channelId) {
+      setTimeout(() => {
+        console.log(`[useRealtimeMessages ${userRole.current}] Initial force fetch for channel: ${channelId}`);
+        forceFetch();
+      }, 50);
+    }
+  }, [channelId, forceFetch, userRole]);
+  
   useEffect(() => {
     return () => {
       if (processingTimeout.current) {
