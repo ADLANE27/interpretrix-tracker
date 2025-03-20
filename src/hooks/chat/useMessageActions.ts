@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -295,10 +294,7 @@ const useMessageActions = (
   };
 
   const reactToMessage = async (messageId: string, emoji: string) => {
-    console.log('[useMessageActions] reactToMessage called with:', { messageId, emoji, currentUserId });
-    
     if (!currentUserId) {
-      console.log('[useMessageActions] No currentUserId, showing error toast');
       toast({
         title: "Erreur",
         description: "Vous devez être connecté pour réagir à un message",
@@ -308,7 +304,6 @@ const useMessageActions = (
     }
 
     if (!checkConnection()) {
-      console.log('[useMessageActions] No internet connection, showing error toast');
       toast({
         title: "Erreur",
         description: "Pas de connexion internet. Veuillez réessayer plus tard.",
@@ -318,18 +313,8 @@ const useMessageActions = (
     }
 
     try {
-      console.log('[useMessageActions] Adding/removing reaction:', { messageId, emoji, currentUserId });
+      console.log('[Chat] Adding/removing reaction:', { messageId, emoji, currentUserId });
       
-      // First, get the user role to include in logs
-      const { data: userRoleData, error: userRoleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', currentUserId)
-        .single();
-        
-      const userRole = userRoleData?.role || 'unknown';
-      console.log(`[useMessageActions] User role: ${userRole}`);
-        
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
@@ -337,16 +322,14 @@ const useMessageActions = (
         .maybeSingle();
 
       if (fetchError) {
-        console.error('[useMessageActions] Error fetching message for reaction:', fetchError);
+        console.error('[Chat] Error fetching message for reaction:', fetchError);
         throw fetchError;
       }
 
       if (!messages) {
-        console.error('[useMessageActions] Message not found for reaction:', messageId);
+        console.error('[Chat] Message not found for reaction:', messageId);
         throw new Error("Message introuvable");
       }
-
-      console.log('[useMessageActions] Message retrieved:', messages);
 
       let currentReactions = {};
       if (messages.reactions && typeof messages.reactions === 'object') {
@@ -355,23 +338,22 @@ const useMessageActions = (
         try {
           currentReactions = JSON.parse(messages.reactions);
         } catch (e) {
-          console.error('[useMessageActions] Error parsing reactions string:', e);
+          console.error('[Chat] Error parsing reactions string:', e);
           currentReactions = {};
         }
       }
       
-      console.log('[useMessageActions] Current reactions:', currentReactions);
+      console.log('[Chat] Current reactions:', currentReactions);
       
       const currentUsers = Array.isArray(currentReactions[emoji]) ? currentReactions[emoji] : [];
-      console.log(`[useMessageActions] Current users for emoji ${emoji}:`, currentUsers);
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
-        console.log('[useMessageActions] Removing user reaction, new users:', updatedUsers);
+        console.log('[Chat] Removing user reaction');
       } else {
         updatedUsers = [...currentUsers, currentUserId];
-        console.log('[useMessageActions] Adding user reaction, new users:', updatedUsers);
+        console.log('[Chat] Adding user reaction');
       }
 
       const updatedReactions = {
@@ -381,28 +363,25 @@ const useMessageActions = (
 
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
-        console.log(`[useMessageActions] No users left for emoji ${emoji}, removing it from reactions`);
       }
 
-      console.log('[useMessageActions] Updated reactions to be saved:', updatedReactions);
+      console.log('[Chat] Updated reactions:', updatedReactions);
 
-      const { data: updateData, error } = await supabase
+      const { error } = await supabase
         .from('chat_messages')
         .update({ reactions: updatedReactions })
-        .eq('id', messageId)
-        .select('reactions');
+        .eq('id', messageId);
 
       if (error) {
-        console.error('[useMessageActions] Error updating reaction:', error);
+        console.error('[Chat] Error updating reaction:', error);
         throw error;
       }
       
-      console.log('[useMessageActions] Reaction updated successfully:', updateData);
+      console.log('[Chat] Reaction updated successfully');
       
       await fetchMessages();
-      console.log('[useMessageActions] Messages refetched after reaction update');
     } catch (error) {
-      console.error('[useMessageActions] Error updating reaction:', error);
+      console.error('[Chat] Error updating reaction:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la réaction",

@@ -38,26 +38,6 @@ export const MessageList: React.FC<MessageListProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // Log full messages array for debugging
-  useEffect(() => {
-    console.log(`[MessageList] Rendering ${messages.length} messages for channel ${channelId}`, messages);
-    
-    // Log reaction data specifically for debugging
-    const messagesWithReactions = messages.filter(msg => 
-      msg.reactions && Object.keys(msg.reactions).length > 0
-    );
-    
-    if (messagesWithReactions.length > 0) {
-      console.log('[MessageList] Messages with reactions:', messagesWithReactions.map(msg => ({
-        id: msg.id,
-        content: msg.content.substring(0, 20) + '...',
-        reactions: msg.reactions
-      })));
-    } else {
-      console.log('[MessageList] No messages with reactions found');
-    }
-  }, [messages, channelId]);
-
   // Organize messages into parent/reply structure
   const rootMessages = messages.filter(message => !message.parent_message_id);
   const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
@@ -119,36 +99,22 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderReactions = (message: Message) => {
-    // More detailed debug logging to check reactions data
+    // Debug logging to check reactions data
     console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
     
-    if (!message.reactions) {
-      console.log(`[MessageList] No reactions object for message ${message.id}`);
+    // Return early if no reactions
+    if (!message.reactions || Object.keys(message.reactions).length === 0) {
       return null;
     }
-    
-    if (Object.keys(message.reactions).length === 0) {
-      console.log(`[MessageList] Empty reactions object for message ${message.id}`);
-      return null;
-    }
-    
-    // Enhanced logging to inspect reactions structure
-    Object.entries(message.reactions).forEach(([emoji, userIds]) => {
-      console.log(`[MessageList] Reaction ${emoji} has ${userIds?.length || 0} users:`, userIds);
-    });
 
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Object.entries(message.reactions).map(([emoji, userIds]) => {
           // Skip entries with no users
-          if (!userIds || userIds.length === 0) {
-            console.log(`[MessageList] Skipping empty reaction ${emoji}`);
-            return null;
-          }
+          if (!userIds || userIds.length === 0) return null;
           
           // Check if current user has reacted with this emoji
           const isActive = currentUserId ? userIds.includes(currentUserId) : false;
-          console.log(`[MessageList] Rendering reaction ${emoji}, isActive: ${isActive}, users: ${userIds.length}`);
           
           return (
             <MessageReaction
@@ -210,7 +176,7 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           </div>
           
-          {/* Render reactions with debug comment */}
+          {/* Render reactions */}
           {renderReactions(message)}
           
           <div className="flex items-center gap-2 mt-1 mr-1">
