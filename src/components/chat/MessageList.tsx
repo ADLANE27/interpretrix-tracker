@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight, ThumbsUp } from 'lucide-react';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -99,12 +99,14 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderReactions = (message: Message) => {
+    // Debug logging to check reactions data
+    console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
+    
     // Return early if no reactions
     if (!message.reactions || Object.keys(message.reactions).length === 0) {
       return null;
     }
 
-    // Use the new dark theme styling for reactions
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Object.entries(message.reactions).map(([emoji, userIds]) => {
@@ -114,33 +116,17 @@ export const MessageList: React.FC<MessageListProps> = ({
           // Check if current user has reacted with this emoji
           const isActive = currentUserId ? userIds.includes(currentUserId) : false;
           
-          // For thumbs up emoji, use the special dark theme styling
-          if (emoji === '👍') {
-            return (
-              <div 
-                key={`${message.id}-${emoji}`}
-                className="flex items-center bg-[#222222] rounded-full cursor-pointer hover:bg-[#333333] transition-colors px-2 py-1"
-                onClick={() => onReactToMessage(message.id, emoji)}
-              >
-                <ThumbsUp 
-                  className={`h-4 w-4 mr-1 ${isActive ? 'text-[#FFD700]' : 'text-[#999999]'}`} 
-                  fill={isActive ? '#FFD700' : 'none'} 
-                />
-                <span className="text-xs font-medium text-white">{userIds.length}</span>
-              </div>
-            );
-          }
-          
-          // For other emoji reactions
           return (
-            <div
+            <MessageReaction
               key={`${message.id}-${emoji}`}
-              className="flex items-center bg-[#222222] rounded-full cursor-pointer hover:bg-[#333333] transition-colors px-2 py-1"
-              onClick={() => onReactToMessage(message.id, emoji)}
-            >
-              <span className="mr-1 text-base">{emoji}</span>
-              <span className="text-xs font-medium text-white">{userIds.length}</span>
-            </div>
+              emoji={emoji}
+              count={userIds.length}
+              isActive={isActive}
+              onClick={() => {
+                console.log(`[MessageList] Reaction clicked: ${emoji} for message ${message.id}`);
+                onReactToMessage(message.id, emoji);
+              }}
+            />
           );
         })}
       </div>
@@ -148,85 +134,69 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderMessage = (message: Message, isThreadReply = false) => {
-    const isCurrentUser = message.sender.id === currentUserId;
-
     return (
       <div 
         ref={(el) => el && observeMessage(el)}
         key={message.id}
         data-message-id={message.id}
         className={`flex gap-3 ${
-          isCurrentUser ? 'flex-row-reverse' : 'flex-row'
+          message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
         } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
       >
-        {!isCurrentUser && (
-          <Avatar className="h-10 w-10 shrink-0 mt-1 rounded-md overflow-hidden">
+        {message.sender.id !== currentUserId && (
+          <Avatar className="h-10 w-10 shrink-0 mt-1">
             <AvatarImage 
               src={message.sender.avatarUrl} 
               alt={message.sender.name}
               className="object-cover"
             />
-            <AvatarFallback className="bg-[#403E43] text-gray-200 text-sm font-medium">
+            <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
               {getInitials(message.sender.name)}
             </AvatarFallback>
           </Avatar>
         )}
         <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
-          isCurrentUser ? 'items-end' : 'items-start'
+          message.sender.id === currentUserId ? 'items-end' : 'items-start'
         }`}>
-          {!isThreadReply && !isCurrentUser && (
-            <div className="flex items-baseline space-x-2">
-              <span className="text-sm font-bold text-white">
-                {message.sender.name}
-              </span>
-              <span className="text-xs text-gray-400">
+          {!isThreadReply && message.sender.id !== currentUserId && (
+            <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
+              {message.sender.name}
+            </span>
+          )}
+          <div className={`group relative ${
+            message.sender.id === currentUserId 
+              ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
+              : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+          } px-4 py-3 break-words overflow-hidden`}>
+            <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
+            <div className="absolute right-4 bottom-2 flex items-center gap-1">
+              <span className="text-xs text-gray-500">
                 {formatMessageTime(message.timestamp)}
               </span>
             </div>
-          )}
-          <div className={`relative ${
-            isCurrentUser 
-              ? 'bg-[#070F2B] text-white rounded-t-xl rounded-bl-xl rounded-br-sm' 
-              : 'bg-[#221F26] text-white rounded-t-xl rounded-br-xl rounded-bl-sm'
-          } px-4 py-3 break-words overflow-hidden`}>
-            <div className="text-base">{message.content}</div>
-            {isCurrentUser && (
-              <div className="absolute right-2 bottom-1 flex items-center gap-1">
-                <span className="text-xs text-gray-400">
-                  {formatMessageTime(message.timestamp)}
-                </span>
-              </div>
-            )}
           </div>
           
-          {/* Render reactions with new styling */}
+          {/* Render reactions */}
           {renderReactions(message)}
           
-          <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {/* Quick thumbs up reaction button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onReactToMessage(message.id, '👍')}
-              className="p-1 rounded-full hover:bg-[#333333] h-auto bg-[#222222] text-gray-400"
-            >
-              <ThumbsUp className="h-4 w-4" />
-            </Button>
-            
+          <div className="flex items-center gap-2 mt-1 mr-1">
             <EmojiPicker 
-              onEmojiSelect={(emoji) => onReactToMessage(message.id, emoji)}
+              onEmojiSelect={(emoji) => {
+                console.log(`[MessageList] Emoji selected from picker: ${emoji} for message ${message.id}`);
+                onReactToMessage(message.id, emoji);
+              }}
               size="sm"
             />
             
-            {isCurrentUser && (
+            {message.sender.id === currentUserId && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onDeleteMessage(message.id)}
-                className="p-1 rounded-full hover:bg-[#333333] h-auto bg-[#222222] text-gray-400"
+                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
                 aria-label="Supprimer le message"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
               </Button>
             )}
             {!isThreadReply && setReplyTo && (
@@ -234,9 +204,9 @@ export const MessageList: React.FC<MessageListProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setReplyTo(message)}
-                className="p-1 rounded-full hover:bg-[#333333] h-auto bg-[#222222] text-gray-400"
+                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
               >
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="h-4 w-4 text-gray-500" />
               </Button>
             )}
           </div>
@@ -256,14 +226,14 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-5 bg-[#000000e6] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
+    <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
         {rootMessages.map((message, index) => {
           return (
             <React.Fragment key={message.id}>
               {shouldShowDate(message, rootMessages[index - 1]) && (
                 <div className="flex justify-center my-5">
-                  <div className="bg-[#333333] text-gray-300 px-4 py-1.5 rounded-full text-sm font-medium">
+                  <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
                     {formatMessageDate(message.timestamp)}
                   </div>
                 </div>
@@ -276,7 +246,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleThread(message.id)}
-                    className="text-xs text-gray-300 hover:text-white bg-[#333333] hover:bg-[#444444] rounded-full px-3 py-1.5 h-auto"
+                    className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
                   >
                     {expandedThreads.has(message.id) ? (
                       <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
@@ -287,7 +257,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                   </Button>
                   
                   {expandedThreads.has(message.id) && (
-                    <div className="space-y-2 mt-3 pl-3 border-l-2 border-[#444444]">
+                    <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
                       {messageThreads[message.id]
                         .filter(reply => reply.id !== message.id)
                         .map(reply => renderMessage(reply, true))}

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Badge } from "@/components/ui/badge";
 
 interface MessageReactionProps {
   emoji: string;
@@ -18,14 +19,15 @@ export const MessageReaction = ({ emoji, count, isActive, onClick }: MessageReac
   };
 
   return (
-    <div
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full cursor-pointer transition-colors ${
-        isActive ? 'bg-[#333333] text-[#FFD700]' : 'bg-[#222222] text-[#aaadb0] hover:bg-[#333333]'
+    <Badge
+      variant="outline"
+      className={`px-2 py-1 rounded-full cursor-pointer hover:bg-gray-100 transition-colors flex items-center ${
+        isActive ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
       }`}
       onClick={handleClick}
     >
-      <span className="text-base">{emoji}</span>
-      <span className="text-xs font-medium">{count}</span>
-    </div>
+      <span className="mr-1 text-base">{emoji}</span>
+      <span className={`text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>{count}</span>
+    </Badge>
   );
 };

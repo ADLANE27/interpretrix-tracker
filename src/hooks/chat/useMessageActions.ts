@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -332,26 +331,20 @@ const useMessageActions = (
         throw new Error("Message introuvable");
       }
 
-      // Initialize currentReactions as an empty object
       let currentReactions = {};
-      
-      // Check if messages.reactions exists and is an object or string
-      if (messages.reactions) {
-        if (typeof messages.reactions === 'object') {
-          currentReactions = messages.reactions;
-        } else if (typeof messages.reactions === 'string') {
-          try {
-            currentReactions = JSON.parse(messages.reactions);
-          } catch (e) {
-            console.error('[Chat] Error parsing reactions string:', e);
-            currentReactions = {};
-          }
+      if (messages.reactions && typeof messages.reactions === 'object') {
+        currentReactions = messages.reactions;
+      } else if (typeof messages.reactions === 'string') {
+        try {
+          currentReactions = JSON.parse(messages.reactions);
+        } catch (e) {
+          console.error('[Chat] Error parsing reactions string:', e);
+          currentReactions = {};
         }
       }
       
       console.log('[Chat] Current reactions:', currentReactions);
       
-      // Ensure the emoji key has an array of users
       const currentUsers = Array.isArray(currentReactions[emoji]) ? currentReactions[emoji] : [];
       
       let updatedUsers;
@@ -368,7 +361,6 @@ const useMessageActions = (
         [emoji]: updatedUsers
       };
 
-      // Remove empty reaction arrays
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
       }
