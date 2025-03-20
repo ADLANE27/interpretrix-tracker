@@ -5,13 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useTerminologySearch } from "@/hooks/useTerminologySearch";
 import { SavedTerm, TermSearch } from "@/types/terminology";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +17,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LanguageCombobox } from "./LanguageCombobox";
+import { LANGUAGES } from "@/lib/constants";
 
 interface TerminologyTabProps {
   userId?: string;
@@ -220,41 +215,27 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
 
         <TabsContent value="search" className="flex-1 flex flex-col">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
-              <SelectTrigger>
-                <SelectValue placeholder="Langue source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Français">Français</SelectItem>
-                <SelectItem value="Anglais">Anglais</SelectItem>
-                <SelectItem value="Espagnol">Espagnol</SelectItem>
-                <SelectItem value="Allemand">Allemand</SelectItem>
-                <SelectItem value="Italien">Italien</SelectItem>
-                <SelectItem value="Portugais">Portugais</SelectItem>
-                <SelectItem value="Arabe">Arabe</SelectItem>
-                <SelectItem value="Russe">Russe</SelectItem>
-                <SelectItem value="Chinois">Chinois</SelectItem>
-                <SelectItem value="Japonais">Japonais</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <LanguageCombobox
+                languages={LANGUAGES}
+                value={sourceLanguage}
+                onChange={setSourceLanguage}
+                placeholder="Langue source"
+                emptyMessage="Aucune langue trouvée"
+                allLanguagesOption={false}
+              />
+            </div>
 
-            <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-              <SelectTrigger>
-                <SelectValue placeholder="Langue cible" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Français">Français</SelectItem>
-                <SelectItem value="Anglais">Anglais</SelectItem>
-                <SelectItem value="Espagnol">Espagnol</SelectItem>
-                <SelectItem value="Allemand">Allemand</SelectItem>
-                <SelectItem value="Italien">Italien</SelectItem>
-                <SelectItem value="Portugais">Portugais</SelectItem>
-                <SelectItem value="Arabe">Arabe</SelectItem>
-                <SelectItem value="Russe">Russe</SelectItem>
-                <SelectItem value="Chinois">Chinois</SelectItem>
-                <SelectItem value="Japonais">Japonais</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <LanguageCombobox
+                languages={LANGUAGES}
+                value={targetLanguage}
+                onChange={setTargetLanguage}
+                placeholder="Langue cible"
+                emptyMessage="Aucune langue trouvée"
+                allLanguagesOption={false}
+              />
+            </div>
           </div>
 
           <div className="flex gap-2 mb-4">
