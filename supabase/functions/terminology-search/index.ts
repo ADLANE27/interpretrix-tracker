@@ -61,94 +61,93 @@ serve(async (req) => {
       );
     }
 
-    // Create the comprehensive linguistic analysis prompt
+    // Create the prompt - use French prompt for better French results
     const prompt = `
-Primary Instructions
-Analyze the term "${term}" in ${sourceLanguage} and translate to ${targetLanguage} with complete linguistic depth. Approach this analysis as a expert linguist, lexicographer, etymologist, and translator combined.
+Analysez le terme "${term}" en ${sourceLanguage} et traduisez-le en ${targetLanguage} avec une profondeur linguistique complète. Abordez cette analyse en combinant les expertises d'un linguiste, d'un lexicographe, d'un étymologiste et d'un traducteur.
 
-Required Analysis Components
-1. Core Definition & Classification
-- Provide a precise, academic definition
-- Identify grammatical classification (part of speech, gender if applicable)
-- Note register (formal, informal, archaic, technical, slang, etc.)
-- List all major variant forms (plural, conjugations, declensions)
+Composantes d'Analyse Requises
+1. Définition Fondamentale & Classification
+- Fournissez une définition académique précise
+- Identifiez la classification grammaticale (partie du discours, genre si applicable)
+- Notez le registre (formel, informel, archaïque, technique, argotique, etc.)
+- Énumérez toutes les formes variantes majeures (pluriel, conjugaisons, déclinaisons)
 
-2. Etymological Analysis
-- Trace complete etymological lineage back to proto-language when possible
-- Detail all historical semantic shifts and meaning evolution
-- Identify cognates in related languages
-- Note significant spelling/pronunciation changes throughout history
-- Include approximate dates/periods for key evolutionary stages
+2. Analyse Étymologique
+- Retracez la lignée étymologique complète jusqu'à la proto-langue lorsque possible
+- Détaillez tous les changements sémantiques historiques et l'évolution du sens
+- Identifiez les cognats dans les langues apparentées
+- Notez les changements significatifs d'orthographe/prononciation à travers l'histoire
+- Incluez les dates/périodes approximatives des étapes évolutives clés
 
-3. Comprehensive Translation
-- Primary translation with notes on semantic precision/overlap
-- Alternative translations with context-specific usage guidance
-- Translation challenges and potential semantic gaps
-- Cultural adaptations required for full meaning transfer
-- Register-equivalent translations (formal, informal, technical)
+3. Traduction Complète
+- Traduction principale avec notes sur la précision/chevauchement sémantique
+- Traductions alternatives avec conseils d'utilisation contextuelle
+- Défis de traduction et lacunes sémantiques potentielles
+- Adaptations culturelles requises pour un transfert complet du sens
+- Traductions équivalentes selon le registre (formel, informel, technique)
 
-4. Semantic Field Mapping
-- Comprehensive synonyms organized by semantic nuance
-- Antonyms with contextual opposition patterns
-- Hypernyms and hyponyms (broader/narrower terms)
-- Co-hyponyms (terms at same semantic level)
-- Complete semantic network visualization
+4. Cartographie du Champ Sémantique
+- Synonymes complets organisés par nuance sémantique
+- Antonymes avec modèles d'opposition contextuelle
+- Hyperonymes et hyponymes (termes plus larges/plus étroits)
+- Co-hyponymes (termes au même niveau sémantique)
+- Visualisation complète du réseau sémantique
 
-5. Contextual Usage Analysis
-- Domain-specific meanings across disciplines
-- Regional/dialectal variations with examples
-- Historical usage patterns and frequency trends
-- Modern usage frequency statistics
-- Collocations and common phrasal patterns
-- Idiomatic expressions containing the term
+5. Analyse d'Usage Contextuel
+- Significations spécifiques à divers domaines disciplinaires
+- Variations régionales/dialectales avec exemples
+- Modèles d'usage historiques et tendances de fréquence
+- Statistiques de fréquence d'usage moderne
+- Collocations et modèles phrastiques courants
+- Expressions idiomatiques contenant le terme
 
-6. Phonological & Orthographic Analysis
-- IPA transcription with stress patterns
-- Historical pronunciation shifts
-- Syllabic structure analysis
-- Orthographic variations (historical and regional)
-- Notable phonological features
+6. Analyse Phonologique & Orthographique
+- Transcription API avec modèles d'accentuation
+- Évolutions historiques de la prononciation
+- Analyse de la structure syllabique
+- Variations orthographiques (historiques et régionales)
+- Caractéristiques phonologiques notables
 
-7. Morphological Breakdown
-- Root, prefix, suffix identification
-- Morpheme boundaries and meaning contributions
-- Derivational possibilities and patterns
-- Compound formations and their semantic relationships
+7. Décomposition Morphologique
+- Identification des racines, préfixes, suffixes
+- Frontières morphémiques et contributions au sens
+- Possibilités et modèles dérivationnels
+- Formations composées et leurs relations sémantiques
 
-8. Cultural & Conceptual Dimensions
-- Cultural associations and connotations
-- Conceptual metaphors built on this term
-- Presence in cultural expressions/artifacts
-- Taboos or sensitivities associated with usage
-- Cross-cultural perception differences
+8. Dimensions Culturelles & Conceptuelles
+- Associations culturelles et connotations
+- Métaphores conceptuelles construites autour de ce terme
+- Présence dans les expressions/artefacts culturels
+- Tabous ou sensibilités associés à l'usage
+- Différences de perception interculturelle
 
-9. Corpus Examples
-- Authentic usage examples from diverse sources
-- Historical attestations showing meaning evolution
-- Contemporary examples demonstrating semantic range
-- Parallel examples in target language showing equivalence
+9. Exemples de Corpus
+- Exemples d'usage authentiques provenant de sources diverses
+- Attestations historiques montrant l'évolution du sens
+- Exemples contemporains démontrant l'étendue sémantique
+- Exemples parallèles en langue cible montrant l'équivalence
 
-10. Visual Representation
-- Create a visual semantic map connecting all related terms
-- Show hierarchical relationships within the concept field
-- Indicate etymological connections visually
-- Represent register variations on a spectrum
+10. Représentation Visuelle
+- Créez une carte sémantique visuelle reliant tous les termes apparentés
+- Montrez les relations hiérarchiques au sein du champ conceptuel
+- Indiquez visuellement les connections étymologiques
+- Représentez les variations de registre sur un spectre
 
-Special Instructions
-- If encountering rare or specialized terminology, acknowledge limitations while providing maximum available information
-- For terms with significant cultural loading, provide extensive cultural context
-- When analyzing polysemous terms, organize all meanings historically and by frequency
-- For neologisms or recently evolved terms, trace recent development and adoption patterns
-- If term has specialized meaning in multiple domains, address each domain separately
+Instructions Spéciales
+- En cas de terminologie rare ou spécialisée, reconnaissez les limitations tout en fournissant le maximum d'informations disponibles
+- Pour les termes à forte charge culturelle, fournissez un contexte culturel approfondi
+- Lors de l'analyse de termes polysémiques, organisez toutes les significations historiquement et par fréquence
+- Pour les néologismes ou termes récemment évolués, tracez les modèles de développement et d'adoption récents
+- Si le terme a un sens spécialisé dans plusieurs domaines, abordez chaque domaine séparément
 
-Output Format
-Present the analysis in a structured, hierarchical format with clear section headers. Use tables for comparative data, etymology timelines, and translation equivalents. Employ nested bullet points for semantic relationships.
+Format de Sortie
+Présentez l'analyse dans un format structuré et hiérarchique avec des en-têtes de section clairs. Utilisez des tableaux pour les données comparatives, les chronologies étymologiques et les équivalents de traduction. Employez des listes à puces imbriquées pour les relations sémantiques.
 
-Response Language
-IMPORTANT: Your entire analysis MUST be written in ${targetLanguage}. All explanations, headers, and content should be in ${targetLanguage}, not in English.
+Langue de Réponse
+IMPORTANT: Votre analyse complète DOIT être rédigée en ${targetLanguage}. Tous les explications, en-têtes et contenus doivent être en ${targetLanguage}, pas en anglais ou français.
 
-Final Note
-Apply the highest level of linguistic precision and academic rigor to this analysis. Draw upon historical linguistics, corpus linguistics, cognitive linguistics, and translation theory methodologies to ensure comprehensive coverage.
+Note Finale
+Appliquez le plus haut niveau de précision linguistique et de rigueur académique à cette analyse. Appuyez-vous sur les méthodologies de la linguistique historique, de la linguistique de corpus, de la linguistique cognitive et de la théorie de la traduction pour assurer une couverture complète.
 `;
 
     // Make a request to OpenRouter API
@@ -175,7 +174,7 @@ Apply the highest level of linguistic precision and academic rigor to this analy
           messages: [
             {
               role: 'system',
-              content: `You are a world-class linguistic expert proficient in etymology, lexicography, semantics, and translation theory. Provide detailed linguistic analysis. Your response MUST be written entirely in ${targetLanguage}.`
+              content: `Vous êtes un expert linguistique de classe mondiale, spécialisé en étymologie, lexicographie, sémantique et théorie de la traduction. Fournissez une analyse linguistique détaillée. Votre réponse DOIT être entièrement rédigée en ${targetLanguage}.`
             },
             {
               role: 'user',
