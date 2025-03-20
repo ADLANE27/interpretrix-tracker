@@ -4,6 +4,7 @@ import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -49,11 +50,11 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
-  // Sort and filter languages with improved search to match language variants exactly as they appear on cards
+  // Sort and filter languages
   const filteredLanguages = useMemo(() => {
     try {
       if (!searchTerm) {
-        return [...languages].sort((a, b) => a.localeCompare(b));
+        return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
       }
       
       const searchTermLower = searchTerm.toLowerCase();
@@ -61,15 +62,13 @@ export function LanguageCombobox({
       return [...languages]
         .filter(lang => {
           const langLower = lang.toLowerCase();
-          
-          // Simple matching by checking if language name contains the search term
           return langLower.includes(searchTermLower);
         })
         .sort((a, b) => {
-          // Sort exact matches first
           const aLower = a.toLowerCase();
           const bLower = b.toLowerCase();
           
+          // Exact matches first
           const aExactMatch = aLower === searchTermLower;
           const bExactMatch = bLower === searchTermLower;
           
@@ -83,17 +82,8 @@ export function LanguageCombobox({
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
           
-          // Group variants of the same base language together
-          const aBaseLang = aLower.split(" ")[0];
-          const bBaseLang = bLower.split(" ")[0];
-          
-          if (aBaseLang === bBaseLang) {
-            // If they're variants of the same language, sort them alphabetically
-            return a.localeCompare(b);
-          }
-          
-          // Fall back to alphabetical sorting by base language
-          return aBaseLang.localeCompare(bBaseLang);
+          // Then alphabetical order
+          return a.localeCompare(b, 'fr');
         });
     } catch (error) {
       console.error("Error filtering languages:", error);
@@ -120,6 +110,14 @@ export function LanguageCombobox({
     setIsOpen(false);
     setSearchTerm("");
   };
+
+  // Common languages to highlight at the top of the list
+  const commonLanguages = [
+    "Français", "Anglais", "Espagnol", "Arabe", "Dari", "Pashto", "Farsi", 
+    "Russe", "Chinois", "Allemand", "Italien", "Portugais"
+  ];
+  
+  const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
   return (
     <div className="relative w-full" data-language-selector>
@@ -155,46 +153,82 @@ export function LanguageCombobox({
           </div>
           
           {/* Language list */}
-          <div className="max-h-[300px] overflow-auto p-1">
-            {allLanguagesOption && (
-              <Button
-                variant={value === "all" ? "secondary" : "ghost"}
-                className="w-full justify-start font-normal mb-1"
-                onClick={() => handleSelectLanguage("all")}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    value === "all" ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                {allLanguagesLabel}
-              </Button>
-            )}
-            
-            {filteredLanguages.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </div>
-            ) : (
-              filteredLanguages.map((language) => (
+          <ScrollArea className="max-h-[300px] overflow-auto">
+            <div className="p-1">
+              {allLanguagesOption && (
                 <Button
-                  key={language}
-                  variant={value === language ? "secondary" : "ghost"}
+                  variant={value === "all" ? "secondary" : "ghost"}
                   className="w-full justify-start font-normal mb-1"
-                  onClick={() => handleSelectLanguage(language)}
+                  onClick={() => handleSelectLanguage("all")}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === language ? "opacity-100" : "opacity-0"
+                      value === "all" ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {language}
+                  {allLanguagesLabel}
                 </Button>
-              ))
-            )}
-          </div>
+              )}
+              
+              {/* Common languages section (if not searching) */}
+              {!searchTerm && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Langues courantes
+                  </div>
+                  {commonLanguages
+                    .filter(lang => languages.includes(lang))
+                    .map((language) => (
+                      <Button
+                        key={language}
+                        variant={value === language ? "secondary" : "ghost"}
+                        className="w-full justify-start font-normal mb-1"
+                        onClick={() => handleSelectLanguage(language)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === language ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {language}
+                      </Button>
+                    ))
+                  }
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Toutes les langues
+                  </div>
+                </>
+              )}
+              
+              {filteredLanguages.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </div>
+              ) : (
+                filteredLanguages.map((language) => (
+                  // Skip common languages when not searching, as they're already shown above
+                  (!isCommonLanguage(language) || searchTerm) && (
+                    <Button
+                      key={language}
+                      variant={value === language ? "secondary" : "ghost"}
+                      className="w-full justify-start font-normal mb-1"
+                      onClick={() => handleSelectLanguage(language)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === language ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {language}
+                    </Button>
+                  )
+                ))
+              )}
+            </div>
+          </ScrollArea>
         </div>
       )}
     </div>

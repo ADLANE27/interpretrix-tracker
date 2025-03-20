@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Search, Bookmark, Clock, X, Download, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,7 +55,6 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       return;
     }
 
-    // Clear previous results and errors
     setSearchResult("");
     setSearchError(null);
     setDetailsExpanded(false);
@@ -74,7 +72,6 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       if (result && result.result) {
         setSearchResult(result.result);
         setSearchError(null);
-        // Auto-expand details for linguistic analysis
         setDetailsExpanded(true);
       } else {
         setSearchError("Aucun résultat de traduction reçu");
@@ -88,7 +85,6 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       console.error("Search error in component:", error);
       const errorMessage = error instanceof Error ? error.message : "Erreur de recherche inconnue";
       setSearchError(errorMessage);
-      // Error toast is handled in the hook
     }
   };
 
@@ -107,7 +103,6 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       });
     } catch (error) {
       console.error("Error saving term:", error);
-      // Error handling is done in the hook
     }
   };
 
@@ -124,7 +119,6 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     
     savedTerms.forEach(term => {
       const formattedDate = new Date(term.created_at).toLocaleDateString();
-      // Escape CSV special characters
       const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`;
       csv += `${escapeCsv(term.term)},${escapeCsv(term.result)},${escapeCsv(term.source_language)},${escapeCsv(term.target_language)},${escapeCsv(formattedDate)}\n`;
     });
