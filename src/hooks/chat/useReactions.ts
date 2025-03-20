@@ -26,7 +26,7 @@ export const useReactions = (
     }
 
     try {
-      console.log(`[useReactions] Adding reaction ${emoji} to message ${messageId}`);
+      console.log(`[useReactions] Adding/toggling reaction ${emoji} to message ${messageId}`);
       
       // Étape 1: Récupérer les réactions actuelles
       const { data: message, error: fetchError } = await supabase
@@ -79,10 +79,14 @@ export const useReactions = (
 
       console.log('[useReactions] Updated reactions:', currentReactions);
 
-      // Étape 3: Mettre à jour le message dans la base de données - toujours enregistrer en tant qu'objet, pas de chaîne JSON
+      // Étape 3: Mettre à jour le message dans la base de données - toujours enregistrer en tant qu'objet JSON
       const { error: updateError } = await supabase
         .from('chat_messages')
-        .update({ reactions: currentReactions })
+        .update({ 
+          reactions: currentReactions,
+          // Forcer une mise à jour du timestamp pour déclencher les événements en temps réel
+          updated_at: new Date().toISOString()
+        })
         .eq('id', messageId);
 
       if (updateError) {

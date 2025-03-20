@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EmojiPicker } from './EmojiPicker';
 import { Button } from "@/components/ui/button";
 
@@ -17,26 +17,54 @@ export const MessageReaction = ({
   onReactToMessage 
 }: MessageReactionProps) => {
   const [isReacting, setIsReacting] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, string[]>>(reactions || {});
   
-  // Debug pour voir ce que contient reactions
-  console.log(`[MessageReaction] Rendering for message ${messageId}`, { reactions, currentUserId });
+  // Mettre à jour les réactions locales lorsque les props changent
+  useEffect(() => {
+    console.log(`[MessageReaction] Updating local reactions for message ${messageId}:`, reactions);
+    setLocalReactions(reactions || {});
+  }, [reactions, messageId]);
   
   const handleEmojiSelect = async (emoji: string) => {
-    if (isReacting) return;
+    if (isReacting || !currentUserId) return;
     
     try {
       setIsReacting(true);
       console.log(`[MessageReaction] Adding reaction ${emoji} to message ${messageId}`);
+      
+      // Mise à jour optimiste de l'UI
+      const updatedReactions = { ...localReactions };
+      
+      // Si l'emoji existe déjà et que l'utilisateur l'a déjà utilisé, le retirer
+      if (updatedReactions[emoji] && updatedReactions[emoji].includes(currentUserId)) {
+        updatedReactions[emoji] = updatedReactions[emoji].filter(id => id !== currentUserId);
+        if (updatedReactions[emoji].length === 0) {
+          delete updatedReactions[emoji];
+        }
+      } else {
+        // Sinon, ajouter la réaction
+        if (!updatedReactions[emoji]) {
+          updatedReactions[emoji] = [];
+        }
+        updatedReactions[emoji] = [...updatedReactions[emoji], currentUserId];
+      }
+      
+      setLocalReactions(updatedReactions);
+      
+      // Appeler l'API pour mettre à jour les réactions
       await onReactToMessage(messageId, emoji);
+      
     } catch (error) {
       console.error('[MessageReaction] Failed to add reaction:', error);
+      // En cas d'erreur, revenir aux réactions d'origine
+      setLocalReactions(reactions || {});
     } finally {
       setIsReacting(false);
     }
   };
 
   // Création d'un tableau de réactions pour l'affichage
-  const reactionEmojis = Object.entries(reactions || {})
+  const reactionEmojis = Object.entries(localReactions)
     .filter(([_, users]) => users && users.length > 0)
     .map(([emoji, users]) => ({
       emoji,
