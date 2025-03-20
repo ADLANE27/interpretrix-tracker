@@ -32,6 +32,19 @@ const Admin = () => {
           navigate('/admin/login');
           return;
         }
+
+        // Mark unread mentions as read when admin enters the dashboard
+        const { error: mentionsError } = await supabase
+          .from('message_mentions')
+          .update({ status: 'read' })
+          .eq('mentioned_user_id', user.id)
+          .eq('status', 'unread');
+
+        if (mentionsError) {
+          console.error('Error marking mentions as read:', mentionsError);
+        } else {
+          console.log('All unread mentions marked as read for admin:', user.id);
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         navigate('/admin/login');
@@ -52,7 +65,7 @@ const Admin = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, toast]);
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">
