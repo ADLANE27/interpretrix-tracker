@@ -38,6 +38,17 @@ export const MessageList: React.FC<MessageListProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
+  // Organize messages into parent/reply structure
+  const rootMessages = messages.filter(message => !message.parent_message_id);
+  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
+    const threadId = message.parent_message_id || message.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
+    }
+    acc[threadId].push(message);
+    return acc;
+  }, {});
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
@@ -87,19 +98,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
-    const threadId = message.parent_message_id || message.id;
-    if (!acc[threadId]) {
-      acc[threadId] = [];
-    }
-    acc[threadId].push(message);
-    return acc;
-  }, {});
-
-  const rootMessages = messages.filter(message => !message.parent_message_id);
-
   const renderReactions = (message: Message) => {
-    // Debug logging to see what reactions we have
+    // Debug logging to check reactions data
     console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
     
     // Return early if no reactions
