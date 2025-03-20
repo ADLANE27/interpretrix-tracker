@@ -7,7 +7,8 @@ export const useMessageFormatter = () => {
     let formattedContent = content;
     
     // Create a RegExp pattern that matches any language mention
-    const languageMentionPattern = /@([A-Za-zÀ-ÿ\s]+(?:\([^)]*\))?)/g;
+    // Improved to better handle complex language names with spaces and parentheses
+    const languageMentionPattern = /@([A-Za-zÀ-ÿ\s-]+(?:\([^)]*\))?)/g;
     
     formattedContent = formattedContent.replace(languageMentionPattern, (match, mentionedLanguage) => {
       const cleanedMention = mentionedLanguage.trim();
@@ -49,6 +50,24 @@ export const useMessageFormatter = () => {
     
     if (startsWithMatch) return startsWithMatch;
     
+    // Try for partial word matches, especially useful for compound language names
+    const compoundMatch = LANGUAGES.find(lang => {
+      const normalizedLang = normalizeString(lang);
+      // Split by space and check if any part matches
+      const langParts = normalizedLang.split(' ');
+      const queryParts = normalizedQuery.split(' ');
+      
+      // Check if key words match between the query and language name
+      return langParts.some(part => 
+        queryParts.some(queryPart => 
+          (queryPart.length > 3 && part.includes(queryPart)) || 
+          (part.length > 3 && queryPart.includes(part))
+        )
+      );
+    });
+    
+    if (compoundMatch) return compoundMatch;
+    
     // Finally try for a contains match with minimum length to avoid false positives
     if (normalizedQuery.length >= 3) {
       const containsMatch = LANGUAGES.find(lang => {
@@ -67,7 +86,7 @@ export const useMessageFormatter = () => {
     return str.toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "") // Remove diacritics (accents)
-      .replace(/[^a-z0-9\s]/g, "")     // Remove special characters
+      .replace(/[^a-z0-9\s-]/g, "")    // Remove special characters but keep hyphens
       .trim();
   };
 

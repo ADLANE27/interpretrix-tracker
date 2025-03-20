@@ -24,7 +24,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
-  const { totalUnreadCount, refreshMentions } = useUnreadMentions();
+  const { totalUnreadCount, unreadMentions, unreadDirectMessages, refreshMentions } = useUnreadMentions();
 
   const handleLogout = async () => {
     try {
@@ -105,7 +105,9 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
 
   console.log('[Sidebar] Current badge counts:', {
     pendingMissions: pendingMissionsCount,
-    unreadMessages: totalUnreadCount
+    unreadMessages: totalUnreadCount,
+    unreadMentions: unreadMentions.length,
+    unreadDirectMessages: unreadDirectMessages
   });
 
   const tabs = [
@@ -119,7 +121,10 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       id: "messages", 
       label: "Messages", 
       icon: MessageCircle,
-      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined
+      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined,
+      // Add specific badges for mentions and direct messages
+      mentionsBadge: unreadMentions.length > 0 ? unreadMentions.length : undefined,
+      directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
     { id: "profile", label: "Profil", icon: Headset },
@@ -190,14 +195,41 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 onClick={() => tab.onClick ? tab.onClick() : onTabChange(tab.id)}
               >
                 <Icon className="w-4 h-4" />
-                {tab.label}
+                <span className="flex-1 text-left">{tab.label}</span>
+                
+                {/* Display regular badge for all types of notifications */}
                 {tab.badge !== undefined && (
                   <Badge 
                     variant="destructive" 
-                    className="absolute right-2 animate-pulse"
+                    className="ml-auto animate-pulse"
                   >
                     {tab.badge}
                   </Badge>
+                )}
+                
+                {/* Display specialized badges for messages tab when not active */}
+                {tab.id === "messages" && activeTab !== "messages" && (
+                  <div className="flex gap-1 ml-auto">
+                    {/* Mentions badge */}
+                    {tab.mentionsBadge !== undefined && (
+                      <Badge 
+                        variant="destructive" 
+                        className="animate-pulse bg-red-500"
+                      >
+                        @{tab.mentionsBadge}
+                      </Badge>
+                    )}
+                    
+                    {/* Direct messages badge, only show if there are no mentions */}
+                    {tab.mentionsBadge === undefined && tab.directMessagesBadge !== undefined && (
+                      <Badge 
+                        variant="secondary" 
+                        className="animate-pulse bg-blue-500 text-white"
+                      >
+                        {tab.directMessagesBadge}
+                      </Badge>
+                    )}
+                  </div>
                 )}
               </Button>
             );
