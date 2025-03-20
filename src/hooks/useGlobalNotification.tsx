@@ -67,18 +67,19 @@ export const useGlobalNotification = () => {
         
         let title, description;
         
+        // Always use French translations regardless of any condition
         if (hasMention) {
-          // Use mention specific translations for both title and description
+          // Use French mention specific translations for both title and description
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
           description = NOTIFICATION_TRANSLATIONS.mentionText.fr;
         } else {
-          // Use regular message translations
+          // Use regular French message translations
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
           description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
         }
         
-        // Show toast notification
-        console.log('[GlobalNotification] Displaying toast notification');
+        // Show toast notification with French text
+        console.log('[GlobalNotification] Displaying toast notification in French');
         toast({
           title: title,
           description: description,
