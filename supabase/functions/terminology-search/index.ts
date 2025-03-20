@@ -47,14 +47,14 @@ serve(async (req) => {
     // Make a request to OpenRouter API
     console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
     
+    // Generate a request ID for tracing
+    const requestId = crypto.randomUUID();
+    console.log(`Request ID: ${requestId} - Starting API call to OpenRouter with DeepSeek-R1-Zero model`);
+    
     try {
-      // Generate a request ID for tracing
-      const requestId = crypto.randomUUID();
-      console.log(`Request ID: ${requestId} - Starting API call to OpenRouter with DeepSeek-R1-Zero model`);
-      
       // Controller for timeout handling
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // Reduced timeout to 20 seconds
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced timeout to 10 seconds
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -72,15 +72,8 @@ serve(async (req) => {
             {
               role: 'system',
               content: `You are a professional translator specialized in terminology. 
-You need to provide an EXACT and DIRECT translation of a term from ${sourceLanguage} to ${targetLanguage}.
-
-IMPORTANT GUIDELINES:
-1. Respond ONLY with the translation itself - no explanations or additional text
-2. If there are multiple possible translations, provide ONLY the most common or appropriate one
-3. If you're not sure about a translation, give your best professional guess
-4. NEVER leave the response empty or claim you cannot translate
-5. Always return a usable translation as your entire response
-6. Provide only a single word or phrase, nothing more`
+Provide an EXACT and DIRECT translation of a term from ${sourceLanguage} to ${targetLanguage}.
+IMPORTANT: Respond ONLY with the translation itself - no explanations or additional text.`
             },
             {
               role: 'user',
@@ -88,7 +81,7 @@ IMPORTANT GUIDELINES:
             }
           ],
           temperature: 0.1,
-          max_tokens: 100,
+          max_tokens: 50,
         }),
         signal: controller.signal
       });
