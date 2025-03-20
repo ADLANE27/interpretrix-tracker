@@ -33,22 +33,28 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   // Track if we've ever had messages to prevent flickering of empty state
   const hadMessagesRef = useRef<boolean>(false); 
+  const stableMessages = useRef<Message[]>([]);
+
+  // Store the latest valid messages to prevent flickering
+  useEffect(() => {
+    if (messages.length > 0) {
+      stableMessages.current = messages;
+      hadMessagesRef.current = true;
+      setIsInitialLoad(false);
+    }
+  }, [messages]);
 
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
   });
 
-  // If we have messages, remember that forever to prevent flickering
-  useEffect(() => {
-    if (messages.length > 0) {
-      hadMessagesRef.current = true;
-      setIsInitialLoad(false);
-    }
-  }, [messages.length]);
-
   const memoizedOrganizeThreads = useCallback(() => {
-    return organizeMessageThreads(messages);
+    // Use stable messages when current messages are empty but we previously had messages
+    const messagesToUse = messages.length > 0 ? messages : 
+      (hadMessagesRef.current ? stableMessages.current : messages);
+    
+    return organizeMessageThreads(messagesToUse);
   }, [messages]);
 
   const { rootMessages, messageThreads } = memoizedOrganizeThreads();
@@ -60,7 +66,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     scrollPositionRef.current = messageContainerRef.current.scrollTop;
     
     const isNewMessage = messages.length > lastMessageCountRef.current;
-    lastMessageCountRef.current = messages.length;
+    lastMessageCountRef.current = messages.length || stableMessages.current.length;
     
     if (isNewMessage && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
@@ -81,8 +87,12 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages.length > 0]);
 
+  // Use the stable messages if current messages are empty to prevent flickering
+  const displayMessages = messages.length > 0 ? messages : 
+    (hadMessagesRef.current ? stableMessages.current : messages);
+
   // Don't show empty state if we're still in initial load or if we've ever had messages
-  if (messages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
+  if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
            ref={messageContainerRef}>

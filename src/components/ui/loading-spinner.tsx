@@ -14,7 +14,7 @@ export function LoadingSpinner({
   size = "md", 
   className, 
   text, 
-  delayMs = 500 // Increased delay to prevent flickering
+  delayMs = 800 // Increased delay to prevent flickering
 }: LoadingSpinnerProps) {
   const [showSpinner, setShowSpinner] = useState(delayMs === 0);
   

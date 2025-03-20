@@ -21,6 +21,7 @@ export const useRealtimeMessages = (
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const isProcessingEvent = useRef(false);
+  const cooldownPeriod = useRef(false);
   
   const handleRealtimeMessage = useCallback(async (payload: any) => {
     if (processingMessage.current || isProcessingEvent.current) return;
@@ -70,9 +71,14 @@ export const useRealtimeMessages = (
           setLastFetchTime(new Date());
         } catch (error) {
           console.error(`[useRealtimeMessages ${userRole.current}] Error processing realtime message:`, error);
-          // Do not trigger a full refresh immediately to avoid race conditions
-          // Instead, schedule a refresh after a short delay
-          setTimeout(() => forceFetch(), 1000);
+          
+          if (!cooldownPeriod.current) {
+            cooldownPeriod.current = true;
+            setTimeout(() => {
+              forceFetch();
+              cooldownPeriod.current = false;
+            }, 2000);
+          }
         }
       } 
       else if (payload.eventType === 'DELETE') {
