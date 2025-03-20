@@ -1,528 +1,386 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { PaperClip, Send } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import EmojiPicker from './EmojiPicker';
-import { useToast } from '../ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { UploadDropzone } from './UploadDropzone';
-import { Mention, MentionSuggestions } from './MentionSuggestions';
-import { useUnreadMentions } from '@/hooks/chat/useUnreadMentions';
-import { useMentionSuggestions } from '@/hooks/chat/useMentionSuggestions';
-import { LanguageSuggestion, MemberSuggestion, Suggestion } from '@/types/chat';
+
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Button } from "@/components/ui/button";
+import { Message } from "@/types/messaging";
+import { Paperclip, Send, Smile, AtSign } from 'lucide-react';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from "@/components/ui/textarea";
+import { MentionSuggestions } from './MentionSuggestions';
+import { supabase } from "@/integrations/supabase/client";
+import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
+import { MemberSuggestion, Suggestion } from "@/types/messaging";
+import { debounce } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { playNotificationSound } from "@/utils/notificationSound";
 
 interface ChatInputProps {
-  channelId: string;
-  sendMessage: (content: string, attachments?: any[]) => Promise<void>;
-  placeholder?: string;
-  className?: string;
-  disabled?: boolean;
+  message: string;
+  setMessage: (message: string) => void;
+  onSendMessage: () => void;
+  handleFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  attachments: File[];
+  handleRemoveAttachment: (index: number) => void;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
+  replyTo: Message | null;
+  setReplyTo: (message: Message | null) => void;
 }
 
-export const ChatInput = ({
-  channelId,
-  sendMessage,
-  placeholder = 'Type a message',
-  className,
-  disabled = false,
-}: ChatInputProps) => {
-  const [messageContent, setMessageContent] = useState('');
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [attachments, setAttachments] = useState<any[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false);
-  const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
+export const ChatInput: React.FC<ChatInputProps> = ({
+  message,
+  setMessage,
+  onSendMessage,
+  handleFileChange,
+  attachments,
+  handleRemoveAttachment,
+  inputRef,
+  replyTo,
+  setReplyTo,
+}) => {
   const { toast } = useToast();
-  const { markMentionsAsRead } = useUnreadMentions(channelId);
-  const { suggestions, loading, fetchSuggestions, resetSuggestions } = useMentionSuggestions(channelId);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);
+  const [mentionSearchTerm, setMentionSearchTerm] = useState('');
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+  const { formatMessage } = useMessageFormatter();
 
-  const uploadAttachments = async (files: File[]) => {
-    setUploading(true);
-    try {
-      const uploadPromises = files.map(async (file) => {
-        const { data, error } = await supabase.storage
-          .from('chat-attachments')
-          .upload(`${channelId}/${Date.now()}-${file.name}`, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+  const debouncedFetchSuggestions = useCallback(
+    debounce((searchTerm: string, channelId: string) => {
+      fetchMentionSuggestions(searchTerm, channelId);
+    }, 150),
+    []
+  );
 
-        if (error) {
-          console.error('Error uploading file:', error);
-          toast({
-            title: 'Upload error',
-            description: `Failed to upload ${file.name}: ${error.message}`,
-            variant: 'destructive',
-          });
-          return null;
-        }
-
-        const attachmentUrl = `${supabase.supabaseUrl}/storage/v1/object/public/${data.Key}`;
-        return {
-          name: file.name,
-          url: attachmentUrl,
-          size: file.size,
-          type: file.type,
-        };
-      });
-
-      const uploadedAttachments = (await Promise.all(uploadPromises)).filter(Boolean);
-      setAttachments((prevAttachments) => [...prevAttachments, ...uploadedAttachments]);
-      toast({
-        title: 'Files uploaded',
-        description: `Successfully uploaded ${uploadedAttachments.length} file(s).`,
-      });
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''; // Reset the file input
-      }
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newMessage = e.target.value;
+    setMessage(newMessage);
+    
+    const cursorPos = e.target.selectionStart || 0;
+    setCursorPosition(cursorPos);
+    
+    checkForMentions(newMessage, cursorPos);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (disabled) {
-      toast({
-        title: 'Cannot send message',
-        description: 'This action is currently disabled.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!messageContent.trim() && attachments.length === 0) {
-      toast({
-        title: 'Cannot send message',
-        description: 'Message cannot be empty.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      await sendMessage(messageContent, attachments);
-      setMessageContent('');
-      setAttachments([]);
-      markMentionsAsRead();
-      toast({
-        title: 'Message sent',
-        description: 'Your message has been sent successfully.',
-      });
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      toast({
-        title: 'Failed to send message',
-        description: error.message || 'An error occurred while sending the message.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setMessageContent((prevContent) => prevContent + emoji);
-    setIsEmojiPickerOpen(false);
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  };
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    setMessageContent(inputValue);
-
-    // Check for mention pattern
-    const mentionMatch = inputValue.match(/@(\w*)$/);
+  const checkForMentions = (text: string, cursorPos: number) => {
+    const textBeforeCursor = text.substring(0, cursorPos);
+    
+    const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
     
     if (mentionMatch) {
-      const query = mentionMatch[1];
-      const cursorPosition = e.target.selectionStart || 0;
+      const searchTerm = mentionMatch[1];
+      setMentionSearchTerm(searchTerm);
+      setMentionStartIndex(mentionMatch.index || 0);
+      setMentionSuggestionsVisible(true);
       
-      // Calculate position for the suggestions
-      if (inputRef.current) {
-        const input = inputRef.current;
-        const inputRect = input.getBoundingClientRect();
-        const caretPos = getCaretCoordinates(input, input.selectionStart || 0);
-        
-        setMentionPosition({
-          top: inputRect.top - 180, // Position above the input
-          left: inputRect.left + caretPos.left,
-        });
+      const channelId = document.querySelector('#messages-container')?.getAttribute('data-channel-id');
+      if (channelId) {
+        setCurrentChannelId(channelId);
+        setIsLoadingSuggestions(true);
+        debouncedFetchSuggestions(searchTerm, channelId);
       }
-      
-      // Show suggestions
-      setShowMentionSuggestions(true);
-      fetchSuggestions(query);
     } else {
-      setShowMentionSuggestions(false);
-      resetSuggestions();
+      if (mentionSuggestionsVisible) {
+        setMentionSuggestionsVisible(false);
+        setMentionSearchTerm('');
+      }
     }
-  }, [fetchSuggestions, resetSuggestions]);
-
-  // Helper function to get caret coordinates
-  function getCaretCoordinates(element: HTMLInputElement, position: number) {
-    let debug = false;
-
-    if (debug) {
-      console.group("getCaretCoordinates");
-    }
-
-    // mirrored heavily from
-    // https://github.com/component/textarea-caret-position
-    // license MIT
-    let properties = [
-      'direction',  // RTL support
-      'boxSizing',
-      'width',  // on Chrome and IE, exclude the scrollbar, so the mirror is the same width as the textarea
-      'height',
-      'overflowX',
-      'overflowY',  // copy the scrollbar for textarea
-      'borderTopWidth',
-      'borderRightWidth',
-      'borderBottomWidth',
-      'borderLeftWidth',
-      'borderStyle',
-      'paddingTop',
-      'paddingRight',
-      'paddingBottom',
-      'paddingLeft',
-      // https://developer.mozilla.org/en-US/docs/Web/CSS/font
-      'fontStyle',
-      'fontVariant',
-      'fontWeight',
-      'fontStretch',
-      'fontSize',
-      'fontSizeAdjust',
-      'lineHeight',
-      'fontFamily',
-      'textAlign',
-      'textTransform',
-      'textIndent',
-      'letterSpacing',
-      'wordSpacing',
-
-      'tabSize',
-      'MozTabSize'
-    ];
-
-    let isBrowser = typeof window !== 'undefined';
-    if (!isBrowser) {
-      return { top: 0, left: 0 };
-    }
-
-    let div = document.createElement('div');
-    div.id = 'input-textarea-caret-position-mirror-div';
-    document.body.appendChild(div);
-
-    let style = div.style;
-    let computed = window.getComputedStyle(element);
-
-    style.whiteSpace = 'pre-wrap';
-    if (element.nodeName === 'INPUT')
-      style.wordWrap = 'break-word';  // only for textarea-s
-
-    // position off-screen
-    style.position = 'absolute';  // required to return pixels
-    style.top = '0px';  // required to return pixels
-    style.left = '0px';  // required to return pixels
-    style.visibility = 'hidden';  // not 'display: none' because we want rendering
-
-    properties.forEach(function (prop) {
-      style[prop] = computed[prop];
-    });
-
-    style.overflow = 'hidden';  // for Chrome to not render a scrollbar; the text-area is never wider as the text;
-    div.textContent = element.value.substring(0, position);
-    if (debug) {
-      console.log(`textContent: ${div.textContent}`);
-    }
-    // the second special handling for input type="text" vs textarea:
-    // input does not wrap words. Because text overflows,
-    // browsers push the element outside the right edge of the text-area.
-    // Same to the bottom if direction is rtl.
-    // So the content is not visible.
-    let isInput = element.nodeName === 'INPUT';
-    if (isInput) {
-      style.overflow = 'hidden';// for Chrome to not render a scrollbar; the text-area is never wider as the text;
-    }
-
-    let span = document.createElement('span');
-    // Wrapping must be replicated *exactly*, including when a long word is hyphenated.
-    //  <https://github.com/component/textarea-caret-position/blob/master/index.js#L41>
-    span.textContent = element.value.substring(position) || '.';  // || because a completely empty span doesn't have a height/width
-    div.appendChild(span);
-
-    let coordinates = {
-      top: span.offsetTop + parseInt(computed['borderTopWidth']),
-      left: span.offsetLeft + parseInt(computed['borderLeftWidth']),
-    };
-
-    if (debug) {
-      console.log(`Coordinates: top=${coordinates.top}, left=${coordinates.left}`);
-      console.groupEnd();
-    }
-    document.body.removeChild(div);
-    return coordinates;
-  }
-
-  const isMemberSuggestion = (suggestion: Suggestion): suggestion is MemberSuggestion => {
-    return (suggestion as MemberSuggestion).role !== undefined;
   };
 
-  const isLanguageSuggestion = (suggestion: Suggestion): suggestion is LanguageSuggestion => {
-    return (suggestion as LanguageSuggestion).languageName !== undefined;
+  const fetchMentionSuggestions = async (searchTerm: string, channelId: string) => {
+    try {
+      setIsLoadingSuggestions(true);
+      console.log("Fetching suggestions for", searchTerm, "in channel", channelId);
+      
+      const { data: channelMembers, error: membersError } = await supabase
+        .rpc('get_channel_members', { channel_id: channelId });
+        
+      if (membersError) {
+        console.error('Error fetching channel members via RPC:', membersError);
+        setIsLoadingSuggestions(false);
+        return;
+      }
+      
+      if (!channelMembers || channelMembers.length === 0) {
+        console.log("No members found in channel");
+        setSuggestions([]);
+        setIsLoadingSuggestions(false);
+        return;
+      }
+      
+      const adminMembers = channelMembers.filter(member => member.role === 'admin');
+      const interpreterMembers = channelMembers.filter(member => member.role === 'interpreter');
+      
+      const interpreterSuggestions: MemberSuggestion[] = interpreterMembers.map(interpreter => ({
+        id: interpreter.user_id,
+        name: `${interpreter.first_name} ${interpreter.last_name}`,
+        email: interpreter.email,
+        role: 'interpreter' as 'interpreter'
+      }));
+      
+      const adminSuggestions: MemberSuggestion[] = adminMembers.map(admin => ({
+        id: admin.user_id,
+        name: `${admin.first_name} ${admin.last_name}`,
+        email: admin.email,
+        role: 'admin' as 'admin'
+      }));
+      
+      const allSuggestions = [...interpreterSuggestions, ...adminSuggestions];
+      
+      if (interpreterMembers.length > 0) {
+        const interpreterIds = interpreterMembers.map(m => m.user_id);
+        
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('interpreter_profiles')
+          .select('id, profile_picture_url')
+          .in('id', interpreterIds);
+          
+        if (!profilesError && profilesData) {
+          const pictureMap = new Map(
+            profilesData.map(profile => [profile.id, profile.profile_picture_url])
+          );
+          
+          allSuggestions.forEach(suggestion => {
+            if (suggestion.role === 'interpreter' && pictureMap.has(suggestion.id)) {
+              suggestion.avatarUrl = pictureMap.get(suggestion.id) || undefined;
+            }
+          });
+        }
+      }
+      
+      const filteredSuggestions = searchTerm 
+        ? allSuggestions.filter(suggestion => {
+            const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return normalizedName.includes(normalizedSearch);
+          })
+        : allSuggestions;
+      
+      console.log("Found suggestions:", filteredSuggestions.length);
+      setSuggestions(filteredSuggestions);
+    } catch (error) {
+      console.error('Error fetching mention suggestions:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
   };
 
   const handleMentionSelect = (suggestion: Suggestion) => {
-    console.log('Selected suggestion:', suggestion);
+    if (!inputRef.current) return;
     
-    // Get the current cursor position
-    const cursorPosition = inputRef.current?.selectionStart || 0;
+    const cursorPos = cursorPosition;
+    const textBeforeMention = message.substring(0, mentionStartIndex);
+    const textAfterCursor = message.substring(cursorPos);
     
-    // Find the position of the @ symbol that started this mention
-    const textBeforeCursor = messageContent.substring(0, cursorPosition);
-    const lastAtSymbolPos = textBeforeCursor.lastIndexOf('@');
+    let insertText = '';
     
-    if (lastAtSymbolPos !== -1) {
-      // Remove the partial mention (from @ to the cursor)
-      const newContent = messageContent.substring(0, lastAtSymbolPos);
-      
-      // Format the mention based on suggestion type
-      let mentionText = '';
-      
-      if (isMemberSuggestion(suggestion)) {
-        // If it's an admin, use the @admin: prefix format
-        if (suggestion.role === 'admin') {
-          mentionText = `@admin:${suggestion.name} `;
-          console.log('Adding admin mention with prefix:', mentionText);
-        } else {
-          // For interpreters, use the standard @Name format
-          mentionText = `@${suggestion.name} `;
-          console.log('Adding interpreter mention:', mentionText);
-        }
-      } else if (isLanguageSuggestion(suggestion)) {
-        // For languages, use the standard @Language format
-        mentionText = `@${suggestion.languageName} `;
-        console.log('Adding language mention:', mentionText);
+    if ('type' in suggestion && suggestion.type === 'language') {
+      insertText = `@${suggestion.name} `;
+    } else {
+      insertText = `@${suggestion.name} `;
+    }
+    
+    const newMessage = textBeforeMention + insertText + textAfterCursor;
+    setMessage(newMessage);
+    
+    setMentionSuggestionsVisible(false);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const newCursorPos = textBeforeMention.length + insertText.length;
+        inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
       }
-      
-      // Add the rest of the content after the cursor
-      const restOfContent = messageContent.substring(cursorPosition);
-      
-      // Set the new content with the properly formatted mention
-      setMessageContent(newContent + mentionText + restOfContent);
-      
-      // Hide suggestions
-      setShowMentionSuggestions(false);
-      resetSuggestions();
-      
-      // Focus the input and place cursor after the mention
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          const newCursorPos = lastAtSymbolPos + mentionText.length;
-          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }, 0);
+    }, 0);
+  };
+
+  const handleEmojiSelect = (emoji: any) => {
+    setMessage(message + emoji.native);
+    setEmojiPickerOpen(false);
+  };
+
+  const handleSelectionChange = () => {
+    if (inputRef.current) {
+      setCursorPosition(inputRef.current.selectionStart || 0);
     }
   };
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        handleSendMessage(event as any);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
+    const textarea = inputRef.current;
+    if (!textarea) return;
+    
+    textarea.addEventListener('click', handleSelectionChange);
+    textarea.addEventListener('keyup', handleSelectionChange);
+    
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      textarea.removeEventListener('click', handleSelectionChange);
+      textarea.removeEventListener('keyup', handleSelectionChange);
     };
-  }, [handleSendMessage]);
+  }, [inputRef]);
 
   return (
-    <div className={cn("relative", className)}>
-      <form onSubmit={handleSendMessage} className="relative rounded-lg border border-input shadow-sm">
-        <div className="relative flex items-center space-x-2 p-3">
+    <div className="p-3 bg-white dark:bg-gray-900">
+      {replyTo && (
+        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+          <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
           <Button
-            type="button"
             variant="ghost"
-            size="icon"
-            onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-            className="shrink-0"
+            size="sm"
+            onClick={() => setReplyTo(null)}
+            className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
           >
-            <Globe2 />
-            <span className="sr-only">Toggle emoji picker</span>
-          </Button>
-          <Input
-            ref={inputRef}
-            placeholder={placeholder}
-            value={messageContent}
-            onChange={handleInputChange}
-            className="flex-1 rounded-l-none border-0 bg-transparent shadow-none focus-visible:outline-none focus-visible:ring-0"
-            disabled={disabled || uploading}
-          />
-          <UploadDropzone
-            onUpload={uploadAttachments}
-            uploading={uploading}
-            setUploading={setUploading}
-          />
-          <input
-            type="file"
-            multiple
-            onChange={(e) => {
-              if (e.target.files) {
-                uploadAttachments(Array.from(e.target.files));
-              }
-            }}
-            className="hidden"
-            ref={fileInputRef}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || uploading}
-          >
-            <PaperClip className="h-4 w-4" />
-            <span className="sr-only">Attach file</span>
-          </Button>
-          <Button
-            type="submit"
-            size="icon"
-            disabled={disabled || uploading}
-          >
-            <Send className="h-4 w-4" />
-            <span className="sr-only">Send message</span>
+            Annuler
           </Button>
         </div>
-      </form>
-      {isEmojiPickerOpen && (
-        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setIsEmojiPickerOpen(false)} />
       )}
-      {showMentionSuggestions && (
-        <MentionSuggestions
-          suggestions={suggestions}
-          loading={loading}
-          onSelect={handleMentionSelect}
-          position={mentionPosition}
-        />
+      <div className="relative">
+        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+          <div className="flex-1 min-h-[40px] flex items-end">
+            <Textarea
+              ref={inputRef}
+              value={message}
+              onChange={handleInputChange}
+              placeholder="Écrivez un message..."
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 text-base rounded-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  
+                  const formattedMessage = formatMessage(message);
+                  setMessage(formattedMessage);
+                  
+                  onSendMessage();
+                }
+              }}
+            />
+          </div>
+          <div className="flex items-center p-1.5 pr-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              onClick={() => {
+                const textarea = inputRef.current;
+                if (textarea) {
+                  const cursorPos = textarea.selectionStart || 0;
+                  const textBeforeCursor = message.substring(0, cursorPos);
+                  const textAfterCursor = message.substring(cursorPos);
+                  const newMessage = textBeforeCursor + '@' + textAfterCursor;
+                  setMessage(newMessage);
+                  
+                  setTimeout(() => {
+                    textarea.focus();
+                    const newPos = cursorPos + 1;
+                    textarea.setSelectionRange(newPos, newPos);
+                    setCursorPosition(newPos);
+                    
+                    checkForMentions(newMessage, newPos);
+                  }, 0);
+                }
+              }}
+            >
+              <AtSign className="h-5 w-5" />
+            </Button>
+          
+            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-auto p-0" 
+                side="top" 
+                align="end"
+              >
+                <Picker
+                  data={data}
+                  onEmojiSelect={handleEmojiSelect}
+                  theme="light"
+                  locale="fr"
+                  previewPosition="none"
+                  skinTonePosition="none"
+                  categories={[
+                    'frequent',
+                    'people',
+                    'nature',
+                    'foods',
+                    'activity',
+                    'places',
+                    'objects',
+                    'symbols',
+                    'flags'
+                  ]}
+                />
+              </PopoverContent>
+            </Popover>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              multiple
+              className="hidden"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
+              onClick={() => {
+                const formattedMessage = formatMessage(message);
+                setMessage(formattedMessage);
+                onSendMessage();
+              }}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {mentionSuggestionsVisible && (
+          <MentionSuggestions 
+            suggestions={suggestions}
+            onSelect={handleMentionSelect}
+            visible={mentionSuggestionsVisible}
+            loading={isLoadingSuggestions}
+            searchTerm={mentionSearchTerm}
+          />
+        )}
+      </div>
+      {attachments.length > 0 && (
+        <div className="mt-2 space-y-1.5 px-1">
+          {attachments.map((file, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 hover:text-red-500 px-2"
+                onClick={() => handleRemoveAttachment(index)}
+              >
+                Supprimer
+              </Button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 };
-
-// Helper function to get caret coordinates
-function getCaretCoordinates(element: HTMLInputElement, position: number) {
-  let debug = false;
-
-  if (debug) {
-    console.group("getCaretCoordinates");
-  }
-
-  // mirrored heavily from
-  // https://github.com/component/textarea-caret-position
-  // license MIT
-  let properties = [
-    'direction',  // RTL support
-    'boxSizing',
-    'width',  // on Chrome and IE, exclude the scrollbar, so the mirror is the same width as the textarea
-    'height',
-    'overflowX',
-    'overflowY',  // copy the scrollbar for textarea
-    'borderTopWidth',
-    'borderRightWidth',
-    'borderBottomWidth',
-    'borderLeftWidth',
-    'borderStyle',
-    'paddingTop',
-    'paddingRight',
-    'paddingBottom',
-    'paddingLeft',
-    // https://developer.mozilla.org/en-US/docs/Web/CSS/font
-    'fontStyle',
-    'fontVariant',
-    'fontWeight',
-    'fontStretch',
-    'fontSize',
-    'fontSizeAdjust',
-    'lineHeight',
-    'fontFamily',
-    'textAlign',
-    'textTransform',
-    'textIndent',
-    'letterSpacing',
-    'wordSpacing',
-
-    'tabSize',
-    'MozTabSize'
-  ];
-
-  let isBrowser = typeof window !== 'undefined';
-  if (!isBrowser) {
-    return { top: 0, left: 0 };
-  }
-
-  let div = document.createElement('div');
-  div.id = 'input-textarea-caret-position-mirror-div';
-  document.body.appendChild(div);
-
-  let style = div.style;
-  let computed = window.getComputedStyle(element);
-
-  style.whiteSpace = 'pre-wrap';
-  if (element.nodeName === 'INPUT')
-    style.wordWrap = 'break-word';  // only for textarea-s
-
-  // position off-screen
-  style.position = 'absolute';  // required to return pixels
-  style.top = '0px';  // required to return pixels
-  style.left = '0px';  // required to return pixels
-  style.visibility = 'hidden';  // not 'display: none' because we want rendering
-
-  properties.forEach(function (prop) {
-    style[prop] = computed[prop];
-  });
-
-  style.overflow = 'hidden';  // for Chrome to not render a scrollbar; the text-area is never wider as the text;
-  div.textContent = element.value.substring(0, position);
-  if (debug) {
-    console.log(`textContent: ${div.textContent}`);
-  }
-  // the second special handling for input type="text" vs textarea:
-  // input does not wrap words. Because text overflows,
-  // browsers push the element outside the right edge of the text-area.
-  // Same to the bottom if direction is rtl.
-  // So the content is not visible.
-  let isInput = element.nodeName === 'INPUT';
-  if (isInput) {
-    style.overflow = 'hidden';// for Chrome to not render a scrollbar; the text-area is never wider as the text;
-  }
-
-  let span = document.createElement('span');
-  // Wrapping must be replicated *exactly*, including when a long word is hyphenated.
-  //  <https://github.com/component/textarea-caret-position/blob/master/index.js#L41>
-  span.textContent = element.value.substring(position) || '.';  // || because a completely empty span doesn't have a height/width
-  div.appendChild(span);
-
-  let coordinates = {
-    top: span.offsetTop + parseInt(computed['borderTopWidth']),
-    left: span.offsetLeft + parseInt(computed['borderLeftWidth']),
-  };
-
-  if (debug) {
-    console.log(`Coordinates: top=${coordinates.top}, left=${coordinates.left}`);
-    console.groupEnd();
-  }
-  document.body.removeChild(div);
-  return coordinates;
-}
