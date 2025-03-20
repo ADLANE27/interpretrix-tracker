@@ -183,7 +183,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if ('type' in suggestion && suggestion.type === 'language') {
       insertText = `@${suggestion.name} `;
     } else {
-      insertText = `@${suggestion.name} `;
+      // Add special format for admin users to ensure correct routing
+      if (suggestion.role === 'admin') {
+        insertText = `@admin:${suggestion.name} `;
+      } else {
+        insertText = `@${suggestion.name} `;
+      }
     }
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;

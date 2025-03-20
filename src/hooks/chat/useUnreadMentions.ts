@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,12 +34,10 @@ export const useUnreadMentions = () => {
   const { toast } = useToast();
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  // Request notification permission when the hook is first used
   useEffect(() => {
     requestPermission();
   }, [requestPermission]);
 
-  // Determine the user role early and store current user ID
   useEffect(() => {
     const getUserRole = async () => {
       try {
@@ -81,7 +78,6 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
-      // Fetch unread mentions where the current user is the mentioned user (not the sender)
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
@@ -103,9 +99,9 @@ export const useUnreadMentions = () => {
         return;
       }
 
-      console.log('[Mentions Debug] Raw mentions data:', mentionsData?.length || 0, 'mentions');
+      console.log('[Mentions Debug] Raw mentions data:', mentionsData);
+      console.log('[Mentions Debug] Number of mentions found:', mentionsData?.length || 0);
 
-      // Fetch unread direct messages count
       const { data: directChannels, error: channelsError } = await supabase
         .from('chat_channels')
         .select('id')
@@ -118,7 +114,6 @@ export const useUnreadMentions = () => {
 
       const channelIds = directChannels.map(channel => channel.id);
       
-      // Get the last read timestamp for each channel
       const { data: memberData } = await supabase
         .from('channel_members')
         .select('channel_id, last_read_at')
@@ -129,7 +124,6 @@ export const useUnreadMentions = () => {
         memberData?.map(member => [member.channel_id, member.last_read_at]) || []
       );
 
-      // Count unread messages in direct channels
       let unreadDMCount = 0;
       for (const channelId of channelIds) {
         const lastRead = lastReadMap.get(channelId);
@@ -145,20 +139,18 @@ export const useUnreadMentions = () => {
         if (count) unreadDMCount += count;
       }
 
-      // Process mentions with sender names
       const mentionsWithNames = await Promise.all(
         (mentionsData as UnreadMentionResponse[] || [])
           .filter(mention => mention.chat_messages) // Only include mentions with existing messages
           .map(async (mention) => {
-            console.log('[Mentions Debug] Processing mention:', mention.id);
+            console.log('[Mentions Debug] Processing mention:', mention.id, 'for message:', mention.message_id);
+            console.log('[Mentions Debug] Message content:', mention.chat_messages?.content);
             
-            // Make sure we're not processing mentions where the current user is the sender
             if (mention.chat_messages.sender_id === user.id) {
               console.log('[Mentions Debug] Skipping mention created by current user');
               return null;
             }
             
-            // Get sender details using the rpc function that works for both interpreters and admins
             const { data: senderData, error: senderError } = await supabase
               .rpc('get_message_sender_details', {
                 sender_id: mention.chat_messages.sender_id
@@ -185,35 +177,25 @@ export const useUnreadMentions = () => {
           })
       );
 
-      // Filter out null values and ensure we have valid mentions
       const validMentions = mentionsWithNames.filter(mention => mention !== null) as UnreadMention[];
 
-      console.log('[Mentions Debug] Processed mentions:', validMentions.length);
+      console.log('[Mentions Debug] Processed mentions:', validMentions);
       
-      // Check if there's a new mention to show notification
       if (validMentions.length > 0) {
         const newestMention = validMentions[0];
         
-        // If this is a new mention that we haven't seen before, show a notification
         if (lastMentionId !== newestMention.mention_id) {
           console.log('[Mentions Debug] New mention detected:', newestMention.mention_id);
           setLastMentionId(newestMention.mention_id);
           
-          // If this isn't the first load (lastMentionId is set), show notification
           if (lastMentionId !== null) {
             console.log('[Mentions Debug] Showing notification for mention');
-            
-            // Play sound for new mention
             playNotificationSound();
-            
-            // Show toast notification
             toast({
               title: "Nouvelle mention",
               description: `${newestMention.mentioning_user_name} vous a mentionné`,
               variant: "default",
             });
-            
-            // Show browser notification
             showNotification(
               "Nouvelle mention", 
               { 
@@ -312,15 +294,12 @@ export const useUnreadMentions = () => {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchUnreadMentions();
 
-    // Set up a regular refresh interval for mentions
     const intervalId = setInterval(() => {
       fetchUnreadMentions();
-    }, 30000); // Refresh every 30 seconds
+    }, 30000);
 
-    // Create a single channel for all subscriptions
     if (currentUserId) {
       console.log('[Mentions Debug] Setting up real-time subscriptions for user:', currentUserId);
       
@@ -331,12 +310,10 @@ export const useUnreadMentions = () => {
           (payload) => {
             console.log(`[Mentions Debug] Message mentions table changed (role: ${userRole})`, payload);
             
-            // Type safety for payload.new
             if (payload.new && 
                 typeof payload.new === 'object' && 
                 'mentioned_user_id' in payload.new) {
               
-              // Only refresh if the mention is for the current user
               if (payload.new.mentioned_user_id === currentUserId) {
                 console.log('[Mentions Debug] Refreshing mentions - this mention is for current user');
                 fetchUnreadMentions();
@@ -344,8 +321,6 @@ export const useUnreadMentions = () => {
                 console.log('[Mentions Debug] Ignoring mention - not for current user');
               }
             } else {
-              // If there's no payload.new or it's not correctly structured, 
-              // refresh mentions anyway in case it's an update or delete operation
               console.log('[Mentions Debug] Refreshing mentions after table change - no payload details');
               fetchUnreadMentions();
             }
@@ -356,10 +331,6 @@ export const useUnreadMentions = () => {
           { event: 'INSERT', schema: 'public', table: 'chat_messages' },
           (payload) => {
             console.log(`[Messages Debug] New message received (role: ${userRole})`, payload);
-            
-            // Refresh mentions when new messages come in
-            // This ensures we catch any potential mentions that might have been processed
-            // after the real-time trigger completes
             fetchUnreadMentions();
           }
         )
@@ -376,13 +347,11 @@ export const useUnreadMentions = () => {
         });
 
       return () => {
-        console.log('[Mentions Debug] Cleaning up subscription and interval');
         clearInterval(intervalId);
         supabase.removeChannel(channel);
       };
     }
 
-    // Cleanup function for the interval if currentUserId is not available yet
     return () => {
       clearInterval(intervalId);
     };
