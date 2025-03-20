@@ -160,7 +160,6 @@ export const InterpreterChannelList = ({
       setUnreadMentions(counts);
       
       const totalUnread = Object.values(counts).reduce((total, count) => total + count, 0);
-      console.log('[InterpreterChannelList] Emitting unread mentions count:', totalUnread);
       eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, totalUnread);
     } catch (error) {
       console.error('[InterpreterChat] Error fetching unread mentions:', error);

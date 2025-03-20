@@ -28,11 +28,25 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   
   const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Déconnexion réussie",
+        description: "Vous avez été déconnecté avec succès"
+      });
+      navigate("/interpreter/login");
+    } catch (error) {
+      console.error("[Sidebar] Error during logout:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de vous déconnecter",
+        variant: "destructive"
+      });
+    }
+  };
+
   useEffect(() => {
-    console.log('[Sidebar] Setting up unread mentions listener');
-    
-    setRealtimeUnreadCount(unreadMentions.length);
-    
     const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
       console.log('[Sidebar] Received unread mentions update:', count);
       setRealtimeUnreadCount(count);
@@ -126,7 +140,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       label: "Messages", 
       icon: MessageCircle,
       badge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
-      mentionsBadge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
+      mentionsBadge: unreadMentions.length > 0 ? unreadMentions.length : undefined,
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
