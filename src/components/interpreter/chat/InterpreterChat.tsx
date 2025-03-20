@@ -311,7 +311,7 @@ export const InterpreterChat = ({
         {channel?.channel_type === 'group' && profile && onStatusChange && (
           <div className="pb-2">
             <StatusManager
-              selectedStatus={profile.status}
+              currentStatus={profile.status}
               onStatusChange={onStatusChange}
             />
           </div>
