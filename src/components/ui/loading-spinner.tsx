@@ -14,7 +14,7 @@ export function LoadingSpinner({
   size = "md", 
   className, 
   text, 
-  delayMs = 300 // Reduced delay for faster feedback
+  delayMs = 150 // Further reduced delay for even faster feedback
 }: LoadingSpinnerProps) {
   const [showSpinner, setShowSpinner] = useState(delayMs === 0);
   

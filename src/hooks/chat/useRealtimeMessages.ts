@@ -24,10 +24,15 @@ export const useRealtimeMessages = (
   const cooldownPeriod = useRef(false);
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const forceFetchInProgress = useRef(false);
   
   // Define forceFetch function first before using it
   const forceFetch = useCallback(() => {
+    if (forceFetchInProgress.current) return;
+    
     console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
+    forceFetchInProgress.current = true;
+    
     // Clear any processing state to avoid deadlocks
     if (processingTimeout.current) {
       clearTimeout(processingTimeout.current);
@@ -37,7 +42,9 @@ export const useRealtimeMessages = (
     processingMessage.current = false;
     processQueue.current = [];
     
-    return fetchMessages();
+    return fetchMessages().finally(() => {
+      forceFetchInProgress.current = false;
+    });
   }, [fetchMessages, userRole, processingMessage]);
   
   // Process messages in queue one by one to avoid race conditions
