@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { useTimestampFormat } from '@/hooks/useTimestampFormat';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { EmojiPicker } from './EmojiPicker';
+import { MessageReaction } from './MessageReaction';
 
 interface MessageListProps {
   messages: Message[];
@@ -96,6 +98,32 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const renderReactions = (message: Message) => {
+    if (!message.reactions || Object.keys(message.reactions).length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {Object.entries(message.reactions).map(([emoji, userIds]) => {
+          if (userIds.length === 0) return null;
+          
+          const isActive = currentUserId ? userIds.includes(currentUserId) : false;
+          
+          return (
+            <MessageReaction
+              key={`${message.id}-${emoji}`}
+              emoji={emoji}
+              count={userIds.length}
+              isActive={isActive}
+              onClick={() => onReactToMessage(message.id, emoji)}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
       ref={(el) => observeMessage(el)}
@@ -138,7 +166,14 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
         
+        {renderReactions(message)}
+        
         <div className="flex items-center gap-2 mt-1 mr-1">
+          <EmojiPicker 
+            onEmojiSelect={(emoji) => onReactToMessage(message.id, emoji)}
+            size="sm"
+          />
+          
           {message.sender.id === currentUserId && (
             <Button
               variant="ghost"
