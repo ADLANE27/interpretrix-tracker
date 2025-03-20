@@ -14,6 +14,7 @@ export const MessageReaction = ({ emoji, count, isActive, onClick }: MessageReac
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log('[MessageReaction] Reaction clicked, calling onClick handler');
     onClick();
   };
 

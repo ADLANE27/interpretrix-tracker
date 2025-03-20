@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { SmilePlus, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 

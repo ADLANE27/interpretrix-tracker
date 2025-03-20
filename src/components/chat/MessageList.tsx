@@ -99,7 +99,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
   const renderReactions = (message: Message) => {
-    // Don't render anything if there are no reactions or the reactions object is empty
+    // Debug logging to see what reactions we have
+    console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
+    
+    // Return early if no reactions
     if (!message.reactions || Object.keys(message.reactions).length === 0) {
       return null;
     }
@@ -107,8 +110,10 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Object.entries(message.reactions).map(([emoji, userIds]) => {
+          // Skip entries with no users
           if (!userIds || userIds.length === 0) return null;
           
+          // Check if current user has reacted with this emoji
           const isActive = currentUserId ? userIds.includes(currentUserId) : false;
           
           return (
@@ -117,7 +122,10 @@ export const MessageList: React.FC<MessageListProps> = ({
               emoji={emoji}
               count={userIds.length}
               isActive={isActive}
-              onClick={() => onReactToMessage(message.id, emoji)}
+              onClick={() => {
+                console.log(`[MessageList] Reaction clicked: ${emoji} for message ${message.id}`);
+                onReactToMessage(message.id, emoji);
+              }}
             />
           );
         })}
@@ -168,11 +176,15 @@ export const MessageList: React.FC<MessageListProps> = ({
             </div>
           </div>
           
+          {/* Render reactions */}
           {renderReactions(message)}
           
           <div className="flex items-center gap-2 mt-1 mr-1">
             <EmojiPicker 
-              onEmojiSelect={(emoji) => onReactToMessage(message.id, emoji)}
+              onEmojiSelect={(emoji) => {
+                console.log(`[MessageList] Emoji selected from picker: ${emoji} for message ${message.id}`);
+                onReactToMessage(message.id, emoji);
+              }}
               size="sm"
             />
             

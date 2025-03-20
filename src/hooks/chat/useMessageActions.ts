@@ -331,10 +331,21 @@ const useMessageActions = (
         throw new Error("Message introuvable");
       }
 
-      const currentReactions = (messages.reactions as Record<string, string[]>) || {};
+      let currentReactions = {};
+      if (messages.reactions && typeof messages.reactions === 'object') {
+        currentReactions = messages.reactions;
+      } else if (typeof messages.reactions === 'string') {
+        try {
+          currentReactions = JSON.parse(messages.reactions);
+        } catch (e) {
+          console.error('[Chat] Error parsing reactions string:', e);
+          currentReactions = {};
+        }
+      }
+      
       console.log('[Chat] Current reactions:', currentReactions);
       
-      const currentUsers = currentReactions[emoji] || [];
+      const currentUsers = Array.isArray(currentReactions[emoji]) ? currentReactions[emoji] : [];
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
