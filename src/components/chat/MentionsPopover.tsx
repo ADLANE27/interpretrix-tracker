@@ -40,6 +40,8 @@ export const MentionsPopover = ({
   useEffect(() => {
     if (JSON.stringify(mentions) !== JSON.stringify(localMentions)) {
       setLocalMentions(mentions);
+      // Immediately emit event on mentions change
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, mentions.length);
     }
   }, [mentions]);
 

@@ -48,7 +48,6 @@ export const useUnreadMentions = () => {
       setUnreadDirectMessages(0);
       setTotalUnreadCount(0);
 
-      // Fetch unread mentions
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
@@ -72,7 +71,6 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Raw mentions data:', mentionsData);
 
-      // Fetch unread direct messages count
       const { data: directChannels, error: channelsError } = await supabase
         .from('chat_channels')
         .select('id')
@@ -85,7 +83,6 @@ export const useUnreadMentions = () => {
 
       const channelIds = directChannels.map(channel => channel.id);
       
-      // Get the last read timestamp for each channel
       const { data: memberData } = await supabase
         .from('channel_members')
         .select('channel_id, last_read_at')
@@ -96,7 +93,6 @@ export const useUnreadMentions = () => {
         memberData?.map(member => [member.channel_id, member.last_read_at]) || []
       );
 
-      // Count unread messages in direct channels
       let unreadDMCount = 0;
       for (const channelId of channelIds) {
         const lastRead = lastReadMap.get(channelId);
@@ -112,10 +108,9 @@ export const useUnreadMentions = () => {
         if (count) unreadDMCount += count;
       }
 
-      // Process mentions with sender names
       const mentionsWithNames = await Promise.all(
         (mentionsData as UnreadMentionResponse[] || [])
-          .filter(mention => mention.chat_messages) // Only include mentions with existing messages
+          .filter(mention => mention.chat_messages)
           .map(async (mention) => {
             const { data: senderData } = await supabase
               .rpc('get_message_sender_details', {
@@ -145,7 +140,6 @@ export const useUnreadMentions = () => {
         total: mentionsWithNames.length + unreadDMCount
       });
 
-      // Emit the event with the total count
       eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, mentionsWithNames.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
@@ -174,15 +168,12 @@ export const useUnreadMentions = () => {
       
       console.log('[Mentions Debug] Successfully marked mention as read');
       
-      // Update the local state immediately instead of fetching again
       setUnreadMentions(prev => {
         const filtered = prev.filter(mention => mention.mention_id !== mentionId);
         
-        // Update the total count
         const newTotal = filtered.length + unreadDirectMessages;
         setTotalUnreadCount(newTotal);
         
-        // Emit the event with the new count
         eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
         
         return filtered;
@@ -211,15 +202,12 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Successfully deleted mention');
       
-      // Update the local state immediately instead of fetching again
       setUnreadMentions(prev => {
         const filtered = prev.filter(mention => mention.mention_id !== mentionId);
         
-        // Update the total count
         const newTotal = filtered.length + unreadDirectMessages;
         setTotalUnreadCount(newTotal);
         
-        // Emit the event with the new count
         eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
         
         return filtered;
@@ -230,10 +218,8 @@ export const useUnreadMentions = () => {
   };
 
   useEffect(() => {
-    // Initial fetch
     fetchUnreadMentions();
 
-    // Auth subscription
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         setUnreadMentions([]);
@@ -245,7 +231,6 @@ export const useUnreadMentions = () => {
       }
     });
 
-    // Create a single channel for all subscriptions
     const channel = supabase.channel('mentions-and-messages')
       .on(
         'postgres_changes',
@@ -253,7 +238,6 @@ export const useUnreadMentions = () => {
         (payload) => {
           console.log('[Mentions Debug] Message mentions table changed:', payload);
           
-          // If this is a new mention for the current user, update immediately
           if (payload.eventType === 'INSERT' && 
               payload.new && 
               payload.new.mentioned_user_id === userId && 
@@ -262,7 +246,6 @@ export const useUnreadMentions = () => {
             fetchUnreadMentions();
           }
           
-          // If this is a status update for an existing mention (read/deleted)
           if (payload.eventType === 'UPDATE' && 
               payload.old && 
               payload.new && 
@@ -271,7 +254,6 @@ export const useUnreadMentions = () => {
               payload.new.mentioned_user_id === userId) {
             console.log('[Mentions Debug] Mention status changed to:', payload.new.status);
             
-            // Update local state immediately
             setUnreadMentions(prev => {
               const filtered = prev.filter(mention => mention.mention_id !== payload.new.id);
               setTotalUnreadCount(filtered.length + unreadDirectMessages);
@@ -300,7 +282,6 @@ export const useUnreadMentions = () => {
       )
       .subscribe();
 
-    // Cleanup function
     return () => {
       console.log('[Mentions Debug] Cleaning up subscriptions');
       authSubscription.unsubscribe();
