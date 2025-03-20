@@ -343,6 +343,11 @@ export const useUnreadMentions = () => {
               } else {
                 console.log('[Mentions Debug] Ignoring mention - not for current user');
               }
+            } else {
+              // If there's no payload.new or it's not correctly structured, 
+              // refresh mentions anyway in case it's an update or delete operation
+              console.log('[Mentions Debug] Refreshing mentions after table change - no payload details');
+              fetchUnreadMentions();
             }
           }
         )
@@ -351,6 +356,10 @@ export const useUnreadMentions = () => {
           { event: 'INSERT', schema: 'public', table: 'chat_messages' },
           (payload) => {
             console.log(`[Messages Debug] New message received (role: ${userRole})`, payload);
+            
+            // Refresh mentions when new messages come in
+            // This ensures we catch any potential mentions that might have been processed
+            // after the real-time trigger completes
             fetchUnreadMentions();
           }
         )

@@ -26,6 +26,17 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   useEffect(() => {
     console.log('[MessagingTab] Initial mention refresh');
     refreshMentions();
+    
+    // Set up a periodic refresh for mentions
+    const intervalId = setInterval(() => {
+      console.log('[MessagingTab] Periodic mention refresh');
+      refreshMentions();
+    }, 20000); // Every 20 seconds to match admin refresh rate
+    
+    return () => {
+      console.log('[MessagingTab] Cleaning up refresh interval');
+      clearInterval(intervalId);
+    };
   }, [refreshMentions]);
 
   return (
