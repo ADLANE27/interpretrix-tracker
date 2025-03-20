@@ -81,3 +81,6 @@ export interface MessageReactionProps {
   currentUserId: string | null;
   onReactToMessage: (messageId: string, emoji: string) => Promise<void>;
 }
+
+// Add the missing RealtimeMessageHandler type
+export type RealtimeMessageHandler = (payload: any) => Promise<void>;

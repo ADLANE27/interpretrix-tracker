@@ -29,11 +29,11 @@ export const useRoleIdentification = () => {
         return 'admin';
       }
       
-      // Check if user is an interpreter
+      // Check if user is an interpreter - fix table name from "interpreters" to "interpreter_profiles"
       const { data: interpreterData, error: interpreterError } = await supabase
-        .from('interpreters')
+        .from('interpreter_profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .maybeSingle();
       
       if (interpreterError) {
