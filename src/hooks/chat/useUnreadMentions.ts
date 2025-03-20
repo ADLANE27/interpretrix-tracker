@@ -174,15 +174,12 @@ export const useUnreadMentions = () => {
               return null;
             }
 
-            const senderName = senderData[0]?.name || 'Unknown User';
-            console.log('[Mentions Debug] Sender name retrieved:', senderName);
-
             return {
               mention_id: mention.id,
               message_id: mention.message_id,
               channel_id: mention.channel_id,
               message_content: mention.chat_messages.content || '',
-              mentioning_user_name: senderName,
+              mentioning_user_name: senderData[0]?.name || 'Unknown User',
               created_at: new Date(mention.created_at)
             };
           })
@@ -204,7 +201,7 @@ export const useUnreadMentions = () => {
           
           // If this isn't the first load (lastMentionId is set), show notification
           if (lastMentionId !== null) {
-            console.log('[Mentions Debug] Showing notification for mention from:', newestMention.mentioning_user_name);
+            console.log('[Mentions Debug] Showing notification for mention');
             
             // Play sound for new mention
             playNotificationSound();
