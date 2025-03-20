@@ -12,8 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { playNotificationSound } from "@/utils/notificationSound";
 
 interface ChatInputProps {
   message: string;
@@ -38,7 +36,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   replyTo,
   setReplyTo,
 }) => {
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);
@@ -50,26 +47,32 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [cursorPosition, setCursorPosition] = useState<number>(0);
   const { formatMessage } = useMessageFormatter();
 
+  // Create a debounced version of the fetchMentionSuggestions function with reduced timeout
   const debouncedFetchSuggestions = useCallback(
     debounce((searchTerm: string, channelId: string) => {
       fetchMentionSuggestions(searchTerm, channelId);
-    }, 150),
+    }, 150), // Reduced from 300ms to 150ms for better responsiveness
     []
   );
 
+  // Track cursor position when input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newMessage = e.target.value;
     setMessage(newMessage);
     
+    // Update cursor position
     const cursorPos = e.target.selectionStart || 0;
     setCursorPosition(cursorPos);
     
+    // Check for mentions only on the onChange event
     checkForMentions(newMessage, cursorPos);
   };
 
+  // Check for mentions in the current text at cursor position
   const checkForMentions = (text: string, cursorPos: number) => {
     const textBeforeCursor = text.substring(0, cursorPos);
     
+    // Look for @ symbol followed by text without spaces
     const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
     
     if (mentionMatch) {
@@ -78,6 +81,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setMentionStartIndex(mentionMatch.index || 0);
       setMentionSuggestionsVisible(true);
       
+      // Find which channel we're in by looking at the DOM
       const channelId = document.querySelector('#messages-container')?.getAttribute('data-channel-id');
       if (channelId) {
         setCurrentChannelId(channelId);
@@ -85,6 +89,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         debouncedFetchSuggestions(searchTerm, channelId);
       }
     } else {
+      // Only hide suggestions if we're not currently in mention mode
       if (mentionSuggestionsVisible) {
         setMentionSuggestionsVisible(false);
         setMentionSearchTerm('');
@@ -97,69 +102,112 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setIsLoadingSuggestions(true);
       console.log("Fetching suggestions for", searchTerm, "in channel", channelId);
       
-      const { data: channelMembers, error: membersError } = await supabase
-        .rpc('get_channel_members', { channel_id: channelId });
-        
+      // First fetch all members in the channel
+      const { data: members, error: membersError } = await supabase
+        .from('channel_members')
+        .select(`
+          user_id
+        `)
+        .eq('channel_id', channelId);
+
       if (membersError) {
-        console.error('Error fetching channel members via RPC:', membersError);
+        console.error('Error fetching channel members:', membersError);
         setIsLoadingSuggestions(false);
         return;
       }
       
-      if (!channelMembers || channelMembers.length === 0) {
+      if (!members || members.length === 0) {
         console.log("No members found in channel");
         setSuggestions([]);
         setIsLoadingSuggestions(false);
         return;
       }
       
-      const adminMembers = channelMembers.filter(member => member.role === 'admin');
-      const interpreterMembers = channelMembers.filter(member => member.role === 'interpreter');
+      const memberIds = members.map(m => m.user_id);
       
-      const interpreterSuggestions: MemberSuggestion[] = interpreterMembers.map(interpreter => ({
-        id: interpreter.user_id,
-        name: `${interpreter.first_name} ${interpreter.last_name}`,
-        email: interpreter.email,
-        role: 'interpreter' as 'interpreter'
-      }));
+      // Get interpreter profiles with better filtering
+      const { data: interpreters, error: interpretersError } = await supabase
+        .from('interpreter_profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          profile_picture_url
+        `)
+        .in('id', memberIds);
       
-      const adminSuggestions: MemberSuggestion[] = adminMembers.map(admin => ({
-        id: admin.user_id,
-        name: `${admin.first_name} ${admin.last_name}`,
-        email: admin.email,
-        role: 'admin' as 'admin'
-      }));
-      
-      const allSuggestions = [...interpreterSuggestions, ...adminSuggestions];
-      
-      if (interpreterMembers.length > 0) {
-        const interpreterIds = interpreterMembers.map(m => m.user_id);
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('interpreter_profiles')
-          .select('id, profile_picture_url')
-          .in('id', interpreterIds);
-          
-        if (!profilesError && profilesData) {
-          const pictureMap = new Map(
-            profilesData.map(profile => [profile.id, profile.profile_picture_url])
-          );
-          
-          allSuggestions.forEach(suggestion => {
-            if (suggestion.role === 'interpreter' && pictureMap.has(suggestion.id)) {
-              suggestion.avatarUrl = pictureMap.get(suggestion.id) || undefined;
-            }
-          });
-        }
+      // Get admin profiles with better filtering
+      const { data: admins, error: adminsError } = await supabase
+        .from('admin_profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email
+        `)
+        .in('id', memberIds);
+
+      if (interpretersError) {
+        console.error('Error fetching interpreter profiles:', interpretersError);
       }
+
+      if (adminsError) {
+        console.error('Error fetching admin profiles:', adminsError);
+      }
+
+      // Get user roles to determine who is admin vs interpreter
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', memberIds);
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+      }
+
+      // Create a map of user_id to role for easy lookup
+      const roleMap = new Map<string, 'admin' | 'interpreter'>();
+      if (userRoles) {
+        userRoles.forEach(ur => {
+          roleMap.set(ur.user_id, ur.role as 'admin' | 'interpreter');
+        });
+      }
+
+      // Format interpreter suggestions
+      const interpreterSuggestions: MemberSuggestion[] = (interpreters || []).map(profile => {
+        const name = `${profile.first_name} ${profile.last_name}`;
+        return {
+          id: profile.id,
+          name,
+          email: profile.email,
+          role: roleMap.get(profile.id) || 'interpreter',
+          avatarUrl: profile.profile_picture_url || undefined
+        };
+      });
+
+      // Format admin suggestions
+      const adminSuggestions: MemberSuggestion[] = (admins || []).map(profile => {
+        const name = `${profile.first_name} ${profile.last_name}`;
+        return {
+          id: profile.id,
+          name,
+          email: profile.email,
+          role: roleMap.get(profile.id) || 'admin'
+        };
+      });
+
+      // Filter suggestions based on search term
+      const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
       
+      // Client-side filtering based on search term
       const filteredSuggestions = searchTerm 
-        ? allSuggestions.filter(suggestion => {
+        ? combinedSuggestions.filter(suggestion => {
             const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return normalizedName.includes(normalizedSearch);
           })
-        : allSuggestions;
+        : combinedSuggestions;
       
       console.log("Found suggestions:", filteredSuggestions.length);
       setSuggestions(filteredSuggestions);
@@ -181,16 +229,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     let insertText = '';
     
     if ('type' in suggestion && suggestion.type === 'language') {
+      // If it's a language suggestion
       insertText = `@${suggestion.name} `;
     } else {
+      // If it's a user suggestion
       insertText = `@${suggestion.name} `;
     }
     
     const newMessage = textBeforeMention + insertText + textAfterCursor;
     setMessage(newMessage);
     
+    // Close suggestions
     setMentionSuggestionsVisible(false);
     
+    // Focus back on the input and move cursor to the end of the inserted mention
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
@@ -206,12 +258,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setEmojiPickerOpen(false);
   };
 
+  // Track cursor position when manually moving it
   const handleSelectionChange = () => {
     if (inputRef.current) {
       setCursorPosition(inputRef.current.selectionStart || 0);
     }
   };
 
+  // Update cursor position tracking
   useEffect(() => {
     const textarea = inputRef.current;
     if (!textarea) return;
@@ -226,33 +280,33 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [inputRef]);
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-900">
+    <div className="border-t p-4 bg-white">
       {replyTo && (
-        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
-          <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
+        <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
+          <span>En réponse à : {replyTo.sender.name}</span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setReplyTo(null)}
-            className="h-6 px-2 text-xs hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             Annuler
           </Button>
         </div>
       )}
       <div className="relative">
-        <div className="flex items-end rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900 shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
+        <div className="flex items-end gap-2 bg-white rounded-lg border shadow-sm focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500">
           <div className="flex-1 min-h-[40px] flex items-end">
             <Textarea
               ref={inputRef}
               value={message}
               onChange={handleInputChange}
               placeholder="Écrivez un message..."
-              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5 px-3 text-base rounded-none"
+              className="resize-none border-0 focus-visible:ring-0 shadow-none min-h-[40px] py-2.5"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   
+                  // Format the message before sending (standardize language mentions)
                   const formattedMessage = formatMessage(message);
                   setMessage(formattedMessage);
                   
@@ -261,11 +315,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               }}
             />
           </div>
-          <div className="flex items-center p-1.5 pr-2">
+          <div className="flex items-center gap-1 p-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => {
                 const textarea = inputRef.current;
                 if (textarea) {
@@ -275,12 +329,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   const newMessage = textBeforeCursor + '@' + textAfterCursor;
                   setMessage(newMessage);
                   
+                  // Focus on textarea and place cursor after @
                   setTimeout(() => {
                     textarea.focus();
                     const newPos = cursorPos + 1;
                     textarea.setSelectionRange(newPos, newPos);
                     setCursorPosition(newPos);
                     
+                    // Trigger mention suggestions manually
                     checkForMentions(newMessage, newPos);
                   }, 0);
                 }
@@ -294,7 +350,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+                  className="h-8 w-8 text-gray-500 hover:text-purple-500"
                 >
                   <Smile className="h-5 w-5" />
                 </Button>
@@ -335,15 +391,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-purple-500 rounded-full"
+              className="h-8 w-8 text-gray-500 hover:text-purple-500"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
             <Button
               size="icon"
-              className="h-9 w-9 ml-1 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center"
+              className="h-8 w-8 bg-purple-500 hover:bg-purple-600"
               onClick={() => {
+                // Format the message before sending
                 const formattedMessage = formatMessage(message);
                 setMessage(formattedMessage);
                 onSendMessage();
@@ -365,14 +422,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         )}
       </div>
       {attachments.length > 0 && (
-        <div className="mt-2 space-y-1.5 px-1">
+        <div className="mt-2 space-y-1">
           {attachments.map((file, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm py-1.5 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{file.name}</span>
+            <div key={index} className="flex items-center gap-2 text-sm py-1 px-2 bg-gray-50 rounded">
+              <span className="text-gray-700 truncate flex-1">{file.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 hover:text-red-500 px-2"
+                className="h-6 hover:text-red-500"
                 onClick={() => handleRemoveAttachment(index)}
               >
                 Supprimer

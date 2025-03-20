@@ -14,8 +14,6 @@ interface DashboardContentProps {
   onProfileUpdate: () => Promise<void>;
   onProfilePictureUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   onProfilePictureDelete: () => Promise<void>;
-  onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
-  onMenuClick?: () => void;
 }
 
 export const DashboardContent = ({
@@ -24,16 +22,14 @@ export const DashboardContent = ({
   scheduledMissions,
   onProfileUpdate,
   onProfilePictureUpload,
-  onProfilePictureDelete,
-  onStatusChange,
-  onMenuClick
+  onProfilePictureDelete
 }: DashboardContentProps) => {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "missions":
         return <MissionsTab />;
       case "messages":
-        return <MessagingTab profile={profile} onStatusChange={onStatusChange} onMenuClick={onMenuClick} />;
+        return <MessagingTab />;
       case "profile":
         return (
           <InterpreterProfile 

@@ -8,30 +8,25 @@ export const initializeNotificationSound = async () => {
       const response = await fetch('/notification-sound.mp3');
       const arrayBuffer = await response.arrayBuffer();
       audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      console.log('[Sound] Notification sound initialized successfully');
     }
   } catch (error) {
-    console.error('[Sound] Failed to initialize notification sound:', error);
+    console.error('Failed to initialize notification sound:', error);
   }
 };
 
 export const playNotificationSound = async () => {
   try {
     if (!audioBuffer) {
-      console.log('[Sound] Audio buffer not initialized, initializing...');
       await initializeNotificationSound();
     }
     
     if (audioBuffer) {
-      console.log('[Sound] Playing notification sound');
       const source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(audioContext.destination);
       source.start(0);
-    } else {
-      console.warn('[Sound] Could not play notification sound - buffer not available');
     }
   } catch (error) {
-    console.error('[Sound] Failed to play notification sound:', error);
+    console.error('Failed to play notification sound:', error);
   }
 };

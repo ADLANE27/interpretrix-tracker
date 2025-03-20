@@ -103,22 +103,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     };
   }, []);
 
-  // Effect to refresh mentions when the component mounts and periodically
-  useEffect(() => {
-    console.log('[Sidebar] Setting up mention refresh');
-    refreshMentions();
-    
-    const intervalId = setInterval(() => {
-      console.log('[Sidebar] Running periodic mention refresh');
-      refreshMentions();
-    }, 20000); // Refresh every 20 seconds
-    
-    return () => {
-      console.log('[Sidebar] Cleaning up mention refresh interval');
-      clearInterval(intervalId);
-    };
-  }, [refreshMentions]);
-
   console.log('[Sidebar] Current badge counts:', {
     pendingMissions: pendingMissionsCount,
     unreadMessages: totalUnreadCount
@@ -187,8 +171,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
         </Button>
       </div>
 
-      <nav className="flex-1 my-2">
-        <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
+      <nav className="flex-1 mx-4 my-2">
+        <div className="space-y-2 rounded-lg p-1 bg-background/50">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -196,7 +180,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 key={tab.id}
                 variant={activeTab === tab.id ? "default" : "ghost"}
                 className={cn(
-                  "w-full justify-start gap-2 relative px-4",
+                  "w-full justify-start gap-2 relative",
                   "transition-all duration-200 font-medium rounded-md",
                   activeTab === tab.id 
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 

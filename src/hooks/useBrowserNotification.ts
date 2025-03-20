@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 
 export const useBrowserNotification = (test = false) => {

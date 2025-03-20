@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,7 +125,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 shadow-sm bg-white">
+      <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
           {isEditing && userRole === 'admin' ? (
             <>

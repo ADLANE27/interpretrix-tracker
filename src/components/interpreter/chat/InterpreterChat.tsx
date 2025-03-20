@@ -10,10 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { StatusManager } from "@/components/interpreter/StatusManager";
-import { Menu, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Profile } from "@/types/profile";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -24,21 +20,13 @@ interface InterpreterChatProps {
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
-  onBackToChannels?: () => void;
-  profile?: Profile | null;
-  onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
-  onMenuClick?: () => void;
 }
 
 export const InterpreterChat = ({ 
   channelId, 
   filters, 
   onFiltersChange, 
-  onClearFilters,
-  onBackToChannels,
-  profile,
-  onStatusChange,
-  onMenuClick
+  onClearFilters 
 }: InterpreterChatProps) => {
   const { data: channel } = useQuery({
     queryKey: ['channel', channelId],
@@ -117,13 +105,6 @@ export const InterpreterChat = ({
 
   useEffect(() => {
     if (channelId) {
-      console.log('[InterpreterChat] Marking mentions as read for channel:', channelId);
-      markMentionsAsRead();
-    }
-  }, [channelId, markMentionsAsRead]);
-
-  useEffect(() => {
-    if (channelId) {
       const channel = supabase
         .channel(`chat-mentions-${channelId}`)
         .on(
@@ -137,13 +118,7 @@ export const InterpreterChat = ({
             if (!payload.new || !currentUserId) return;
             
             if (payload.new.mentioned_user_id === currentUserId) {
-              console.log('[InterpreterChat] New mention received:', payload.new);
-              
-              try {
-                await playNotificationSound();
-              } catch (error) {
-                console.error('[InterpreterChat] Error playing sound:', error);
-              }
+              await playNotificationSound();
               
               toast({
                 title: "💬 Nouvelle mention",
@@ -160,12 +135,9 @@ export const InterpreterChat = ({
             }
           }
         )
-        .subscribe((status) => {
-          console.log(`[InterpreterChat] Mention subscription status:`, status);
-        });
+        .subscribe();
 
       return () => {
-        console.log('[InterpreterChat] Cleaning up mention subscription');
         supabase.removeChannel(channel);
       };
     }
@@ -231,42 +203,17 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
-        <div className="h-[56px] md:h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isMobile && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            )}
-            {isMobile && onMenuClick && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
-                <Menu className="h-5 w-5" />
-              </Button>
-            )}
-          </div>
-          
-          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
-          
-          <ChannelMembersPopover 
-            channelId={channelId} 
-            channelName={channel?.name || ''} 
-            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-            userRole="interpreter"
-          />
-        </div>
-        
-        {profile && isMobile && (
-          <div className="pb-3 w-full overflow-visible">
-            <StatusManager 
-              currentStatus={profile?.status}
-              onStatusChange={onStatusChange} 
-            />
-          </div>
-        )}
+      <div className="flex items-center justify-between p-4 border-b">
+        <h2 className="text-lg font-semibold">{channel?.name}</h2>
+        <ChannelMembersPopover 
+          channelId={channelId} 
+          channelName={channel?.name || ''} 
+          channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+          userRole="interpreter"
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none p-3 relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <p className="text-lg font-semibold">Chargement des messages...</p>
