@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,24 +7,45 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreateChannelDialog } from "@/components/admin/CreateChannelDialog";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { useChannels } from "@/hooks/chat/useChannels";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
+
+interface Channel {
+  id: string;
+  name: string;
+  description: string | null;
+}
 
 export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: string) => void }) => {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  // Use the enhanced useChannels hook
-  const { 
-    channels, 
-    selectedChannelId, 
-    setSelectedChannelId, 
-    isAdmin, 
-    isLoading,
-    isAuthenticated
-  } = useChannels();
-  
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [unreadMentions, setUnreadMentions] = useState<{ [key: string]: number }>({});
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['isUserAdmin'],
+    queryFn: async () => {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+      
+      return roles?.some(r => r.role === 'admin') ?? false;
+    }
+  });
+
+  // Fetch channels the user has access to
+  const { data: channels = [], refetch: fetchChannels } = useQuery({
+    queryKey: ['channels'],
+    queryFn: async () => {
+      const { data: userChannels, error } = await supabase
+        .from('chat_channels')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      return userChannels;
+    }
+  });
 
   // Fetch unread mentions for each channel
   const fetchUnreadMentions = async () => {
@@ -58,8 +78,6 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
   // Set up real-time subscription for mentions
   useEffect(() => {
-    if (!isAuthenticated) return; // Skip if not authenticated
-    
     fetchUnreadMentions();
 
     const channel = supabase.channel('mentions')
@@ -73,40 +91,12 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isAuthenticated]);
+  }, []);
 
   const handleChannelSelect = (channelId: string) => {
     setSelectedChannelId(channelId);
     onChannelSelect(channelId);
   };
-
-  // Render loading state if checking authentication or loading channels
-  if (isLoading || isAuthenticated === null) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Canaux de discussion</h2>
-        </div>
-        <div className="h-[400px] flex items-center justify-center">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
-
-  // Render not authenticated state
-  if (isAuthenticated === false) {
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Canaux de discussion</h2>
-        </div>
-        <div className="h-[400px] flex items-center justify-center p-4 text-center text-muted-foreground">
-          <p>Veuillez vous connecter pour accéder aux canaux de discussion.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -122,32 +112,26 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
 
       <ScrollArea className="h-[400px] pr-4">
         <div className="space-y-2">
-          {channels.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground">
-              Aucun canal disponible
-            </div>
-          ) : (
-            channels.map((channel) => (
-              <div
-                key={channel.id}
-                className={`
-                  flex items-center justify-between p-2 rounded-lg 
-                  cursor-pointer transition-colors
-                  ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
-                `}
-                onClick={() => handleChannelSelect(channel.id)}
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="font-medium">{channel.name}</span>
-                  {unreadMentions[channel.id] > 0 && (
-                    <Badge variant="destructive" className="ml-2">
-                      {unreadMentions[channel.id]}
-                    </Badge>
-                  )}
-                </div>
+          {channels.map((channel) => (
+            <div
+              key={channel.id}
+              className={`
+                flex items-center justify-between p-2 rounded-lg 
+                cursor-pointer transition-colors
+                ${selectedChannelId === channel.id ? 'bg-interpreter-navy text-white' : 'hover:bg-accent/50'}
+              `}
+              onClick={() => handleChannelSelect(channel.id)}
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <span className="font-medium">{channel.name}</span>
+                {unreadMentions[channel.id] > 0 && (
+                  <Badge variant="destructive" className="ml-2">
+                    {unreadMentions[channel.id]}
+                  </Badge>
+                )}
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       </ScrollArea>
 
@@ -155,7 +139,7 @@ export const ChannelList = ({ onChannelSelect }: { onChannelSelect: (channelId: 
         <CreateChannelDialog
           isOpen={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
-          onChannelCreated={() => {}} // We'll use the React Query refetch instead
+          onChannelCreated={fetchChannels}
         />
       )}
     </div>

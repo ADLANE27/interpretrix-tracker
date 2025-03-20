@@ -23,7 +23,6 @@ export interface MessageData {
   created_at: string;
   parent_message_id?: string | null;
   reactions?: Record<string, string[]> | string;
-  channel_id: string; // Added channel_id to fix the type error
   attachments?: Array<{
     url: string;
     filename: string;

@@ -60,12 +60,3 @@ export const createLocalISOString = (date: string, time: string): string => {
   // Simply concatenate date and time without adding Z marker
   return `${date}T${time}:00`;
 }
-
-// Ensure message timestamps are sorted correctly regardless of time zones
-export const normalizeTimestampForSorting = (timestamp: string | Date): number => {
-  if (typeof timestamp === 'string') {
-    // Parse the ISO string to get a consistent timestamp
-    return new Date(timestamp).getTime();
-  }
-  return timestamp.getTime();
-};

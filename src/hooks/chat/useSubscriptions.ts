@@ -1,18 +1,30 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { useEffect, useRef, useState } from 'react';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
-import { 
-  SubscriptionState, 
-  SubscriptionStates, 
-  ExtendedPayload 
-} from './types/subscriptionTypes';
-import { createMessageChannel, cleanupChannel } from './utils/subscriptionUtils';
-import { useUserRole } from './useUserRole';
-import { useEventTracking } from './useEventTracking';
-import { useSubscriptionHealth } from './useSubscriptionHealth';
-import { useNewMessageHandler } from './useNewMessageHandler';
+import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
+
+interface SubscriptionState {
+  status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
+  error?: Error
+}
+
+interface SubscriptionStates {
+  messages?: SubscriptionState;
+  mentions?: SubscriptionState;
+}
+
+interface ExtendedPayload {
+  schema: string;
+  table: string;
+  commit_timestamp: string;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: Record<string, any>;
+  old?: Record<string, any>;
+  errors: string | null;
+  receivedAt?: number;
+}
 
 export const useSubscriptions = (
   channelId: string,
@@ -23,18 +35,33 @@ export const useSubscriptions = (
 ) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [subscriptionStates, setSubscriptionStates] = useState<SubscriptionStates>({});
-  const userRole = useUserRole();
-  const { lastEventTimestamp, trackEvent } = useEventTracking(userRole);
-  const { handleNewMessage } = useNewMessageHandler(currentUserId);
+  const lastEventTimestamp = useRef<number>(Date.now());
+  const instanceId = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+  const seenEvents = useRef<Set<string>>(new Set());
+  const userRole = useRef<'admin' | 'interpreter' | null>(null);
 
-  // Health monitoring
-  useSubscriptionHealth(
-    lastEventTimestamp,
-    retryCount,
-    setRetryCount,
-    channelRef,
-    userRole
-  );
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (data) {
+          userRole.current = data.role as 'admin' | 'interpreter';
+        }
+      } catch (error) {
+        console.error('[useSubscriptions] Error determining user role:', error);
+      }
+    };
+    
+    checkUserRole();
+  }, []);
 
   const handleSubscriptionError = (error: Error, type: 'messages' | 'mentions') => {
     console.error(`[Chat ${userRole.current}] ${type} subscription error:`, error);
@@ -50,17 +77,6 @@ export const useSubscriptions = (
     }
   };
 
-  const handleMessageChange = (payload: any) => {
-    const extendedPayload = trackEvent(payload);
-    if (!extendedPayload) return;
-    
-    // Process the payload with the parent component's handler
-    onRealtimeEvent(extendedPayload);
-    
-    // Handle notifications for new messages
-    handleNewMessage(extendedPayload, channelId);
-  };
-
   useEffect(() => {
     console.log(`[Chat ${userRole.current}] Setting up subscriptions for channel:`, channelId);
     let isSubscribed = true;
@@ -72,7 +88,8 @@ export const useSubscriptions = (
       }
 
       if (channelRef.current) {
-        await cleanupChannel(channelRef.current, `Chat ${userRole.current}`);
+        console.log(`[Chat ${userRole.current}] Cleaning up existing channel`);
+        await supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
 
@@ -80,10 +97,74 @@ export const useSubscriptions = (
         const channelName = `chat-${channelId}`;
         console.log(`[Chat ${userRole.current}] Creating new channel with name:`, channelName);
         
-        channelRef.current = createMessageChannel(channelId, channelName, (payload) => {
-          if (!isSubscribed) return;
-          handleMessageChange(payload);
-        });
+        channelRef.current = supabase.channel(channelName);
+
+        channelRef.current
+          .on('postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'chat_messages',
+              filter: `channel_id=eq.${channelId}`
+            },
+            (payload: RealtimePostgresChangesPayload<any>) => {
+              if (!isSubscribed) return;
+              
+              const eventId = `${payload.eventType}-${
+                payload.eventType === 'DELETE' ? 
+                (payload.old as any)?.id : 
+                (payload.new as any)?.id
+              }-${payload.commit_timestamp}`;
+              
+              if (seenEvents.current.has(eventId)) {
+                console.log(`[Chat ${userRole.current}] Skipping duplicate event:`, eventId);
+                return;
+              }
+              
+              seenEvents.current.add(eventId);
+              
+              if (seenEvents.current.size > 100) {
+                const eventsArray = Array.from(seenEvents.current);
+                seenEvents.current = new Set(eventsArray.slice(-50));
+              }
+              
+              const extendedPayload: ExtendedPayload = {
+                ...payload as any,
+                eventType: payload.eventType,
+                receivedAt: Date.now()
+              };
+
+              lastEventTimestamp.current = extendedPayload.receivedAt;
+
+              console.log(`[Chat ${userRole.current}] Message change received:`, extendedPayload.eventType, extendedPayload);
+              
+              onRealtimeEvent(extendedPayload);
+              
+              if (extendedPayload.eventType === 'INSERT' && 
+                  extendedPayload.new && 
+                  extendedPayload.new.sender_id !== currentUserId) {
+                console.log(`[Chat ${userRole.current}] Emitting new message event`, extendedPayload.new);
+                
+                // Improved mention detection logic
+                const userMentioned = Boolean(
+                  extendedPayload.new.mentions && 
+                  Array.isArray(extendedPayload.new.mentions) && 
+                  extendedPayload.new.mentions.includes(currentUserId)
+                );
+                
+                console.log(`[Chat ${userRole.current}] User mentioned in message:`, userMentioned, {
+                  mentions: extendedPayload.new.mentions,
+                  currentUserId: currentUserId
+                });
+                
+                eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
+                  message: extendedPayload.new,
+                  channelId,
+                  isMention: userMentioned
+                });
+              }
+            }
+          );
 
         const channel = await channelRef.current.subscribe((status) => {
           console.log(`[Chat ${userRole.current}] Subscription status:`, status);
@@ -109,12 +190,31 @@ export const useSubscriptions = (
 
     setupSubscriptions();
 
+    const healthCheckInterval = setInterval(() => {
+      const now = Date.now();
+      const lastEvent = lastEventTimestamp.current;
+      const timeSinceLastEvent = now - lastEvent;
+      
+      console.log(`[Chat ${userRole.current}] Health check: ${timeSinceLastEvent}ms since last event`);
+      
+      if (timeSinceLastEvent > CONNECTION_CONSTANTS.BASE_RECONNECT_DELAY * 10 && channelRef.current) {
+        console.log(`[Chat ${userRole.current}] Subscription appears stalled, reconnecting...`);
+        setRetryCount(retryCount + 1);
+      }
+    }, 30000);
+
     return () => {
       console.log(`[Chat ${userRole.current}] Cleaning up subscriptions`);
       isSubscribed = false;
+      clearInterval(healthCheckInterval);
       
-      cleanupChannel(channelRef.current, `Chat ${userRole.current}`);
-      channelRef.current = null;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+          .catch(error => {
+            console.error(`[Chat ${userRole.current}] Error removing channel:`, error);
+          });
+        channelRef.current = null;
+      }
     };
   }, [channelId, currentUserId, onRealtimeEvent, retryCount, setRetryCount]);
 

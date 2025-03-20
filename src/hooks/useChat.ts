@@ -109,9 +109,7 @@ export const useChat = (channelId: string) => {
       console.log(`[useChat] Initial messages fetch for channel:`, channelId);
       messagesMap.current.clear();
       messageProcessing.lastFetchTimestamp.current = null;
-      
-      // Fetch more messages initially (150 instead of 100) to ensure we have enough history
-      fetchMessages(150);
+      fetchMessages(0);
       
       // Add a backup fetch after a delay in case the initial fetch didn't update the UI
       const timer = setTimeout(() => {
@@ -133,7 +131,7 @@ export const useChat = (channelId: string) => {
       const shouldRefresh = !lastFetchTime || (new Date().getTime() - lastFetchTime.getTime() > 10000);
       if (shouldRefresh) {
         console.log(`[useChat] Performing periodic refresh of messages`);
-        fetchMessages(150); // Fetch more messages on refresh
+        fetchMessages(0);
       }
     }, 30000);
     

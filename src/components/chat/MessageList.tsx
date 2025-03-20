@@ -1,14 +1,10 @@
-
-import React, { useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
-import { shouldShowDate } from './utils/messageUtils';
-import { MessageSkeleton } from './MessageSkeleton';
-import { EmptyMessageState } from './EmptyMessageState';
-import { useMessageListState } from '@/hooks/chat/useMessageListState';
-import { useMessageScroll } from '@/hooks/chat/useMessageScroll';
-import { useMessageOrganizer } from './utils/messageOrganizer';
+import { shouldShowDate, organizeMessageThreads } from './utils/messageUtils';
+import { LoadingSpinner } from '../ui/loading-spinner';
+import { Skeleton } from '../ui/skeleton';
 
 interface MessageListProps {
   messages: Message[];
@@ -20,7 +16,18 @@ interface MessageListProps {
   channelId: string;
 }
 
-export const MessageList: React.FC<MessageListProps> = React.memo(({
+// MessageSkeleton component for showing loading state
+const MessageSkeleton = () => (
+  <div className="animate-pulse space-y-3 py-2">
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <Skeleton className="h-4 w-24" />
+    </div>
+    <Skeleton className="h-16 w-full max-w-[80%] rounded-md" />
+  </div>
+);
+
+export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
   onDeleteMessage,
@@ -29,88 +36,146 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
   setReplyTo,
   channelId,
 }) => {
-  // Use custom hooks for state management with improved stability
-  const {
-    messagesEndRef,
-    messageContainerRef,
-    lastMessageCountRef,
-    isInitialLoad,
-    hadMessagesRef,
-    showSkeletons,
-    scrollToBottomFlag,
-    stableRenderRef,
-    renderStabilityCounter
-  } = useMessageListState(messages, channelId);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollPositionRef = useRef<number>(0);
+  const lastMessageCountRef = useRef<number>(0);
+  const renderCountRef = useRef<number>(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const hadMessagesRef = useRef<boolean>(false); 
+  const stableMessages = useRef<Message[]>([]);
+  const lastStableUpdateTimestamp = useRef<number>(Date.now());
+  const [showSkeletons, setShowSkeletons] = useState(true);
+  const initialSkeletonsShown = useRef(false);
+  const autoScrolledRef = useRef(false);
 
-  // Stable scroll handler with built-in debouncing
-  useMessageScroll(
-    messages, 
-    isInitialLoad, 
-    lastMessageCountRef,
-    messagesEndRef,
-    scrollToBottomFlag,
-    messageContainerRef
-  );
-
-  // Enhanced message organizer with improved caching
-  const { organizeThreads } = useMessageOrganizer(messages);
-
-  // Memoize organization result to prevent re-renders
-  const { rootMessages, messageThreads } = useMemo(() => {
-    // Return empty results during loading states
-    if (showSkeletons || isInitialLoad) {
-      return { rootMessages: [], messageThreads: {} };
+  // Show skeletons immediately on mount, keep them until real messages arrive
+  useEffect(() => {
+    if (!initialSkeletonsShown.current) {
+      setShowSkeletons(true);
+      initialSkeletonsShown.current = true;
     }
     
-    // Only log organization on significant changes
-    if (messages.length % 10 === 0 || messages.length <= 5) {
-      console.log(`[MessageList] Organizing ${messages.length} messages for channel: ${channelId}`);
+    if (messages.length > 0) {
+      // Remove skeletons once we have real messages with a very small delay
+      const timer = setTimeout(() => {
+        setShowSkeletons(false);
+      }, 100); // Shorter delay for smoother transition
+      
+      return () => clearTimeout(timer);
     }
+  }, [messages.length]);
+
+  // Store the latest valid messages to prevent flickering
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Update stable messages more frequently for faster display
+      const now = Date.now();
+      if (now - lastStableUpdateTimestamp.current > 500) { // Reduced time for more responsive updates
+        stableMessages.current = [...messages]; // Create a new array to ensure reference changes
+        lastStableUpdateTimestamp.current = now;
+      }
+      hadMessagesRef.current = true;
+      
+      // Once we have real messages, we're no longer in initial load state
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    }
+  }, [messages, isInitialLoad]);
+
+  useEffect(() => {
+    renderCountRef.current += 1;
+  });
+
+  const memoizedOrganizeThreads = useCallback(() => {
+    // Always use stable messages when they exist and current messages are empty
+    const messagesToUse = messages.length > 0 ? messages : 
+      (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
     
-    // Use the cached organization when possible
-    return organizeThreads();
-  }, [organizeThreads, showSkeletons, isInitialLoad, messages.length, channelId]);
+    return organizeMessageThreads(messagesToUse);
+  }, [messages]);
 
-  // Stable handler for message delete operations
-  const handleDeleteMessage = useCallback(async (messageId: string) => {
-    await onDeleteMessage(messageId);
-  }, [onDeleteMessage]);
+  const { rootMessages, messageThreads } = memoizedOrganizeThreads();
 
-  // Stable handler for reactions
-  const handleReactToMessage = useCallback(async (messageId: string, emoji: string) => {
-    await onReactToMessage(messageId, emoji);
-  }, [onReactToMessage]);
+  // Force scroll to bottom on first load and when new messages arrive
+  useEffect(() => {
+    if (!messageContainerRef.current) return;
+    
+    const isNewMessage = messages.length > lastMessageCountRef.current;
+    lastMessageCountRef.current = messages.length || stableMessages.current.length;
+    
+    // On first load or when adding a message, scroll to bottom
+    if ((messages.length > 0 && !autoScrolledRef.current) || isNewMessage) {
+      requestAnimationFrame(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+          autoScrolledRef.current = true;
+        }
+      });
+    } else if (!isNewMessage) {
+      // For other updates, maintain the scroll position
+      requestAnimationFrame(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = scrollPositionRef.current;
+        }
+      });
+    }
+  }, [messages]);
 
-  // Display skeletons during initial loading
-  if (showSkeletons && (isInitialLoad || messages.length === 0)) {
+  // Save current scroll position before updates
+  useEffect(() => {
+    const container = messageContainerRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      scrollPositionRef.current = container.scrollTop;
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // When channel changes, reset auto-scroll flag
+  useEffect(() => {
+    autoScrolledRef.current = false;
+    setIsInitialLoad(true);
+    initialSkeletonsShown.current = false;
+    setShowSkeletons(true);
+  }, [channelId]);
+
+  // Use the stable messages if current messages are empty to prevent flickering
+  const displayMessages = messages.length > 0 ? messages : 
+    (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
+
+  // Show skeletons during initial load - now with more skeletons for a better experience
+  if (showSkeletons && (isInitialLoad || displayMessages.length === 0)) {
     return (
       <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
            ref={messageContainerRef}>
-        <MessageSkeleton count={5} />
+        {Array.from({ length: 8 }).map((_, index) => (
+          <MessageSkeleton key={index} />
+        ))}
         <div ref={messagesEndRef} />
       </div>
     );
   }
 
-  // Show empty state when appropriate
-  if (rootMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
+  // Don't show empty state if we're still in initial load or if we've ever had messages
+  if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
            ref={messageContainerRef}>
-        <EmptyMessageState />
+        <p className="text-gray-500">Aucun message dans cette conversation</p>
         <div ref={messagesEndRef} />
       </div>
     );
   }
 
-  // Main message list with memoized components
   return (
     <div 
       className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
       ref={messageContainerRef}
-      data-stable-render={String(renderStabilityCounter.current)}
-      data-message-count={rootMessages.length}
-      data-channel-id={channelId}
     >
       <div className="flex-1">
         {rootMessages.map((message, index) => {
@@ -127,8 +192,8 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
                 rootMessage={message}
                 replies={replies}
                 currentUserId={currentUserId}
-                onDeleteMessage={handleDeleteMessage}
-                onReactToMessage={handleReactToMessage}
+                onDeleteMessage={onDeleteMessage}
+                onReactToMessage={onReactToMessage}
                 setReplyTo={setReplyTo}
                 channelId={channelId}
               />
@@ -139,7 +204,4 @@ export const MessageList: React.FC<MessageListProps> = React.memo(({
       <div ref={messagesEndRef} />
     </div>
   );
-});
-
-// Add display name for better debugging
-MessageList.displayName = 'MessageList';
+};
