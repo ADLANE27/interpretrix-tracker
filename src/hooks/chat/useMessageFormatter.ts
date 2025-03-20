@@ -31,11 +31,11 @@ export const useMessageFormatter = () => {
     if (!query || query.length < 2) return null;
     
     // Normalize the query for comparison
-    const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normalizedQuery = normalizeString(query);
     
     // First try for exact match
     const exactMatch = LANGUAGES.find(lang => {
-      const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const normalizedLang = normalizeString(lang);
       return normalizedLang === normalizedQuery;
     });
     
@@ -43,7 +43,7 @@ export const useMessageFormatter = () => {
     
     // Then try for a starts-with match
     const startsWithMatch = LANGUAGES.find(lang => {
-      const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const normalizedLang = normalizeString(lang);
       return normalizedLang.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedLang);
     });
     
@@ -52,7 +52,7 @@ export const useMessageFormatter = () => {
     // Finally try for a contains match with minimum length to avoid false positives
     if (normalizedQuery.length >= 3) {
       const containsMatch = LANGUAGES.find(lang => {
-        const normalizedLang = lang.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const normalizedLang = normalizeString(lang);
         return normalizedLang.includes(normalizedQuery);
       });
       
@@ -60,6 +60,15 @@ export const useMessageFormatter = () => {
     }
     
     return null;
+  };
+  
+  // Helper function to normalize strings for better comparison
+  const normalizeString = (str: string): string => {
+    return str.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove diacritics (accents)
+      .replace(/[^a-z0-9\s]/g, "")     // Remove special characters
+      .trim();
   };
 
   return {

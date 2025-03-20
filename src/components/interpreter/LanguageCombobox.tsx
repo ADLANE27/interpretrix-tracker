@@ -50,6 +50,14 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
+  // Normalize a string for comparison (remove accents, lowercase)
+  const normalizeString = (str: string): string => {
+    return str.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
   // Sort and filter languages
   const filteredLanguages = useMemo(() => {
     try {
@@ -57,27 +65,27 @@ export function LanguageCombobox({
         return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
       }
       
-      const searchTermLower = searchTerm.toLowerCase();
+      const normalizedSearchTerm = normalizeString(searchTerm);
       
       return [...languages]
         .filter(lang => {
-          const langLower = lang.toLowerCase();
-          return langLower.includes(searchTermLower);
+          const normalizedLang = normalizeString(lang);
+          return normalizedLang.includes(normalizedSearchTerm);
         })
         .sort((a, b) => {
-          const aLower = a.toLowerCase();
-          const bLower = b.toLowerCase();
+          const normalizedA = normalizeString(a);
+          const normalizedB = normalizeString(b);
           
           // Exact matches first
-          const aExactMatch = aLower === searchTermLower;
-          const bExactMatch = bLower === searchTermLower;
+          const aExactMatch = normalizedA === normalizedSearchTerm;
+          const bExactMatch = normalizedB === normalizedSearchTerm;
           
           if (aExactMatch && !bExactMatch) return -1;
           if (!aExactMatch && bExactMatch) return 1;
           
           // Then sort by whether it starts with the search term
-          const aStartsWith = aLower.startsWith(searchTermLower);
-          const bStartsWith = bLower.startsWith(searchTermLower);
+          const aStartsWith = normalizedA.startsWith(normalizedSearchTerm);
+          const bStartsWith = normalizedB.startsWith(normalizedSearchTerm);
           
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
@@ -113,7 +121,7 @@ export function LanguageCombobox({
 
   // Common languages to highlight at the top of the list
   const commonLanguages = [
-    "Français", "Anglais", "Espagnol", "Arabe", "Dari", "Pashto", "Farsi", 
+    "Français", "Anglais", "Espagnol", "Arabe", "Arabe Maghrébin", "Dari", "Pashto", "Farsi", 
     "Russe", "Chinois", "Allemand", "Italien", "Portugais"
   ];
   
