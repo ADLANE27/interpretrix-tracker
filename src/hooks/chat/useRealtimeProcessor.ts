@@ -58,18 +58,17 @@ export const useRealtimeProcessor = (
           // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
-          // Progressive UI updates
-          // First immediate update
-          updateMessagesArray();
-          
-          // Series of delayed updates for stability
-          const delays = [100, 300, 600, 1000];
-          
-          delays.forEach(delay => {
+          // Staggered UI updates for stability
+          // Wait before doing the first update
+          setTimeout(() => {
+            // First update
+            updateMessagesArray();
+            
+            // Second update after a delay
             setTimeout(() => {
               updateMessagesArray();
-            }, delay);
-          });
+            }, 300);
+          }, 100);
           
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
         } catch (error) {
@@ -82,12 +81,15 @@ export const useRealtimeProcessor = (
         if (messagesMap.current.has(deletedId)) {
           messagesMap.current.delete(deletedId);
           
-          // Multiple updates for stability
-          updateMessagesArray();
-          
-          // Additional updates to ensure UI consistency
-          setTimeout(() => { updateMessagesArray(); }, 200);
-          setTimeout(() => { updateMessagesArray(); }, 500);
+          // Staggered updates for stability
+          setTimeout(() => {
+            updateMessagesArray();
+            
+            // Additional update for consistency
+            setTimeout(() => { 
+              updateMessagesArray(); 
+            }, 300);
+          }, 100);
           
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message deleted:`, deletedId);
         }
@@ -99,22 +101,24 @@ export const useRealtimeProcessor = (
       return false;
     } finally {
       // Progressive lock release to avoid conflicts
+      // Release the processing message lock first
       setTimeout(() => {
         processingMessage.current = false;
-      }, 200);
-      
-      setTimeout(() => {
-        isProcessingEvent.current = false;
       }, 300);
       
-      // If there are more items in the queue, schedule processing the next one with a delay
+      // Then release the event processing lock
+      setTimeout(() => {
+        isProcessingEvent.current = false;
+      }, 400);
+      
+      // If there are more items in the queue, schedule processing the next one with a longer delay
       if (!isProcessingEvent.current && !processingMessage.current) {
         const nextItem = getNextFromQueue();
         if (nextItem) {
           // Increased delay for more stability
           processingTimeout.current = setTimeout(() => {
             processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
-          }, 500);
+          }, 600);
         }
       }
     }

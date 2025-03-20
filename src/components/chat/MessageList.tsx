@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
@@ -54,8 +54,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   // Message organization helper
   const { organizeThreads } = useMessageOrganizer(messages);
 
-  // Call organize threads with current state
-  const { rootMessages, messageThreads } = organizeThreads();
+  // Use memoized message organization to prevent unnecessary recalculations
+  const { rootMessages, messageThreads } = useMemo(() => {
+    return organizeThreads();
+  }, [organizeThreads, messages]);
 
   // Show skeletons during initial load
   if (showSkeletons && (isInitialLoad || messages.length === 0)) {

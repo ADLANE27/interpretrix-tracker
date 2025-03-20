@@ -18,6 +18,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const scrollToBottomFlag = useRef<boolean>(true);
   const hadMessagesRef = useRef<boolean>(false);
   const stableRenderRef = useRef<boolean>(false);
+  const messageStabilityTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Check if we've received messages
   useEffect(() => {
@@ -28,6 +29,12 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
 
   // Transition from skeletons to real messages with fixed delay
   useEffect(() => {
+    // Clear any existing timer to prevent stacking effects
+    if (messageStabilityTimer.current) {
+      clearTimeout(messageStabilityTimer.current);
+      messageStabilityTimer.current = null;
+    }
+    
     if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
       initialSkeletonsShown.current = true;
@@ -38,18 +45,29 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     
     if (messages.length > 0) {
       // Use a fixed delay to avoid fluctuations
-      const timer = setTimeout(() => {
+      messageStabilityTimer.current = setTimeout(() => {
         setShowSkeletons(false);
         // Mark rendering as stable after delay
         stableRenderRef.current = true;
-      }, 300); // Slightly longer delay for stability
+      }, 500); // Increased delay for more stability
       
-      return () => clearTimeout(timer);
+      return () => {
+        if (messageStabilityTimer.current) {
+          clearTimeout(messageStabilityTimer.current);
+          messageStabilityTimer.current = null;
+        }
+      };
     }
   }, [messages.length, channelId]);
 
   // More thorough reset when channel changes
   useEffect(() => {
+    // Stop any running timers
+    if (messageStabilityTimer.current) {
+      clearTimeout(messageStabilityTimer.current);
+      messageStabilityTimer.current = null;
+    }
+    
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
@@ -64,7 +82,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
           // Mark as stable after scrolling
           stableRenderRef.current = true;
         }
-      }, 400); // Longer delay for stability
+      }, 600); // Longer delay for stability
       
       return () => clearTimeout(timer);
     }
