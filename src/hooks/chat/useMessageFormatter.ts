@@ -17,6 +17,7 @@ export const useMessageFormatter = () => {
       const matchedLanguage = findBestLanguageMatch(cleanedMention);
       
       if (matchedLanguage) {
+        console.log(`[MessageFormatter] Standardized language mention: "${cleanedMention}" → "${matchedLanguage}"`);
         return `@${matchedLanguage}`;
       }
       
@@ -40,7 +41,10 @@ export const useMessageFormatter = () => {
       return normalizedLang === normalizedQuery;
     });
     
-    if (exactMatch) return exactMatch;
+    if (exactMatch) {
+      console.log(`[MessageFormatter] Found exact match for "${query}": "${exactMatch}"`);
+      return exactMatch;
+    }
     
     // Then try for a starts-with match
     const startsWithMatch = LANGUAGES.find(lang => {
@@ -48,7 +52,10 @@ export const useMessageFormatter = () => {
       return normalizedLang.startsWith(normalizedQuery) || normalizedQuery.startsWith(normalizedLang);
     });
     
-    if (startsWithMatch) return startsWithMatch;
+    if (startsWithMatch) {
+      console.log(`[MessageFormatter] Found starts-with match for "${query}": "${startsWithMatch}"`);
+      return startsWithMatch;
+    }
     
     // Try for partial word matches, especially useful for compound language names
     const compoundMatch = LANGUAGES.find(lang => {
@@ -66,7 +73,10 @@ export const useMessageFormatter = () => {
       );
     });
     
-    if (compoundMatch) return compoundMatch;
+    if (compoundMatch) {
+      console.log(`[MessageFormatter] Found compound match for "${query}": "${compoundMatch}"`);
+      return compoundMatch;
+    }
     
     // Finally try for a contains match with minimum length to avoid false positives
     if (normalizedQuery.length >= 3) {
@@ -75,9 +85,13 @@ export const useMessageFormatter = () => {
         return normalizedLang.includes(normalizedQuery);
       });
       
-      if (containsMatch) return containsMatch;
+      if (containsMatch) {
+        console.log(`[MessageFormatter] Found contains match for "${query}": "${containsMatch}"`);
+        return containsMatch;
+      }
     }
     
+    console.log(`[MessageFormatter] No match found for "${query}"`);
     return null;
   };
   

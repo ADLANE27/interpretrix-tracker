@@ -24,7 +24,22 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const { toast } = useToast();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
-  const { totalUnreadCount, unreadMentions, unreadDirectMessages, refreshMentions } = useUnreadMentions();
+  const { 
+    totalUnreadCount, 
+    unreadMentions, 
+    unreadDirectMessages, 
+    refreshMentions,
+    markMentionAsRead
+  } = useUnreadMentions();
+
+  // Effect to clear mention badges when on the messages tab
+  useEffect(() => {
+    if (activeTab === 'messages' && unreadMentions.length > 0) {
+      console.log('[Sidebar] On messages tab with unread mentions, marking as seen');
+      // We don't auto-mark as read, just refresh count as user will see them in the tab
+      refreshMentions();
+    }
+  }, [activeTab, unreadMentions.length, refreshMentions]);
 
   const handleLogout = async () => {
     try {

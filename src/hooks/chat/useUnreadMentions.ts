@@ -168,7 +168,10 @@ export const useUnreadMentions = () => {
       }
       
       console.log('[Mentions Debug] Successfully marked mention as read');
-      await fetchUnreadMentions();
+      
+      // Immediately update local state instead of fetching again
+      setUnreadMentions(prev => prev.filter(mention => mention.mention_id !== mentionId));
+      setTotalUnreadCount(prev => prev - 1);
     } catch (error) {
       console.error('[Mentions Debug] Error marking mention as read:', error);
     }
@@ -192,7 +195,10 @@ export const useUnreadMentions = () => {
       }
 
       console.log('[Mentions Debug] Successfully deleted mention');
-      await fetchUnreadMentions();
+      
+      // Immediately update local state instead of fetching again
+      setUnreadMentions(prev => prev.filter(mention => mention.mention_id !== mentionId));
+      setTotalUnreadCount(prev => prev - 1);
     } catch (error) {
       console.error('[Mentions Debug] Error deleting mention:', error);
     }
@@ -213,19 +219,34 @@ export const useUnreadMentions = () => {
       }
     });
 
-    // Create a single channel for all subscriptions
-    const channel = supabase.channel('mentions-and-messages')
+    // Create a single channel for all subscriptions with more specific filters
+    const channel = supabase.channel('mentions-and-messages-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'message_mentions' },
-        () => {
-          console.log('[Mentions Debug] Message mentions table changed');
-          fetchUnreadMentions();
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'message_mentions' 
+        },
+        (payload) => {
+          console.log('[Mentions Debug] Message mentions table changed:', payload);
+          
+          // For optimistic updates, handle specific mention changes directly
+          if (payload.eventType === 'INSERT') {
+            fetchUnreadMentions(); // Fetch all on insert to get properly formatted data
+          } else if (payload.eventType === 'UPDATE') {
+            // If a mention was marked as read or deleted by another client
+            fetchUnreadMentions(); // Refresh to keep consistent state
+          }
         }
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'chat_messages' 
+        },
         () => {
           console.log('[Messages Debug] New message received');
           fetchUnreadMentions();
@@ -233,13 +254,23 @@ export const useUnreadMentions = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-        () => {
-          console.log('[Messages Debug] Channel membership updated');
-          fetchUnreadMentions();
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'channel_members' 
+        },
+        (payload) => {
+          console.log('[Messages Debug] Channel membership updated:', payload);
+          // Only refetch if last_read_at was updated
+          if (payload.new && payload.old && 
+              payload.new.last_read_at !== payload.old.last_read_at) {
+            fetchUnreadMentions();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Mentions Debug] Subscription status:', status);
+      });
 
     // Cleanup function
     return () => {
