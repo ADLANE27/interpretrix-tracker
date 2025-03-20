@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,7 @@ import {
 import { MessageSquare, X, Check, Bell } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 
 interface MentionsPopoverProps {
   mentions: UnreadMention[];
@@ -36,19 +37,31 @@ export const MentionsPopover = ({
   const isMobile = useIsMobile();
 
   // Sync mentions prop to local state when it changes
-  if (JSON.stringify(mentions) !== JSON.stringify(localMentions)) {
-    setLocalMentions(mentions);
-  }
+  useEffect(() => {
+    if (JSON.stringify(mentions) !== JSON.stringify(localMentions)) {
+      setLocalMentions(mentions);
+    }
+  }, [mentions]);
 
   // Handle marking as read with local state update
   const handleMarkAsRead = (mentionId: string) => {
-    setLocalMentions(prev => prev.filter(m => m.mention_id !== mentionId));
+    setLocalMentions(prev => {
+      const filtered = prev.filter(m => m.mention_id !== mentionId);
+      // Emit event with updated count
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+      return filtered;
+    });
     onMarkAsRead(mentionId);
   };
 
   // Handle deletion with local state update
   const handleDelete = (mentionId: string) => {
-    setLocalMentions(prev => prev.filter(m => m.mention_id !== mentionId));
+    setLocalMentions(prev => {
+      const filtered = prev.filter(m => m.mention_id !== mentionId);
+      // Emit event with updated count
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+      return filtered;
+    });
     onDelete(mentionId);
   };
 

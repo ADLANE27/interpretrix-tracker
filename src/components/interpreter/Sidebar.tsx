@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +10,7 @@ import { useState, useEffect } from "react";
 import { HowToUseGuide } from "./HowToUseGuide";
 import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
+import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 
 interface SidebarProps {
   activeTab: string;
@@ -25,6 +25,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [pendingMissionsCount, setPendingMissionsCount] = useState(0);
   const { totalUnreadCount, unreadMentions, unreadDirectMessages, refreshMentions } = useUnreadMentions();
+  
+  const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -44,7 +46,17 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
-  // Refresh mentions count when switching to the messages tab
+  useEffect(() => {
+    const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
+      console.log('[Sidebar] Received unread mentions update:', count);
+      setRealtimeUnreadCount(count);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     if (activeTab === "messages") {
       refreshMentions();
@@ -82,10 +94,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       }
     };
 
-    // Initial fetch
     fetchPendingMissions();
     
-    // Set up real-time subscription for mission updates
     const channel = supabase
       .channel('pending-missions-notifications')
       .on(
@@ -113,6 +123,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   console.log('[Sidebar] Current badge counts:', {
     pendingMissions: pendingMissionsCount,
     unreadMessages: totalUnreadCount,
+    realtimeUnreadCount: realtimeUnreadCount,
     unreadMentions: unreadMentions.length,
     unreadDirectMessages: unreadDirectMessages
   });
@@ -128,8 +139,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       id: "messages", 
       label: "Messages", 
       icon: MessageCircle,
-      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined,
-      // Add specific badges for mentions and direct messages
+      badge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
       mentionsBadge: unreadMentions.length > 0 ? unreadMentions.length : undefined,
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
@@ -204,7 +214,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 <Icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
                 
-                {/* Display regular badge for all types of notifications */}
                 {tab.badge !== undefined && (
                   <Badge 
                     variant="destructive" 
@@ -214,10 +223,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {/* Display specialized badges for messages tab when not active */}
                 {tab.id === "messages" && activeTab !== "messages" && (
                   <div className="flex gap-1 ml-auto">
-                    {/* Mentions badge */}
                     {tab.mentionsBadge !== undefined && (
                       <Badge 
                         variant="destructive" 
@@ -227,7 +234,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                       </Badge>
                     )}
                     
-                    {/* Direct messages badge, only show if there are no mentions */}
                     {tab.mentionsBadge === undefined && tab.directMessagesBadge !== undefined && (
                       <Badge 
                         variant="secondary" 

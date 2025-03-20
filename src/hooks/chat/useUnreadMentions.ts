@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 
 export interface UnreadMention {
   mention_id: string;
@@ -144,6 +144,9 @@ export const useUnreadMentions = () => {
         dms: unreadDMCount,
         total: mentionsWithNames.length + unreadDMCount
       });
+
+      // Emit the event with the total count
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, mentionsWithNames.length);
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
       setUnreadMentions([]);
@@ -174,7 +177,14 @@ export const useUnreadMentions = () => {
       // Update the local state immediately instead of fetching again
       setUnreadMentions(prev => {
         const filtered = prev.filter(mention => mention.mention_id !== mentionId);
-        setTotalUnreadCount(filtered.length + unreadDirectMessages);
+        
+        // Update the total count
+        const newTotal = filtered.length + unreadDirectMessages;
+        setTotalUnreadCount(newTotal);
+        
+        // Emit the event with the new count
+        eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+        
         return filtered;
       });
     } catch (error) {
@@ -204,7 +214,14 @@ export const useUnreadMentions = () => {
       // Update the local state immediately instead of fetching again
       setUnreadMentions(prev => {
         const filtered = prev.filter(mention => mention.mention_id !== mentionId);
-        setTotalUnreadCount(filtered.length + unreadDirectMessages);
+        
+        // Update the total count
+        const newTotal = filtered.length + unreadDirectMessages;
+        setTotalUnreadCount(newTotal);
+        
+        // Emit the event with the new count
+        eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+        
         return filtered;
       });
     } catch (error) {
