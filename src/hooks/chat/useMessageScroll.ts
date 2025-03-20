@@ -10,27 +10,25 @@ export const useMessageScroll = (
   scrollToBottomFlag: React.MutableRefObject<boolean>,
   messageContainerRef: React.MutableRefObject<HTMLDivElement | null>
 ) => {
-  // Utilisation de useLayoutEffect pour garantir que le défilement se produit avant le rendu visuel
+  // Use useLayoutEffect to ensure scrolling happens before visual render
   useLayoutEffect(() => {
     if (!messageContainerRef.current || messages.length === 0) return;
     
     const isNewMessageBatch = messages.length > lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length;
     
-    // Déterminer si nous devons défiler vers le bas
+    // Determine if we should scroll to bottom
     const shouldScrollToBottom = scrollToBottomFlag.current || isNewMessageBatch || isInitialLoad;
     
     if (shouldScrollToBottom && messagesEndRef.current) {
-      // Utiliser un système de double défilement pour plus de fiabilité
-      // Premier défilement immédiat pour position approximative
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ 
-          behavior: 'auto',
-          block: 'end'
-        });
-      }
+      // Use a two-phase scroll system for reliability
+      // First immediate scroll for approximate position
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'auto',
+        block: 'end'
+      });
       
-      // Second défilement avec requestAnimationFrame pour assurer la précision
+      // Second scroll with requestAnimationFrame for precision
       requestAnimationFrame(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ 
@@ -38,7 +36,7 @@ export const useMessageScroll = (
             block: 'end'
           });
           
-          // Réinitialiser le flag après le défilement
+          // Reset the flag after scrolling
           if (scrollToBottomFlag.current) {
             scrollToBottomFlag.current = false;
           }

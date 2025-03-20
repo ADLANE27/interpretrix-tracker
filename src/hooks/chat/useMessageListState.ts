@@ -3,30 +3,30 @@ import { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 
 export const useMessageListState = (messages: Message[], channelId: string) => {
-  // Références pour gérer le scroll et l'état
+  // References for scroll management and state
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   
-  // État simplifié sans dépendances circulaires
+  // Simplified state without circular dependencies
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showSkeletons, setShowSkeletons] = useState(true);
   
-  // Flags pour contrôler le comportement
+  // Flags to control behavior
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
   const hadMessagesRef = useRef<boolean>(false);
   const stableRenderRef = useRef<boolean>(false);
 
-  // Vérifier si nous avons reçu des messages
+  // Check if we've received messages
   useEffect(() => {
     if (messages.length > 0) {
       hadMessagesRef.current = true;
     }
   }, [messages.length]);
 
-  // Transition des squelettes vers les messages réels avec délai fixe
+  // Transition from skeletons to real messages with fixed delay
   useEffect(() => {
     if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
@@ -37,18 +37,18 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     }
     
     if (messages.length > 0) {
-      // Utiliser un délai fixe pour éviter les fluctuations
+      // Use a fixed delay to avoid fluctuations
       const timer = setTimeout(() => {
         setShowSkeletons(false);
-        // Marquer le rendu comme stable après le délai
+        // Mark rendering as stable after delay
         stableRenderRef.current = true;
-      }, 300); // Délai un peu plus long pour assurer la stabilité
+      }, 300); // Slightly longer delay for stability
       
       return () => clearTimeout(timer);
     }
   }, [messages.length, channelId]);
 
-  // Réinitialisation plus complète lors du changement de canal
+  // More thorough reset when channel changes
   useEffect(() => {
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
@@ -56,15 +56,15 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     stableRenderRef.current = false;
     setShowSkeletons(true);
     
-    // Forcer le défilement après un délai lors du changement de canal
+    // Force scroll after a delay when channel changes
     if (messageContainerRef.current) {
       const timer = setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          // Marquer comme stable après le défilement
+          // Mark as stable after scrolling
           stableRenderRef.current = true;
         }
-      }, 400); // Délai plus long pour assurer la stabilité
+      }, 400); // Longer delay for stability
       
       return () => clearTimeout(timer);
     }

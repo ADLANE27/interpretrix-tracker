@@ -16,7 +16,7 @@ export const useRealtimeProcessor = (
     getNextFromQueue: () => any | null,
     processingTimeout: React.MutableRefObject<NodeJS.Timeout | null>
   ) => {
-    // Éviter les traitements concurrents
+    // Avoid concurrent processing
     if (processingMessage.current || isProcessingEvent.current) {
       return false;
     }
@@ -39,7 +39,7 @@ export const useRealtimeProcessor = (
       }
       
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-        // Éviter les doublons
+        // Avoid duplicates
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useRealtimeProcessor ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
@@ -48,21 +48,21 @@ export const useRealtimeProcessor = (
         }
         
         try {
-          // Récupérer le type de canal
+          // Get channel type
           const { data: channelData } = await supabase
             .from('chat_channels')
             .select('channel_type')
             .eq('id', channelId)
             .single();
           
-          // Traiter le message
+          // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
-          // Mise à jour progressive de l'interface utilisateur
-          // Premier update immédiat
+          // Progressive UI updates
+          // First immediate update
           updateMessagesArray();
           
-          // Série d'updates différés pour assurer la stabilité
+          // Series of delayed updates for stability
           const delays = [100, 300, 600, 1000];
           
           delays.forEach(delay => {
@@ -82,10 +82,10 @@ export const useRealtimeProcessor = (
         if (messagesMap.current.has(deletedId)) {
           messagesMap.current.delete(deletedId);
           
-          // Mises à jour multiples pour stabilité
+          // Multiple updates for stability
           updateMessagesArray();
           
-          // Updates additionnels pour garantir la cohérence de l'interface
+          // Additional updates to ensure UI consistency
           setTimeout(() => { updateMessagesArray(); }, 200);
           setTimeout(() => { updateMessagesArray(); }, 500);
           
@@ -98,7 +98,7 @@ export const useRealtimeProcessor = (
       console.error(`[useRealtimeProcessor ${userRole.current}] Error handling realtime message:`, error);
       return false;
     } finally {
-      // Libération progressive des verrous pour éviter les conflits
+      // Progressive lock release to avoid conflicts
       setTimeout(() => {
         processingMessage.current = false;
       }, 200);
@@ -107,11 +107,11 @@ export const useRealtimeProcessor = (
         isProcessingEvent.current = false;
       }, 300);
       
-      // S'il y a plus d'éléments dans la file d'attente, planifier le traitement du suivant avec un délai
+      // If there are more items in the queue, schedule processing the next one with a delay
       if (!isProcessingEvent.current && !processingMessage.current) {
         const nextItem = getNextFromQueue();
         if (nextItem) {
-          // Délai augmenté pour plus de stabilité
+          // Increased delay for more stability
           processingTimeout.current = setTimeout(() => {
             processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
           }, 500);

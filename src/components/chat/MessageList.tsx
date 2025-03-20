@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
