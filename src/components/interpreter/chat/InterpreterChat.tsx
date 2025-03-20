@@ -81,38 +81,71 @@ export const InterpreterChat = ({
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
-
-  const filteredMessages = useCallback(() => {
-    let filtered = messages;
-
-    if (filters.userId) {
-      filtered = filtered.filter(msg => {
-        if (filters.userId === 'current') {
-          return msg.sender.id === currentUserId;
-        }
-        return msg.sender.id === filters.userId;
-      });
-    }
-
-    if (filters.keyword) {
-      const keywordLower = filters.keyword.toLowerCase();
-      filtered = filtered.filter(msg =>
-        msg.content.toLowerCase().includes(keywordLower)
-      );
-    }
-
-    if (filters.date) {
-      filtered = filtered.filter(msg => {
-        const messageDate = new Date(msg.timestamp).toDateString();
-        const filterDate = filters.date!.toDateString();
-        return messageDate === filterDate;
-      });
-    }
-
-    return filtered;
-  }, [messages, filters, currentUserId]);
-
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (channelId && currentUserId) {
+      console.log(`[InterpreterChat] Channel: ${channelId}, User: ${currentUserId}`);
+      
+      const testPermissions = async () => {
+        try {
+          const { data: messageData, error: messageError } = await supabase
+            .from('chat_messages')
+            .select('id, content, reactions')
+            .eq('channel_id', channelId)
+            .limit(5);
+            
+          console.log('[InterpreterChat] Permission test - Read messages:', 
+            messageError ? `Error: ${messageError.message}` : `Success: ${messageData?.length} messages`);
+            
+          if (messageData && messageData.length > 0) {
+            const testMessageId = messageData[0].id;
+            const testReactions = messageData[0].reactions || {};
+            
+            const testUpdate = { ...testReactions };
+            const testEmoji = '👀';
+            
+            if (!testUpdate[testEmoji]) {
+              testUpdate[testEmoji] = [];
+            }
+            
+            const userIndex = testUpdate[testEmoji].indexOf(currentUserId);
+            if (userIndex === -1) {
+              testUpdate[testEmoji] = [...testUpdate[testEmoji], currentUserId];
+              
+              const { error: updateError } = await supabase
+                .from('chat_messages')
+                .update({ reactions: testUpdate })
+                .eq('id', testMessageId);
+                
+              console.log('[InterpreterChat] Permission test - Add reaction:', 
+                updateError ? `Error: ${updateError.message}` : 'Success');
+                
+              if (!updateError) {
+                testUpdate[testEmoji] = testUpdate[testEmoji].filter(id => id !== currentUserId);
+                
+                if (testUpdate[testEmoji].length === 0) {
+                  delete testUpdate[testEmoji];
+                }
+                
+                const { error: removeError } = await supabase
+                  .from('chat_messages')
+                  .update({ reactions: testUpdate })
+                  .eq('id', testMessageId);
+                  
+                console.log('[InterpreterChat] Permission test - Remove reaction:', 
+                  removeError ? `Error: ${removeError.message}` : 'Success');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[InterpreterChat] Permission test error:', error);
+        }
+      };
+      
+      testPermissions();
+    }
+  }, [channelId, currentUserId]);
 
   useEffect(() => {
     requestPermission();
@@ -228,6 +261,24 @@ export const InterpreterChat = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullScreen, onToggleFullScreen]);
+
+  useEffect(() => {
+    const messagesWithReactions = messages.filter(msg => 
+      msg.reactions && Object.keys(msg.reactions).length > 0
+    );
+    
+    if (messagesWithReactions.length > 0) {
+      console.log(`[InterpreterChat] ${messagesWithReactions.length} messages have reactions:`,
+        messagesWithReactions.map(m => ({
+          id: m.id, 
+          content: m.content.substring(0, 15) + '...',
+          reactions: m.reactions
+        }))
+      );
+    } else {
+      console.log('[InterpreterChat] No messages with reactions found');
+    }
+  }, [messages]);
 
   return (
     <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
