@@ -231,12 +231,12 @@ export const InterpreterChat = ({
     };
   }, [isFullScreen, onToggleFullScreen]);
 
-  // Add debug logging to track reaction rendering
-  useEffect(() => {
-    console.log('[InterpreterChat] Current messages with reactions:', 
-      messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0)
-    );
-  }, [messages]);
+  // Debug logging for reactions
+  console.log('[InterpreterChat] Messages with reactions:', 
+    messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0)
+  );
+
+  const filteredMessages = getFilteredMessages();
 
   return (
     <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
@@ -305,7 +305,7 @@ export const InterpreterChat = ({
           </div>
         ) : null}
         <MessageList
-          messages={getFilteredMessages()}
+          messages={filteredMessages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}

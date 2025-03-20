@@ -118,11 +118,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     console.log("File attachment functionality placeholder");
   };
 
-  console.log(`[Chat ${userRole}] Rendering with messages:`, messages.length);
-  console.log(`[Chat ${userRole}] Is subscribed:`, isSubscribed);
-  console.log(`[Chat ${userRole}] Subscription status:`, subscriptionStatus);
-  console.log(`[Chat ${userRole}] Current user ID:`, currentUserId);
-  console.log(`[Chat ${userRole}] Last message timestamp:`, messages.length > 0 ? messages[messages.length - 1].timestamp : 'none');
+  // Debug logging for reactions
+  console.log(`[Chat ${userRole}] Messages with reactions:`, messages.filter(m => m.reactions && Object.keys(m.reactions).length > 0));
 
   return (
     <div className="flex flex-col h-full">
