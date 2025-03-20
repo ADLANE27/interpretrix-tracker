@@ -24,8 +24,6 @@ export const useRealtimeMessages = (
   const cooldownPeriod = useRef(false);
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
-  const processingLock = useRef(false);
-  const processedMessageIds = useRef<Set<string>>(new Set());
   
   // Define forceFetch before using it in processNextInQueue
   const forceFetch = useCallback(() => {
@@ -37,26 +35,14 @@ export const useRealtimeMessages = (
     }
     isProcessingEvent.current = false;
     processingMessage.current = false;
-    processingLock.current = false;
     processQueue.current = [];
     
     return fetchMessages();
   }, [fetchMessages, userRole]);
-
-  // Make sure we don't have any lock contention
-  const clearProcessingState = useCallback(() => {
-    if (processingTimeout.current) {
-      clearTimeout(processingTimeout.current);
-      processingTimeout.current = null;
-    }
-    isProcessingEvent.current = false;
-    processingMessage.current = false;
-    processingLock.current = false;
-  }, []);
   
   // Process messages in queue one by one to avoid race conditions
   const processNextInQueue = useCallback(async () => {
-    if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0 || processingLock.current) {
+    if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0) {
       if (processingTimeout.current) {
         clearTimeout(processingTimeout.current);
         processingTimeout.current = null;
@@ -64,7 +50,6 @@ export const useRealtimeMessages = (
       return;
     }
     
-    processingLock.current = true;
     isProcessingEvent.current = true;
     processingMessage.current = true;
     
@@ -75,7 +60,6 @@ export const useRealtimeMessages = (
       if (!payload || !payload.new || !channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
-        processingLock.current = false;
         
         // Schedule next item processing
         if (processQueue.current.length > 0) {
@@ -88,21 +72,6 @@ export const useRealtimeMessages = (
       if (messageData.channel_id !== channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
-        processingLock.current = false;
-        
-        // Schedule next item processing
-        if (processQueue.current.length > 0) {
-          processingTimeout.current = setTimeout(processNextInQueue, 100);
-        }
-        return;
-      }
-      
-      // Check if we've already processed this message ID to prevent duplicates
-      if (processedMessageIds.current.has(messageData.id)) {
-        console.log(`[useRealtimeMessages ${userRole.current}] Skipping already processed message:`, messageData.id);
-        processingMessage.current = false;
-        isProcessingEvent.current = false;
-        processingLock.current = false;
         
         // Schedule next item processing
         if (processQueue.current.length > 0) {
@@ -116,7 +85,6 @@ export const useRealtimeMessages = (
           console.log(`[useRealtimeMessages ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
           isProcessingEvent.current = false;
-          processingLock.current = false;
           
           // Schedule next item processing
           if (processQueue.current.length > 0) {
@@ -135,9 +103,6 @@ export const useRealtimeMessages = (
           
           // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
-          
-          // Mark this message as processed
-          processedMessageIds.current.add(messageData.id);
           
           // Update the messages array
           updateMessagesArray();
@@ -172,7 +137,6 @@ export const useRealtimeMessages = (
     } finally {
       processingMessage.current = false;
       isProcessingEvent.current = false;
-      processingLock.current = false;
       
       // Schedule next item processing with a small delay
       if (processQueue.current.length > 0) {
@@ -189,22 +153,19 @@ export const useRealtimeMessages = (
     processQueue.current.push(payload);
     
     // Start processing if not already processing
-    if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current && !processingLock.current) {
+    if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current) {
       processingTimeout.current = setTimeout(processNextInQueue, 50);
     }
   }, [userRole, processNextInQueue]);
 
-  // Clean up processed message IDs when channel changes
-  useEffect(() => {
-    processedMessageIds.current.clear();
-  }, [channelId]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      clearProcessingState();
+      if (processingTimeout.current) {
+        clearTimeout(processingTimeout.current);
+      }
     };
-  }, [clearProcessingState]);
+  }, []);
 
   return {
     lastFetchTime,

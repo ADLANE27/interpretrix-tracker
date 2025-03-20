@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
@@ -47,11 +47,6 @@ export const MessageList: React.FC<MessageListProps> = ({
   const stableMessages = useRef<Message[]>([]);
   const lastStableUpdateTimestamp = useRef<number>(Date.now());
   const [showSkeletons, setShowSkeletons] = useState(true);
-  const lastScrollHeightRef = useRef<number>(0);
-  const lastScrollTopRef = useRef<number>(0);
-  const isScrolledToBottomRef = useRef<boolean>(true);
-  const isUserScrollingRef = useRef<boolean>(false);
-  const pendingScrollRef = useRef<boolean>(false);
 
   // Show skeletons immediately on mount, hide after real messages arrive
   useEffect(() => {
@@ -78,14 +73,12 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages]);
 
-  // Debug logging
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
   });
 
-  // Memoize thread organization to prevent unnecessary recalculations
-  const { rootMessages, messageThreads } = useMemo(() => {
+  const memoizedOrganizeThreads = useCallback(() => {
     // Always use stable messages when they exist and current messages are empty
     const messagesToUse = messages.length > 0 ? messages : 
       (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
@@ -93,109 +86,35 @@ export const MessageList: React.FC<MessageListProps> = ({
     return organizeMessageThreads(messagesToUse);
   }, [messages]);
 
-  // Check if we should scroll to bottom
-  const isScrollToBottomNeeded = useCallback(() => {
-    if (!messageContainerRef.current) return false;
-    
-    const container = messageContainerRef.current;
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-    return isAtBottom;
-  }, []);
+  const { rootMessages, messageThreads } = memoizedOrganizeThreads();
 
-  // Handle scroll position preservation and auto-scrolling
   useEffect(() => {
     if (!messageContainerRef.current) return;
     
-    const container = messageContainerRef.current;
-    
-    // Detect if user is at the bottom before messages update
-    if (!pendingScrollRef.current) {
-      isScrolledToBottomRef.current = isScrollToBottomNeeded();
-      lastScrollHeightRef.current = container.scrollHeight;
-      lastScrollTopRef.current = container.scrollTop;
-    }
-    
-    const handleScroll = () => {
-      if (!messageContainerRef.current) return;
-      isUserScrollingRef.current = true;
-      
-      // Clear any pending scroll timeout
-      pendingScrollRef.current = false;
-      
-      // Detect if user has scrolled to bottom
-      isScrolledToBottomRef.current = isScrollToBottomNeeded();
-      
-      // Save scroll position
-      lastScrollTopRef.current = messageContainerRef.current.scrollTop;
-      lastScrollHeightRef.current = messageContainerRef.current.scrollHeight;
-      
-      // Reset user scrolling flag after short delay
-      setTimeout(() => {
-        isUserScrollingRef.current = false;
-      }, 100);
-    };
-    
-    container.addEventListener('scroll', handleScroll);
-    
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-    };
-  }, [isScrollToBottomNeeded]);
-
-  // Handle message updates and scroll positioning
-  useEffect(() => {
-    if (!messageContainerRef.current) return;
+    // Save current scroll position
+    scrollPositionRef.current = messageContainerRef.current.scrollTop;
     
     const isNewMessage = messages.length > lastMessageCountRef.current;
-    const wasAtBottom = isScrolledToBottomRef.current;
-    const isFirstLoad = lastMessageCountRef.current === 0 && messages.length > 0;
-    
     lastMessageCountRef.current = messages.length || stableMessages.current.length;
     
-    // Don't interrupt if user is actively scrolling
-    if (isUserScrollingRef.current) {
-      console.log(`[MessageList] User is scrolling, deferring scroll adjustment`);
-      return;
-    }
-    
-    // Request animation frame to ensure DOM is updated
-    requestAnimationFrame(() => {
-      if (!messageContainerRef.current) return;
-      
-      const container = messageContainerRef.current;
-      const currentScrollHeight = container.scrollHeight;
-      
-      // First load or user was at bottom and we have new messages
-      if (isFirstLoad || (wasAtBottom && isNewMessage)) {
-        console.log(`[MessageList] Scrolling to bottom due to new messages or first load`);
-        if (messagesEndRef.current) {
-          pendingScrollRef.current = true;
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          setTimeout(() => {
-            pendingScrollRef.current = false;
-          }, 100);
+    if (isNewMessage && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    } else {
+      requestAnimationFrame(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = scrollPositionRef.current;
         }
-      } 
-      // Preserve scroll position when new messages appear above
-      else if (!wasAtBottom && currentScrollHeight !== lastScrollHeightRef.current) {
-        console.log(`[MessageList] Preserving scroll position`);
-        const scrollDiff = currentScrollHeight - lastScrollHeightRef.current;
-        container.scrollTop = lastScrollTopRef.current + scrollDiff;
-      }
-      
-      // Update references
-      lastScrollHeightRef.current = currentScrollHeight;
-    });
+      });
+    }
   }, [messages]);
 
   // Force scroll to bottom when messages are first loaded
   useEffect(() => {
-    if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current && isInitialLoad) {
+    if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current) {
       console.log(`[MessageList] Scrolling to bottom due to first message load`);
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-      setIsInitialLoad(false);
     }
-  }, [messages.length, isInitialLoad]);
+  }, [messages.length > 0]);
 
   // Use the stable messages if current messages are empty to prevent flickering
   const displayMessages = messages.length > 0 ? messages : 
