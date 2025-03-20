@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -82,7 +83,8 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  const filteredMessages = useCallback(() => {
+  // Function to filter messages based on filters
+  const getFilteredMessages = useCallback(() => {
     let filtered = messages;
 
     if (filters.userId) {
@@ -229,6 +231,13 @@ export const InterpreterChat = ({
     };
   }, [isFullScreen, onToggleFullScreen]);
 
+  // Add debug logging to track reaction rendering
+  useEffect(() => {
+    console.log('[InterpreterChat] Current messages with reactions:', 
+      messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0)
+    );
+  }, [messages]);
+
   return (
     <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
@@ -296,7 +305,7 @@ export const InterpreterChat = ({
           </div>
         ) : null}
         <MessageList
-          messages={filteredMessages()}
+          messages={getFilteredMessages()}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}
