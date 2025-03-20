@@ -88,13 +88,13 @@ export const useFetchMessages = (
       const channelType = await fetchChannelType(channelId);
 
       // Clear messages if this is a full refresh
-      if (limit === 100 || controls.refreshInProgress.current) {
+      if (limit === 100 || limit >= 150 || controls.refreshInProgress.current) {
         messagesMap.current.clear();
       }
 
       const effectiveLimit = Math.max(limit, 100);
       
-      // Fetch messages from database
+      // Fetch messages from database - always fetch a decent amount
       const messages = await fetchMessagesFromDb(channelId, effectiveLimit);
 
       if (!messages || messages.length === 0) {
@@ -177,13 +177,14 @@ export const useFetchMessages = (
   ) => {
     if (!channelId || isCurrentlyLoading || !hasMore || controls.activeFetch.current) return;
     
+    // Increase the fetch limit when loading more messages
     await fetchMessages(currentCount + 50);
   }, [channelId, fetchMessages, controls.activeFetch]);
 
   // Force refresh
   const forceRefresh = useCallback(() => {
     resetFetchState();
-    return fetchMessages(150);
+    return fetchMessages(150); // Fetch more messages on force refresh
   }, [fetchMessages, resetFetchState]);
 
   return {

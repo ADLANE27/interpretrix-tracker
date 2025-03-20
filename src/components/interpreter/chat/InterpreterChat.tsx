@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -63,6 +64,7 @@ export const InterpreterChat = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const messageContainerRef = useRef<HTMLDivElement>(null);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
@@ -78,6 +80,8 @@ export const InterpreterChat = ({
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    loadMoreMessages,
+    hasMoreMessages
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -114,12 +118,32 @@ export const InterpreterChat = ({
 
   const { toast } = useToast();
 
+  // Load more messages when scrolling to top
+  const handleScroll = useCallback(() => {
+    if (!messageContainerRef.current || isLoading || !hasMoreMessages) return;
+
+    const { scrollTop } = messageContainerRef.current;
+    
+    if (scrollTop < 50) {
+      loadMoreMessages();
+    }
+  }, [loadMoreMessages, isLoading, hasMoreMessages]);
+
+  useEffect(() => {
+    const messageContainer = messageContainerRef.current;
+    if (messageContainer) {
+      messageContainer.addEventListener('scroll', handleScroll);
+      return () => messageContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
+
   useEffect(() => {
     requestPermission();
   }, [requestPermission]);
 
   useEffect(() => {
     if (channelId) {
+      setInitialLoad(true);
       const channel = supabase
         .channel(`chat-mentions-${channelId}`)
         .on(
@@ -164,6 +188,33 @@ export const InterpreterChat = ({
     }
   }, [channelId, markMentionsAsRead]);
 
+  // Handle auto-scrolling to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0 && initialLoad) {
+      // Use a short delay to ensure DOM has updated
+      setTimeout(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+          setInitialLoad(false);
+        }
+      }, 100);
+    }
+    
+    // For new messages (when not initial load), also scroll to bottom
+    if (messages.length > 0 && !initialLoad && !isLoading) {
+      const container = messageContainerRef.current;
+      if (container) {
+        // Only auto-scroll if already at bottom (or close to it)
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+        if (isNearBottom) {
+          setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+          }, 50);
+        }
+      }
+    }
+  }, [messages, initialLoad, isLoading]);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -183,6 +234,13 @@ export const InterpreterChat = ({
       if (inputRef.current) {
         inputRef.current.style.height = 'auto';
       }
+      
+      // Scroll to bottom after sending a message
+      setTimeout(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+        }
+      }, 100);
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -302,7 +360,6 @@ export const InterpreterChat = ({
             />
           </div>
         </div>
-        
       </div>
 
       <div 

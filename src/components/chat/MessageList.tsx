@@ -38,7 +38,6 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
-  const scrollPositionRef = useRef<number>(0);
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -47,8 +46,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   const lastStableUpdateTimestamp = useRef<number>(Date.now());
   const [showSkeletons, setShowSkeletons] = useState(true);
   const initialSkeletonsShown = useRef(false);
-  const autoScrolledRef = useRef(false);
   const lastChannelIdRef = useRef<string>('');
+  const scrollToBottomFlag = useRef<boolean>(true);
 
   // Show skeletons immediately on mount, keep them until real messages arrive
   useEffect(() => {
@@ -56,6 +55,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       setShowSkeletons(true);
       initialSkeletonsShown.current = true;
       lastChannelIdRef.current = channelId;
+      scrollToBottomFlag.current = true;
     }
     
     if (messages.length > 0) {
@@ -102,42 +102,27 @@ export const MessageList: React.FC<MessageListProps> = ({
     if (!messageContainerRef.current) return;
     
     const isNewMessage = messages.length > lastMessageCountRef.current;
+    const messagesChanged = messages.length !== lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length || stableMessages.current.length;
     
-    // On first load or when adding a message, scroll to bottom
-    if ((messages.length > 0 && !autoScrolledRef.current) || isNewMessage) {
+    // Assure that we scroll to bottom when:
+    // 1. Initial load with scroll flag active
+    // 2. New messages arrive (more messages than before)
+    if ((messages.length > 0 && scrollToBottomFlag.current) || isNewMessage) {
       requestAnimationFrame(() => {
-        if (messagesEndRef.current) {
+        if (messagesEndRef.current && messageContainerRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          autoScrolledRef.current = true;
+          scrollToBottomFlag.current = false;
         }
       });
-    } else if (!isNewMessage) {
-      // For other updates, maintain the scroll position
-      requestAnimationFrame(() => {
-        if (messageContainerRef.current) {
-          messageContainerRef.current.scrollTop = scrollPositionRef.current;
-        }
-      });
-    }
+    } 
+    // For other updates without new messages, generally maintain scroll position
+    // (handled by the browser in most cases)
   }, [messages]);
-
-  // Save current scroll position before updates
-  useEffect(() => {
-    const container = messageContainerRef.current;
-    if (!container) return;
-    
-    const handleScroll = () => {
-      scrollPositionRef.current = container.scrollTop;
-    };
-    
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // When channel changes, reset auto-scroll flag
   useEffect(() => {
-    autoScrolledRef.current = false;
+    scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
     setShowSkeletons(true);
@@ -145,7 +130,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     // Force scroll to bottom after a small delay when channel changes
     if (messagesEndRef.current) {
       setTimeout(() => {
-        if (messagesEndRef.current) {
+        if (messagesEndRef.current && messageContainerRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
         }
       }, 300);
