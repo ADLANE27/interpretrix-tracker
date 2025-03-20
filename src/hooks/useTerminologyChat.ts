@@ -5,7 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   TerminologyChat, 
   TerminologyChatMessage, 
-  TerminologyChatRequest 
+  TerminologyChatRequest,
+  TerminologyChatResponse
 } from "@/types/terminology-chat";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,7 +63,7 @@ export const useTerminologyChat = (userId?: string) => {
 
   // Mutation for sending a message
   const sendMessageMutation = useMutation({
-    mutationFn: async (request: TerminologyChatRequest) => {
+    mutationFn: async (request: TerminologyChatRequest): Promise<TerminologyChatResponse> => {
       setIsLoading(true);
       console.log("Sending chat message:", request);
       
@@ -88,7 +89,7 @@ export const useTerminologyChat = (userId?: string) => {
           throw new Error(response.data.error);
         }
 
-        return response.data;
+        return response.data as TerminologyChatResponse;
       } finally {
         setIsLoading(false);
       }
@@ -96,22 +97,32 @@ export const useTerminologyChat = (userId?: string) => {
     onSuccess: (data, variables) => {
       console.log("Message sent successfully:", data);
       
-      // Invalidate queries to refresh the chat lists and messages
-      queryClient.invalidateQueries({ queryKey: ['terminology-chats', userId] });
-      queryClient.invalidateQueries({ queryKey: ['terminology-chat-messages', data.chatId] });
-      
-      toast({
-        title: "Message sent",
-        description: "The assistant has responded to your message",
-        variant: "default"
-      });
+      // Ensure we have the message and messageId before invalidating queries
+      if (data.message && data.chatId) {
+        // Invalidate queries to refresh the chat lists and messages
+        queryClient.invalidateQueries({ queryKey: ['terminology-chats', userId] });
+        queryClient.invalidateQueries({ queryKey: ['terminology-chat-messages', data.chatId] });
+        
+        toast({
+          title: "Message envoyé",
+          description: "L'assistant a répondu à votre message",
+          variant: "default"
+        });
+      } else {
+        console.error("Message sent but received incomplete response:", data);
+        toast({
+          title: "Attention",
+          description: "Message envoyé mais la réponse pourrait être incomplète",
+          variant: "destructive"
+        });
+      }
     },
     onError: (error: Error) => {
       console.error("Error sending message:", error);
       
       toast({
-        title: "Error",
-        description: error.message || "Failed to send message",
+        title: "Erreur",
+        description: error.message || "Échec de l'envoi du message",
         variant: "destructive"
       });
     }
@@ -144,8 +155,8 @@ export const useTerminologyChat = (userId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['terminology-chats', userId] });
       
       toast({
-        title: "Chat deleted",
-        description: "The conversation has been deleted",
+        title: "Chat supprimé",
+        description: "La conversation a été supprimée",
         variant: "default"
       });
     },
@@ -153,8 +164,8 @@ export const useTerminologyChat = (userId?: string) => {
       console.error("Error deleting chat:", error);
       
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete conversation",
+        title: "Erreur",
+        description: error.message || "Échec de la suppression de la conversation",
         variant: "destructive"
       });
     }
@@ -166,8 +177,8 @@ export const useTerminologyChat = (userId?: string) => {
     sendMessage: (request: Omit<TerminologyChatRequest, 'userId'>) => {
       if (!userId) {
         toast({
-          title: "Error",
-          description: "You must be logged in to send messages",
+          title: "Erreur",
+          description: "Vous devez être connecté pour envoyer des messages",
           variant: "destructive"
         });
         return Promise.reject(new Error("User not authenticated"));

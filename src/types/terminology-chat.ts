@@ -29,6 +29,7 @@ export interface TerminologyChatRequest {
 export interface TerminologyChatResponse {
   chatId: string;
   message: string;
+  messageId: string | null;
   isNewChat: boolean;
   error?: string;
 }

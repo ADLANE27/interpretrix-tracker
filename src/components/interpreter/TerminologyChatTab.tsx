@@ -32,6 +32,7 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [previousMessages, setPreviousMessages] = useState<TerminologyChatMessage[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   
   const messageEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -45,11 +46,12 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
     isChatsLoading,
   } = useTerminologyChat(userId);
 
-  const { data: chatMessages, isLoading: isMessagesLoading } = getChatMessages(activeChatId || undefined);
+  const { data: chatMessages, isLoading: isMessagesLoading, refetch: refetchMessages } = getChatMessages(activeChatId || undefined);
 
   useEffect(() => {
     if (chatMessages) {
       setPreviousMessages(chatMessages);
+      setPendingMessage(null); // Clear pending message when we get real messages
       
       // Scroll to bottom when new messages arrive
       setTimeout(() => {
@@ -68,7 +70,32 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
       return;
     }
     
+    const userMessage = message.trim();
+    
     try {
+      // Show optimistic update with user message
+      if (activeChatId) {
+        // Add the user message optimistically
+        const optimisticUserMessage: TerminologyChatMessage = {
+          id: `temp-${Date.now()}`,
+          chat_id: activeChatId,
+          role: 'user',
+          content: userMessage,
+          created_at: new Date().toISOString()
+        };
+        
+        setPreviousMessages(prev => [...prev, optimisticUserMessage]);
+        
+        // Clear the input and scroll to bottom
+        setMessage("");
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        // This is a new chat, so we'll just clear the input
+        setMessage("");
+      }
+      
       // Prepare previous messages for context (last 10 messages)
       const contextMessages = previousMessages
         .slice(-10)
@@ -77,9 +104,13 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
           content: msg.content
         }));
       
+      // Add "now typing" indicator for assistant
+      const tempTimestamp = new Date().toISOString();
+      setPendingMessage("L'assistant est en train de répondre...");
+      
       // Send the message
       const response = await sendMessage({
-        message: message.trim(),
+        message: userMessage,
         sourceLanguage,
         targetLanguage,
         conversationId: activeChatId || undefined,
@@ -89,13 +120,15 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
       // If this is a new chat, update the active chat ID
       if (response.isNewChat) {
         setActiveChatId(response.chatId);
+        refetchMessages();
       }
       
-      // Clear the input
-      setMessage("");
+      // Make sure the messages are refreshed
+      refetchMessages();
     } catch (error) {
       console.error("Error sending message:", error);
       // Toast error is handled in the hook
+      setPendingMessage(null);
     }
   };
 
@@ -118,6 +151,7 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
     setActiveChatId(null);
     setPreviousMessages([]);
     setMessage("");
+    setPendingMessage(null);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -281,29 +315,42 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
                 <LoadingSpinner size="md" />
               </div>
             ) : previousMessages && previousMessages.length > 0 ? (
-              previousMessages.map((msg, index) => (
-                <div 
-                  key={msg.id || index} 
-                  className={cn(
-                    "flex max-w-[90%]", 
-                    msg.role === 'user' ? "ml-auto" : "mr-auto"
-                  )}
-                >
+              <>
+                {previousMessages.map((msg, index) => (
                   <div 
+                    key={msg.id || index} 
                     className={cn(
-                      "px-4 py-3 rounded-lg",
-                      msg.role === 'user' 
-                        ? "bg-primary text-primary-foreground rounded-tr-none" 
-                        : "bg-muted rounded-tl-none"
+                      "flex max-w-[90%]", 
+                      msg.role === 'user' ? "ml-auto" : "mr-auto"
                     )}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                    <div className="text-xs mt-1 opacity-70">
-                      {formatTimestamp(msg.created_at)}
+                    <div 
+                      className={cn(
+                        "px-4 py-3 rounded-lg",
+                        msg.role === 'user' 
+                          ? "bg-primary text-primary-foreground rounded-tr-none" 
+                          : "bg-muted rounded-tl-none"
+                      )}
+                    >
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      <div className="text-xs mt-1 opacity-70">
+                        {formatTimestamp(msg.created_at)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+                
+                {pendingMessage && (
+                  <div className="flex max-w-[90%] mr-auto">
+                    <div className="px-4 py-3 rounded-lg bg-muted rounded-tl-none animate-pulse">
+                      <div className="flex items-center space-x-2">
+                        <LoadingSpinner size="xs" />
+                        <span>{pendingMessage}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center p-4">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
@@ -338,14 +385,24 @@ export const TerminologyChatTab = ({ userId }: TerminologyChatTabProps) => {
                     handleSendMessage();
                   }
                 }}
+                disabled={isLoading}
               />
               <Button 
                 onClick={handleSendMessage} 
                 disabled={isLoading || !message.trim()}
                 className="self-end"
               >
-                {isLoading ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4 mr-2" />}
-                Envoyer
+                {isLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Envoi...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Envoyer
+                  </>
+                )}
               </Button>
             </div>
           </div>

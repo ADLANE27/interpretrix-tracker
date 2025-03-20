@@ -133,7 +133,8 @@ serve(async (req) => {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
-      // Call OpenRouter API
+      // Call OpenRouter API with a more reasonable timeout
+      console.log(`Request ID: ${requestId} - Sending request to OpenRouter API`);
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -147,8 +148,8 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'deepseek/deepseek-r1-zero:free',
           messages: apiMessages,
-          temperature: 0.7, // Increased temperature for more authentic responses
-          max_tokens: 800, // Increased token limit for fuller responses
+          temperature: 0.7,
+          max_tokens: 800,
         }),
         signal: controller.signal
       });
@@ -172,24 +173,29 @@ serve(async (req) => {
 
       // Get the raw response without any additional processing
       const assistantResponse = data.choices[0].message.content.trim();
+      console.log(`Request ID: ${requestId} - Assistant response: ${assistantResponse.substring(0, 100)}...`);
 
       // Save the assistant response to the database
-      const { error: insertAssistantMessageError } = await supabase
+      const { data: savedResponse, error: insertAssistantMessageError } = await supabase
         .from('terminology_chat_messages')
         .insert({
           chat_id: chatId,
           role: 'assistant',
           content: assistantResponse
-        });
+        })
+        .select()
+        .single();
 
       if (insertAssistantMessageError) {
         console.error(`Request ID: ${requestId} - Error saving assistant response:`, insertAssistantMessageError);
+        // Continue anyway to return the response to the user
       }
 
       return new Response(
         JSON.stringify({ 
           chatId,
           message: assistantResponse,
+          messageId: savedResponse?.id || null,
           isNewChat: !conversationId
         }),
         { 
