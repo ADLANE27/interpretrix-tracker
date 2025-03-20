@@ -74,9 +74,13 @@ export const useGlobalNotification = () => {
         
         // ALWAYS use French translations for notifications
         if (hasMention) {
+          // Explicitly use the French translations for mention notifications
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
           description = NOTIFICATION_TRANSLATIONS.mentionText.fr;
-          console.log('[GlobalNotification] Using mention notification in French');
+          console.log('[GlobalNotification] Using mention notification in French:', {
+            title,
+            description
+          });
         } else {
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
           description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
