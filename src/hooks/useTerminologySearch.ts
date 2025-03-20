@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,7 +69,7 @@ export const useTerminologySearch = (userId?: string) => {
         const timeoutPromise = new Promise<never>((_, reject) => {
           timeoutId = setTimeout(() => {
             reject(new Error("La recherche a pris trop de temps. Veuillez réessayer."));
-          }, 15000); // 15 second timeout
+          }, 40000); // 40 second timeout (increased from 15)
         });
         
         // Create the invoke promise
@@ -82,7 +83,7 @@ export const useTerminologySearch = (userId?: string) => {
         // If we get here, the invoke promise won, so clear the timeout
         if (timeoutId) clearTimeout(timeoutId);
         
-        console.log("Terminology search response:", response);
+        console.log("Terminology search response received");
 
         if (response.error) {
           console.error("Terminology search error:", response.error);
@@ -99,13 +100,19 @@ export const useTerminologySearch = (userId?: string) => {
           throw new Error(response.data.error);
         }
 
+        // Log the first 100 characters of the result for debugging
+        const result = response.data.result;
+        if (result) {
+          console.log("Result received (first 100 chars):", result.substring(0, 100) + (result.length > 100 ? "..." : ""));
+        }
+
         return response.data as TermSearchResponse;
       } catch (error) {
         console.error("Terminology search exception:", error);
         if (error instanceof Error) {
           // Handle timeout or other errors
           if (error.message.includes("pris trop de temps")) {
-            throw new Error("La recherche a pris trop de temps. Veuillez réessayer.");
+            throw new Error("L'analyse linguistique a pris trop de temps. Veuillez réessayer avec un terme plus simple.");
           }
           throw error;
         }
@@ -115,13 +122,13 @@ export const useTerminologySearch = (userId?: string) => {
       }
     },
     onSuccess: (data) => {
-      console.log("Search successful:", data);
+      console.log("Search successful");
       queryClient.invalidateQueries({ queryKey: ['terminology-history', userId] });
       
       // Show success toast
       toast({
         title: "Recherche réussie",
-        description: "La traduction a été trouvée",
+        description: "L'analyse linguistique a été générée",
         variant: "default"
       });
     },

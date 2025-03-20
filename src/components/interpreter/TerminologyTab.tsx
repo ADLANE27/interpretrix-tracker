@@ -17,6 +17,13 @@ import { SavedTerm, TermSearch } from "@/types/terminology";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface TerminologyTabProps {
   userId?: string;
@@ -29,6 +36,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
   const [searchResult, setSearchResult] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("search");
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   
   const { toast } = useToast();
   
@@ -56,6 +64,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     // Clear previous results and errors
     setSearchResult("");
     setSearchError(null);
+    setDetailsExpanded(false);
     
     try {
       console.log("Initiating search for term:", term.trim());
@@ -70,6 +79,8 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
       if (result && result.result) {
         setSearchResult(result.result);
         setSearchError(null);
+        // Auto-expand details for linguistic analysis
+        setDetailsExpanded(true);
       } else {
         setSearchError("Aucun résultat de traduction reçu");
         toast({
@@ -118,7 +129,9 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     
     savedTerms.forEach(term => {
       const formattedDate = new Date(term.created_at).toLocaleDateString();
-      csv += `"${term.term}","${term.result}","${term.source_language}","${term.target_language}","${formattedDate}"\n`;
+      // Escape CSV special characters
+      const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`;
+      csv += `${escapeCsv(term.term)},${escapeCsv(term.result)},${escapeCsv(term.source_language)},${escapeCsv(term.target_language)},${escapeCsv(formattedDate)}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -139,6 +152,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     setSearchResult(item.result);
     setSearchError(null);
     setActiveTab("search");
+    setDetailsExpanded(true);
   };
 
   const renderTermItem = (item: TermSearch | SavedTerm, isSaved: boolean = false) => (
@@ -173,7 +187,18 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
                 )}
               </div>
             </div>
-            <p className="mt-1">{item.result}</p>
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="link" size="sm">
+                  Voir l'analyse détaillée
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-1 whitespace-pre-wrap p-4 bg-muted rounded-md overflow-auto max-h-[500px] text-sm">
+                  {item.result}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
             <div className="text-xs text-muted-foreground mt-1">
               {new Date(item.created_at).toLocaleDateString()}
             </div>
@@ -260,7 +285,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
           )}
 
           {searchResult && !searchError && (
-            <Card className="mb-4">
+            <Card className="mb-4 overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex justify-between mb-2">
                   <h3 className="text-lg font-semibold">{term}</h3>
@@ -272,9 +297,24 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
                 <div className="text-sm text-muted-foreground mb-2">
                   {sourceLanguage} → {targetLanguage}
                 </div>
-                <div className="bg-muted p-4 rounded-md">
-                  {searchResult}
-                </div>
+                
+                <Accordion
+                  type="single"
+                  collapsible
+                  defaultValue={detailsExpanded ? "analysis" : undefined}
+                  className="w-full"
+                >
+                  <AccordionItem value="analysis">
+                    <AccordionTrigger className="font-semibold text-primary">
+                      Analyse linguistique détaillée
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="bg-muted p-4 rounded-md whitespace-pre-wrap overflow-auto max-h-[500px] text-sm">
+                        {searchResult}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </CardContent>
             </Card>
           )}

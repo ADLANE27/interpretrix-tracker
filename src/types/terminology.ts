@@ -1,4 +1,3 @@
-
 export interface TermSearch {
   id: string;
   user_id: string;

@@ -61,14 +61,101 @@ serve(async (req) => {
       );
     }
 
+    // Create the comprehensive linguistic analysis prompt
+    const prompt = `
+Primary Instructions
+Analyze the term "${term}" in ${sourceLanguage} and translate to ${targetLanguage} with complete linguistic depth. Approach this analysis as a expert linguist, lexicographer, etymologist, and translator combined.
+
+Required Analysis Components
+1. Core Definition & Classification
+- Provide a precise, academic definition
+- Identify grammatical classification (part of speech, gender if applicable)
+- Note register (formal, informal, archaic, technical, slang, etc.)
+- List all major variant forms (plural, conjugations, declensions)
+
+2. Etymological Analysis
+- Trace complete etymological lineage back to proto-language when possible
+- Detail all historical semantic shifts and meaning evolution
+- Identify cognates in related languages
+- Note significant spelling/pronunciation changes throughout history
+- Include approximate dates/periods for key evolutionary stages
+
+3. Comprehensive Translation
+- Primary translation with notes on semantic precision/overlap
+- Alternative translations with context-specific usage guidance
+- Translation challenges and potential semantic gaps
+- Cultural adaptations required for full meaning transfer
+- Register-equivalent translations (formal, informal, technical)
+
+4. Semantic Field Mapping
+- Comprehensive synonyms organized by semantic nuance
+- Antonyms with contextual opposition patterns
+- Hypernyms and hyponyms (broader/narrower terms)
+- Co-hyponyms (terms at same semantic level)
+- Complete semantic network visualization
+
+5. Contextual Usage Analysis
+- Domain-specific meanings across disciplines
+- Regional/dialectal variations with examples
+- Historical usage patterns and frequency trends
+- Modern usage frequency statistics
+- Collocations and common phrasal patterns
+- Idiomatic expressions containing the term
+
+6. Phonological & Orthographic Analysis
+- IPA transcription with stress patterns
+- Historical pronunciation shifts
+- Syllabic structure analysis
+- Orthographic variations (historical and regional)
+- Notable phonological features
+
+7. Morphological Breakdown
+- Root, prefix, suffix identification
+- Morpheme boundaries and meaning contributions
+- Derivational possibilities and patterns
+- Compound formations and their semantic relationships
+
+8. Cultural & Conceptual Dimensions
+- Cultural associations and connotations
+- Conceptual metaphors built on this term
+- Presence in cultural expressions/artifacts
+- Taboos or sensitivities associated with usage
+- Cross-cultural perception differences
+
+9. Corpus Examples
+- Authentic usage examples from diverse sources
+- Historical attestations showing meaning evolution
+- Contemporary examples demonstrating semantic range
+- Parallel examples in target language showing equivalence
+
+10. Visual Representation
+- Create a visual semantic map connecting all related terms
+- Show hierarchical relationships within the concept field
+- Indicate etymological connections visually
+- Represent register variations on a spectrum
+
+Special Instructions
+- If encountering rare or specialized terminology, acknowledge limitations while providing maximum available information
+- For terms with significant cultural loading, provide extensive cultural context
+- When analyzing polysemous terms, organize all meanings historically and by frequency
+- For neologisms or recently evolved terms, trace recent development and adoption patterns
+- If term has specialized meaning in multiple domains, address each domain separately
+
+Output Format
+Present the analysis in a structured, hierarchical format with clear section headers. Use tables for comparative data, etymology timelines, and translation equivalents. Employ nested bullet points for semantic relationships.
+
+Final Note
+Apply the highest level of linguistic precision and academic rigor to this analysis. Draw upon historical linguistics, corpus linguistics, cognitive linguistics, and translation theory methodologies to ensure comprehensive coverage.
+`;
+
     // Make a request to OpenRouter API
     console.log(`[${requestId}] Searching for term: "${term}" from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout (increased from 10)
       
-      console.log(`[${requestId}] Making API call to OpenRouter with Mistral model`);
+      console.log(`[${requestId}] Making API call to OpenRouter with larger token limit`);
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -85,15 +172,15 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `Translate the following term from ${sourceLanguage} to ${targetLanguage}. Only provide the translation without explanations or additional text.`
+              content: "You are a world-class linguistic expert proficient in etymology, lexicography, semantics, and translation theory. Provide detailed linguistic analysis."
             },
             {
               role: 'user',
-              content: term
+              content: prompt
             }
           ],
           temperature: 0.1,
-          max_tokens: 50,
+          max_tokens: 2000, // Increased from 50 to 2000
         }),
         signal: controller.signal
       });
@@ -166,7 +253,7 @@ serve(async (req) => {
       }
 
       const result = data.choices[0].message.content.trim();
-      console.log(`[${requestId}] Extracted result: "${result}"`);
+      console.log(`[${requestId}] Extracted result: "${result.substring(0, 100)}..."` + (result.length > 100 ? " (truncated for logs)" : ""));
       
       // Check if result is empty or just whitespace
       if (!result || !result.trim()) {
@@ -222,7 +309,7 @@ serve(async (req) => {
         console.log(`[${requestId}] Search saved to history successfully`);
       }
 
-      console.log(`[${requestId}] Returning successful response with result: "${result}"`);
+      console.log(`[${requestId}] Returning successful response with detailed linguistic analysis`);
       return new Response(
         JSON.stringify({ 
           result,
