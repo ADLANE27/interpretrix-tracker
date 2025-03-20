@@ -205,8 +205,12 @@ export const InterpreterChannelList = ({
   };
 
   return (
-    <>
-      <ScrollArea className="h-[calc(100vh-400px)] overflow-x-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-lg font-semibold">Conversations</h2>
+      </div>
+      
+      <ScrollArea className="flex-1 pr-4 py-2 overflow-x-hidden">
         <div className="space-y-2 pr-4 overflow-x-hidden overscroll-x-none">
           {channels.length === 0 ? (
             <div className="text-center text-muted-foreground p-4">
@@ -323,6 +327,6 @@ export const InterpreterChannelList = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };

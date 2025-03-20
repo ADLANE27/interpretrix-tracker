@@ -40,29 +40,31 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   }, [refreshMentions]);
 
   return (
-    <div className="flex h-full">
-      {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6`}>
-          <InterpreterChannelList 
-            onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
-          />
-        </div>
-      )}
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-1 h-[calc(100%-20px)] overflow-hidden">
+        {(!selectedChannelId || !isMobile) && (
+          <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6 overflow-hidden`}>
+            <InterpreterChannelList 
+              onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
+            />
+          </div>
+        )}
 
-      {selectedChannelId && (
-        <div className={`${isMobile ? 'w-full' : 'flex-1'}`}>
-          <InterpreterChat 
-            channelId={selectedChannelId} 
-            filters={filters} 
-            onFiltersChange={setFilters} 
-            onClearFilters={handleClearFilters}
-            onBackToChannels={() => setSelectedChannelId(null)}
-            profile={profile}
-            onStatusChange={onStatusChange}
-            onMenuClick={onMenuClick}
-          />
-        </div>
-      )}
+        {selectedChannelId && (
+          <div className={`${isMobile ? 'w-full' : 'flex-1'} h-full flex flex-col overflow-hidden`}>
+            <InterpreterChat 
+              channelId={selectedChannelId} 
+              filters={filters} 
+              onFiltersChange={setFilters} 
+              onClearFilters={handleClearFilters}
+              onBackToChannels={() => setSelectedChannelId(null)}
+              profile={profile}
+              onStatusChange={onStatusChange}
+              onMenuClick={onMenuClick}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
