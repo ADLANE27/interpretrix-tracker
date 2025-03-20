@@ -1,24 +1,24 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from '../_shared/cors.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request with CORS headers');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Generate a request ID for tracing
+    const requestId = crypto.randomUUID();
+    console.log(`[${requestId}] Terminology search function invoked`);
+    
     // Get the API key from environment variables
     const apiKey = Deno.env.get('OPENROUTER_API_KEY');
     if (!apiKey) {
-      console.error('OPENROUTER_API_KEY is not set');
+      console.error(`[${requestId}] OPENROUTER_API_KEY is not set`);
       return new Response(
         JSON.stringify({ 
           error: 'API key not configured. Please contact administrator.' 
@@ -31,9 +31,25 @@ serve(async (req) => {
     }
 
     // Get request data
-    const { term, sourceLanguage, targetLanguage, userId } = await req.json();
+    let requestData;
+    try {
+      requestData = await req.json();
+      console.log(`[${requestId}] Request data received:`, JSON.stringify(requestData));
+    } catch (error) {
+      console.error(`[${requestId}] Error parsing request JSON:`, error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const { term, sourceLanguage, targetLanguage, userId } = requestData;
 
     if (!term || !sourceLanguage || !targetLanguage || !userId) {
+      console.error(`[${requestId}] Missing required parameters:`, { term, sourceLanguage, targetLanguage, userId });
       return new Response(
         JSON.stringify({ 
           error: 'Missing required parameters' 
@@ -46,16 +62,14 @@ serve(async (req) => {
     }
 
     // Make a request to OpenRouter API
-    console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
+    console.log(`[${requestId}] Searching for term: "${term}" from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
-      // Generate a request ID for tracing
-      const requestId = crypto.randomUUID();
-      console.log(`Request ID: ${requestId} - Starting API call to OpenRouter with DeepSeek-R1-Zero model`);
-      
       // Use more complete URL and include timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      console.log(`[${requestId}] Making API call to OpenRouter with DeepSeek-R1-Zero model`);
       
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -72,7 +86,7 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator specialized in terminology. Your task is to provide an exact, precise, and direct translation of a term from ${sourceLanguage} to ${targetLanguage}. Respond ONLY with the translation itself - no explanations, commentary, or additional text. Provide the exact equivalent term in the target language, nothing more. If multiple translations are possible, provide only the most commonly used equivalent.`
+              content: `Translate the term from ${sourceLanguage} to ${targetLanguage}. Reply only with the translation, no explanations.`
             },
             {
               role: 'user',
@@ -88,11 +102,11 @@ serve(async (req) => {
       // Clear the timeout
       clearTimeout(timeoutId);
 
-      console.log(`Request ID: ${requestId} - OpenRouter API response status: ${response.status}`);
+      console.log(`[${requestId}] OpenRouter API response status: ${response.status}`);
       
       // Handle rate limit exceeded
       if (response.status === 429) {
-        console.error(`Request ID: ${requestId} - OpenRouter API rate limit exceeded`);
+        console.error(`[${requestId}] OpenRouter API rate limit exceeded`);
         return new Response(
           JSON.stringify({ 
             error: 'Service temporarily unavailable. Please try again later.' 
@@ -111,17 +125,17 @@ serve(async (req) => {
       // Log detailed error information
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Request ID: ${requestId} - OpenRouter API error response:`, errorText);
+        console.error(`[${requestId}] OpenRouter API error response:`, errorText);
         
         let errorDetail;
         try {
           const errorJson = JSON.parse(errorText);
           errorDetail = JSON.stringify(errorJson);
           // Log detailed error information for debugging
-          console.error(`Request ID: ${requestId} - OpenRouter API error details:`, JSON.stringify(errorJson, null, 2));
+          console.error(`[${requestId}] OpenRouter API error details:`, JSON.stringify(errorJson, null, 2));
         } catch (e) {
           errorDetail = errorText;
-          console.error(`Request ID: ${requestId} - OpenRouter API error (not JSON):`, errorText);
+          console.error(`[${requestId}] OpenRouter API error (not JSON):`, errorText);
         }
         
         return new Response(
@@ -136,11 +150,11 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log(`Request ID: ${requestId} - OpenRouter API response data:`, JSON.stringify(data));
+      console.log(`[${requestId}] OpenRouter API response received`);
 
       // Extract the result from the response structure that OpenRouter returns
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error(`Request ID: ${requestId} - Unexpected OpenRouter API response format:`, JSON.stringify(data));
+        console.error(`[${requestId}] Unexpected OpenRouter API response format:`, JSON.stringify(data));
         return new Response(
           JSON.stringify({ 
             error: 'Unexpected response format from OpenRouter API',
@@ -157,7 +171,7 @@ serve(async (req) => {
       
       // Check if result is empty or just whitespace
       if (!result || !result.trim()) {
-        console.error(`Request ID: ${requestId} - Empty result returned from OpenRouter API`);
+        console.error(`[${requestId}] Empty result returned from OpenRouter API`);
         return new Response(
           JSON.stringify({ 
             error: 'No translation result received. Please try again.' 
@@ -173,13 +187,17 @@ serve(async (req) => {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
       if (!supabaseUrl || !supabaseKey) {
-        console.error('Missing Supabase URL or service role key');
+        console.error(`[${requestId}] Missing Supabase URL or service role key`);
+        // Still return the result even if we can't save to history
         return new Response(
           JSON.stringify({ 
-            error: 'Database connection error' 
+            result,
+            term,
+            sourceLanguage,
+            targetLanguage,
+            warning: 'Result not saved to history due to database configuration issue'
           }),
           { 
-            status: 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
@@ -188,6 +206,7 @@ serve(async (req) => {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
       // Save search to history
+      console.log(`[${requestId}] Saving search to history for user ${userId}`);
       const { error: insertError } = await supabase
         .from('terminology_searches')
         .insert({
@@ -199,9 +218,12 @@ serve(async (req) => {
         });
 
       if (insertError) {
-        console.error(`Request ID: ${requestId} - Error saving search history:`, insertError);
+        console.error(`[${requestId}] Error saving search history:`, insertError);
+      } else {
+        console.log(`[${requestId}] Search saved to history successfully`);
       }
 
+      console.log(`[${requestId}] Returning successful response`);
       return new Response(
         JSON.stringify({ 
           result,
@@ -214,7 +236,7 @@ serve(async (req) => {
         }
       );
     } catch (fetchError) {
-      console.error('Error fetching from OpenRouter API:', fetchError);
+      console.error(`[${requestId}] Error fetching from OpenRouter API:`, fetchError);
       
       // Determine if this is a network connectivity issue
       const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -253,9 +275,13 @@ serve(async (req) => {
       );
     }
   } catch (error) {
-    console.error('Error in terminology search function:', error);
+    const errorId = crypto.randomUUID();
+    console.error(`[${errorId}] Unhandled error in terminology search function:`, error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: `An unexpected error occurred (ID: ${errorId}). Please try again later.`,
+        errorDetails: error instanceof Error ? error.message : String(error)
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

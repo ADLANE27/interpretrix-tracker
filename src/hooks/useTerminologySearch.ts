@@ -10,7 +10,7 @@ export const useTerminologySearch = (userId?: string) => {
   const queryClient = useQueryClient();
   const [isSearching, setIsSearching] = useState(false);
 
-  // Query pour récupérer l'historique des recherches
+  // Query to retrieve search history
   const { data: searchHistory, isLoading: isHistoryLoading } = useQuery({
     queryKey: ['terminology-history', userId],
     queryFn: async () => {
@@ -33,7 +33,7 @@ export const useTerminologySearch = (userId?: string) => {
     enabled: !!userId,
   });
 
-  // Query pour récupérer les termes sauvegardés
+  // Query to retrieve saved terms
   const { data: savedTerms, isLoading: isSavedTermsLoading } = useQuery({
     queryKey: ['saved-terms', userId],
     queryFn: async () => {
@@ -55,13 +55,14 @@ export const useTerminologySearch = (userId?: string) => {
     enabled: !!userId,
   });
 
-  // Mutation pour effectuer une recherche terminologique
+  // Mutation to perform terminology search
   const searchMutation = useMutation({
     mutationFn: async (searchParams: TermSearchRequest): Promise<TermSearchResponse> => {
       setIsSearching(true);
       console.log("Starting terminology search:", searchParams);
       
       try {
+        // Make the edge function call
         const response = await supabase.functions.invoke('terminology-search', {
           body: searchParams,
         });
@@ -84,6 +85,9 @@ export const useTerminologySearch = (userId?: string) => {
         }
 
         return response.data as TermSearchResponse;
+      } catch (error) {
+        console.error("Terminology search exception:", error);
+        throw error;
       } finally {
         setIsSearching(false);
       }
@@ -109,7 +113,7 @@ export const useTerminologySearch = (userId?: string) => {
     }
   });
 
-  // Mutation pour sauvegarder un terme
+  // Mutation to save a term
   const saveMutation = useMutation({
     mutationFn: async (term: TermSearch) => {
       const { error } = await supabase.from('saved_terms').insert({
@@ -121,7 +125,7 @@ export const useTerminologySearch = (userId?: string) => {
       });
 
       if (error) {
-        if (error.code === '23505') { // Code pour violation de contrainte unique
+        if (error.code === '23505') { // Code for unique constraint violation
           throw new Error("Ce terme est déjà dans vos favoris");
         }
         throw new Error(error.message);
@@ -144,7 +148,7 @@ export const useTerminologySearch = (userId?: string) => {
     }
   });
 
-  // Mutation pour supprimer un terme sauvegardé
+  // Mutation to delete a saved term
   const deleteSavedTermMutation = useMutation({
     mutationFn: async (termId: string) => {
       const { error } = await supabase
