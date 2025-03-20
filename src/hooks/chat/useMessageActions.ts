@@ -313,7 +313,12 @@ const useMessageActions = (
     }
 
     try {
-      console.log('[Chat] Adding/removing reaction:', { messageId, emoji, currentUserId });
+      console.log('[useMessageActions] Adding/removing reaction:', { 
+        messageId, 
+        emoji, 
+        currentUserId,
+        timestamp: new Date().toISOString()
+      });
       
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
@@ -322,12 +327,12 @@ const useMessageActions = (
         .maybeSingle();
 
       if (fetchError) {
-        console.error('[Chat] Error fetching message for reaction:', fetchError);
+        console.error('[useMessageActions] Error fetching message for reaction:', fetchError);
         throw fetchError;
       }
 
       if (!messages) {
-        console.error('[Chat] Message not found for reaction:', messageId);
+        console.error('[useMessageActions] Message not found for reaction:', messageId);
         throw new Error("Message introuvable");
       }
 
@@ -338,22 +343,22 @@ const useMessageActions = (
         try {
           currentReactions = JSON.parse(messages.reactions);
         } catch (e) {
-          console.error('[Chat] Error parsing reactions string:', e);
+          console.error('[useMessageActions] Error parsing reactions string:', e);
           currentReactions = {};
         }
       }
       
-      console.log('[Chat] Current reactions:', currentReactions);
+      console.log('[useMessageActions] Current reactions:', currentReactions);
       
       const currentUsers = Array.isArray(currentReactions[emoji]) ? currentReactions[emoji] : [];
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
-        console.log('[Chat] Removing user reaction');
+        console.log('[useMessageActions] Removing user reaction');
       } else {
         updatedUsers = [...currentUsers, currentUserId];
-        console.log('[Chat] Adding user reaction');
+        console.log('[useMessageActions] Adding user reaction');
       }
 
       const updatedReactions = {
@@ -365,7 +370,7 @@ const useMessageActions = (
         delete updatedReactions[emoji];
       }
 
-      console.log('[Chat] Updated reactions:', updatedReactions);
+      console.log('[useMessageActions] Updated reactions to be saved:', updatedReactions);
 
       const { error } = await supabase
         .from('chat_messages')
@@ -373,15 +378,17 @@ const useMessageActions = (
         .eq('id', messageId);
 
       if (error) {
-        console.error('[Chat] Error updating reaction:', error);
+        console.error('[useMessageActions] Error updating reaction:', error);
         throw error;
       }
       
-      console.log('[Chat] Reaction updated successfully');
+      console.log('[useMessageActions] Reaction updated successfully in database');
       
       await fetchMessages();
+      
+      console.log('[useMessageActions] Messages refreshed after reaction update');
     } catch (error) {
-      console.error('[Chat] Error updating reaction:', error);
+      console.error('[useMessageActions] Error updating reaction:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour la réaction",

@@ -10,11 +10,16 @@ interface MessageReactionProps {
 }
 
 export const MessageReaction = ({ emoji, count, isActive, onClick }: MessageReactionProps) => {
-  // Handler to ensure click event is properly captured and propagated
+  // Enhanced handler to ensure click event is properly captured with detailed logging
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('[MessageReaction] Reaction clicked, calling onClick handler');
+    console.log('[MessageReaction] Reaction clicked:', {
+      emoji,
+      count,
+      isActive,
+      timestamp: new Date().toISOString()
+    });
     onClick();
   };
 

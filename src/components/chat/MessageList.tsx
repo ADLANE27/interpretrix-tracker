@@ -37,6 +37,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const scrollPositionRef = useRef<number>(0);
+  const messageContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageCountRef = useRef<number>(0);
 
   // Organize messages into parent/reply structure
   const rootMessages = messages.filter(message => !message.parent_message_id);
@@ -49,9 +52,26 @@ export const MessageList: React.FC<MessageListProps> = ({
     return acc;
   }, {});
 
+  // Only scroll to bottom on new messages, not on reactions or other updates
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (!messageContainerRef.current) return;
+    
+    // Save current scroll position before any updates
+    scrollPositionRef.current = messageContainerRef.current.scrollTop;
+    
+    // Check if the message count has increased (new message added)
+    const isNewMessage = messages.length > lastMessageCountRef.current;
+    lastMessageCountRef.current = messages.length;
+    
+    if (isNewMessage && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    } else {
+      // Restore scroll position after updates that weren't new messages
+      requestAnimationFrame(() => {
+        if (messageContainerRef.current) {
+          messageContainerRef.current.scrollTop = scrollPositionRef.current;
+        }
+      });
     }
   }, [messages]);
 
@@ -99,7 +119,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderReactions = (message: Message) => {
-    // Debug logging to check reactions data
+    // Enhanced debug logging to trace reaction data
     console.log(`[MessageList] Rendering reactions for message ${message.id}:`, message.reactions);
     
     // Return early if no reactions
@@ -124,6 +144,12 @@ export const MessageList: React.FC<MessageListProps> = ({
               isActive={isActive}
               onClick={() => {
                 console.log(`[MessageList] Reaction clicked: ${emoji} for message ${message.id}`);
+                
+                // Save scroll position before updating
+                if (messageContainerRef.current) {
+                  scrollPositionRef.current = messageContainerRef.current.scrollTop;
+                }
+                
                 onReactToMessage(message.id, emoji);
               }}
             />
@@ -183,6 +209,12 @@ export const MessageList: React.FC<MessageListProps> = ({
             <EmojiPicker 
               onEmojiSelect={(emoji) => {
                 console.log(`[MessageList] Emoji selected from picker: ${emoji} for message ${message.id}`);
+                
+                // Save scroll position before updating
+                if (messageContainerRef.current) {
+                  scrollPositionRef.current = messageContainerRef.current.scrollTop;
+                }
+                
                 onReactToMessage(message.id, emoji);
               }}
               size="sm"
@@ -226,7 +258,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
+    <div 
+      className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
+      ref={messageContainerRef}
+    >
       <div className="flex-1">
         {rootMessages.map((message, index) => {
           return (
