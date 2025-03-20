@@ -95,7 +95,7 @@ export const useReactions = (
       }
 
       console.log('[useReactions] Successfully updated reactions for message:', messageId);
-
+      
       // Étape 4: Mettre à jour l'interface utilisateur avec des données fraîches
       await fetchMessages();
     } catch (error) {
