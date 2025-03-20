@@ -1,6 +1,7 @@
 
-import { useState, useRef, useCallback } from 'react';
-import { Message } from '@/types/messaging';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { useRoleIdentification } from '../useRoleIdentification';
+import { Message, MessageData } from '@/types/messaging';
 import { supabase } from "@/integrations/supabase/client";
 import { MessageMapRef, ChatChannelType } from './types/chatHooks';
 
@@ -8,138 +9,127 @@ export const useMessageProcessing = (channelId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const userRole = useRef<'admin' | 'interpreter' | null>(null);
   const messagesMap = useRef<Map<string, Message>>(new Map());
+  const processingMessage = useRef(false);
   const lastFetchTimestamp = useRef<string | null>(null);
-  const processingMessage = useRef<boolean>(false);
+  const userRole = useRef<string>('unknown');
+  const { identifyUserRole } = useRoleIdentification();
 
-  // Helper function to determine role
+  // Check user role
   const checkUserRole = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (data) {
-        userRole.current = data.role as 'admin' | 'interpreter';
-        console.log(`[useMessageProcessing] User role identified as: ${userRole.current}`);
-      }
-    } catch (error) {
-      console.error('[useMessageProcessing] Error determining user role:', error);
-    }
-  }, []);
+    const role = await identifyUserRole();
+    userRole.current = role || 'unknown';
+    console.log(`[useMessageProcessing] User role identified as: ${userRole.current}`);
+    return userRole.current;
+  }, [identifyUserRole]);
 
-  // Convert messages map to sorted array
+  // Update messages array
   const updateMessagesArray = useCallback(() => {
-    const messagesArray = Array.from(messagesMap.current.values())
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    setMessages(messagesArray);
-  }, []);
+    if (messagesMap.current.size === 0) {
+      setMessages([]);
+      return;
+    }
 
-  // Process a single message from DB to Message format
-  const processMessage = useCallback(async (messageData: any, channelType: ChatChannelType): Promise<Message | null> => {
+    const updatedMessages = Array.from(messagesMap.current.values())
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    
+    setMessages(updatedMessages);
+    console.log(`[useMessageProcessing ${userRole.current}] Updated messages array:`, updatedMessages.length);
+  }, [userRole]);
+
+  // Process a single message
+  const processMessage = useCallback(async (messageData: MessageData, channelType: ChatChannelType) => {
     try {
-      // If message already exists in map, just update timestamp and reactions
+      // Check if message already exists in map
       if (messagesMap.current.has(messageData.id)) {
+        // Update existing message if needed
         const existingMessage = messagesMap.current.get(messageData.id)!;
-        existingMessage.timestamp = new Date(messageData.created_at);
+        
+        // Process reactions
+        let messageReactions: Record<string, string[]> = {};
+        
         if (messageData.reactions) {
-          let parsedReactions = {};
+          // Handle reactions as string or object
           if (typeof messageData.reactions === 'string') {
             try {
-              parsedReactions = JSON.parse(messageData.reactions);
+              messageReactions = JSON.parse(messageData.reactions);
             } catch (e) {
-              console.error(`[useMessageProcessing] Error parsing reactions string:`, e);
+              console.error(`[useMessageProcessing ${userRole.current}] Failed to parse reactions string:`, e);
+              messageReactions = {};
             }
-          } else if (messageData.reactions && typeof messageData.reactions === 'object') {
-            parsedReactions = messageData.reactions;
+          } else if (typeof messageData.reactions === 'object') {
+            messageReactions = messageData.reactions as Record<string, string[]>;
           }
-          existingMessage.reactions = parsedReactions as Record<string, string[]>;
-          console.log(`[useMessageProcessing] Updated reactions for message:`, messageData.id, existingMessage.reactions);
         }
-        return existingMessage;
+        
+        // Only update if something changed (reactions, etc.)
+        const updatedMessage = {
+          ...existingMessage,
+          reactions: messageReactions
+        };
+        
+        messagesMap.current.set(messageData.id, updatedMessage);
+        console.log(`[useMessageProcessing ${userRole.current}] Updated existing message:`, messageData.id);
+        return;
       }
-      
-      // Fetch sender details
-      const { data: senderData, error: senderError } = await supabase
+
+      // Get sender details
+      const { data: senderDetails, error: senderError } = await supabase
         .rpc('get_message_sender_details', {
-          sender_id: messageData.sender_id
+          sender_id: messageData.sender_id,
         });
 
       if (senderError) {
-        console.error(`[useMessageProcessing] Error fetching sender details:`, senderError);
-        return null;
+        console.error(`[useMessageProcessing ${userRole.current}] Error getting sender details:`, senderError);
+        return;
       }
 
-      const sender = senderData?.[0];
-      if (!sender?.id || !sender?.name) {
-        console.error(`[useMessageProcessing] Invalid sender data:`, sender);
-        return null;
+      if (!senderDetails || senderDetails.length === 0) {
+        console.error(`[useMessageProcessing ${userRole.current}] No sender details found for:`, messageData.sender_id);
+        return;
       }
 
       // Process reactions
-      let parsedReactions = {};
-      try {
-        if (typeof messageData.reactions === 'string') {
-          parsedReactions = JSON.parse(messageData.reactions);
-        } else if (messageData.reactions && typeof messageData.reactions === 'object') {
-          parsedReactions = messageData.reactions;
-        }
-      } catch (e) {
-        console.error(`[useMessageProcessing] Error parsing reactions:`, e);
-      }
+      let messageReactions: Record<string, string[]> = {};
       
-      console.log(`[useMessageProcessing] Message reactions raw:`, messageData.reactions);
-      console.log(`[useMessageProcessing] Message reactions parsed:`, parsedReactions);
-
-      // Process attachments
-      const parsedAttachments = [];
-      if (Array.isArray(messageData.attachments)) {
-        for (const att of messageData.attachments) {
-          if (typeof att === 'object' && att !== null) {
-            const attachment = {
-              url: String(att['url'] || ''),
-              filename: String(att['filename'] || ''),
-              type: String(att['type'] || ''),
-              size: Number(att['size'] || 0)
-            };
-            if (attachment.url && attachment.filename) {
-              parsedAttachments.push(attachment);
-            }
+      if (messageData.reactions) {
+        // Handle reactions as string or object
+        if (typeof messageData.reactions === 'string') {
+          try {
+            messageReactions = JSON.parse(messageData.reactions);
+          } catch (e) {
+            console.error(`[useMessageProcessing ${userRole.current}] Failed to parse reactions string:`, e);
+            messageReactions = {};
           }
+        } else if (typeof messageData.reactions === 'object') {
+          messageReactions = messageData.reactions as Record<string, string[]>;
         }
       }
 
-      // Create formatted message
-      const formattedMessage: Message = {
+      // Create message object
+      const message: Message = {
         id: messageData.id,
         content: messageData.content,
         sender: {
-          id: sender.id,
-          name: sender.name,
-          avatarUrl: sender.avatar_url || ''
+          id: senderDetails[0].id,
+          name: senderDetails[0].name,
+          avatarUrl: senderDetails[0].avatar_url,
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
-        attachments: parsedAttachments,
+        attachments: messageData.attachments,
         channelType: channelType,
-        reactions: parsedReactions as Record<string, string[]>
+        reactions: messageReactions
       };
 
-      // Add to messages map
-      messagesMap.current.set(messageData.id, formattedMessage);
-      
-      return formattedMessage;
+      // Add to map
+      messagesMap.current.set(message.id, message);
+      console.log(`[useMessageProcessing ${userRole.current}] Processed message:`, message.id);
+
     } catch (error) {
-      console.error(`[useMessageProcessing] Error formatting message:`, error, messageData);
-      return null;
+      console.error(`[useMessageProcessing ${userRole.current}] Error processing message:`, error);
     }
-  }, []);
+  }, [userRole]);
 
   return {
     messages,
@@ -148,12 +138,12 @@ export const useMessageProcessing = (channelId: string) => {
     setIsLoading,
     hasMoreMessages,
     setHasMoreMessages,
-    userRole,
     messagesMap,
-    lastFetchTimestamp,
     processingMessage,
-    checkUserRole,
+    lastFetchTimestamp,
+    userRole,
     updateMessagesArray,
-    processMessage
+    processMessage,
+    checkUserRole
   };
 };
