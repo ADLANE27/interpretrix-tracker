@@ -44,6 +44,13 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
+  // Refresh mentions count when switching to the messages tab
+  useEffect(() => {
+    if (activeTab === "messages") {
+      refreshMentions();
+    }
+  }, [activeTab, refreshMentions]);
+
   useEffect(() => {
     console.log('[Sidebar] Setting up mission notification listener');
     const fetchPendingMissions = async () => {

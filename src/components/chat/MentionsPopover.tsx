@@ -32,7 +32,25 @@ export const MentionsPopover = ({
   children
 }: MentionsPopoverProps) => {
   const [open, setOpen] = useState(false);
+  const [localMentions, setLocalMentions] = useState<UnreadMention[]>(mentions);
   const isMobile = useIsMobile();
+
+  // Sync mentions prop to local state when it changes
+  if (JSON.stringify(mentions) !== JSON.stringify(localMentions)) {
+    setLocalMentions(mentions);
+  }
+
+  // Handle marking as read with local state update
+  const handleMarkAsRead = (mentionId: string) => {
+    setLocalMentions(prev => prev.filter(m => m.mention_id !== mentionId));
+    onMarkAsRead(mentionId);
+  };
+
+  // Handle deletion with local state update
+  const handleDelete = (mentionId: string) => {
+    setLocalMentions(prev => prev.filter(m => m.mention_id !== mentionId));
+    onDelete(mentionId);
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -47,12 +65,12 @@ export const MentionsPopover = ({
             <div className="flex items-center">
               <h3 className="font-medium">Mentions Récentes</h3>
               <Badge variant="secondary" className="font-normal ml-3">
-                {totalCount} {totalCount === 1 ? 'mention' : 'mentions'}
+                {localMentions.length} {localMentions.length === 1 ? 'mention' : 'mentions'}
               </Badge>
             </div>
           </div>
 
-          {mentions.length === 0 ? (
+          {localMentions.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 p-8 text-center text-muted-foreground">
               <Bell className="w-12 h-12 mb-4 opacity-20" />
               <p>Aucune mention non lue</p>
@@ -60,7 +78,7 @@ export const MentionsPopover = ({
           ) : (
             <ScrollArea className="flex-1">
               <div className="p-2">
-                {mentions.map((mention) => (
+                {localMentions.map((mention) => (
                   <Card
                     key={mention.mention_id}
                     className="p-3 mb-2 transition-colors hover:bg-accent/50 group"
@@ -69,6 +87,7 @@ export const MentionsPopover = ({
                       className="cursor-pointer"
                       onClick={() => {
                         onMentionClick(mention);
+                        handleMarkAsRead(mention.mention_id);
                         setOpen(false);
                       }}
                     >
@@ -90,7 +109,7 @@ export const MentionsPopover = ({
                           className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onMarkAsRead(mention.mention_id);
+                            handleMarkAsRead(mention.mention_id);
                           }}
                         >
                           <Check className="h-4 w-4" />
@@ -101,7 +120,7 @@ export const MentionsPopover = ({
                           className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelete(mention.mention_id);
+                            handleDelete(mention.mention_id);
                           }}
                         >
                           <X className="h-4 w-4" />

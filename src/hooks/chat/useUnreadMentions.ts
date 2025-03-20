@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface UnreadMention {
@@ -26,8 +26,9 @@ export const useUnreadMentions = () => {
   const [unreadMentions, setUnreadMentions] = useState<UnreadMention[]>([]);
   const [unreadDirectMessages, setUnreadDirectMessages] = useState<number>(0);
   const [totalUnreadCount, setTotalUnreadCount] = useState<number>(0);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const fetchUnreadMentions = async () => {
+  const fetchUnreadMentions = useCallback(async () => {
     console.log('[Mentions Debug] Fetching unread mentions...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -39,6 +40,7 @@ export const useUnreadMentions = () => {
         return;
       }
 
+      setUserId(user.id);
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
       // Clear existing state before fetching new data
@@ -148,7 +150,7 @@ export const useUnreadMentions = () => {
       setUnreadDirectMessages(0);
       setTotalUnreadCount(0);
     }
-  };
+  }, []);
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
@@ -168,7 +170,13 @@ export const useUnreadMentions = () => {
       }
       
       console.log('[Mentions Debug] Successfully marked mention as read');
-      await fetchUnreadMentions();
+      
+      // Update the local state immediately instead of fetching again
+      setUnreadMentions(prev => {
+        const filtered = prev.filter(mention => mention.mention_id !== mentionId);
+        setTotalUnreadCount(filtered.length + unreadDirectMessages);
+        return filtered;
+      });
     } catch (error) {
       console.error('[Mentions Debug] Error marking mention as read:', error);
     }
@@ -192,7 +200,13 @@ export const useUnreadMentions = () => {
       }
 
       console.log('[Mentions Debug] Successfully deleted mention');
-      await fetchUnreadMentions();
+      
+      // Update the local state immediately instead of fetching again
+      setUnreadMentions(prev => {
+        const filtered = prev.filter(mention => mention.mention_id !== mentionId);
+        setTotalUnreadCount(filtered.length + unreadDirectMessages);
+        return filtered;
+      });
     } catch (error) {
       console.error('[Mentions Debug] Error deleting mention:', error);
     }
@@ -208,6 +222,7 @@ export const useUnreadMentions = () => {
         setUnreadMentions([]);
         setUnreadDirectMessages(0);
         setTotalUnreadCount(0);
+        setUserId(null);
       } else if (event === 'SIGNED_IN') {
         fetchUnreadMentions();
       }
@@ -218,9 +233,34 @@ export const useUnreadMentions = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
-        () => {
-          console.log('[Mentions Debug] Message mentions table changed');
-          fetchUnreadMentions();
+        (payload) => {
+          console.log('[Mentions Debug] Message mentions table changed:', payload);
+          
+          // If this is a new mention for the current user, update immediately
+          if (payload.eventType === 'INSERT' && 
+              payload.new && 
+              payload.new.mentioned_user_id === userId && 
+              payload.new.status === 'unread') {
+            console.log('[Mentions Debug] New mention detected for current user');
+            fetchUnreadMentions();
+          }
+          
+          // If this is a status update for an existing mention (read/deleted)
+          if (payload.eventType === 'UPDATE' && 
+              payload.old && 
+              payload.new && 
+              payload.old.status === 'unread' && 
+              payload.new.status !== 'unread' &&
+              payload.new.mentioned_user_id === userId) {
+            console.log('[Mentions Debug] Mention status changed to:', payload.new.status);
+            
+            // Update local state immediately
+            setUnreadMentions(prev => {
+              const filtered = prev.filter(mention => mention.mention_id !== payload.new.id);
+              setTotalUnreadCount(filtered.length + unreadDirectMessages);
+              return filtered;
+            });
+          }
         }
       )
       .on(
@@ -234,9 +274,11 @@ export const useUnreadMentions = () => {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-        () => {
-          console.log('[Messages Debug] Channel membership updated');
-          fetchUnreadMentions();
+        (payload) => {
+          console.log('[Messages Debug] Channel membership updated:', payload);
+          if (payload.new && payload.new.user_id === userId) {
+            fetchUnreadMentions();
+          }
         }
       )
       .subscribe();
@@ -247,7 +289,7 @@ export const useUnreadMentions = () => {
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchUnreadMentions, userId]);
 
   return { 
     unreadMentions, 
