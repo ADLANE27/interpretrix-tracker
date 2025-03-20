@@ -118,8 +118,8 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     console.log("File attachment functionality placeholder");
   };
 
-  // Debug logging for reactions
-  console.log(`[Chat ${userRole}] Messages with reactions:`, messages.filter(m => m.reactions && Object.keys(m.reactions).length > 0));
+  // Remove debug logging for reactions which no longer exist
+  console.log(`[Chat ${userRole}] Messages count:`, messages.length);
 
   return (
     <div className="flex flex-col h-full">

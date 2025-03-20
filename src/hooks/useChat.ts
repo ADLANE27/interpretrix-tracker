@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Message, MessageData, Attachment, isAttachment } from '@/types/messaging';
@@ -137,17 +136,6 @@ export const useChat = (channelId: string) => {
             return null;
           }
 
-          let parsedReactions = {};
-          try {
-            if (typeof message.reactions === 'string') {
-              parsedReactions = JSON.parse(message.reactions);
-            } else if (message.reactions && typeof message.reactions === 'object') {
-              parsedReactions = message.reactions;
-            }
-          } catch (e) {
-            console.error(`[useChat ${userRole.current}] Error parsing reactions:`, e);
-          }
-
           const parsedAttachments: Attachment[] = [];
           if (Array.isArray(message.attachments)) {
             message.attachments.forEach(att => {
@@ -175,7 +163,6 @@ export const useChat = (channelId: string) => {
             },
             timestamp: new Date(message.created_at),
             parent_message_id: message.parent_message_id,
-            reactions: parsedReactions,
             attachments: parsedAttachments,
             channelType: channelType
           };
@@ -295,7 +282,6 @@ export const useChat = (channelId: string) => {
           },
           timestamp: new Date(messageData.created_at),
           parent_message_id: messageData.parent_message_id,
-          reactions: messageData.reactions || {},
           channelType: channelData?.channel_type as 'group' | 'direct' || 'group'
         };
         
@@ -349,7 +335,6 @@ export const useChat = (channelId: string) => {
     handleRealtimeMessage
   );
 
-  // Modified function to handle message deletion with optimistic UI update
   const handleDeleteMessage = async (messageId: string) => {
     try {
       // Optimistic UI update - remove the message from state immediately
@@ -402,7 +387,6 @@ export const useChat = (channelId: string) => {
     }
   }, [channelId, fetchMessages]);
 
-  // Force a refresh of messages periodically to ensure users see latest messages
   useEffect(() => {
     if (!channelId) return;
     
@@ -418,7 +402,6 @@ export const useChat = (channelId: string) => {
     return () => clearInterval(refreshInterval);
   }, [channelId, fetchMessages, lastFetchTime]);
 
-  // Add a function to force fetch regardless of last fetch time
   const forceFetch = useCallback(() => {
     console.log(`[useChat ${userRole.current}] Force fetching messages`);
     fetchMessages(0);
@@ -430,7 +413,7 @@ export const useChat = (channelId: string) => {
     isSubscribed,
     subscriptionStatus: subscriptionStates,
     sendMessage,
-    deleteMessage: handleDeleteMessage, // Use our optimistic UI update function
+    deleteMessage: handleDeleteMessage,
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
