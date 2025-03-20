@@ -9,7 +9,6 @@ const isValidChannelType = (type: string): type is 'group' | 'direct' => {
   return type === 'group' || type === 'direct';
 };
 
-// Maximum messages to fetch initially
 const MAX_MESSAGES = 100;
 
 export const useChat = (channelId: string) => {
@@ -20,7 +19,6 @@ export const useChat = (channelId: string) => {
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
 
-  // Use a Map for storing messages to easily handle deduplication by ID
   const messagesMap = useRef<Map<string, Message>>(new Map());
   const lastFetchTimestamp = useRef<string | null>(null);
   const userRole = useRef<'admin' | 'interpreter' | null>(null);
@@ -28,14 +26,12 @@ export const useChat = (channelId: string) => {
   
   const { formatMessage } = useMessageFormatter();
 
-  // Clear message cache when channel changes
   useEffect(() => {
     if (channelId) {
       messagesMap.current.clear();
     }
   }, [channelId]);
 
-  // Determine user role for debugging
   useEffect(() => {
     const checkUserRole = async () => {
       try {
@@ -67,7 +63,6 @@ export const useChat = (channelId: string) => {
     try {
       console.log(`[useChat ${userRole.current}] Fetching messages for channel:`, channelId, `(offset: ${offset}, limit: ${limit})`);
       
-      // First get the channel type to check if it's a direct message
       const { data: channelData, error: channelError } = await supabase
         .from('chat_channels')
         .select('channel_type, created_by')
@@ -82,7 +77,6 @@ export const useChat = (channelId: string) => {
 
       const channelType = channelData.channel_type as 'group' | 'direct';
 
-      // Get total count first to know if there are more messages
       const { count, error: countError } = await supabase
         .from('chat_messages')
         .select('id', { count: 'exact', head: true })
@@ -90,31 +84,24 @@ export const useChat = (channelId: string) => {
 
       if (countError) throw countError;
       
-      // Query messages with pagination
       const { data: messagesData, error: messagesError } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
-        .order('created_at', { ascending: false }) // First get newest messages
-        .range(offset, offset + limit - 1); // Use range for pagination
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (messagesError) {
         console.error(`[useChat ${userRole.current}] Error fetching messages:`, messagesError);
         throw messagesError;
       }
       
-      // Determine if there are more messages to load
       setHasMoreMessages(count !== null && count > offset + messagesData.length);
       console.log(`[useChat ${userRole.current}] Retrieved messages:`, messagesData?.length, `(total: ${count})`);
 
-      // Update the last fetch time
-      setLastFetchTime(new Date());
-
       const senderDetailsPromises = messagesData?.map(async (message) => {
         try {
-          // Check if we already have this message in messagesMap
           if (messagesMap.current.has(message.id)) {
-            // Update timestamp for existing message to ensure proper sorting
             const existingMessage = messagesMap.current.get(message.id)!;
             existingMessage.timestamp = new Date(message.created_at);
             return existingMessage;
@@ -134,6 +121,17 @@ export const useChat = (channelId: string) => {
           if (!sender?.id || !sender?.name) {
             console.error(`[useChat ${userRole.current}] Invalid sender data:`, sender);
             return null;
+          }
+
+          let parsedReactions = {};
+          try {
+            if (typeof message.reactions === 'string') {
+              parsedReactions = JSON.parse(message.reactions);
+            } else if (message.reactions && typeof message.reactions === 'object') {
+              parsedReactions = message.reactions;
+            }
+          } catch (e) {
+            console.error(`[useChat ${userRole.current}] Error parsing reactions:`, e);
           }
 
           const parsedAttachments: Attachment[] = [];
@@ -164,10 +162,10 @@ export const useChat = (channelId: string) => {
             timestamp: new Date(message.created_at),
             parent_message_id: message.parent_message_id,
             attachments: parsedAttachments,
-            channelType: channelType
+            channelType: channelType,
+            reactions: parsedReactions as Record<string, string[]>
           };
 
-          // Store message in the Map for deduplication
           messagesMap.current.set(message.id, formattedMessage);
           
           return formattedMessage;
@@ -190,18 +188,15 @@ export const useChat = (channelId: string) => {
       );
       
       if (offset === 0) {
-        // Convert the Map values to an array, sort by timestamp, and set as messages
         const messagesArray = Array.from(messagesMap.current.values())
           .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         setMessages(messagesArray);
       } else {
-        // For pagination, merge existing messages with new ones and sort
         const allMessages = Array.from(messagesMap.current.values())
           .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         setMessages(allMessages);
       }
       
-      // Store the timestamp of the most recent message for incremental updates
       if (messagesData && messagesData.length > 0) {
         const timestamps = messagesData.map(msg => msg.created_at);
         lastFetchTimestamp.current = new Date(Math.max(...timestamps.map(ts => new Date(ts).getTime()))).toISOString();
@@ -238,9 +233,7 @@ export const useChat = (channelId: string) => {
         return;
       }
       
-      // For inserts and updates, format and add the message
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-        // Check if we already have this message to avoid duplicates
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useChat ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
@@ -265,7 +258,17 @@ export const useChat = (channelId: string) => {
           return;
         }
 
-        // Get channel type for the message
+        let parsedReactions = {};
+        try {
+          if (typeof messageData.reactions === 'string') {
+            parsedReactions = JSON.parse(messageData.reactions);
+          } else if (messageData.reactions && typeof messageData.reactions === 'object') {
+            parsedReactions = messageData.reactions;
+          }
+        } catch (e) {
+          console.error(`[useChat ${userRole.current}] Error parsing realtime reactions:`, e);
+        }
+
         const { data: channelData } = await supabase
           .from('chat_channels')
           .select('channel_type')
@@ -282,13 +285,12 @@ export const useChat = (channelId: string) => {
           },
           timestamp: new Date(messageData.created_at),
           parent_message_id: messageData.parent_message_id,
-          channelType: channelData?.channel_type as 'group' | 'direct' || 'group'
+          channelType: channelData?.channel_type as 'group' | 'direct' || 'group',
+          reactions: parsedReactions as Record<string, string[]>
         };
         
-        // Update messagesMap
         messagesMap.current.set(messageData.id, formattedMessage);
         
-        // Convert the Map to an array sorted by timestamp for consistent display
         const messagesArray = Array.from(messagesMap.current.values())
           .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         
@@ -296,19 +298,16 @@ export const useChat = (channelId: string) => {
         
         console.log(`[useChat ${userRole.current}] Realtime: Message added/updated:`, formattedMessage.id, 'For channel:', channelId);
         
-        // Update last fetch timestamp
         const messageTimestamp = new Date(messageData.created_at);
         if (!lastFetchTimestamp.current || messageTimestamp > new Date(lastFetchTimestamp.current)) {
           lastFetchTimestamp.current = messageTimestamp.toISOString();
           setLastFetchTime(new Date());
         }
       } 
-      // For deletions, remove the message
       else if (payload.eventType === 'DELETE') {
         const deletedId = payload.old.id;
         messagesMap.current.delete(deletedId);
         
-        // Convert the Map to an array sorted by timestamp for consistent display
         const messagesArray = Array.from(messagesMap.current.values())
           .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
         
@@ -337,23 +336,18 @@ export const useChat = (channelId: string) => {
 
   const handleDeleteMessage = async (messageId: string) => {
     try {
-      // Optimistic UI update - remove the message from state immediately
       messagesMap.current.delete(messageId);
       
-      // Update the messages array based on the updated map
       const updatedMessages = Array.from(messagesMap.current.values())
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       
       setMessages(updatedMessages);
       
-      // Then perform the actual deletion on the server
       await deleteMessage(messageId);
       
-      // No need to fetch messages again since we've already updated the UI
       console.log(`[useChat ${userRole.current}] Message deleted locally:`, messageId);
     } catch (error) {
       console.error(`[useChat ${userRole.current}] Error handling message deletion:`, error);
-      // If there was an error, refresh messages to ensure UI is in sync
       fetchMessages(0);
     }
   };
@@ -380,7 +374,6 @@ export const useChat = (channelId: string) => {
   useEffect(() => {
     if (channelId) {
       console.log(`[useChat ${userRole.current}] Initial messages fetch for channel:`, channelId);
-      // Clear the message map when switching channels
       messagesMap.current.clear();
       lastFetchTimestamp.current = null;
       fetchMessages(0);
@@ -391,13 +384,12 @@ export const useChat = (channelId: string) => {
     if (!channelId) return;
     
     const refreshInterval = setInterval(() => {
-      // Only refresh if we haven't fetched recently (in last 10 seconds)
       const shouldRefresh = !lastFetchTime || (new Date().getTime() - lastFetchTime.getTime() > 10000);
       if (shouldRefresh) {
         console.log(`[useChat ${userRole.current}] Performing periodic refresh of messages`);
         fetchMessages(0);
       }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
     
     return () => clearInterval(refreshInterval);
   }, [channelId, fetchMessages, lastFetchTime]);

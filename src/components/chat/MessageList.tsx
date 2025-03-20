@@ -1,7 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
+import { MessageReaction } from './MessageReaction';
 import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
@@ -152,6 +152,15 @@ export const MessageList: React.FC<MessageListProps> = ({
                 {formatMessageTime(message.timestamp)}
               </span>
             </div>
+          </div>
+          
+          <div className={`${message.sender.id === currentUserId ? 'justify-end' : 'justify-start'} flex`}>
+            <MessageReaction 
+              messageId={message.id}
+              reactions={message.reactions}
+              currentUserId={currentUserId}
+              onReactToMessage={onReactToMessage}
+            />
           </div>
           
           <div className="flex items-center gap-2 mt-1 mr-1">

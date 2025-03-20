@@ -230,7 +230,17 @@ export const InterpreterChat = ({
   }, [isFullScreen, onToggleFullScreen]);
 
   const handleReactToMessage = async (messageId: string, emoji: string) => {
-    // Cette fonctionnalité a été supprimée
+    try {
+      await reactToMessage(messageId, emoji);
+      console.log('[InterpreterChat] Reaction added/toggled:', { messageId, emoji });
+    } catch (error) {
+      console.error('[InterpreterChat] Error adding reaction:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter la réaction",
+        variant: "destructive",
+      });
+    }
   };
 
   const filteredMessages = getFilteredMessages();

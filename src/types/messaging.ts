@@ -13,6 +13,7 @@ export interface Message {
   parent_message_id?: string | null;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
+  reactions?: Record<string, string[]>;
 }
 
 export interface MessageData {
@@ -27,6 +28,7 @@ export interface MessageData {
     type: string;
     size: number;
   }>;
+  reactions?: Record<string, string[]> | string;
 }
 
 export interface Attachment {

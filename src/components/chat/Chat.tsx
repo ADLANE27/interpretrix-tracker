@@ -121,6 +121,15 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   // Remove debug logging for reactions which no longer exist
   console.log(`[Chat ${userRole}] Messages count:`, messages.length);
 
+  const handleReactToMessage = async (messageId: string, emoji: string) => {
+    try {
+      await reactToMessage(messageId, emoji);
+      console.log('[Chat] Reaction added:', { messageId, emoji });
+    } catch (error) {
+      console.error('[Chat] Error adding reaction:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 shadow-sm bg-white">
@@ -176,7 +185,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
-          onReactToMessage={reactToMessage}
+          onReactToMessage={handleReactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}
