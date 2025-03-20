@@ -49,13 +49,14 @@ serve(async (req) => {
     
     // Generate a request ID for tracing
     const requestId = crypto.randomUUID();
-    console.log(`Request ID: ${requestId} - Starting API call to OpenRouter with DeepSeek-R1-Zero model`);
+    console.log(`Request ID: ${requestId} - Starting API call to OpenRouter`);
     
     try {
       // Controller for timeout handling
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced timeout to 10 seconds
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
+      console.log(`Request ID: ${requestId} - Sending request to OpenRouter API`);
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -107,6 +108,7 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
 
       // Extract the result and clean it up
       const result = data.choices[0].message.content.trim() || "[Translation not available]";
+      console.log(`Request ID: ${requestId} - Translation result: "${result}"`);
       
       // Create Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -141,6 +143,7 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
         console.error(`Request ID: ${requestId} - Error saving search history:`, insertError);
       }
 
+      console.log(`Request ID: ${requestId} - Successfully completed request`);
       return new Response(
         JSON.stringify({ 
           result,
@@ -153,7 +156,7 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
         }
       );
     } catch (fetchError) {
-      console.error('Error fetching from OpenRouter API:', fetchError);
+      console.error(`Request ID: ${requestId} - Error fetching from OpenRouter API:`, fetchError);
       
       // Determine if this is a network connectivity issue
       const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
