@@ -16,6 +16,10 @@ const NOTIFICATION_TRANSLATIONS = {
     en: "View"
   },
   mentionNotice: {
+    fr: "Nouvelle mention",
+    en: "New Mention"
+  },
+  mentionText: {
     fr: "Vous avez été mentionné dans un message",
     en: "You were mentioned in a message"
   }
@@ -55,21 +59,29 @@ export const useGlobalNotification = () => {
           
         console.log('[GlobalNotification] Channel details:', channelData);
         
-        // Check if the message contains a mention (for specialized notification)
-        const hasMention = data.message.mentions && 
+        // Check if the message contains a mention or if isMention flag is true
+        const hasMention = data.isMention || 
+          (data.message.mentions && 
           Array.isArray(data.message.mentions) && 
-          data.message.mentions.length > 0;
-          
-        // Determine title based on whether it's a mention or regular message
-        const title = hasMention 
-          ? NOTIFICATION_TRANSLATIONS.mentionNotice.fr 
-          : `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
+          data.message.mentions.length > 0);
         
-        // Show toast notification with message preview
+        let title, description;
+        
+        if (hasMention) {
+          // Use mention specific translations for both title and description
+          title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
+          description = NOTIFICATION_TRANSLATIONS.mentionText.fr;
+        } else {
+          // Use regular message translations
+          title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
+          description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
+        }
+        
+        // Show toast notification
         console.log('[GlobalNotification] Displaying toast notification');
         toast({
           title: title,
-          description: `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`,
+          description: description,
           action: (
             <button 
               className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90"
