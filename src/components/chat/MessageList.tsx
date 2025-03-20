@@ -106,7 +106,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     return (
       <div className="flex flex-wrap gap-1 mt-1">
         {Object.entries(message.reactions).map(([emoji, userIds]) => {
-          if (userIds.length === 0) return null;
+          if (!userIds || userIds.length === 0) return null;
           
           const isActive = currentUserId ? userIds.includes(currentUserId) : false;
           
@@ -126,7 +126,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
-      ref={(el) => observeMessage(el)}
+      ref={(el) => el && observeMessage(el)}
       key={message.id}
       data-message-id={message.id}
       className={`flex gap-3 ${

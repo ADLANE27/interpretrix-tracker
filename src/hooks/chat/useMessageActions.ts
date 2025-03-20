@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Attachment } from '@/types/messaging';
@@ -74,7 +73,7 @@ const checkConnection = (): boolean => {
   return navigator.onLine;
 };
 
-export const useMessageActions = (
+const useMessageActions = (
   channelId: string,
   currentUserId: string | null,
   fetchMessages: () => Promise<void>
@@ -351,7 +350,8 @@ export const useMessageActions = (
         throw new Error("Message introuvable");
       }
 
-      const currentReactions = messages.reactions as Record<string, string[]> || {};
+      // Initialize reactions as an empty object if it's null or undefined
+      const currentReactions = (messages.reactions as Record<string, string[]>) || {};
       console.log('[Chat] Current reactions:', currentReactions);
       
       const currentUsers = currentReactions[emoji] || [];
@@ -410,3 +410,5 @@ export const useMessageActions = (
     markMentionsAsRead,
   };
 };
+
+export { useMessageActions };

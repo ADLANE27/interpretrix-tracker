@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 
-const commonEmojis = ['👍', '❤️', '😊', '🎉', '👏', '🙌', '🔥', '✅', '👋', '🤔', '👀', '💯', '🙏', '🤝'];
+// Updated list of most common emojis for chat reactions
+const commonEmojis = ['👍', '❤️', '😂', '🔥', '👏', '😍', '🙏', '👌', '💯', '😊', '🎉', '✅', '👀', '🤔'];
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void;

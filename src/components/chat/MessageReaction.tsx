@@ -20,13 +20,13 @@ export const MessageReaction = ({ emoji, count, isActive, onClick }: MessageReac
   return (
     <Badge
       variant="outline"
-      className={`px-2 py-1 rounded-full cursor-pointer hover:bg-gray-100 transition-colors ${
-        isActive ? 'bg-gray-100 border-gray-300' : 'bg-white'
+      className={`px-2 py-1 rounded-full cursor-pointer hover:bg-gray-100 transition-colors flex items-center ${
+        isActive ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
       }`}
       onClick={handleClick}
     >
-      <span className="mr-1">{emoji}</span>
-      <span className="text-xs font-medium">{count}</span>
+      <span className="mr-1 text-base">{emoji}</span>
+      <span className={`text-xs font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>{count}</span>
     </Badge>
   );
 };
