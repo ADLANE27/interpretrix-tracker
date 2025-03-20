@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
+import { playNotificationSound } from '@/utils/notificationSound';
 
 // Translation object for notification messages
 const NOTIFICATION_TRANSLATIONS = {
@@ -35,6 +36,8 @@ export const useGlobalNotification = () => {
     // Listen for new message events
     const handleNewMessage = async (data: any) => {
       console.log('[GlobalNotification] New message received:', data);
+      console.log('[GlobalNotification] Message mentions:', data.message.mentions);
+      console.log('[GlobalNotification] Is mention flag:', data.isMention);
       
       try {
         // Get sender details to display in toast
@@ -59,27 +62,32 @@ export const useGlobalNotification = () => {
           
         console.log('[GlobalNotification] Channel details:', channelData);
         
-        // Check if the message contains a mention or if isMention flag is true
-        const hasMention = data.isMention || 
+        // Explicit check for mentions in different formats
+        const hasMention = Boolean(data.isMention) || 
           (data.message.mentions && 
           Array.isArray(data.message.mentions) && 
           data.message.mentions.length > 0);
         
+        console.log('[GlobalNotification] Has mention detected:', hasMention);
+        
         let title, description;
         
-        // Always use French translations regardless of any condition
+        // ALWAYS use French translations for notifications
         if (hasMention) {
-          // Use French mention specific translations for both title and description
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
           description = NOTIFICATION_TRANSLATIONS.mentionText.fr;
+          console.log('[GlobalNotification] Using mention notification in French');
         } else {
-          // Use regular French message translations
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
           description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
+          console.log('[GlobalNotification] Using regular message notification in French');
         }
         
+        // Play sound notification
+        await playNotificationSound();
+        
         // Show toast notification with French text
-        console.log('[GlobalNotification] Displaying toast notification in French');
+        console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
         toast({
           title: title,
           description: description,

@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -144,11 +145,17 @@ export const useSubscriptions = (
                   extendedPayload.new.sender_id !== currentUserId) {
                 console.log(`[Chat ${userRole.current}] Emitting new message event`, extendedPayload.new);
                 
-                const userMentioned = extendedPayload.new.mentions && 
+                // Improved mention detection logic
+                const userMentioned = Boolean(
+                  extendedPayload.new.mentions && 
                   Array.isArray(extendedPayload.new.mentions) && 
-                  extendedPayload.new.mentions.includes(currentUserId);
+                  extendedPayload.new.mentions.includes(currentUserId)
+                );
                 
-                console.log(`[Chat ${userRole.current}] User mentioned in message:`, userMentioned);
+                console.log(`[Chat ${userRole.current}] User mentioned in message:`, userMentioned, {
+                  mentions: extendedPayload.new.mentions,
+                  currentUserId: currentUserId
+                });
                 
                 eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
                   message: extendedPayload.new,
