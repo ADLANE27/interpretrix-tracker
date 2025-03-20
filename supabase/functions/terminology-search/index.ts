@@ -49,6 +49,7 @@ serve(async (req) => {
     console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
+      // Updated API endpoint
       const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -74,17 +75,20 @@ serve(async (req) => {
 
       console.log('DeepSeek API response status:', response.status);
       
+      // Log detailed error information
       if (!response.ok) {
         const errorText = await response.text();
         console.error('DeepSeek API error response:', errorText);
         
-        // Try to parse the error as JSON if possible
-        let errorDetail = errorText;
+        let errorDetail;
         try {
           const errorJson = JSON.parse(errorText);
           errorDetail = JSON.stringify(errorJson);
+          // Log detailed error information for debugging
+          console.error('DeepSeek API error details:', JSON.stringify(errorJson, null, 2));
         } catch (e) {
-          // If it's not valid JSON, use text as is
+          errorDetail = errorText;
+          console.error('DeepSeek API error (not JSON):', errorText);
         }
         
         return new Response(
@@ -102,6 +106,7 @@ serve(async (req) => {
       console.log('DeepSeek API response data:', JSON.stringify(data));
 
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('Unexpected DeepSeek API response format:', JSON.stringify(data));
         return new Response(
           JSON.stringify({ 
             error: 'Unexpected response format from DeepSeek API',
