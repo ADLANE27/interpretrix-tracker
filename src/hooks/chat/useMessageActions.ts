@@ -312,7 +312,14 @@ export const useMessageActions = (
   };
 
   const reactToMessage = async (messageId: string, emoji: string) => {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+      toast({
+        title: "Erreur",
+        description: "Vous devez être connecté pour réagir à un message",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Check connection before attempting to react
     if (!checkConnection()) {
@@ -325,6 +332,8 @@ export const useMessageActions = (
     }
 
     try {
+      console.log('[Chat] Adding/removing reaction:', { messageId, emoji, currentUserId });
+      
       // Use maybeSingle instead of single for better error handling
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
@@ -343,13 +352,19 @@ export const useMessageActions = (
       }
 
       const currentReactions = messages.reactions as Record<string, string[]> || {};
+      console.log('[Chat] Current reactions:', currentReactions);
+      
       const currentUsers = currentReactions[emoji] || [];
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
+        // Remove user's reaction if they already reacted with this emoji
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
+        console.log('[Chat] Removing user reaction');
       } else {
+        // Add user's reaction
         updatedUsers = [...currentUsers, currentUserId];
+        console.log('[Chat] Adding user reaction');
       }
 
       const updatedReactions = {
@@ -357,9 +372,12 @@ export const useMessageActions = (
         [emoji]: updatedUsers
       };
 
+      // If no users are left for this emoji, remove it from reactions
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
       }
+
+      console.log('[Chat] Updated reactions:', updatedReactions);
 
       const { error } = await supabase
         .from('chat_messages')
@@ -370,6 +388,11 @@ export const useMessageActions = (
         console.error('[Chat] Error updating reaction:', error);
         throw error;
       }
+      
+      console.log('[Chat] Reaction updated successfully');
+      
+      // Refresh messages to reflect the changes
+      await fetchMessages();
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);
       toast({

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { SmilePlus, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export const EmojiPicker = ({ onEmojiSelect, size = 'md' }: EmojiPickerProps) =>
   };
 
   const handleEmojiSelect = (emoji: any) => {
+    // Make sure we're getting the native emoji character
     onEmojiSelect(emoji.native);
     setOpen(false);
     setShowFullPicker(false);
