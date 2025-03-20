@@ -95,19 +95,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const fetchMentionSuggestions = async (searchTerm: string, channelId: string) => {
     try {
       setIsLoadingSuggestions(true);
-      console.log("Fetching suggestions for", searchTerm, "in channel", channelId);
+      console.log("[Mentions Debug] Fetching suggestions for", searchTerm, "in channel", channelId);
       
       const { data: channelMembers, error: membersError } = await supabase
         .rpc('get_channel_members', { channel_id: channelId });
         
       if (membersError) {
-        console.error('Error fetching channel members via RPC:', membersError);
+        console.error('[Mentions Debug] Error fetching channel members via RPC:', membersError);
         setIsLoadingSuggestions(false);
         return;
       }
       
       if (!channelMembers || channelMembers.length === 0) {
-        console.log("No members found in channel");
+        console.log("[Mentions Debug] No members found in channel");
         setSuggestions([]);
         setIsLoadingSuggestions(false);
         return;
@@ -161,10 +161,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           })
         : allSuggestions;
       
-      console.log("Found suggestions:", filteredSuggestions.length);
+      console.log("[Mentions Debug] Found suggestions:", filteredSuggestions.length);
       setSuggestions(filteredSuggestions);
     } catch (error) {
-      console.error('Error fetching mention suggestions:', error);
+      console.error('[Mentions Debug] Error fetching mention suggestions:', error);
       setSuggestions([]);
     } finally {
       setIsLoadingSuggestions(false);
@@ -181,14 +181,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     let insertText = '';
     
     if ('type' in suggestion && suggestion.type === 'language') {
+      // Handle language suggestion
       insertText = `@${suggestion.name} `;
+      console.log(`[Mention Debug] Added language mention: ${insertText}`);
     } else {
       // This is a MemberSuggestion type
       const memberSuggestion = suggestion as MemberSuggestion;
+      
+      // For admin mentions, use the @admin: prefix format
       if (memberSuggestion.role === 'admin') {
         insertText = `@admin:${memberSuggestion.name} `;
         console.log(`[Mention Debug] Added admin mention with prefix: ${insertText}`);
       } else {
+        // For interpreter mentions, use the standard @ format
         insertText = `@${memberSuggestion.name} `;
         console.log(`[Mention Debug] Added interpreter mention: ${insertText}`);
       }

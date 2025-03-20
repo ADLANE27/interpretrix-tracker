@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +80,7 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
+      // Improved error handling with logging
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
         .select(`
@@ -185,6 +187,7 @@ export const useUnreadMentions = () => {
 
       console.log('[Mentions Debug] Final processed mentions:', validMentions);
       
+      // Notification logic improved
       if (validMentions.length > 0) {
         const newestMention = validMentions[0];
         
