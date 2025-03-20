@@ -54,6 +54,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
+  // This effect now updates realtimeUnreadCount whenever unreadMentions changes
   useEffect(() => {
     setRealtimeUnreadCount(unreadMentions.length);
     
@@ -67,6 +68,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     };
   }, [unreadMentions.length]);
 
+  // Setup a regular interval to refresh mentions regardless of active tab
   useEffect(() => {
     console.log('[Sidebar] Setting up mentions refresh');
     refreshMentions();
@@ -206,6 +208,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             </AvatarFallback>
           </Avatar>
           
+          {/* Bell icon with notification badge moved outside of tab system */}
           <MentionsPopover
             mentions={unreadMentions}
             totalCount={realtimeUnreadCount}
@@ -260,7 +263,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 <Icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
                 
-                {tab.badge !== undefined && (
+                {tab.badge !== undefined && tab.id !== "messages" && (
                   <Badge 
                     variant="destructive" 
                     className="ml-auto animate-pulse"
@@ -269,7 +272,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {tab.id === "messages" && activeTab !== "messages" && (
+                {tab.id === "messages" && (
                   <div className="flex gap-1 ml-auto">
                     {tab.mentionsBadge !== undefined && (
                       <Badge 
@@ -300,4 +303,3 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     </div>
   );
 };
-

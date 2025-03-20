@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { MessageSquare, X, Check, Bell } from "lucide-react";
 import { UnreadMention } from "@/hooks/chat/useUnreadMentions";
@@ -73,16 +74,16 @@ export const MentionsPopover = ({
       <DialogContent 
         className="sm:max-w-[500px] p-0 gap-0 overflow-hidden"
       >
-        <div className="flex flex-col h-[500px]">
-          <div className="p-4 border-b relative">
-            <div className="flex items-center">
-              <h3 className="font-medium">Mentions Récentes</h3>
-              <Badge variant="secondary" className="font-normal ml-3">
-                {localMentions.length} {localMentions.length === 1 ? 'mention' : 'mentions'}
-              </Badge>
-            </div>
-          </div>
+        <DialogHeader className="p-4 border-b">
+          <DialogTitle className="flex items-center">
+            <span className="font-medium">Mentions Récentes</span>
+            <Badge variant="secondary" className="font-normal ml-3">
+              {localMentions.length} {localMentions.length === 1 ? 'mention' : 'mentions'}
+            </Badge>
+          </DialogTitle>
+        </DialogHeader>
 
+        <div className="flex flex-col h-[450px]">
           {localMentions.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 p-8 text-center text-muted-foreground">
               <Bell className="w-12 h-12 mb-4 opacity-20" />
