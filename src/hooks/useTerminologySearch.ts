@@ -44,7 +44,15 @@ export const useTerminologySearch = (userId: string | undefined) => {
         return [];
       }
 
-      return data as SearchHistoryItem[];
+      return data.map(item => ({
+        id: item.id,
+        term: item.term,
+        result: item.result,
+        sourceLanguage: item.source_language,
+        targetLanguage: item.target_language,
+        createdAt: item.created_at,
+        userId: item.user_id
+      })) as SearchHistoryItem[];
     },
     enabled: !!userId
   });
@@ -66,7 +74,16 @@ export const useTerminologySearch = (userId: string | undefined) => {
         return [];
       }
 
-      return data as SearchHistoryItem[];
+      return data.map(item => ({
+        id: item.id,
+        term: item.term,
+        result: item.result,
+        sourceLanguage: item.source_language,
+        targetLanguage: item.target_language,
+        createdAt: item.created_at,
+        userId: item.user_id,
+        isFavorite: true
+      })) as SearchHistoryItem[];
     },
     enabled: !!userId
   });

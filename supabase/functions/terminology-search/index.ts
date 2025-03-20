@@ -65,7 +65,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         result: data.choices[0]?.message?.content || "Pas de résultat trouvé",
-        searchTerm: term,
+        term,
         sourceLanguage,
         targetLanguage
       }),
