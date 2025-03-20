@@ -23,7 +23,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   return (
     <div className="flex h-full">
       {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6`}>
+        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full`}>
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />
