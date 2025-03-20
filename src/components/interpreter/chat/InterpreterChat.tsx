@@ -82,6 +82,7 @@ export const InterpreterChat = ({
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
+  const { toast } = useToast();
 
   // Function to filter messages based on filters
   const getFilteredMessages = useCallback(() => {
@@ -113,8 +114,6 @@ export const InterpreterChat = ({
 
     return filtered;
   }, [messages, filters, currentUserId]);
-
-  const { toast } = useToast();
 
   useEffect(() => {
     requestPermission();
@@ -239,28 +238,28 @@ export const InterpreterChat = ({
   }, [messages]);
 
   return (
-    <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
+    <div className={`flex flex-col h-full ${isFullScreen ? 'fixed inset-0 z-50 bg-[#121212]' : ''}`}>
+      <div className="bg-[#1E1E1E] backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-[#333333]">
         <div className="h-[56px] md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isMobile && onBackToChannels && !isFullScreen && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
+              <Button variant="ghost" size="icon" className="-ml-1 text-gray-300 hover:text-white" onClick={onBackToChannels}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
             {isMobile && onMenuClick && !isFullScreen && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
+              <Button variant="ghost" size="icon" className="-ml-1 text-gray-300 hover:text-white" onClick={onMenuClick}>
                 <Menu className="h-5 w-5" />
               </Button>
             )}
             {isFullScreen && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
+              <Button variant="ghost" size="icon" className="-ml-1 text-gray-300 hover:text-white" onClick={onBackToChannels}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
           </div>
           
-          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
+          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left text-white">{channel?.name}</h2>
           
           <div className="flex items-center gap-2">
             <Button 
@@ -268,6 +267,7 @@ export const InterpreterChat = ({
               size="icon" 
               onClick={onToggleFullScreen}
               title={isFullScreen ? "Quitter le plein écran (Esc)" : "Plein écran"}
+              className="text-gray-300 hover:text-white"
             >
               {isFullScreen ? (
                 <Minimize className="h-5 w-5" />
@@ -284,22 +284,21 @@ export const InterpreterChat = ({
             />
           </div>
         </div>
-        
       </div>
 
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" 
+        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative bg-[#121212]" 
         ref={messageContainerRef} 
         id="messages-container" 
         data-channel-id={channelId}
       >
         {isLoading ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
+          <div className="absolute inset-0 bg-[#00000080] backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold text-white">Chargement des messages...</p>
           </div>
         ) : !isSubscribed ? (
-          <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
+          <div className="absolute inset-0 bg-[#00000080] backdrop-blur-sm flex items-center justify-center">
+            <p className="text-lg font-semibold text-white">
               Connexion en cours...
             </p>
           </div>
