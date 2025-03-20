@@ -109,25 +109,8 @@ serve(async (req) => {
       console.error(`Request ID: ${requestId} - Error saving user message:`, insertUserMessageError);
     }
 
-    // Construct messages for the API, including previous context
-    let apiMessages = [
-      {
-        role: 'system',
-        content: `You are a professional terminology assistant specialized in translations between ${sourceLanguage} and ${targetLanguage}. 
-Your primary role is to help with terminology, translation, and language questions.
-
-GUIDELINES:
-1. Provide clear, precise translations when requested
-2. Offer explanations of terms, idioms, or expressions when helpful
-3. You may provide additional context, examples, or clarifications about usage
-4. Be helpful with follow-up questions about terminology or language
-5. If a user asks about a term in ${sourceLanguage}, translate it to ${targetLanguage} and vice versa
-6. If you're unsure about a translation, explain your uncertainty and offer your best suggestion
-7. Focus on being accurate and educational rather than just providing direct translations
-8. Respond in the same language as the user's query when possible
-9. Provide your answer in a simple text format with no special formatting, markdown, or LaTeX`
-      }
-    ];
+    // Construct messages for the API, only including previous context without system message
+    let apiMessages = [];
 
     // Add previous messages to maintain conversation context
     if (previousMessages && previousMessages.length > 0) {
@@ -164,8 +147,8 @@ GUIDELINES:
         body: JSON.stringify({
           model: 'deepseek/deepseek-r1-zero:free',
           messages: apiMessages,
-          temperature: 0.3,
-          max_tokens: 500,
+          temperature: 0.7, // Increased temperature for more authentic responses
+          max_tokens: 800, // Increased token limit for fuller responses
         }),
         signal: controller.signal
       });
