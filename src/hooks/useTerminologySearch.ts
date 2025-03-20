@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -62,16 +61,26 @@ export const useTerminologySearch = (userId?: string) => {
       console.log("Starting terminology search:", searchParams);
       
       try {
-        // Make the edge function call with a timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        
-        const response = await supabase.functions.invoke('terminology-search', {
-          body: searchParams,
-          signal: controller.signal,
+        // Set up a promise that will reject after the timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error("La recherche a pris trop de temps. Veuillez réessayer."));
+          }, 15000); // 15 second timeout
+          
+          // Store the timeout ID on the promise so we can clear it later
+          (timeoutPromise as any).timeoutId = timeoutId;
         });
         
-        clearTimeout(timeoutId);
+        // Create the invoke promise
+        const invokePromise = supabase.functions.invoke('terminology-search', {
+          body: searchParams,
+        });
+        
+        // Race the invoke promise against the timeout promise
+        const response = await Promise.race([invokePromise, timeoutPromise]);
+        
+        // If we get here, the invoke promise won, so clear the timeout
+        clearTimeout((timeoutPromise as any).timeoutId);
         
         console.log("Terminology search response:", response);
 
@@ -93,10 +102,14 @@ export const useTerminologySearch = (userId?: string) => {
         return response.data as TermSearchResponse;
       } catch (error) {
         console.error("Terminology search exception:", error);
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          throw new Error("La recherche a pris trop de temps. Veuillez réessayer.");
+        if (error instanceof Error) {
+          // Handle timeout or other errors
+          if (error.message.includes("pris trop de temps")) {
+            throw new Error("La recherche a pris trop de temps. Veuillez réessayer.");
+          }
+          throw error;
         }
-        throw error;
+        throw new Error("Une erreur inattendue s'est produite");
       } finally {
         setIsSearching(false);
       }
