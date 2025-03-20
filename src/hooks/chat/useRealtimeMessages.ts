@@ -24,6 +24,7 @@ export const useRealtimeMessages = (
   const cooldownPeriod = useRef(false);
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const processingLock = useRef(false);
   
   // Define forceFetch before using it in processNextInQueue
   const forceFetch = useCallback(() => {
@@ -35,14 +36,26 @@ export const useRealtimeMessages = (
     }
     isProcessingEvent.current = false;
     processingMessage.current = false;
+    processingLock.current = false;
     processQueue.current = [];
     
     return fetchMessages();
   }, [fetchMessages, userRole]);
+
+  // Make sure we don't have any lock contention
+  const clearProcessingState = useCallback(() => {
+    if (processingTimeout.current) {
+      clearTimeout(processingTimeout.current);
+      processingTimeout.current = null;
+    }
+    isProcessingEvent.current = false;
+    processingMessage.current = false;
+    processingLock.current = false;
+  }, []);
   
   // Process messages in queue one by one to avoid race conditions
   const processNextInQueue = useCallback(async () => {
-    if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0) {
+    if (processingMessage.current || isProcessingEvent.current || processQueue.current.length === 0 || processingLock.current) {
       if (processingTimeout.current) {
         clearTimeout(processingTimeout.current);
         processingTimeout.current = null;
@@ -50,6 +63,7 @@ export const useRealtimeMessages = (
       return;
     }
     
+    processingLock.current = true;
     isProcessingEvent.current = true;
     processingMessage.current = true;
     
@@ -60,6 +74,7 @@ export const useRealtimeMessages = (
       if (!payload || !payload.new || !channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
+        processingLock.current = false;
         
         // Schedule next item processing
         if (processQueue.current.length > 0) {
@@ -72,6 +87,7 @@ export const useRealtimeMessages = (
       if (messageData.channel_id !== channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
+        processingLock.current = false;
         
         // Schedule next item processing
         if (processQueue.current.length > 0) {
@@ -85,6 +101,7 @@ export const useRealtimeMessages = (
           console.log(`[useRealtimeMessages ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
           isProcessingEvent.current = false;
+          processingLock.current = false;
           
           // Schedule next item processing
           if (processQueue.current.length > 0) {
@@ -137,6 +154,7 @@ export const useRealtimeMessages = (
     } finally {
       processingMessage.current = false;
       isProcessingEvent.current = false;
+      processingLock.current = false;
       
       // Schedule next item processing with a small delay
       if (processQueue.current.length > 0) {
@@ -153,7 +171,7 @@ export const useRealtimeMessages = (
     processQueue.current.push(payload);
     
     // Start processing if not already processing
-    if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current) {
+    if (!isProcessingEvent.current && !processingMessage.current && !processingTimeout.current && !processingLock.current) {
       processingTimeout.current = setTimeout(processNextInQueue, 50);
     }
   }, [userRole, processNextInQueue]);
@@ -161,11 +179,9 @@ export const useRealtimeMessages = (
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (processingTimeout.current) {
-        clearTimeout(processingTimeout.current);
-      }
+      clearProcessingState();
     };
-  }, []);
+  }, [clearProcessingState]);
 
   return {
     lastFetchTime,

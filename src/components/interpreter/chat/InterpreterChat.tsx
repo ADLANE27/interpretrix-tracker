@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -13,6 +14,7 @@ import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { Menu, ArrowLeft, Expand, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
+import { StatusManager } from "../StatusManager";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -303,6 +305,13 @@ export const InterpreterChat = ({
           </div>
         </div>
         
+        {/* Restored StatusManager */}
+        <div className="pb-3 md:py-3 w-full overflow-visible">
+          <StatusManager 
+            currentStatus={profile?.status} 
+            onStatusChange={onStatusChange} 
+          />
+        </div>
       </div>
 
       <div 
