@@ -49,12 +49,21 @@ serve(async (req) => {
     console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
-      // Corrected API endpoint and model name
+      // Generate a request ID for tracing
+      const requestId = crypto.randomUUID();
+      console.log(`Request ID: ${requestId} - Starting API call to DeepSeek`);
+      
+      // Use more complete URL and include timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch('https://api.deepseek.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'Supabase Edge Function',
+          'X-Request-ID': requestId
         },
         body: JSON.stringify({
           model: 'deepseek-chat-1.0',
@@ -71,13 +80,17 @@ serve(async (req) => {
           temperature: 0.2,
           max_tokens: 300,
         }),
+        signal: controller.signal
       });
+      
+      // Clear the timeout
+      clearTimeout(timeoutId);
 
-      console.log('DeepSeek API response status:', response.status);
+      console.log(`Request ID: ${requestId} - DeepSeek API response status: ${response.status}`);
       
       // Handle rate limit exceeded
       if (response.status === 429) {
-        console.error('DeepSeek API rate limit exceeded');
+        console.error(`Request ID: ${requestId} - DeepSeek API rate limit exceeded`);
         return new Response(
           JSON.stringify({ 
             error: 'Service temporarily unavailable. Please try again later.' 
@@ -96,17 +109,17 @@ serve(async (req) => {
       // Log detailed error information
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('DeepSeek API error response:', errorText);
+        console.error(`Request ID: ${requestId} - DeepSeek API error response:`, errorText);
         
         let errorDetail;
         try {
           const errorJson = JSON.parse(errorText);
           errorDetail = JSON.stringify(errorJson);
           // Log detailed error information for debugging
-          console.error('DeepSeek API error details:', JSON.stringify(errorJson, null, 2));
+          console.error(`Request ID: ${requestId} - DeepSeek API error details:`, JSON.stringify(errorJson, null, 2));
         } catch (e) {
           errorDetail = errorText;
-          console.error('DeepSeek API error (not JSON):', errorText);
+          console.error(`Request ID: ${requestId} - DeepSeek API error (not JSON):`, errorText);
         }
         
         return new Response(
@@ -121,10 +134,10 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log('DeepSeek API response data:', JSON.stringify(data));
+      console.log(`Request ID: ${requestId} - DeepSeek API response data:`, JSON.stringify(data));
 
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error('Unexpected DeepSeek API response format:', JSON.stringify(data));
+        console.error(`Request ID: ${requestId} - Unexpected DeepSeek API response format:`, JSON.stringify(data));
         return new Response(
           JSON.stringify({ 
             error: 'Unexpected response format from DeepSeek API',
@@ -169,7 +182,7 @@ serve(async (req) => {
         });
 
       if (insertError) {
-        console.error('Error saving search history:', insertError);
+        console.error(`Request ID: ${requestId} - Error saving search history:`, insertError);
       }
 
       return new Response(
@@ -185,9 +198,36 @@ serve(async (req) => {
       );
     } catch (fetchError) {
       console.error('Error fetching from DeepSeek API:', fetchError);
+      
+      // Determine if this is a network connectivity issue
+      const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
+      
+      // Special handling for different error types
+      if (errorMessage.includes('AbortError')) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Request to DeepSeek API timed out. Please try again later.` 
+          }),
+          { 
+            status: 504, // Gateway Timeout
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } else if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+        return new Response(
+          JSON.stringify({ 
+            error: `Network error connecting to DeepSeek API. Please try again later.` 
+          }),
+          { 
+            status: 503, // Service Unavailable
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
-          error: `Error connecting to DeepSeek API: ${fetchError.message}` 
+          error: `Error connecting to DeepSeek API: ${errorMessage}` 
         }),
         { 
           status: 502, 
