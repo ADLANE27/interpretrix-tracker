@@ -58,13 +58,18 @@ export const useRealtimeProcessor = (
           // Traiter le message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
-          // Mettre à jour l'interface utilisateur après le traitement
+          // Mise à jour progressive de l'interface utilisateur
+          // Premier update immédiat
           updateMessagesArray();
           
-          // Mettre à jour une seconde fois après un court délai pour assurer la stabilité
-          setTimeout(() => {
-            updateMessagesArray();
-          }, 300);
+          // Série d'updates différés pour assurer la stabilité
+          const delays = [100, 300, 600, 1000];
+          
+          delays.forEach(delay => {
+            setTimeout(() => {
+              updateMessagesArray();
+            }, delay);
+          });
           
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
         } catch (error) {
@@ -79,9 +84,10 @@ export const useRealtimeProcessor = (
           
           // Mises à jour multiples pour stabilité
           updateMessagesArray();
-          setTimeout(() => {
-            updateMessagesArray();
-          }, 100);
+          
+          // Updates additionnels pour garantir la cohérence de l'interface
+          setTimeout(() => { updateMessagesArray(); }, 200);
+          setTimeout(() => { updateMessagesArray(); }, 500);
           
           console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message deleted:`, deletedId);
         }
@@ -92,17 +98,23 @@ export const useRealtimeProcessor = (
       console.error(`[useRealtimeProcessor ${userRole.current}] Error handling realtime message:`, error);
       return false;
     } finally {
-      processingMessage.current = false;
-      isProcessingEvent.current = false;
+      // Libération progressive des verrous pour éviter les conflits
+      setTimeout(() => {
+        processingMessage.current = false;
+      }, 200);
       
-      // S'il y a plus d'éléments dans la file d'attente, planifier le traitement du suivant
+      setTimeout(() => {
+        isProcessingEvent.current = false;
+      }, 300);
+      
+      // S'il y a plus d'éléments dans la file d'attente, planifier le traitement du suivant avec un délai
       if (!isProcessingEvent.current && !processingMessage.current) {
         const nextItem = getNextFromQueue();
         if (nextItem) {
           // Délai augmenté pour plus de stabilité
           processingTimeout.current = setTimeout(() => {
             processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
-          }, 100);
+          }, 500);
         }
       }
     }

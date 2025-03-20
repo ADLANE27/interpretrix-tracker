@@ -133,9 +133,10 @@ export const useFetchMessages = (
       updateMessagesArray();
       
       // Planifier une mise à jour supplémentaire après un court délai pour s'assurer que tous les messages sont affichés
-      setTimeout(() => {
-        updateMessagesArray();
-      }, 500);
+      // Utiliser des délais progressifs pour une stabilité maximale
+      setTimeout(() => { updateMessagesArray(); }, 200);
+      setTimeout(() => { updateMessagesArray(); }, 500);
+      setTimeout(() => { updateMessagesArray(); }, 1000);
       
       console.log(`[useFetchMessages] Processed ${messagesMap.current.size} messages`);
       
@@ -150,16 +151,25 @@ export const useFetchMessages = (
       // Court délai avant de masquer l'indicateur de chargement
       setTimeout(() => {
         debouncedSetLoading(false, setIsLoading);
-      }, 300); // Délai augmenté pour une meilleure expérience utilisateur
+      }, 500); // Délai augmenté pour une meilleure expérience utilisateur
       
-      processingMessage.current = false;
-      controls.activeFetch.current = false;
-      controls.refreshInProgress.current = false;
+      // Libérer les flags de manière différée pour éviter les conflits
+      setTimeout(() => {
+        processingMessage.current = false;
+      }, 200);
       
-      // Libérer le verrou de récupération avec un léger délai
+      setTimeout(() => {
+        controls.activeFetch.current = false;
+      }, 300);
+      
+      setTimeout(() => {
+        controls.refreshInProgress.current = false;
+      }, 400);
+      
+      // Libérer le verrou de récupération avec un délai important
       setTimeout(() => {
         controls.fetchLock.current = false;
-      }, 200); // Délai augmenté pour éviter les récupérations répétitives
+      }, 800); // Délai augmenté pour éviter les récupérations répétitives
     }
   }, [
     channelId,

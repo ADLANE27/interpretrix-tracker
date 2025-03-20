@@ -37,7 +37,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     isInitialLoad,
     hadMessagesRef,
     showSkeletons,
-    scrollToBottomFlag
+    scrollToBottomFlag,
+    stableRenderRef
   } = useMessageListState(messages, channelId);
 
   // Handle scroll behavior

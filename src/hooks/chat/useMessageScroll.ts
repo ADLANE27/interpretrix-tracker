@@ -21,7 +21,16 @@ export const useMessageScroll = (
     const shouldScrollToBottom = scrollToBottomFlag.current || isNewMessageBatch || isInitialLoad;
     
     if (shouldScrollToBottom && messagesEndRef.current) {
-      // Utiliser requestAnimationFrame pour assurer que le défilement se produit après le rendu
+      // Utiliser un système de double défilement pour plus de fiabilité
+      // Premier défilement immédiat pour position approximative
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ 
+          behavior: 'auto',
+          block: 'end'
+        });
+      }
+      
+      // Second défilement avec requestAnimationFrame pour assurer la précision
       requestAnimationFrame(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ 

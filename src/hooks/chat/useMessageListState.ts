@@ -7,7 +7,6 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
-  const renderCountRef = useRef<number>(0);
   
   // État simplifié sans dépendances circulaires
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -18,6 +17,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
   const hadMessagesRef = useRef<boolean>(false);
+  const stableRenderRef = useRef<boolean>(false);
 
   // Vérifier si nous avons reçu des messages
   useEffect(() => {
@@ -26,39 +26,47 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     }
   }, [messages.length]);
 
-  // Transition des squelettes vers les messages réels
+  // Transition des squelettes vers les messages réels avec délai fixe
   useEffect(() => {
     if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
       initialSkeletonsShown.current = true;
       lastChannelIdRef.current = channelId;
       scrollToBottomFlag.current = true;
+      stableRenderRef.current = false;
     }
     
     if (messages.length > 0) {
-      // Délai légèrement plus long pour assurer la stabilité
+      // Utiliser un délai fixe pour éviter les fluctuations
       const timer = setTimeout(() => {
         setShowSkeletons(false);
-      }, 200); // Délai augmenté pour une transition plus stable
+        // Marquer le rendu comme stable après le délai
+        stableRenderRef.current = true;
+      }, 300); // Délai un peu plus long pour assurer la stabilité
       
       return () => clearTimeout(timer);
     }
   }, [messages.length, channelId]);
 
-  // Réinitialisation lors du changement de canal
+  // Réinitialisation plus complète lors du changement de canal
   useEffect(() => {
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
+    stableRenderRef.current = false;
     setShowSkeletons(true);
     
     // Forcer le défilement après un délai lors du changement de canal
     if (messageContainerRef.current) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+          // Marquer comme stable après le défilement
+          stableRenderRef.current = true;
         }
-      }, 300); // Délai augmenté pour assurer que les messages sont chargés
+      }, 400); // Délai plus long pour assurer la stabilité
+      
+      return () => clearTimeout(timer);
     }
   }, [channelId]);
 
@@ -70,6 +78,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     showSkeletons,
     scrollToBottomFlag,
     hadMessagesRef,
+    stableRenderRef,
     setIsInitialLoad
   };
 };
