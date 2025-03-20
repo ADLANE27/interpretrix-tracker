@@ -1,3 +1,4 @@
+
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useMessageProcessing } from './useMessageProcessing';
@@ -23,7 +24,6 @@ export const useRealtimeMessages = (
   const cooldownPeriod = useRef(false);
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
-  const processedIds = useRef<Set<string>>(new Set());
   
   // Define forceFetch before using it in processNextInQueue
   const forceFetch = useCallback(() => {
@@ -69,23 +69,6 @@ export const useRealtimeMessages = (
       }
       
       const messageData = payload.new;
-      
-      // Check if this message has already been processed
-      if (processedIds.current.has(messageData.id)) {
-        console.log(`[useRealtimeMessages ${userRole.current}] Skipping already processed message:`, messageData.id);
-        processingMessage.current = false;
-        isProcessingEvent.current = false;
-        
-        // Schedule next item processing
-        if (processQueue.current.length > 0) {
-          processingTimeout.current = setTimeout(processNextInQueue, 100);
-        }
-        return;
-      }
-      
-      // Mark the message as processed to avoid duplicates
-      processedIds.current.add(messageData.id);
-      
       if (messageData.channel_id !== channelId) {
         processingMessage.current = false;
         isProcessingEvent.current = false;
@@ -162,23 +145,6 @@ export const useRealtimeMessages = (
     }
   }, [channelId, messagesMap, processingMessage, userRole, processMessage, updateMessagesArray, forceFetch]);
   
-  // Clear message processing cache periodically
-  useEffect(() => {
-    const clearProcessedIdsInterval = setInterval(() => {
-      // Keep the most recent 100 messages to prevent memory issues
-      if (processedIds.current.size > 100) {
-        const idsArray = Array.from(processedIds.current);
-        const newProcessedIds = new Set(idsArray.slice(idsArray.length - 100));
-        processedIds.current = newProcessedIds;
-        console.log(`[useRealtimeMessages ${userRole.current}] Pruned processed IDs cache to ${processedIds.current.size} items`);
-      }
-    }, 60000); // Clean up every minute
-    
-    return () => {
-      clearInterval(clearProcessedIdsInterval);
-    };
-  }, [userRole]);
-
   const handleRealtimeMessage = useCallback(async (payload: any) => {
     // Add message to processing queue instead of processing immediately
     console.log(`[useRealtimeMessages ${userRole.current}] Received realtime message:`, payload.eventType);
