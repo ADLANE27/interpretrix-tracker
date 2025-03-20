@@ -228,9 +228,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {messages.map((message, index) => (
+        {rootMessages.map((message, index) => (
           <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
+            {shouldShowDate(message, rootMessages[index - 1]) && (
               <div className="flex justify-center my-5">
                 <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
                   {formatMessageDate(message.timestamp)}
