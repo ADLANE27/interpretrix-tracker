@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Search, Bookmark, Clock, X, Download, Star, MessageSquare } from "lucide-react";
+import { Search, Bookmark, Clock, X, Download, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,6 @@ import { SavedTerm, TermSearch } from "@/types/terminology";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Badge } from "@/components/ui/badge";
-import { TerminologyChatTab } from "./TerminologyChatTab";
 
 interface TerminologyTabProps {
   userId?: string;
@@ -28,8 +27,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
   const [sourceLanguage, setSourceLanguage] = useState<string>("Français");
   const [targetLanguage, setTargetLanguage] = useState<string>("Anglais");
   const [searchResult, setSearchResult] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("chat");
-  const [searchActiveTab, setSearchActiveTab] = useState<string>("search");
+  const [activeTab, setActiveTab] = useState<string>("search");
   const [searchError, setSearchError] = useState<string | null>(null);
   
   const { toast } = useToast();
@@ -140,7 +138,7 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
     setTargetLanguage(item.target_language);
     setSearchResult(item.result);
     setSearchError(null);
-    setSearchActiveTab("search");
+    setActiveTab("search");
   };
 
   const renderTermItem = (item: TermSearch | SavedTerm, isSaved: boolean = false) => (
@@ -187,160 +185,141 @@ export const TerminologyTab = ({ userId }: TerminologyTabProps) => {
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-2xl font-bold mb-4">Terminologie</h2>
+      <h2 className="text-2xl font-bold mb-4">Recherche Terminologique</h2>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="chat">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Assistant
-          </TabsTrigger>
-          <TabsTrigger value="quick-search">
-            <Search className="h-4 w-4 mr-2" />
-            Recherche Rapide
-          </TabsTrigger>
+        <TabsList className="grid grid-cols-3 mb-4">
+          <TabsTrigger value="search">Recherche</TabsTrigger>
+          <TabsTrigger value="history">Historique</TabsTrigger>
+          <TabsTrigger value="saved">Favoris</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="chat" className="flex-1 flex flex-col">
-          <TerminologyChatTab userId={userId} />
+        <TabsContent value="search" className="flex-1 flex flex-col">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
+              <SelectTrigger>
+                <SelectValue placeholder="Langue source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Français">Français</SelectItem>
+                <SelectItem value="Anglais">Anglais</SelectItem>
+                <SelectItem value="Espagnol">Espagnol</SelectItem>
+                <SelectItem value="Allemand">Allemand</SelectItem>
+                <SelectItem value="Italien">Italien</SelectItem>
+                <SelectItem value="Portugais">Portugais</SelectItem>
+                <SelectItem value="Arabe">Arabe</SelectItem>
+                <SelectItem value="Russe">Russe</SelectItem>
+                <SelectItem value="Chinois">Chinois</SelectItem>
+                <SelectItem value="Japonais">Japonais</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+              <SelectTrigger>
+                <SelectValue placeholder="Langue cible" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Français">Français</SelectItem>
+                <SelectItem value="Anglais">Anglais</SelectItem>
+                <SelectItem value="Espagnol">Espagnol</SelectItem>
+                <SelectItem value="Allemand">Allemand</SelectItem>
+                <SelectItem value="Italien">Italien</SelectItem>
+                <SelectItem value="Portugais">Portugais</SelectItem>
+                <SelectItem value="Arabe">Arabe</SelectItem>
+                <SelectItem value="Russe">Russe</SelectItem>
+                <SelectItem value="Chinois">Chinois</SelectItem>
+                <SelectItem value="Japonais">Japonais</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <div className="flex-1 relative">
+              <Input
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Rechercher un terme..."
+                className="w-full"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <Button onClick={handleSearch} disabled={isSearching}>
+              {isSearching ? <LoadingSpinner size="sm" /> : <Search className="h-4 w-4 mr-2" />}
+              Rechercher
+            </Button>
+          </div>
+
+          {searchError && (
+            <Card className="mb-4 border-red-200">
+              <CardContent className="p-4">
+                <div className="text-red-500">
+                  <p className="font-medium">Erreur de recherche:</p>
+                  <p>{searchError}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {searchResult && !searchError && (
+            <Card className="mb-4">
+              <CardContent className="p-6">
+                <div className="flex justify-between mb-2">
+                  <h3 className="text-lg font-semibold">{term}</h3>
+                  <Button variant="outline" size="sm" onClick={handleSaveTerm}>
+                    <Star className="h-4 w-4 mr-2 text-yellow-500" />
+                    Favoris
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">
+                  {sourceLanguage} → {targetLanguage}
+                </div>
+                <div className="bg-muted p-4 rounded-md">
+                  {searchResult}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
-        <TabsContent value="quick-search" className="flex-1 flex flex-col">
-          <Tabs value={searchActiveTab} onValueChange={setSearchActiveTab} className="flex-1 flex flex-col">
-            <TabsList className="grid grid-cols-3 mb-4">
-              <TabsTrigger value="search">Recherche</TabsTrigger>
-              <TabsTrigger value="history">Historique</TabsTrigger>
-              <TabsTrigger value="saved">Favoris</TabsTrigger>
-            </TabsList>
+        <TabsContent value="history" className="space-y-4 overflow-auto flex-1">
+          {isHistoryLoading ? (
+            <div className="flex justify-center items-center h-20">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : searchHistory && searchHistory.length > 0 ? (
+            <div>
+              {searchHistory.map(item => renderTermItem(item))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Votre historique de recherche s'affichera ici
+            </div>
+          )}
+        </TabsContent>
 
-            <TabsContent value="search" className="flex-1 flex flex-col">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Langue source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Français">Français</SelectItem>
-                    <SelectItem value="Anglais">Anglais</SelectItem>
-                    <SelectItem value="Espagnol">Espagnol</SelectItem>
-                    <SelectItem value="Allemand">Allemand</SelectItem>
-                    <SelectItem value="Italien">Italien</SelectItem>
-                    <SelectItem value="Portugais">Portugais</SelectItem>
-                    <SelectItem value="Arabe">Arabe</SelectItem>
-                    <SelectItem value="Russe">Russe</SelectItem>
-                    <SelectItem value="Chinois">Chinois</SelectItem>
-                    <SelectItem value="Japonais">Japonais</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Langue cible" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Français">Français</SelectItem>
-                    <SelectItem value="Anglais">Anglais</SelectItem>
-                    <SelectItem value="Espagnol">Espagnol</SelectItem>
-                    <SelectItem value="Allemand">Allemand</SelectItem>
-                    <SelectItem value="Italien">Italien</SelectItem>
-                    <SelectItem value="Portugais">Portugais</SelectItem>
-                    <SelectItem value="Arabe">Arabe</SelectItem>
-                    <SelectItem value="Russe">Russe</SelectItem>
-                    <SelectItem value="Chinois">Chinois</SelectItem>
-                    <SelectItem value="Japonais">Japonais</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2 mb-4">
-                <div className="flex-1 relative">
-                  <Input
-                    value={term}
-                    onChange={(e) => setTerm(e.target.value)}
-                    placeholder="Rechercher un terme..."
-                    className="w-full"
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <Button onClick={handleSearch} disabled={isSearching}>
-                  {isSearching ? <LoadingSpinner size="sm" /> : <Search className="h-4 w-4 mr-2" />}
-                  Rechercher
+        <TabsContent value="saved" className="space-y-4 overflow-auto flex-1">
+          {isSavedTermsLoading ? (
+            <div className="flex justify-center items-center h-20">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-end mb-2">
+                <Button variant="outline" size="sm" onClick={exportToCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter CSV
                 </Button>
               </div>
-
-              {searchError && (
-                <Card className="mb-4 border-red-200">
-                  <CardContent className="p-4">
-                    <div className="text-red-500">
-                      <p className="font-medium">Erreur de recherche:</p>
-                      <p>{searchError}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {searchResult && !searchError && (
-                <Card className="mb-4">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between mb-2">
-                      <h3 className="text-lg font-semibold">{term}</h3>
-                      <Button variant="outline" size="sm" onClick={handleSaveTerm}>
-                        <Star className="h-4 w-4 mr-2 text-yellow-500" />
-                        Favoris
-                      </Button>
-                    </div>
-                    <div className="text-sm text-muted-foreground mb-2">
-                      {sourceLanguage} → {targetLanguage}
-                    </div>
-                    <div className="bg-muted p-4 rounded-md">
-                      {searchResult}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="history" className="space-y-4 overflow-auto flex-1">
-              {isHistoryLoading ? (
-                <div className="flex justify-center items-center h-20">
-                  <LoadingSpinner size="lg" />
-                </div>
-              ) : searchHistory && searchHistory.length > 0 ? (
+              {savedTerms && savedTerms.length > 0 ? (
                 <div>
-                  {searchHistory.map(item => renderTermItem(item))}
+                  {savedTerms.map(term => renderTermItem(term, true))}
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  Votre historique de recherche s'affichera ici
+                  Aucun terme favori. Enregistrez des termes depuis la recherche.
                 </div>
               )}
-            </TabsContent>
-
-            <TabsContent value="saved" className="space-y-4 overflow-auto flex-1">
-              {isSavedTermsLoading ? (
-                <div className="flex justify-center items-center h-20">
-                  <LoadingSpinner size="lg" />
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-end mb-2">
-                    <Button variant="outline" size="sm" onClick={exportToCSV}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Exporter CSV
-                    </Button>
-                  </div>
-                  {savedTerms && savedTerms.length > 0 ? (
-                    <div>
-                      {savedTerms.map(term => renderTermItem(term, true))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Aucun terme favori. Enregistrez des termes depuis la recherche.
-                    </div>
-                  )}
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
+            </>
+          )}
         </TabsContent>
       </Tabs>
     </div>

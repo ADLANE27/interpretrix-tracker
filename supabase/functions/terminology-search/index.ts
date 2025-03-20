@@ -1,6 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.1';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,16 +48,15 @@ serve(async (req) => {
     // Make a request to OpenRouter API
     console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
     
-    // Generate a request ID for tracing
-    const requestId = crypto.randomUUID();
-    console.log(`Request ID: ${requestId} - Starting API call to OpenRouter`);
-    
     try {
-      // Controller for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      // Generate a request ID for tracing
+      const requestId = crypto.randomUUID();
+      console.log(`Request ID: ${requestId} - Starting API call to OpenRouter with DeepSeek-R1-Zero model`);
       
-      console.log(`Request ID: ${requestId} - Sending request to OpenRouter API`);
+      // Use more complete URL and include timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -72,44 +72,103 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator specialized in terminology. 
-Provide an EXACT and DIRECT translation of a term from ${sourceLanguage} to ${targetLanguage}.
-IMPORTANT: Respond ONLY with the translation itself - no explanations or additional text.`
+              content: `You are a professional translator specialized in terminology. Your task is to provide an exact, precise, and direct translation of a term from ${sourceLanguage} to ${targetLanguage}. Respond ONLY with the translation itself - no explanations, commentary, or additional text. Provide the exact equivalent term in the target language, nothing more. If multiple translations are possible, provide only the most commonly used equivalent.`
             },
             {
               role: 'user',
               content: term
             }
           ],
-          temperature: 0.1,
-          max_tokens: 50,
+          temperature: 0.2,
+          max_tokens: 100,
         }),
         signal: controller.signal
       });
       
       // Clear the timeout
       clearTimeout(timeoutId);
-      
+
       console.log(`Request ID: ${requestId} - OpenRouter API response status: ${response.status}`);
       
+      // Handle rate limit exceeded
+      if (response.status === 429) {
+        console.error(`Request ID: ${requestId} - OpenRouter API rate limit exceeded`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Service temporarily unavailable. Please try again later.' 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Retry-After': response.headers.get('Retry-After') || '60'
+            } 
+          }
+        );
+      }
+      
+      // Log detailed error information
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Request ID: ${requestId} - OpenRouter API error response:`, errorText);
-        throw new Error(`API returned status ${response.status}: ${errorText}`);
+        
+        let errorDetail;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetail = JSON.stringify(errorJson);
+          // Log detailed error information for debugging
+          console.error(`Request ID: ${requestId} - OpenRouter API error details:`, JSON.stringify(errorJson, null, 2));
+        } catch (e) {
+          errorDetail = errorText;
+          console.error(`Request ID: ${requestId} - OpenRouter API error (not JSON):`, errorText);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: `OpenRouter API error: ${response.status} - ${errorDetail}`
+          }),
+          { 
+            status: 502, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
 
       const data = await response.json();
-      console.log(`Request ID: ${requestId} - OpenRouter API response received`);
-      
+      console.log(`Request ID: ${requestId} - OpenRouter API response data:`, JSON.stringify(data));
+
+      // Extract the result from the response structure that OpenRouter returns
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error(`Request ID: ${requestId} - Unexpected API response format:`, JSON.stringify(data));
-        throw new Error('Unexpected response format from API');
+        console.error(`Request ID: ${requestId} - Unexpected OpenRouter API response format:`, JSON.stringify(data));
+        return new Response(
+          JSON.stringify({ 
+            error: 'Unexpected response format from OpenRouter API',
+            response: data
+          }),
+          { 
+            status: 502, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
       }
 
-      // Extract the result and clean it up
-      const result = data.choices[0].message.content.trim() || "[Translation not available]";
-      console.log(`Request ID: ${requestId} - Translation result: "${result}"`);
+      const result = data.choices[0].message.content.trim();
       
+      // Check if result is empty or just whitespace
+      if (!result || !result.trim()) {
+        console.error(`Request ID: ${requestId} - Empty result returned from OpenRouter API`);
+        return new Response(
+          JSON.stringify({ 
+            error: 'No translation result received. Please try again.' 
+          }),
+          { 
+            status: 422, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
       // Create Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -143,7 +202,6 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
         console.error(`Request ID: ${requestId} - Error saving search history:`, insertError);
       }
 
-      console.log(`Request ID: ${requestId} - Successfully completed request`);
       return new Response(
         JSON.stringify({ 
           result,
@@ -156,7 +214,7 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
         }
       );
     } catch (fetchError) {
-      console.error(`Request ID: ${requestId} - Error fetching from OpenRouter API:`, fetchError);
+      console.error('Error fetching from OpenRouter API:', fetchError);
       
       // Determine if this is a network connectivity issue
       const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -197,7 +255,7 @@ IMPORTANT: Respond ONLY with the translation itself - no explanations or additio
   } catch (error) {
     console.error('Error in terminology search function:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'An unknown error occurred' }),
+      JSON.stringify({ error: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

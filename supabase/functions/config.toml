@@ -18,6 +18,3 @@ verify_jwt = true
 
 [functions.terminology-search]
 verify_jwt = false
-
-[functions.terminology-chat]
-verify_jwt = false

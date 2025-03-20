@@ -1,5 +1,0 @@
-
-project_id = "bblpiatmtnlhnbavhkau"
-
-[functions.terminology-chat]
-verify_jwt = false
