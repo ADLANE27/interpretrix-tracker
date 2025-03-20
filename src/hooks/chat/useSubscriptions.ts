@@ -98,7 +98,7 @@ export const useSubscriptions = (
       try {
         // ALL clients (admin and interpreter) use the exact same channel name format
         // This ensures consistent channel naming across different user types
-        const channelName = `chat-${channelId}-${instanceId.current}`;
+        const channelName = `chat-${channelId}`;
         console.log(`[Chat ${userRole.current}] Creating new channel with name:`, channelName);
         
         channelRef.current = supabase.channel(channelName);
@@ -150,20 +150,6 @@ export const useSubscriptions = (
 
               console.log(`[Chat ${userRole.current}] Message change received:`, extendedPayload.eventType, extendedPayload);
               onRealtimeEvent(extendedPayload);
-            }
-          )
-          // Also listen for mention status changes to update badges real-time
-          .on('postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'message_mentions',
-              filter: currentUserId ? `mentioned_user_id=eq.${currentUserId}` : undefined
-            },
-            (payload) => {
-              console.log(`[Chat ${userRole.current}] Mention status changed:`, payload);
-              // We don't need to process this directly as the useUnreadMentions hook will handle it
-              // This just ensures the channel stays active for mention events
             }
           );
 
