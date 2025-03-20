@@ -58,7 +58,7 @@ export const useFetchMessages = (
   const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const stableMessageCount = useRef<number>(0);
   const fetchLock = useRef<boolean>(false);
-  const minimumFetchDelay = useRef<number>(3000); // Minimum time between fetches
+  const minimumFetchDelay = useRef<number>(1500); // Reduced minimum time between fetches
   const lastFetchStartTime = useRef<number>(0);
 
   const debouncedSetLoading = useCallback((loading: boolean) => {
@@ -68,12 +68,12 @@ export const useFetchMessages = (
         clearTimeout(fetchDebounceTimer.current);
       }
       
-      // Short delay before showing loading state
+      // Shorter delay before showing loading state
       fetchDebounceTimer.current = setTimeout(() => {
         if (activeFetch.current) {
           setIsLoading(true);
         }
-      }, 1000); // Longer delay to avoid flickering for quick operations
+      }, 300); // Reduced loading delay for quicker feedback
     } else {
       if (fetchDebounceTimer.current) {
         clearTimeout(fetchDebounceTimer.current);
@@ -87,9 +87,9 @@ export const useFetchMessages = (
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchStartTime.current;
     
-    // Prevent too frequent fetches
+    // Less restrictive fetch throttling for initial loads
     if (fetchLock.current || 
-        (timeSinceLastFetch < minimumFetchDelay.current && initialFetchDone.current)) {
+        (timeSinceLastFetch < minimumFetchDelay.current && initialFetchDone.current && limit <= 50)) {
       console.log(`[useFetchMessages] Skipping fetch, too soon (${timeSinceLastFetch}ms since last fetch)`);
       return;
     }
@@ -104,7 +104,20 @@ export const useFetchMessages = (
       lastFetchStartTime.current = now;
       activeFetch.current = true;
       processingMessage.current = true;
-      debouncedSetLoading(true);
+      
+      // Only show loading for non-initial fetches or if taking longer than expected
+      const isInitialFetch = !initialFetchDone.current;
+      if (!isInitialFetch) {
+        debouncedSetLoading(true);
+      } else {
+        // For initial fetch, set a shorter timeout to show loading state
+        setTimeout(() => {
+          if (activeFetch.current && !initialFetchDone.current) {
+            setIsLoading(true);
+          }
+        }, 200);
+      }
+      
       console.log(`[useFetchMessages] Fetching messages for channel ${channelId}, limit: ${limit}, initialFetchDone: ${initialFetchDone.current}`);
 
       const { data: channel, error: channelError } = await supabase
@@ -169,8 +182,8 @@ export const useFetchMessages = (
       
       const newCount = messagesMap.current.size;
       
-      // Only update the UI if we actually have messages or the count changed significantly
-      if (newCount > 0 && (Math.abs(newCount - previousCount) > 0 || !initialFetchDone.current)) {
+      // Always update on initial load for faster rendering
+      if (newCount > 0 && (!initialFetchDone.current || Math.abs(newCount - previousCount) > 0)) {
         console.log(`[useFetchMessages] Calling updateMessagesArray with ${messagesMap.current.size} messages (changed from ${previousCount})`);
         
         // Force update the messages array immediately
@@ -183,26 +196,27 @@ export const useFetchMessages = (
       lastFetchTime.current = new Date();
       initialFetchDone.current = true;
       
-      // Force a second update after a short delay to ensure UI updates
-      // This helps with race conditions where the state update might not trigger a re-render
+      // Force a second update sooner for initial loads
+      const updateDelay = isInitialFetch ? 100 : 200;
       setTimeout(() => {
         if (messagesMap.current.size > 0) {
           console.log(`[useFetchMessages] Triggering secondary update with ${messagesMap.current.size} messages`);
           updateMessagesArray();
         }
-      }, 200);
+      }, updateDelay);
       
-      // Release the fetch lock after a minimum delay
+      // Release the fetch lock sooner for initial loads
       setTimeout(() => {
         fetchLock.current = false;
-      }, minimumFetchDelay.current);
+      }, isInitialFetch ? 500 : minimumFetchDelay.current);
       
     } catch (error) {
       console.error('[useFetchMessages] Error in fetchMessages:', error);
     } finally {
+      // Shorter delay before hiding loading state
       setTimeout(() => {
         debouncedSetLoading(false);
-      }, 200); // Small delay to ensure loading isn't removed too quickly
+      }, 100);
       
       processingMessage.current = false;
       activeFetch.current = false;
@@ -210,7 +224,7 @@ export const useFetchMessages = (
       // Schedule releasing the lock after minimum delay
       setTimeout(() => {
         fetchLock.current = false;
-      }, minimumFetchDelay.current);
+      }, initialFetchDone.current ? minimumFetchDelay.current : 500);
     }
   }, [
     channelId,
@@ -220,7 +234,8 @@ export const useFetchMessages = (
     lastFetchTimestamp,
     setHasMoreMessages,
     updateMessagesArray,
-    processMessage
+    processMessage,
+    setIsLoading
   ]);
 
   const loadMoreMessages = useCallback(async (

@@ -5,6 +5,7 @@ import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
 import { shouldShowDate, organizeMessageThreads } from './utils/messageUtils';
 import { LoadingSpinner } from '../ui/loading-spinner';
+import { Skeleton } from '../ui/skeleton';
 
 interface MessageListProps {
   messages: Message[];
@@ -15,6 +16,17 @@ interface MessageListProps {
   setReplyTo?: (message: Message | null) => void;
   channelId: string;
 }
+
+// MessageSkeleton component for showing loading state
+const MessageSkeleton = () => (
+  <div className="animate-pulse space-y-3 py-2">
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-8 w-8 rounded-full" />
+      <Skeleton className="h-4 w-24" />
+    </div>
+    <Skeleton className="h-16 w-full max-w-[80%] rounded-md" />
+  </div>
+);
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
@@ -34,6 +46,15 @@ export const MessageList: React.FC<MessageListProps> = ({
   const hadMessagesRef = useRef<boolean>(false); 
   const stableMessages = useRef<Message[]>([]);
   const lastStableUpdateTimestamp = useRef<number>(Date.now());
+  const [showSkeletons, setShowSkeletons] = useState(true);
+
+  // Show skeletons immediately on mount, hide after real messages arrive
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Remove skeletons once we have real messages
+      setShowSkeletons(false);
+    }
+  }, [messages.length]);
 
   // Store the latest valid messages to prevent flickering
   useEffect(() => {
@@ -46,6 +67,8 @@ export const MessageList: React.FC<MessageListProps> = ({
         lastStableUpdateTimestamp.current = now;
       }
       hadMessagesRef.current = true;
+      
+      // Once we have real messages, we're no longer in initial load state
       setIsInitialLoad(false);
     }
   }, [messages]);
@@ -96,6 +119,19 @@ export const MessageList: React.FC<MessageListProps> = ({
   // Use the stable messages if current messages are empty to prevent flickering
   const displayMessages = messages.length > 0 ? messages : 
     (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
+
+  // Show skeletons during initial load
+  if (showSkeletons && isInitialLoad && displayMessages.length === 0) {
+    return (
+      <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
+           ref={messageContainerRef}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <MessageSkeleton key={index} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+    );
+  }
 
   // Don't show empty state if we're still in initial load or if we've ever had messages
   if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
