@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
@@ -46,46 +47,35 @@ export const MessageList: React.FC<MessageListProps> = ({
   const stableMessages = useRef<Message[]>([]);
   const lastStableUpdateTimestamp = useRef<number>(Date.now());
   const [showSkeletons, setShowSkeletons] = useState(true);
-  const initialSkeletonsShown = useRef(false);
-  const autoScrolledRef = useRef(false);
 
-  // Show skeletons immediately on mount, keep them until real messages arrive
+  // Show skeletons immediately on mount, hide after real messages arrive
   useEffect(() => {
-    if (!initialSkeletonsShown.current) {
-      setShowSkeletons(true);
-      initialSkeletonsShown.current = true;
-    }
-    
     if (messages.length > 0) {
-      // Remove skeletons once we have real messages with a very small delay
-      const timer = setTimeout(() => {
-        setShowSkeletons(false);
-      }, 100); // Shorter delay for smoother transition
-      
-      return () => clearTimeout(timer);
+      // Remove skeletons once we have real messages
+      setShowSkeletons(false);
     }
   }, [messages.length]);
 
   // Store the latest valid messages to prevent flickering
   useEffect(() => {
     if (messages.length > 0) {
-      // Update stable messages more frequently for faster display
+      // Only update stable messages every 2 seconds to prevent loops
       const now = Date.now();
-      if (now - lastStableUpdateTimestamp.current > 500) { // Reduced time for more responsive updates
+      if (now - lastStableUpdateTimestamp.current > 2000) {
+        console.log(`[MessageList] Updating stable messages with ${messages.length} messages`);
         stableMessages.current = [...messages]; // Create a new array to ensure reference changes
         lastStableUpdateTimestamp.current = now;
       }
       hadMessagesRef.current = true;
       
       // Once we have real messages, we're no longer in initial load state
-      if (isInitialLoad) {
-        setIsInitialLoad(false);
-      }
+      setIsInitialLoad(false);
     }
-  }, [messages, isInitialLoad]);
+  }, [messages]);
 
   useEffect(() => {
     renderCountRef.current += 1;
+    console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
   });
 
   const memoizedOrganizeThreads = useCallback(() => {
@@ -98,23 +88,18 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const { rootMessages, messageThreads } = memoizedOrganizeThreads();
 
-  // Force scroll to bottom on first load and when new messages arrive
   useEffect(() => {
     if (!messageContainerRef.current) return;
+    
+    // Save current scroll position
+    scrollPositionRef.current = messageContainerRef.current.scrollTop;
     
     const isNewMessage = messages.length > lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length || stableMessages.current.length;
     
-    // On first load or when adding a message, scroll to bottom
-    if ((messages.length > 0 && !autoScrolledRef.current) || isNewMessage) {
-      requestAnimationFrame(() => {
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          autoScrolledRef.current = true;
-        }
-      });
-    } else if (!isNewMessage) {
-      // For other updates, maintain the scroll position
+    if (isNewMessage && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    } else {
       requestAnimationFrame(() => {
         if (messageContainerRef.current) {
           messageContainerRef.current.scrollTop = scrollPositionRef.current;
@@ -123,37 +108,24 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages]);
 
-  // Save current scroll position before updates
+  // Force scroll to bottom when messages are first loaded
   useEffect(() => {
-    const container = messageContainerRef.current;
-    if (!container) return;
-    
-    const handleScroll = () => {
-      scrollPositionRef.current = container.scrollTop;
-    };
-    
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // When channel changes, reset auto-scroll flag
-  useEffect(() => {
-    autoScrolledRef.current = false;
-    setIsInitialLoad(true);
-    initialSkeletonsShown.current = false;
-    setShowSkeletons(true);
-  }, [channelId]);
+    if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current) {
+      console.log(`[MessageList] Scrolling to bottom due to first message load`);
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages.length > 0]);
 
   // Use the stable messages if current messages are empty to prevent flickering
   const displayMessages = messages.length > 0 ? messages : 
     (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
 
-  // Show skeletons during initial load - now with more skeletons for a better experience
-  if (showSkeletons && (isInitialLoad || displayMessages.length === 0)) {
+  // Show skeletons during initial load
+  if (showSkeletons && isInitialLoad && displayMessages.length === 0) {
     return (
-      <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
+      <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
            ref={messageContainerRef}>
-        {Array.from({ length: 8 }).map((_, index) => (
+        {Array.from({ length: 5 }).map((_, index) => (
           <MessageSkeleton key={index} />
         ))}
         <div ref={messagesEndRef} />
