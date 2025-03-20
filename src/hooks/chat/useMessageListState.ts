@@ -19,6 +19,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const hadMessagesRef = useRef<boolean>(false);
   const stableRenderRef = useRef<boolean>(false);
   const messageStabilityTimer = useRef<NodeJS.Timeout | null>(null);
+  const updateLockRef = useRef<boolean>(false);
 
   // Check if we've received messages
   useEffect(() => {
@@ -27,8 +28,14 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     }
   }, [messages.length]);
 
-  // Transition from skeletons to real messages with fixed delay
+  // Transition from skeletons to real messages with fixed delay and lock
   useEffect(() => {
+    // Return immediately if update is locked
+    if (updateLockRef.current) return;
+    
+    // Set update lock to prevent concurrent updates
+    updateLockRef.current = true;
+    
     // Clear any existing timer to prevent stacking effects
     if (messageStabilityTimer.current) {
       clearTimeout(messageStabilityTimer.current);
@@ -49,14 +56,23 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
         setShowSkeletons(false);
         // Mark rendering as stable after delay
         stableRenderRef.current = true;
-      }, 500); // Increased delay for more stability
+        
+        // Release lock after state is updated
+        setTimeout(() => {
+          updateLockRef.current = false;
+        }, 100);
+      }, 750); // Increased delay for more stability
       
       return () => {
         if (messageStabilityTimer.current) {
           clearTimeout(messageStabilityTimer.current);
           messageStabilityTimer.current = null;
         }
+        updateLockRef.current = false;
       };
+    } else {
+      // Release lock if no messages
+      updateLockRef.current = false;
     }
   }, [messages.length, channelId]);
 
@@ -67,6 +83,9 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
       clearTimeout(messageStabilityTimer.current);
       messageStabilityTimer.current = null;
     }
+    
+    // Set update lock during channel change
+    updateLockRef.current = true;
     
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
@@ -81,10 +100,21 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
           messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
           // Mark as stable after scrolling
           stableRenderRef.current = true;
+          
+          // Release lock after state is updated
+          setTimeout(() => {
+            updateLockRef.current = false;
+          }, 100);
         }
-      }, 600); // Longer delay for stability
+      }, 800); // Longer delay for stability
       
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        updateLockRef.current = false;
+      };
+    } else {
+      // Release lock if no container
+      updateLockRef.current = false;
     }
   }, [channelId]);
 
@@ -97,6 +127,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     scrollToBottomFlag,
     hadMessagesRef,
     stableRenderRef,
+    updateLockRef,
     setIsInitialLoad
   };
 };

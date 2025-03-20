@@ -12,6 +12,8 @@ export const useMessageScroll = (
 ) => {
   const isScrolling = useRef(false);
   const lastScrollTop = useRef(0);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialScrollDone = useRef(false);
   
   // Use useLayoutEffect to ensure scrolling happens before visual render
   useLayoutEffect(() => {
@@ -25,14 +27,21 @@ export const useMessageScroll = (
       lastScrollTop.current = messageContainerRef.current.scrollTop;
     }
     
+    // Clear any previous scroll timeouts
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+    
     // Determine if we should scroll to bottom
     const container = messageContainerRef.current;
     const userWasAtBottom = container && 
-      (container.scrollHeight - container.scrollTop - container.clientHeight < 80);
+      (container.scrollHeight - container.scrollTop - container.clientHeight < 100);
     
     const shouldScrollToBottom = scrollToBottomFlag.current || 
                                (isNewMessageBatch && userWasAtBottom) || 
-                               isInitialLoad;
+                               isInitialLoad || 
+                               !initialScrollDone.current;
     
     if (shouldScrollToBottom && messagesEndRef.current) {
       isScrolling.current = true;
@@ -43,8 +52,11 @@ export const useMessageScroll = (
         block: 'end'
       });
       
+      // Set initial scroll done flag
+      initialScrollDone.current = true;
+      
       // Second scroll with delay for stability
-      const timeoutId = setTimeout(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ 
             behavior: isInitialLoad ? 'auto' : 'smooth',
@@ -57,28 +69,39 @@ export const useMessageScroll = (
           }
           
           // Additional stabilization delay
-          setTimeout(() => {
+          scrollTimeoutRef.current = setTimeout(() => {
             isScrolling.current = false;
-          }, 150);
+            scrollTimeoutRef.current = null;
+          }, 250);
         }
-      }, 50);
+      }, 100);
       
-      return () => clearTimeout(timeoutId);
     } else if (!shouldScrollToBottom && !isInitialLoad) {
       // Restore previous scroll position if user wasn't at bottom
-      const timeoutId = setTimeout(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
         if (messageContainerRef.current) {
           messageContainerRef.current.scrollTop = lastScrollTop.current;
+          
+          scrollTimeoutRef.current = setTimeout(() => {
+            isScrolling.current = false;
+            scrollTimeoutRef.current = null;
+          }, 100);
         }
-      }, 10);
-      
-      return () => clearTimeout(timeoutId);
+      }, 50);
+    } else {
+      // Release the scroll lock after a short delay
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrolling.current = false;
+        scrollTimeoutRef.current = null;
+      }, 200);
     }
     
-    const timeoutId = setTimeout(() => {
-      isScrolling.current = false;
-    }, 200);
-    
-    return () => clearTimeout(timeoutId);
+    // Cleanup timeout on unmount
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
   }, [messages, isInitialLoad, messagesEndRef, lastMessageCountRef, scrollToBottomFlag, messageContainerRef]);
 };

@@ -7,31 +7,47 @@ export const useMessageOrganizer = (messages: Message[]) => {
   const lastOrganizedMessages = useRef<Message[]>([]);
   const organizedCache = useRef<ReturnType<typeof organizeMessageThreads> | null>(null);
   const cacheVersion = useRef<number>(0);
+  const processingFlag = useRef<boolean>(false);
   
-  // Simplified function to organize message threads
-  // With caching to avoid expensive reorganizations if messages haven't changed
+  // Improved function to organize message threads with strong caching
+  // to avoid expensive reorganizations
   const organizeThreads = useCallback(() => {
-    // Check if we have the same messages (by reference comparison first for speed)
-    if (messages === lastOrganizedMessages.current) {
-      return organizedCache.current || organizeMessageThreads(messages);
+    // Don't reorganize if already processing
+    if (processingFlag.current) {
+      return organizedCache.current || { rootMessages: [], messageThreads: {} };
     }
     
-    // Deep equality check (only id-based for performance)
-    const sameMessageList = messages.length === lastOrganizedMessages.current.length &&
-      messages.every((msg, i) => msg.id === lastOrganizedMessages.current[i]?.id);
+    processingFlag.current = true;
     
-    if (sameMessageList && organizedCache.current) {
-      return organizedCache.current;
+    try {
+      // Check if we have the same messages (by reference comparison first for speed)
+      if (messages === lastOrganizedMessages.current && organizedCache.current) {
+        return organizedCache.current;
+      }
+      
+      // Deep equality check (only id-based for performance)
+      const sameMessageList = messages.length === lastOrganizedMessages.current.length &&
+        messages.every((msg, i) => msg.id === lastOrganizedMessages.current[i]?.id);
+      
+      if (sameMessageList && organizedCache.current) {
+        return organizedCache.current;
+      }
+      
+      // If messages changed, reorganize and update cache
+      const result = organizeMessageThreads(messages);
+      lastOrganizedMessages.current = [...messages];
+      organizedCache.current = result;
+      cacheVersion.current += 1;
+      
+      return result;
+    } finally {
+      // Ensure the flag is released even if there's an error
+      processingFlag.current = false;
     }
-    
-    // If messages changed, reorganize and update cache
-    const result = organizeMessageThreads(messages);
-    lastOrganizedMessages.current = [...messages];
-    organizedCache.current = result;
-    cacheVersion.current += 1;
-    
-    return result;
   }, [messages]);
 
-  return { organizeThreads };
+  return { 
+    organizeThreads,
+    cacheVersion: cacheVersion.current
+  };
 };

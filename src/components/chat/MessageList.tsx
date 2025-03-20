@@ -38,7 +38,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     hadMessagesRef,
     showSkeletons,
     scrollToBottomFlag,
-    stableRenderRef
+    stableRenderRef,
   } = useMessageListState(messages, channelId);
 
   // Handle scroll behavior
@@ -51,13 +51,14 @@ export const MessageList: React.FC<MessageListProps> = ({
     messageContainerRef
   );
 
-  // Message organization helper
-  const { organizeThreads } = useMessageOrganizer(messages);
+  // Message organization helper with better caching
+  const { organizeThreads, cacheVersion } = useMessageOrganizer(messages);
 
   // Use memoized message organization to prevent unnecessary recalculations
   const { rootMessages, messageThreads } = useMemo(() => {
+    console.log(`[MessageList] Organizing messages for channel: ${channelId}, message count: ${messages.length}`);
     return organizeThreads();
-  }, [organizeThreads, messages]);
+  }, [organizeThreads, messages, cacheVersion, channelId]);
 
   // Show skeletons during initial load
   if (showSkeletons && (isInitialLoad || messages.length === 0)) {
@@ -81,10 +82,12 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
+  // Render the message list with memoized message threads
   return (
     <div 
       className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
       ref={messageContainerRef}
+      data-stable-render={stableRenderRef.current.toString()}
     >
       <div className="flex-1">
         {rootMessages.map((message, index) => {
