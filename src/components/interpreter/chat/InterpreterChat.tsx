@@ -83,37 +83,6 @@ export const InterpreterChat = ({
 
   const { showNotification, requestPermission } = useBrowserNotification();
 
-  // Function to filter messages based on filters
-  const getFilteredMessages = useCallback(() => {
-    let filtered = messages;
-
-    if (filters.userId) {
-      filtered = filtered.filter(msg => {
-        if (filters.userId === 'current') {
-          return msg.sender.id === currentUserId;
-        }
-        return msg.sender.id === filters.userId;
-      });
-    }
-
-    if (filters.keyword) {
-      const keywordLower = filters.keyword.toLowerCase();
-      filtered = filtered.filter(msg =>
-        msg.content.toLowerCase().includes(keywordLower)
-      );
-    }
-
-    if (filters.date) {
-      filtered = filtered.filter(msg => {
-        const messageDate = new Date(msg.timestamp).toDateString();
-        const filterDate = filters.date!.toDateString();
-        return messageDate === filterDate;
-      });
-    }
-
-    return filtered;
-  }, [messages, filters, currentUserId]);
-
   const { toast } = useToast();
 
   useEffect(() => {
@@ -231,9 +200,9 @@ export const InterpreterChat = ({
     };
   }, [isFullScreen, onToggleFullScreen]);
 
-  // Add debug logging to track reaction rendering
+  // Debug logging for reactions
   useEffect(() => {
-    console.log('[InterpreterChat] Current messages with reactions:', 
+    console.log('[InterpreterChat] Messages with reactions:', 
       messages.filter(msg => msg.reactions && Object.keys(msg.reactions).length > 0)
     );
   }, [messages]);
@@ -305,7 +274,7 @@ export const InterpreterChat = ({
           </div>
         ) : null}
         <MessageList
-          messages={getFilteredMessages()}
+          messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
           onReactToMessage={reactToMessage}
