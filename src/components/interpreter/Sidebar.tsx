@@ -171,8 +171,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
         </Button>
       </div>
 
-      <nav className="flex-1 mx-4 my-2">
-        <div className="space-y-2 rounded-lg p-1 bg-background/50">
+      <nav className="flex-1 my-2">
+        <div className="space-y-2 rounded-lg p-4 bg-background/50 mx-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -180,7 +180,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 key={tab.id}
                 variant={activeTab === tab.id ? "default" : "ghost"}
                 className={cn(
-                  "w-full justify-start gap-2 relative",
+                  "w-full justify-start gap-2 relative px-4",
                   "transition-all duration-200 font-medium rounded-md",
                   activeTab === tab.id 
                     ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" 

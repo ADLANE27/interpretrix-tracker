@@ -323,6 +323,13 @@ export const InterpreterDashboard = () => {
             onProfileUpdate={fetchProfile}
             onProfilePictureUpload={handleProfilePictureUpload}
             onProfilePictureDelete={handleProfilePictureDelete}
+            onStatusChange={async (newStatus) => {
+              if (profile) {
+                const updatedProfile = { ...profile, status: newStatus };
+                setProfile(updatedProfile);
+              }
+            }}
+            onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           />
         </div>
       </main>

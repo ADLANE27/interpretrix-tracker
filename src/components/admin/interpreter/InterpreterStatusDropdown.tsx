@@ -11,12 +11,14 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Status = Profile['status'];
 
 interface StatusConfigItem {
   color: string;
   label: string;
+  mobileLabel: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
@@ -31,21 +33,25 @@ const statusConfig: Record<Status, StatusConfigItem> = {
   available: {
     color: "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-sm",
     label: "Disponible",
+    mobileLabel: "Dispo",
     icon: Clock
   },
   busy: {
     color: "bg-gradient-to-r from-indigo-400 to-purple-500 text-white shadow-sm", 
     label: "En appel",
+    mobileLabel: "Appel",
     icon: Phone
   },
   pause: {
     color: "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm", 
     label: "En pause",
+    mobileLabel: "Pause",
     icon: Coffee
   },
   unavailable: {
     color: "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-sm", 
     label: "Indisponible",
+    mobileLabel: "Indispo",
     icon: X
   }
 };
@@ -60,6 +66,7 @@ export const InterpreterStatusDropdown = ({
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleStatusSelect = (status: Status) => {
     if (status === currentStatus) {
@@ -108,18 +115,19 @@ export const InterpreterStatusDropdown = ({
   // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[currentStatus].icon;
+    const displayLabel = isMobile ? statusConfig[currentStatus].mobileLabel : statusConfig[currentStatus].label;
     
     if (displayFormat === "badge") {
       return (
         <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
-          {statusConfig[currentStatus].label}
+          {displayLabel}
         </div>
       );
     } else {
       return (
         <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
           <StatusIcon className="h-4 w-4" />
-          <span>{statusConfig[currentStatus].label}</span>
+          <span>{displayLabel}</span>
         </div>
       );
     }
