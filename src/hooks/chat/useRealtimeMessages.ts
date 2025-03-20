@@ -25,6 +25,7 @@ export const useRealtimeMessages = (
   const processQueue = useRef<Array<any>>([]);
   const processingTimeout = useRef<NodeJS.Timeout | null>(null);
   const processingLock = useRef(false);
+  const processedMessageIds = useRef<Set<string>>(new Set());
   
   // Define forceFetch before using it in processNextInQueue
   const forceFetch = useCallback(() => {
@@ -96,6 +97,20 @@ export const useRealtimeMessages = (
         return;
       }
       
+      // Check if we've already processed this message ID to prevent duplicates
+      if (processedMessageIds.current.has(messageData.id)) {
+        console.log(`[useRealtimeMessages ${userRole.current}] Skipping already processed message:`, messageData.id);
+        processingMessage.current = false;
+        isProcessingEvent.current = false;
+        processingLock.current = false;
+        
+        // Schedule next item processing
+        if (processQueue.current.length > 0) {
+          processingTimeout.current = setTimeout(processNextInQueue, 100);
+        }
+        return;
+      }
+      
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useRealtimeMessages ${userRole.current}] Skipping duplicate message:`, messageData.id);
@@ -120,6 +135,9 @@ export const useRealtimeMessages = (
           
           // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
+          
+          // Mark this message as processed
+          processedMessageIds.current.add(messageData.id);
           
           // Update the messages array
           updateMessagesArray();
@@ -175,6 +193,11 @@ export const useRealtimeMessages = (
       processingTimeout.current = setTimeout(processNextInQueue, 50);
     }
   }, [userRole, processNextInQueue]);
+
+  // Clean up processed message IDs when channel changes
+  useEffect(() => {
+    processedMessageIds.current.clear();
+  }, [channelId]);
 
   // Cleanup on unmount
   useEffect(() => {

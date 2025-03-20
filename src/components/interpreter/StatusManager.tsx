@@ -1,25 +1,21 @@
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { motion } from "framer-motion";
-import { Clock, Coffee, X, Phone } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
-
-type Status = "available" | "unavailable" | "pause" | "busy";
+import { Profile } from "@/types/profile";
+import { StatusButtons } from "./StatusButtons";
 
 interface StatusManagerProps {
-  currentStatus?: Status;
-  onStatusChange?: (newStatus: Status) => Promise<void>;
+  currentStatus?: Profile['status'];
+  onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
+  className?: string;
 }
 
-export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerProps = {}) => {
-  const [status, setStatus] = useState<Status>(currentStatus || "available");
+export const StatusManager = ({ currentStatus, onStatusChange, className = "" }: StatusManagerProps = {}) => {
+  const [status, setStatus] = useState<Profile['status']>(currentStatus || "available");
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
-  const isMobile = useIsMobile();
 
   // Update local state when prop changes
   useEffect(() => {
@@ -69,39 +65,12 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     setupSubscription();
   }, []);
 
-  const isValidStatus = (status: string): status is Status => {
+  const isValidStatus = (status: string): status is Profile['status'] => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);
   };
 
-  const statusConfig = {
-    available: {
-      color: "bg-interpreter-available hover:bg-interpreter-available/90",
-      label: "Disponible",
-      icon: Clock,
-      mobileLabel: "Dispo"
-    },
-    busy: {
-      color: "bg-interpreter-busy hover:bg-interpreter-busy/90",
-      label: "En appel",
-      icon: Phone,
-      mobileLabel: "Appel"
-    },
-    pause: {
-      color: "bg-interpreter-pause hover:bg-interpreter-pause/90",
-      label: "En pause",
-      icon: Coffee,
-      mobileLabel: "Pause"
-    },
-    unavailable: {
-      color: "bg-interpreter-unavailable hover:bg-interpreter-unavailable/90",
-      label: "Indisponible",
-      icon: X,
-      mobileLabel: "Indispo"
-    }
-  };
-
-  const handleStatusChange = async (newStatus: Status) => {
-    if (status === newStatus || !userId) return;
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    if (status === newStatus || !userId || isLoading) return;
     
     setIsLoading(true);
     try {
@@ -126,7 +95,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       setStatus(newStatus);
       toast({
         title: "Statut mis à jour",
-        description: `Votre statut est maintenant "${statusConfig[newStatus].label}"`,
+        description: `Votre statut est maintenant "${getStatusLabel(newStatus)}"`,
       });
     } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
@@ -140,43 +109,22 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     }
   };
 
+  const getStatusLabel = (status: Profile['status']): string => {
+    switch (status) {
+      case "available": return "Disponible";
+      case "busy": return "En appel";
+      case "pause": return "En pause";
+      case "unavailable": return "Indisponible";
+      default: return "Inconnu";
+    }
+  };
+
   return (
-    <motion.div 
-      className="flex flex-wrap items-center gap-2 mx-auto w-full max-w-screen-sm"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      {(Object.keys(statusConfig) as Status[]).map((statusKey) => {
-        const Icon = statusConfig[statusKey].icon;
-        return (
-          <motion.div
-            key={statusKey}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex-1 min-w-0"
-          >
-            <Button
-              variant={status === statusKey ? "default" : "outline"}
-              size="default"
-              onClick={() => handleStatusChange(statusKey)}
-              disabled={isLoading}
-              className={`
-                w-full transition-all duration-200
-                h-12 text-xs sm:text-sm font-medium px-1 sm:px-3
-                ${status === statusKey ? statusConfig[statusKey].color : ''}
-                ${status === statusKey ? 'shadow-lg' : ''}
-                ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
-              `}
-            >
-              <Icon className="h-3 w-3 sm:h-4 sm:w-4 min-w-3 sm:min-w-4 mr-0.5 sm:mr-1 flex-shrink-0" />
-              <span className="truncate whitespace-nowrap">
-                {isMobile ? statusConfig[statusKey].mobileLabel : statusConfig[statusKey].label}
-              </span>
-            </Button>
-          </motion.div>
-        );
-      })}
-    </motion.div>
+    <StatusButtons 
+      currentStatus={status}
+      onStatusChange={handleStatusChange}
+      isLoading={isLoading}
+      className={className}
+    />
   );
 };

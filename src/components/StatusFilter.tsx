@@ -6,9 +6,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface StatusFilterProps {
   selectedStatus: string | null;
   onStatusChange: (status: string | null) => void;
+  className?: string;
 }
 
-export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterProps) => {
+export const StatusFilter = ({ selectedStatus, onStatusChange, className = "" }: StatusFilterProps) => {
   const isMobile = useIsMobile();
   const statuses = [
     { 
@@ -52,7 +53,7 @@ export const StatusFilter = ({ selectedStatus, onStatusChange }: StatusFilterPro
   };
 
   return (
-    <div className="flex flex-wrap justify-center gap-2">
+    <div className={`flex flex-wrap justify-center gap-2 ${className}`}>
       {statuses.map((status) => {
         const Icon = status.icon;
         return (

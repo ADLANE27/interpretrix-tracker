@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -305,7 +304,6 @@ export const InterpreterChat = ({
           </div>
         </div>
         
-        {/* Restored StatusManager */}
         <div className="pb-3 md:py-3 w-full overflow-visible">
           <StatusManager 
             currentStatus={profile?.status} 
