@@ -57,6 +57,8 @@ export const useReactions = (
         }
       }
 
+      console.log('[Chat] Current reactions before update:', currentReactions);
+
       // Vérifier si l'utilisateur a déjà ajouté cette réaction
       const hasReacted = currentReactions[emoji]?.includes(currentUserId);
       
@@ -78,6 +80,8 @@ export const useReactions = (
         console.log('[Chat] Adding reaction:', { emoji, userId: currentUserId });
       }
 
+      console.log('[Chat] Updated reactions to save:', currentReactions);
+
       // Mettre à jour le message dans la base de données
       const { error: updateError } = await supabase
         .from('chat_messages')
@@ -91,6 +95,7 @@ export const useReactions = (
 
       // Mettre à jour l'UI
       await fetchMessages();
+      console.log('[Chat] Reaction saved successfully, UI refresh requested');
 
     } catch (error) {
       console.error('[Chat] Error handling reaction:', error);

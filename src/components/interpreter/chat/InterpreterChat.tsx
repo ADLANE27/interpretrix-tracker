@@ -231,8 +231,9 @@ export const InterpreterChat = ({
 
   const handleReactToMessage = async (messageId: string, emoji: string) => {
     try {
+      console.log('[InterpreterChat] Sending reaction:', { messageId, emoji });
       await reactToMessage(messageId, emoji);
-      console.log('[InterpreterChat] Reaction added/toggled:', { messageId, emoji });
+      console.log('[InterpreterChat] Reaction sent successfully');
     } catch (error) {
       console.error('[InterpreterChat] Error adding reaction:', error);
       toast({

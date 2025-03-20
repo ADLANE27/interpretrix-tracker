@@ -12,6 +12,8 @@ const useMessageActions = (
   const { reactToMessage } = useReactions(channelId, currentUserId, fetchMessages);
   const { markMentionsAsRead } = useMentions(channelId, currentUserId);
 
+  console.log('[useMessageActions] Initialized with channelId:', channelId, 'currentUserId:', currentUserId);
+
   return {
     sendMessage,
     deleteMessage,

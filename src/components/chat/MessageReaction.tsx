@@ -18,9 +18,10 @@ export const MessageReaction = ({
 }: MessageReactionProps) => {
   const handleEmojiSelect = async (emoji: string) => {
     try {
+      console.log('[MessageReaction] Emoji selected:', emoji, 'for message:', messageId);
       await onReactToMessage(messageId, emoji);
     } catch (error) {
-      console.error('Failed to add reaction:', error);
+      console.error('[MessageReaction] Failed to add reaction:', error);
     }
   };
 
@@ -38,6 +39,12 @@ export const MessageReaction = ({
     count: users.length,
     hasReacted: hasUserReacted(emoji)
   })).filter(item => item.count > 0);
+
+  console.log('[MessageReaction] Rendering reactions:', {
+    messageId,
+    reactionItems,
+    rawReactions: reactions
+  });
 
   return (
     <div className="flex flex-wrap gap-1 mt-1">
