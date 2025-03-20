@@ -54,7 +54,12 @@ export function PaginationList<T>({
   };
 
   if (isLoading) {
-    return <LoadingSpinner size="md" text="Chargement..." />;
+    return (
+      <div className="flex justify-center items-center py-8">
+        <LoadingSpinner size="md" />
+        <span className="ml-2 text-gray-600 dark:text-gray-400">Chargement...</span>
+      </div>
+    );
   }
 
   return (
