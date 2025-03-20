@@ -14,11 +14,39 @@ interface MessagingTabProps {
 export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: MessagingTabProps) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>({});
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const isMobile = useIsMobile();
 
   const handleClearFilters = () => {
     setFilters({});
   };
+
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
+
+  // Hide the channel list when in full screen mode
+  if (isFullScreen && selectedChannelId) {
+    return (
+      <InterpreterChat 
+        channelId={selectedChannelId} 
+        filters={filters} 
+        onFiltersChange={setFilters} 
+        onClearFilters={handleClearFilters}
+        onBackToChannels={() => {
+          setIsFullScreen(false);
+          if (isMobile) {
+            setSelectedChannelId(null);
+          }
+        }}
+        profile={profile}
+        onStatusChange={onStatusChange}
+        onMenuClick={onMenuClick}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={toggleFullScreen}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full">
@@ -41,6 +69,8 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
             profile={profile}
             onStatusChange={onStatusChange}
             onMenuClick={onMenuClick}
+            isFullScreen={isFullScreen}
+            onToggleFullScreen={toggleFullScreen}
           />
         </div>
       )}
