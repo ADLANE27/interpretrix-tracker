@@ -1,2 +1,5 @@
 
 project_id = "bblpiatmtnlhnbavhkau"
+
+[functions.terminology-search]
+verify_jwt = false

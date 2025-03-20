@@ -18,7 +18,16 @@ serve(async (req) => {
     // Get the API key from environment variables
     const apiKey = Deno.env.get('DEEPSEEK_API_KEY');
     if (!apiKey) {
-      throw new Error('DEEPSEEK_API_KEY is not set');
+      console.error('DEEPSEEK_API_KEY is not set');
+      return new Response(
+        JSON.stringify({ 
+          error: 'API key not configured. Please contact administrator.' 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     // Get request data
@@ -60,6 +69,12 @@ serve(async (req) => {
         max_tokens: 300,
       }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('DeepSeek API error:', errorData);
+      throw new Error(`DeepSeek API error: ${response.status} - ${errorData}`);
+    }
 
     const data = await response.json();
     console.log('DeepSeek API response:', JSON.stringify(data));
