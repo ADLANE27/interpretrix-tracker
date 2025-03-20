@@ -1,5 +1,6 @@
+
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,12 +55,16 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     }
   };
 
-  // This effect now updates realtimeUnreadCount whenever unreadMentions changes
+  // Listen for unread mentions count updates
   useEffect(() => {
+    console.log('[Sidebar] Setting up mentions count listener');
+    
+    // Initialize with current unread mentions
     setRealtimeUnreadCount(unreadMentions.length);
     
+    // Listen for global events
     const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
-      console.log('[Sidebar] Received unread mentions update:', count);
+      console.log('[Sidebar] Received unread mentions update event:', count);
       setRealtimeUnreadCount(count);
     });
     
@@ -67,20 +72,11 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       unsubscribe();
     };
   }, [unreadMentions.length]);
-
-  // Setup a regular interval to refresh mentions regardless of active tab
+  
+  // Initial fetch of mentions
   useEffect(() => {
-    console.log('[Sidebar] Setting up mentions refresh');
+    console.log('[Sidebar] Refreshing mentions on mount');
     refreshMentions();
-    
-    const intervalId = setInterval(() => {
-      console.log('[Sidebar] Refreshing mentions on interval');
-      refreshMentions();
-    }, 30000); // Refresh every 30 seconds
-    
-    return () => {
-      clearInterval(intervalId);
-    };
   }, [refreshMentions]);
 
   useEffect(() => {
@@ -159,8 +155,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       id: "messages", 
       label: "Messages", 
       icon: MessageCircle,
-      badge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
-      mentionsBadge: unreadMentions.length > 0 ? unreadMentions.length : undefined,
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
@@ -208,7 +202,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             </AvatarFallback>
           </Avatar>
           
-          {/* Bell icon with notification badge moved outside of tab system */}
+          {/* Bell icon with notification badge */}
           <MentionsPopover
             mentions={unreadMentions}
             totalCount={realtimeUnreadCount}
@@ -216,21 +210,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             onMarkAsRead={markMentionAsRead}
             onDelete={deleteMention}
           >
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="relative"
-            >
-              <Bell className="h-5 w-5" />
-              {realtimeUnreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
-                >
-                  {realtimeUnreadCount}
-                </Badge>
-              )}
-            </Button>
+            {/* The button is now defined inside MentionsPopover */}
           </MentionsPopover>
         </div>
         <Button
@@ -263,7 +243,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                 <Icon className="w-4 h-4" />
                 <span className="flex-1 text-left">{tab.label}</span>
                 
-                {tab.badge !== undefined && tab.id !== "messages" && (
+                {tab.badge !== undefined && (
                   <Badge 
                     variant="destructive" 
                     className="ml-auto animate-pulse"
@@ -272,26 +252,13 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {tab.id === "messages" && (
-                  <div className="flex gap-1 ml-auto">
-                    {tab.mentionsBadge !== undefined && (
-                      <Badge 
-                        variant="destructive" 
-                        className="animate-pulse bg-red-500"
-                      >
-                        @{tab.mentionsBadge}
-                      </Badge>
-                    )}
-                    
-                    {tab.mentionsBadge === undefined && tab.directMessagesBadge !== undefined && (
-                      <Badge 
-                        variant="secondary" 
-                        className="animate-pulse bg-blue-500 text-white"
-                      >
-                        {tab.directMessagesBadge}
-                      </Badge>
-                    )}
-                  </div>
+                {tab.id === "messages" && tab.directMessagesBadge !== undefined && (
+                  <Badge 
+                    variant="secondary" 
+                    className="animate-pulse bg-blue-500 text-white"
+                  >
+                    {tab.directMessagesBadge}
+                  </Badge>
                 )}
               </Button>
             );

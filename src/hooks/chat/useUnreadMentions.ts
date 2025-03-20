@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
@@ -43,11 +44,6 @@ export const useUnreadMentions = () => {
       setUserId(user.id);
       console.log('[Mentions Debug] Fetching mentions for user:', user.id);
       
-      // Clear existing state before fetching new data
-      setUnreadMentions([]);
-      setUnreadDirectMessages(0);
-      setTotalUnreadCount(0);
-
       // Fetch unread mentions
       const { data: mentionsData, error: mentionsError } = await supabase
         .from('message_mentions')
@@ -229,24 +225,13 @@ export const useUnreadMentions = () => {
     }
   };
 
+  // Setup global subscriptions
   useEffect(() => {
     // Initial fetch
     fetchUnreadMentions();
 
-    // Auth subscription
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setUnreadMentions([]);
-        setUnreadDirectMessages(0);
-        setTotalUnreadCount(0);
-        setUserId(null);
-      } else if (event === 'SIGNED_IN') {
-        fetchUnreadMentions();
-      }
-    });
-
-    // Create a single channel for all subscriptions
-    const channel = supabase.channel('mentions-and-messages')
+    // Setup realtime subscription for instant updates
+    const channel = supabase.channel('global-mentions-updates')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'message_mentions' },
@@ -275,6 +260,7 @@ export const useUnreadMentions = () => {
             setUnreadMentions(prev => {
               const filtered = prev.filter(mention => mention.mention_id !== payload.new.id);
               setTotalUnreadCount(filtered.length + unreadDirectMessages);
+              eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
               return filtered;
             });
           }
@@ -288,21 +274,30 @@ export const useUnreadMentions = () => {
           fetchUnreadMentions();
         }
       )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'channel_members' },
-        (payload) => {
-          console.log('[Messages Debug] Channel membership updated:', payload);
-          if (payload.new && payload.new.user_id === userId) {
-            fetchUnreadMentions();
-          }
-        }
-      )
       .subscribe();
+
+    // Create interval to periodically refresh mentions
+    const intervalId = setInterval(() => {
+      console.log('[Mentions Debug] Refreshing mentions on interval');
+      fetchUnreadMentions();
+    }, 30000);
+
+    // Auth subscription
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUnreadMentions([]);
+        setUnreadDirectMessages(0);
+        setTotalUnreadCount(0);
+        setUserId(null);
+      } else if (event === 'SIGNED_IN') {
+        fetchUnreadMentions();
+      }
+    });
 
     // Cleanup function
     return () => {
       console.log('[Mentions Debug] Cleaning up subscriptions');
+      clearInterval(intervalId);
       authSubscription.unsubscribe();
       supabase.removeChannel(channel);
     };

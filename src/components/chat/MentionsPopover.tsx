@@ -36,21 +36,35 @@ export const MentionsPopover = ({
 }: MentionsPopoverProps) => {
   const [open, setOpen] = useState(false);
   const [localMentions, setLocalMentions] = useState<UnreadMention[]>(mentions);
+  const [localCount, setLocalCount] = useState(totalCount);
   const isMobile = useIsMobile();
 
-  // Sync mentions prop to local state when it changes
+  // Update local state whenever props change
   useEffect(() => {
-    if (JSON.stringify(mentions) !== JSON.stringify(localMentions)) {
-      setLocalMentions(mentions);
-    }
-  }, [mentions]);
+    setLocalMentions(mentions);
+    setLocalCount(totalCount);
+  }, [mentions, totalCount]);
+
+  // Listen to global events for mention updates regardless of tab
+  useEffect(() => {
+    const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
+      console.log('[MentionsPopover] Received unread mentions update event:', count);
+      setLocalCount(count);
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Handle marking as read with local state update
   const handleMarkAsRead = (mentionId: string) => {
     setLocalMentions(prev => {
       const filtered = prev.filter(m => m.mention_id !== mentionId);
+      const newCount = filtered.length;
+      setLocalCount(newCount);
       // Emit event with updated count
-      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, newCount);
       return filtered;
     });
     onMarkAsRead(mentionId);
@@ -60,8 +74,10 @@ export const MentionsPopover = ({
   const handleDelete = (mentionId: string) => {
     setLocalMentions(prev => {
       const filtered = prev.filter(m => m.mention_id !== mentionId);
+      const newCount = filtered.length;
+      setLocalCount(newCount);
       // Emit event with updated count
-      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, filtered.length);
+      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, newCount);
       return filtered;
     });
     onDelete(mentionId);
@@ -70,7 +86,21 @@ export const MentionsPopover = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {children}
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="relative"
+        >
+          <Bell className="h-5 w-5" />
+          {localCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+            >
+              {localCount}
+            </Badge>
+          )}
+        </Button>
       </DialogTrigger>
       <DialogContent 
         className="sm:max-w-[500px] p-0 gap-0 overflow-hidden"
