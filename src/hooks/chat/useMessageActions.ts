@@ -16,7 +16,6 @@ const ALLOWED_FILE_TYPES = new Set([
 ]);
 
 const sanitizeFilename = (filename: string): string => {
-  // Create a mapping of accented characters to their non-accented equivalents
   const accentMap: { [key: string]: string } = {
     'à': 'a', 'á': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a', 'å': 'a',
     'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
@@ -28,27 +27,21 @@ const sanitizeFilename = (filename: string): string => {
     'ç': 'c'
   };
 
-  // Extract extension
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   
-  // Process the name without extension
   let nameWithoutExt = filename.slice(0, -(ext.length + 1)).toLowerCase();
   
-  // Replace accented characters
   nameWithoutExt = nameWithoutExt.split('').map(char => accentMap[char] || char).join('');
   
-  // Remove any remaining non-alphanumeric characters
   nameWithoutExt = nameWithoutExt
     .replace(/[^a-z0-9]/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
     || 'file';
 
-  // Add uniqueness with timestamp and random string
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 6);
   
-  // Clean extension and construct final filename
   const cleanExt = ext.replace(/[^a-z0-9]/g, '');
 
   const finalName = `${nameWithoutExt}_${timestamp}_${randomString}.${cleanExt}`;
@@ -68,7 +61,6 @@ const validateFile = (file: File): string | null => {
   return null;
 };
 
-// Check if we have an internet connection
 const checkConnection = (): boolean => {
   return navigator.onLine;
 };
@@ -81,12 +73,10 @@ const useMessageActions = (
   const { toast } = useToast();
 
   const uploadAttachment = async (file: File): Promise<Attachment> => {
-    // Check connection before attempting upload
     if (!checkConnection()) {
       throw new Error("Pas de connexion internet. Veuillez réessayer plus tard.");
     }
 
-    // Validate file before upload
     const validationError = validateFile(file);
     if (validationError) {
       console.error('[Chat] File validation error:', validationError);
@@ -123,7 +113,7 @@ const useMessageActions = (
 
         return {
           url: publicUrl,
-          filename: file.name, // Keep original filename for display
+          filename: file.name,
           type: file.type,
           size: file.size
         };
@@ -131,7 +121,7 @@ const useMessageActions = (
         console.error(`[Chat] Upload attempt ${4 - retries} failed:`, error);
         retries--;
         if (retries === 0) throw error;
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     throw new Error('Upload failed after all retries');
@@ -145,7 +135,6 @@ const useMessageActions = (
     if (!channelId || !currentUserId) throw new Error("Données requises manquantes");
     if (!content.trim() && files.length === 0) throw new Error("Le message ne peut pas être vide");
     
-    // Check connection before attempting to send
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -198,7 +187,6 @@ const useMessageActions = (
   };
 
   const deleteMessage = async (messageId: string) => {
-    // Check for connection before attempting to delete
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -208,7 +196,6 @@ const useMessageActions = (
       return;
     }
 
-    // Check for required data
     if (!messageId) {
       toast({
         title: "Erreur", 
@@ -230,7 +217,6 @@ const useMessageActions = (
     try {
       console.log('[Chat] Attempting to delete message:', messageId);
       
-      // First verify the message belongs to the current user, using maybeSingle instead of single
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('sender_id')
@@ -255,7 +241,6 @@ const useMessageActions = (
         throw new Error("Vous ne pouvez supprimer que vos propres messages");
       }
 
-      // Proceed with deletion inside a transaction to ensure consistency
       const { error } = await supabase
         .from('chat_messages')
         .delete()
@@ -266,7 +251,6 @@ const useMessageActions = (
         throw error;
       }
 
-      // Refresh messages list after deletion
       await fetchMessages();
       
       toast({
@@ -288,7 +272,6 @@ const useMessageActions = (
   const markMentionsAsRead = async () => {
     if (!currentUserId || !channelId) return;
 
-    // Check connection before attempting to update mentions
     if (!checkConnection()) {
       console.error('[Chat] Cannot mark mentions as read: No internet connection');
       return;
@@ -320,7 +303,6 @@ const useMessageActions = (
       return;
     }
 
-    // Check connection before attempting to react
     if (!checkConnection()) {
       toast({
         title: "Erreur",
@@ -333,7 +315,6 @@ const useMessageActions = (
     try {
       console.log('[Chat] Adding/removing reaction:', { messageId, emoji, currentUserId });
       
-      // Use maybeSingle instead of single for better error handling
       const { data: messages, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
@@ -350,7 +331,6 @@ const useMessageActions = (
         throw new Error("Message introuvable");
       }
 
-      // Initialize reactions as an empty object if it's null or undefined
       const currentReactions = (messages.reactions as Record<string, string[]>) || {};
       console.log('[Chat] Current reactions:', currentReactions);
       
@@ -358,11 +338,9 @@ const useMessageActions = (
       
       let updatedUsers;
       if (currentUsers.includes(currentUserId)) {
-        // Remove user's reaction if they already reacted with this emoji
         updatedUsers = currentUsers.filter(id => id !== currentUserId);
         console.log('[Chat] Removing user reaction');
       } else {
-        // Add user's reaction
         updatedUsers = [...currentUsers, currentUserId];
         console.log('[Chat] Adding user reaction');
       }
@@ -372,7 +350,6 @@ const useMessageActions = (
         [emoji]: updatedUsers
       };
 
-      // If no users are left for this emoji, remove it from reactions
       if (updatedUsers.length === 0) {
         delete updatedReactions[emoji];
       }
@@ -391,7 +368,6 @@ const useMessageActions = (
       
       console.log('[Chat] Reaction updated successfully');
       
-      // Refresh messages to reflect the changes
       await fetchMessages();
     } catch (error) {
       console.error('[Chat] Error updating reaction:', error);

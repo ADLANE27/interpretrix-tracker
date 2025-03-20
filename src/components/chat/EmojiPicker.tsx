@@ -20,6 +20,7 @@ export const EmojiPicker = ({ onEmojiSelect, size = 'md' }: EmojiPickerProps) =>
   const [showFullPicker, setShowFullPicker] = useState(false);
 
   const handleEmojiClick = (emoji: string) => {
+    console.log('[EmojiPicker] Quick emoji selected:', emoji);
     onEmojiSelect(emoji);
     setOpen(false);
     setShowFullPicker(false);
@@ -27,6 +28,7 @@ export const EmojiPicker = ({ onEmojiSelect, size = 'md' }: EmojiPickerProps) =>
 
   const handleEmojiSelect = (emoji: any) => {
     // Make sure we're getting the native emoji character
+    console.log('[EmojiPicker] Full picker emoji selected:', emoji.native);
     onEmojiSelect(emoji.native);
     setOpen(false);
     setShowFullPicker(false);

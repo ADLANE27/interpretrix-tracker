@@ -99,6 +99,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
   const renderReactions = (message: Message) => {
+    // Don't render anything if there are no reactions or the reactions object is empty
     if (!message.reactions || Object.keys(message.reactions).length === 0) {
       return null;
     }
@@ -124,91 +125,93 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   };
 
-  const renderMessage = (message: Message, isThreadReply = false) => (
-    <div 
-      ref={(el) => el && observeMessage(el)}
-      key={message.id}
-      data-message-id={message.id}
-      className={`flex gap-3 ${
-        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-      } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
-    >
-      {message.sender.id !== currentUserId && (
-        <Avatar className="h-10 w-10 shrink-0 mt-1">
-          <AvatarImage 
-            src={message.sender.avatarUrl} 
-            alt={message.sender.name}
-            className="object-cover"
-          />
-          <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
-            {getInitials(message.sender.name)}
-          </AvatarFallback>
-        </Avatar>
-      )}
-      <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
-        message.sender.id === currentUserId ? 'items-end' : 'items-start'
-      }`}>
-        {!isThreadReply && message.sender.id !== currentUserId && (
-          <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
-            {message.sender.name}
-          </span>
-        )}
-        <div className={`group relative ${
-          message.sender.id === currentUserId 
-            ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
-            : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
-        } px-4 py-3 break-words overflow-hidden`}>
-          <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
-          <div className="absolute right-4 bottom-2 flex items-center gap-1">
-            <span className="text-xs text-gray-500">
-              {formatMessageTime(message.timestamp)}
-            </span>
-          </div>
-        </div>
-        
-        {renderReactions(message)}
-        
-        <div className="flex items-center gap-2 mt-1 mr-1">
-          <EmojiPicker 
-            onEmojiSelect={(emoji) => onReactToMessage(message.id, emoji)}
-            size="sm"
-          />
-          
-          {message.sender.id === currentUserId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDeleteMessage(message.id)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
-              aria-label="Supprimer le message"
-            >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </Button>
-          )}
-          {!isThreadReply && setReplyTo && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyTo(message)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
-            >
-              <MessageCircle className="h-4 w-4 text-gray-500" />
-            </Button>
-          )}
-        </div>
-
-        {message.attachments && message.attachments.map((attachment, index) => (
-          <div key={index} className="relative group max-w-sm mt-2">
-            <MessageAttachment
-              url={attachment.url}
-              filename={attachment.filename}
-              locale="fr"
+  const renderMessage = (message: Message, isThreadReply = false) => {
+    return (
+      <div 
+        ref={(el) => el && observeMessage(el)}
+        key={message.id}
+        data-message-id={message.id}
+        className={`flex gap-3 ${
+          message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+        } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
+      >
+        {message.sender.id !== currentUserId && (
+          <Avatar className="h-10 w-10 shrink-0 mt-1">
+            <AvatarImage 
+              src={message.sender.avatarUrl} 
+              alt={message.sender.name}
+              className="object-cover"
             />
+            <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+              {getInitials(message.sender.name)}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
+          message.sender.id === currentUserId ? 'items-end' : 'items-start'
+        }`}>
+          {!isThreadReply && message.sender.id !== currentUserId && (
+            <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
+              {message.sender.name}
+            </span>
+          )}
+          <div className={`group relative ${
+            message.sender.id === currentUserId 
+              ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
+              : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+          } px-4 py-3 break-words overflow-hidden`}>
+            <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
+            <div className="absolute right-4 bottom-2 flex items-center gap-1">
+              <span className="text-xs text-gray-500">
+                {formatMessageTime(message.timestamp)}
+              </span>
+            </div>
           </div>
-        ))}
+          
+          {renderReactions(message)}
+          
+          <div className="flex items-center gap-2 mt-1 mr-1">
+            <EmojiPicker 
+              onEmojiSelect={(emoji) => onReactToMessage(message.id, emoji)}
+              size="sm"
+            />
+            
+            {message.sender.id === currentUserId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDeleteMessage(message.id)}
+                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+                aria-label="Supprimer le message"
+              >
+                <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+              </Button>
+            )}
+            {!isThreadReply && setReplyTo && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setReplyTo(message)}
+                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+              >
+                <MessageCircle className="h-4 w-4 text-gray-500" />
+              </Button>
+            )}
+          </div>
+
+          {message.attachments && message.attachments.map((attachment, index) => (
+            <div key={index} className="relative group max-w-sm mt-2">
+              <MessageAttachment
+                url={attachment.url}
+                filename={attachment.filename}
+                locale="fr"
+              />
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
