@@ -100,36 +100,39 @@ export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
         </div>
       )}
 
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="whitespace-nowrap"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            {!isMobile && "Participants"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-4" align="end">
-          <div className="space-y-4">
-            <h3 className="font-semibold">{channelName}</h3>
+      {/* Only show participants button for admin users */}
+      {userRole === 'admin' && (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              {!isMobile && "Participants"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4" align="end">
+            <div className="space-y-4">
+              <h3 className="font-semibold">{channelName}</h3>
 
-            <MemberList 
-              channelId={channelId}
-              channelType={channelType}
-              userRole={userRole}
-            />
-            
-            {userRole === 'admin' && channelType === 'group' && (
-              <>
-                <div className="h-px bg-border" />
-                <AvailableUsersList channelId={channelId} />
-              </>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+              <MemberList 
+                channelId={channelId}
+                channelType={channelType}
+                userRole={userRole}
+              />
+              
+              {userRole === 'admin' && channelType === 'group' && (
+                <>
+                  <div className="h-px bg-border" />
+                  <AvailableUsersList channelId={channelId} />
+                </>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 };
