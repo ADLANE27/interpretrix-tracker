@@ -112,6 +112,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   };
 
   const renderMessage = (message: Message, isThreadReply = false) => {
+    console.log('[MessageList] Rendering message with reactions:', message.id, message.reactions);
+    
     return (
       <div 
         ref={(el) => el && observeMessage(el)}

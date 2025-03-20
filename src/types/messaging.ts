@@ -1,3 +1,4 @@
+
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {

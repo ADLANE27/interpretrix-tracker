@@ -18,11 +18,15 @@ export const MessageReaction = ({
 }: MessageReactionProps) => {
   const [isReacting, setIsReacting] = useState(false);
   
+  // Debug pour voir ce que contient reactions
+  console.log(`[MessageReaction] Rendering for message ${messageId}`, { reactions, currentUserId });
+  
   const handleEmojiSelect = async (emoji: string) => {
     if (isReacting) return;
     
     try {
       setIsReacting(true);
+      console.log(`[MessageReaction] Adding reaction ${emoji} to message ${messageId}`);
       await onReactToMessage(messageId, emoji);
     } catch (error) {
       console.error('[MessageReaction] Failed to add reaction:', error);
@@ -31,7 +35,7 @@ export const MessageReaction = ({
     }
   };
 
-  // Create an array of emoji reactions for rendering
+  // Création d'un tableau de réactions pour l'affichage
   const reactionEmojis = Object.entries(reactions || {})
     .filter(([_, users]) => users && users.length > 0)
     .map(([emoji, users]) => ({
@@ -39,6 +43,8 @@ export const MessageReaction = ({
       count: users.length,
       hasReacted: currentUserId ? users.includes(currentUserId) : false
     }));
+  
+  console.log(`[MessageReaction] Processed reactions for message ${messageId}:`, reactionEmojis);
 
   return (
     <div className="flex flex-wrap gap-1 mt-1">

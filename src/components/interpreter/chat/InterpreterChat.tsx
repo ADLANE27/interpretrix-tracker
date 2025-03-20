@@ -231,6 +231,7 @@ export const InterpreterChat = ({
 
   const handleReactToMessage = async (messageId: string, emoji: string) => {
     if (!messageId || !emoji || !currentUserId) {
+      console.error('[InterpreterChat] Missing information for reaction:', { messageId, emoji, currentUserId });
       toast({
         title: "Erreur",
         description: "Informations manquantes pour la réaction",
@@ -240,8 +241,11 @@ export const InterpreterChat = ({
     }
 
     try {
+      console.log('[InterpreterChat] Reacting to message:', { messageId, emoji });
       await reactToMessage(messageId, emoji);
+      console.log('[InterpreterChat] Successfully reacted to message');
     } catch (error) {
+      console.error('[InterpreterChat] Error adding reaction:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'ajouter la réaction",

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,10 +122,16 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
 
   const handleReactToMessage = async (messageId: string, emoji: string) => {
     try {
+      console.log('[Chat] Adding reaction:', { messageId, emoji });
       await reactToMessage(messageId, emoji);
-      console.log('[Chat] Reaction added:', { messageId, emoji });
+      console.log('[Chat] Reaction added successfully');
     } catch (error) {
       console.error('[Chat] Error adding reaction:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter la réaction",
+        variant: "destructive",
+      });
     }
   };
 

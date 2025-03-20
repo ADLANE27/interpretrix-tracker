@@ -21,21 +21,26 @@ export const useReactions = (
     }
 
     if (!messageId || !emoji || !currentUserId) {
-      console.error('Invalid reaction parameters:', { messageId, emoji, currentUserId });
+      console.error('[useReactions] Invalid reaction parameters:', { messageId, emoji, currentUserId });
       return;
     }
 
     try {
-      // Get the current reactions
+      console.log(`[useReactions] Adding reaction ${emoji} to message ${messageId}`);
+      
+      // Étape 1: Récupérer les réactions actuelles
       const { data: message, error: fetchError } = await supabase
         .from('chat_messages')
         .select('reactions')
         .eq('id', messageId)
         .single();
 
-      if (fetchError) throw new Error("Impossible de récupérer le message");
+      if (fetchError) {
+        console.error('[useReactions] Failed to fetch message:', fetchError);
+        throw new Error("Impossible de récupérer le message");
+      }
 
-      // Initialize or parse reactions
+      // Étape 2: Analyser et mettre à jour les réactions
       let currentReactions: Record<string, string[]> = {};
       
       if (message?.reactions) {
@@ -43,6 +48,7 @@ export const useReactions = (
           try {
             currentReactions = JSON.parse(message.reactions);
           } catch (e) {
+            console.error('[useReactions] Failed to parse reactions string:', e);
             currentReactions = {};
           }
         } else if (typeof message.reactions === 'object') {
@@ -50,37 +56,46 @@ export const useReactions = (
         }
       }
 
-      // Check if user already reacted with this emoji
+      console.log('[useReactions] Current reactions before update:', currentReactions);
+
+      // Vérifier si l'utilisateur a déjà réagi avec cet emoji
       const userReactionIndex = currentReactions[emoji]?.findIndex(id => id === currentUserId) ?? -1;
       
-      // Toggle the reaction
+      // Toggle la réaction
       if (userReactionIndex >= 0) {
-        // Remove the reaction
+        // Supprimer la réaction
         currentReactions[emoji] = currentReactions[emoji].filter(id => id !== currentUserId);
-        // Remove empty arrays
+        // Supprimer les tableaux vides
         if (currentReactions[emoji].length === 0) {
           delete currentReactions[emoji];
         }
       } else {
-        // Add the reaction
+        // Ajouter la réaction
         if (!currentReactions[emoji]) {
           currentReactions[emoji] = [];
         }
         currentReactions[emoji].push(currentUserId);
       }
 
-      // Update the message in the database - always save as object, not JSON string
+      console.log('[useReactions] Updated reactions:', currentReactions);
+
+      // Étape 3: Mettre à jour le message dans la base de données - toujours enregistrer en tant qu'objet, pas de chaîne JSON
       const { error: updateError } = await supabase
         .from('chat_messages')
         .update({ reactions: currentReactions })
         .eq('id', messageId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[useReactions] Failed to update message:', updateError);
+        throw updateError;
+      }
 
-      // Update the UI with fresh data
+      console.log('[useReactions] Successfully updated reactions for message:', messageId);
+
+      // Étape 4: Mettre à jour l'interface utilisateur avec des données fraîches
       await fetchMessages();
     } catch (error) {
-      console.error('Error handling reaction:', error);
+      console.error('[useReactions] Error handling reaction:', error);
       toast({
         title: "Erreur",
         description: error instanceof Error 
