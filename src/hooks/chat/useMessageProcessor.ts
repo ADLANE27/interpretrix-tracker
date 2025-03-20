@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { MessageData, Message } from '@/types/messaging';
@@ -120,6 +121,9 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           }) 
         : [];
 
+      // Create a stable date object that won't change on re-renders
+      const messageTimestamp = new Date(messageData.created_at);
+      
       // Create message object with a normalized timestamp
       const message: Message = {
         id: messageData.id,
@@ -129,8 +133,8 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           name: senderDetails[0].name,
           avatarUrl: senderDetails[0].avatar_url,
         },
-        // Create a stable timestamp that won't be affected by timezone issues
-        timestamp: new Date(messageData.created_at),
+        // Store the timestamp as a Date object for better stability
+        timestamp: messageTimestamp,
         parent_message_id: messageData.parent_message_id,
         attachments,
         channelType: channelType,
@@ -139,7 +143,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
 
       // Add to map
       messagesMap.set(message.id, message);
-      console.log(`[useMessageProcessor ${userRole.current}] Processed new message:`, message.id);
+      console.log(`[useMessageProcessor ${userRole.current}] Processed new message:`, message.id, 'at', messageTimestamp.toISOString());
       pendingMessageUpdates.delete(messageData.id);
 
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { Message } from '@/types/messaging';
 import { normalizeTimestampForSorting } from '@/utils/dateTimeUtils';
@@ -9,6 +8,7 @@ export const useMessageMap = () => {
   const updateCounter = useRef<number>(0);
   const updateScheduled = useRef<boolean>(false);
   const messagesVersion = useRef<number>(0);
+  const lastSortedMessages = useRef<Message[]>([]);
   
   // Update messages array with debouncing to prevent too many state updates
   const updateMessagesArray = useCallback(() => {
@@ -43,6 +43,7 @@ export const useMessageMap = () => {
       if (messagesMap.current.size === 0) {
         console.log(`[useMessageMap] Update ${currentUpdateId}: Setting empty messages array`);
         setMessages([]);
+        lastSortedMessages.current = [];
         return;
       }
 
@@ -54,14 +55,22 @@ export const useMessageMap = () => {
           return timeA - timeB;
         });
       
+      // Keep a stable reference to avoid unnecessary re-renders
+      const messagesChanged = 
+        updatedMessages.length !== lastSortedMessages.current.length ||
+        updatedMessages.some((msg, idx) => {
+          const prevMsg = lastSortedMessages.current[idx];
+          return !prevMsg || msg.id !== prevMsg.id;
+        });
+      
       // Don't update if nothing changed (prevents re-renders)
-      if (messages.length === updatedMessages.length && 
-          messages.every((m, i) => m.id === updatedMessages[i].id)) {
+      if (!messagesChanged) {
         console.log(`[useMessageMap] Update ${currentUpdateId}: Messages unchanged, skipping update`);
         return;
       }
       
       console.log(`[useMessageMap] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
+      lastSortedMessages.current = updatedMessages;
       setMessages(updatedMessages);
     });
   }, [messages]);
@@ -73,6 +82,7 @@ export const useMessageMap = () => {
     updateMessagesArray,
     updateCounter,
     updateScheduled,
-    messagesVersion
+    messagesVersion,
+    lastSortedMessages
   };
 };

@@ -1,9 +1,8 @@
 
 import { useCallback } from 'react';
-import { convertToMessageData, fetchChannelType, fetchMessagesFromDb } from './utils/fetchUtils';
+import { convertToMessageData, fetchChannelType, fetchMessagesFromDb, sortMessagesByTimestamp } from './utils/fetchUtils';
 import { useFetchState } from './useFetchState';
 import { useBatchProcessor } from './useBatchProcessor';
-import { FetchOptions } from './types/fetchTypes';
 
 // Define a type for the message processing interface
 interface MessageProcessingHook {
@@ -78,6 +77,7 @@ export const useFetchMessages = (
       controls.activeFetch.current = true;
       processingMessage.current = true;
       
+      // Only show loading indicator on very first load
       if (!controls.initialFetchDone.current) {
         setIsLoading(true);
       } else {
@@ -87,8 +87,8 @@ export const useFetchMessages = (
       // Get channel type
       const channelType = await fetchChannelType(channelId);
 
-      // Clear messages if this is a full refresh
-      if (limit === 100 || limit >= 150 || controls.refreshInProgress.current) {
+      // Clear messages if this is a full refresh or first load
+      if (limit === 100 || limit >= 150 || controls.refreshInProgress.current || !controls.initialFetchDone.current) {
         messagesMap.current.clear();
       }
 
@@ -96,43 +96,43 @@ export const useFetchMessages = (
       
       // Fetch messages from database - always fetch a decent amount
       const messages = await fetchMessagesFromDb(channelId, effectiveLimit);
-
+      
       if (!messages || messages.length === 0) {
+        // Still update the UI even when no messages to show empty state
         updateMessagesArray();
         setHasMoreMessages(false);
         controls.initialFetchDone.current = true;
         return;
       }
       
-      const previousCount = messagesMap.current.size;
-
+      // Sort messages by timestamp before processing for more stable order
+      const sortedMessages = sortMessagesByTimestamp(messages);
+      
+      console.log(`[useFetchMessages] Processing ${sortedMessages.length} messages in stable order`);
+      
       // Process messages in batches
       await processBatch(
-        messages.map(msg => convertToMessageData(msg)), 
+        sortedMessages.map(msg => convertToMessageData(msg)), 
         channelType, 
         20
       );
       
       // Update last fetch timestamp and hasMore state
-      if (messages.length > 0) {
-        lastFetchTimestamp.current = messages[0].created_at;
-        setHasMoreMessages(messages.length >= effectiveLimit);
+      if (sortedMessages.length > 0) {
+        lastFetchTimestamp.current = sortedMessages[0].created_at;
+        setHasMoreMessages(sortedMessages.length >= effectiveLimit);
       } else {
         setHasMoreMessages(false);
       }
       
       // Update state
-      const newCount = messagesMap.current.size;
-      
-      if (newCount > 0) {
-        updateMessagesArray();
-        state.stableMessageCount.current = newCount;
-      }
-      
       state.lastFetchTime.current = new Date();
       controls.initialFetchDone.current = true;
       
-      console.log(`[useFetchMessages] Processed ${newCount} messages`);
+      // Important: update messages array to ensure UI reflects the latest state
+      updateMessagesArray();
+      
+      console.log(`[useFetchMessages] Processed ${messagesMap.current.size} messages`);
       
     } catch (error) {
       console.error('[useFetchMessages] Error in fetchMessages:', error);
@@ -142,6 +142,7 @@ export const useFetchMessages = (
         controls.initialLoadingTimer.current = null;
       }
       
+      // Short delay before hiding loading indicator
       setTimeout(() => {
         debouncedSetLoading(false, setIsLoading);
       }, 50);
@@ -150,6 +151,7 @@ export const useFetchMessages = (
       controls.activeFetch.current = false;
       controls.refreshInProgress.current = false;
       
+      // Release fetch lock with slight delay
       setTimeout(() => {
         controls.fetchLock.current = false;
       }, 100);
@@ -184,7 +186,7 @@ export const useFetchMessages = (
   // Force refresh
   const forceRefresh = useCallback(() => {
     resetFetchState();
-    return fetchMessages(150); // Fetch more messages on force refresh
+    return fetchMessages(200); // Fetch more messages on force refresh
   }, [fetchMessages, resetFetchState]);
 
   return {

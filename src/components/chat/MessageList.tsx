@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
@@ -41,13 +41,36 @@ export const MessageList: React.FC<MessageListProps> = ({
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const hadMessagesRef = useRef<boolean>(false); 
+  const hadMessagesRef = useRef<boolean>(false);
   const stableMessages = useRef<Message[]>([]);
+  const messageIdsRef = useRef<string[]>([]);
   const lastStableUpdateTimestamp = useRef<number>(Date.now());
   const [showSkeletons, setShowSkeletons] = useState(true);
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
+
+  // Check if message list actually changed (by content, not just by reference)
+  useEffect(() => {
+    if (messages.length > 0) {
+      const currentMessageIds = messages.map(m => m.id).join(',');
+      const previousMessageIds = messageIdsRef.current.join(',');
+      
+      if (currentMessageIds !== previousMessageIds) {
+        messageIdsRef.current = messages.map(m => m.id);
+        
+        // Only update stable messages if content actually changed
+        stableMessages.current = [...messages];
+        lastStableUpdateTimestamp.current = Date.now();
+        hadMessagesRef.current = true;
+      }
+      
+      // Once we have real messages, we're no longer in initial load state
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    }
+  }, [messages, isInitialLoad]);
 
   // Show skeletons immediately on mount, keep them until real messages arrive
   useEffect(() => {
@@ -68,24 +91,39 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages.length, channelId]);
 
-  // Store the latest valid messages to prevent flickering
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Update stable messages immediately for faster display
-      stableMessages.current = [...messages]; // Create a new array to ensure reference changes
-      lastStableUpdateTimestamp.current = Date.now();
-      hadMessagesRef.current = true;
-      
-      // Once we have real messages, we're no longer in initial load state
-      if (isInitialLoad) {
-        setIsInitialLoad(false);
+  // Force scroll to bottom with high priority using useLayoutEffect
+  useLayoutEffect(() => {
+    if (!messageContainerRef.current) return;
+    
+    const isNewMessageBatch = messages.length > lastMessageCountRef.current;
+    lastMessageCountRef.current = messages.length;
+    
+    // Always scroll to bottom on first load when messages arrive
+    if ((messages.length > 0 && scrollToBottomFlag.current) || isNewMessageBatch) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
+        scrollToBottomFlag.current = false;
       }
     }
   }, [messages, isInitialLoad]);
 
+  // When channel changes, reset auto-scroll flag
   useEffect(() => {
-    renderCountRef.current += 1;
-  });
+    scrollToBottomFlag.current = true;
+    setIsInitialLoad(true);
+    initialSkeletonsShown.current = false;
+    setShowSkeletons(true);
+    messageIdsRef.current = [];
+    
+    // Force scroll to bottom after a small delay when channel changes
+    if (messageContainerRef.current) {
+      setTimeout(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+        }
+      }, 200);
+    }
+  }, [channelId]);
 
   const memoizedOrganizeThreads = useCallback(() => {
     // Always use stable messages when they exist and current messages are empty
@@ -97,52 +135,8 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const { rootMessages, messageThreads } = memoizedOrganizeThreads();
 
-  // Force scroll to bottom on first load and when new messages arrive
-  useEffect(() => {
-    if (!messageContainerRef.current) return;
-    
-    const isNewMessage = messages.length > lastMessageCountRef.current;
-    const messagesChanged = messages.length !== lastMessageCountRef.current;
-    lastMessageCountRef.current = messages.length || stableMessages.current.length;
-    
-    // Assure that we scroll to bottom when:
-    // 1. Initial load with scroll flag active
-    // 2. New messages arrive (more messages than before)
-    if ((messages.length > 0 && scrollToBottomFlag.current) || isNewMessage) {
-      requestAnimationFrame(() => {
-        if (messagesEndRef.current && messageContainerRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          scrollToBottomFlag.current = false;
-        }
-      });
-    } 
-    // For other updates without new messages, generally maintain scroll position
-    // (handled by the browser in most cases)
-  }, [messages]);
-
-  // When channel changes, reset auto-scroll flag
-  useEffect(() => {
-    scrollToBottomFlag.current = true;
-    setIsInitialLoad(true);
-    initialSkeletonsShown.current = false;
-    setShowSkeletons(true);
-    
-    // Force scroll to bottom after a small delay when channel changes
-    if (messagesEndRef.current) {
-      setTimeout(() => {
-        if (messagesEndRef.current && messageContainerRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-        }
-      }, 300);
-    }
-  }, [channelId]);
-
-  // Use the stable messages if current messages are empty to prevent flickering
-  const displayMessages = messages.length > 0 ? messages : 
-    (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
-
   // Show skeletons during initial load with more skeletons for a better experience
-  if (showSkeletons && (isInitialLoad || displayMessages.length === 0)) {
+  if (showSkeletons && (isInitialLoad || messages.length === 0)) {
     return (
       <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
            ref={messageContainerRef}>
@@ -155,7 +149,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   }
 
   // Don't show empty state if we're still in initial load or if we've ever had messages
-  if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
+  if (rootMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
            ref={messageContainerRef}>
