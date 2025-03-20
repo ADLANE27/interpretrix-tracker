@@ -57,76 +57,126 @@ serve(async (req) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://interpretor-app.com',
-          'X-Title': 'Interpreter Terminology Tool',
-          'User-Agent': 'Supabase Edge Function',
-          'X-Request-ID': requestId
-        },
-        body: JSON.stringify({
-          model: 'deepseek/deepseek-r1-zero:free',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a professional translator specialized in terminology. Your task is to provide an exact, precise, and direct translation of a term from ${sourceLanguage} to ${targetLanguage}. Respond ONLY with the translation itself - no explanations, commentary, or additional text. Provide the exact equivalent term in the target language, nothing more. If multiple translations are possible, provide only the most commonly used equivalent.`
-            },
-            {
-              role: 'user',
-              content: term
+      // Max retries
+      const MAX_RETRIES = 2;
+      let currentRetry = 0;
+      let response = null;
+      let data = null;
+      
+      while (currentRetry <= MAX_RETRIES) {
+        if (currentRetry > 0) {
+          console.log(`Request ID: ${requestId} - Retry attempt ${currentRetry} of ${MAX_RETRIES}`);
+        }
+        
+        response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://interpretor-app.com',
+            'X-Title': 'Interpreter Terminology Tool',
+            'User-Agent': 'Supabase Edge Function',
+            'X-Request-ID': requestId
+          },
+          body: JSON.stringify({
+            model: 'deepseek/deepseek-r1-zero:free',
+            messages: [
+              {
+                role: 'system',
+                content: `You are a professional translator specialized in terminology. 
+You need to provide an EXACT and DIRECT translation of a term from ${sourceLanguage} to ${targetLanguage}.
+
+IMPORTANT GUIDELINES:
+1. Respond ONLY with the translation itself - no explanations or additional text
+2. If there are multiple possible translations, provide ONLY the most common or appropriate one
+3. If you're not sure about a translation, give your best professional guess
+4. NEVER leave the response empty or claim you cannot translate
+5. Always return a usable translation as your entire response
+6. Provide only a single word or phrase, nothing more`
+              },
+              {
+                role: 'user',
+                content: term
+              }
+            ],
+            temperature: 0.1,
+            max_tokens: 100,
+          }),
+          signal: controller.signal
+        });
+        
+        console.log(`Request ID: ${requestId} - OpenRouter API response status: ${response.status}`);
+        
+        // If rate limited, wait and retry
+        if (response.status === 429) {
+          const retryAfter = parseInt(response.headers.get('Retry-After') || '2');
+          console.log(`Request ID: ${requestId} - Rate limited. Waiting ${retryAfter} seconds before retry.`);
+          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+          currentRetry++;
+          continue;
+        }
+        
+        // Handle non-rate-limit errors
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Request ID: ${requestId} - OpenRouter API error response:`, errorText);
+          break; // Exit the retry loop for non-429 errors
+        }
+        
+        // If we got an OK response, parse the data
+        data = await response.json();
+        console.log(`Request ID: ${requestId} - OpenRouter API response data:`, JSON.stringify(data));
+        
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+          let result = data.choices[0].message.content.trim();
+          
+          // Check if result is empty or just whitespace
+          if (!result || !result.trim()) {
+            console.error(`Request ID: ${requestId} - Empty result returned from OpenRouter API`);
+            if (currentRetry < MAX_RETRIES) {
+              console.log(`Request ID: ${requestId} - Retrying due to empty result`);
+              currentRetry++;
+              continue;
             }
-          ],
-          temperature: 0.2,
-          max_tokens: 100,
-        }),
-        signal: controller.signal
-      });
+            // If we're out of retries, use a fallback message
+            result = `[Translation not available]`;
+          }
+          
+          // We have a valid result, so break out of the retry loop
+          break;
+        } else {
+          console.error(`Request ID: ${requestId} - Unexpected OpenRouter API response format:`, JSON.stringify(data));
+          currentRetry++;
+          continue;
+        }
+      }
       
       // Clear the timeout
       clearTimeout(timeoutId);
-
-      console.log(`Request ID: ${requestId} - OpenRouter API response status: ${response.status}`);
       
-      // Handle rate limit exceeded
-      if (response.status === 429) {
-        console.error(`Request ID: ${requestId} - OpenRouter API rate limit exceeded`);
+      // Handle the case where all retries failed
+      if (!response || !response.ok) {
+        const errorStatus = response ? response.status : 500;
+        const errorMessage = `Failed to get a valid response after ${MAX_RETRIES + 1} attempts`;
+        console.error(`Request ID: ${requestId} - ${errorMessage}`);
+        
         return new Response(
           JSON.stringify({ 
-            error: 'Service temporarily unavailable. Please try again later.' 
+            error: errorMessage
           }),
           { 
-            status: 429, 
-            headers: { 
-              ...corsHeaders, 
-              'Content-Type': 'application/json',
-              'Retry-After': response.headers.get('Retry-After') || '60'
-            } 
+            status: 502, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
       }
       
-      // Log detailed error information
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Request ID: ${requestId} - OpenRouter API error response:`, errorText);
-        
-        let errorDetail;
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorDetail = JSON.stringify(errorJson);
-          // Log detailed error information for debugging
-          console.error(`Request ID: ${requestId} - OpenRouter API error details:`, JSON.stringify(errorJson, null, 2));
-        } catch (e) {
-          errorDetail = errorText;
-          console.error(`Request ID: ${requestId} - OpenRouter API error (not JSON):`, errorText);
-        }
-        
+      // Handle the case where we got a response but no valid data
+      if (!data || !data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error(`Request ID: ${requestId} - No valid data in response:`, data ? JSON.stringify(data) : "null");
         return new Response(
           JSON.stringify({ 
-            error: `OpenRouter API error: ${response.status} - ${errorDetail}`
+            error: 'Unexpected response format from OpenRouter API'
           }),
           { 
             status: 502, 
@@ -135,40 +185,9 @@ serve(async (req) => {
         );
       }
 
-      const data = await response.json();
-      console.log(`Request ID: ${requestId} - OpenRouter API response data:`, JSON.stringify(data));
-
-      // Extract the result from the response structure that OpenRouter returns
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        console.error(`Request ID: ${requestId} - Unexpected OpenRouter API response format:`, JSON.stringify(data));
-        return new Response(
-          JSON.stringify({ 
-            error: 'Unexpected response format from OpenRouter API',
-            response: data
-          }),
-          { 
-            status: 502, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-
-      const result = data.choices[0].message.content.trim();
+      // Extract the result
+      const result = data.choices[0].message.content.trim() || "[Translation not available]";
       
-      // Check if result is empty or just whitespace
-      if (!result || !result.trim()) {
-        console.error(`Request ID: ${requestId} - Empty result returned from OpenRouter API`);
-        return new Response(
-          JSON.stringify({ 
-            error: 'No translation result received. Please try again.' 
-          }),
-          { 
-            status: 422, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-
       // Create Supabase client
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

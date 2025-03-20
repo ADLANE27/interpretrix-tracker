@@ -68,19 +68,28 @@ export const useTerminologySearch = (userId?: string) => {
 
         console.log("Terminology search response:", response);
 
+        // Handle non-2xx status codes
         if (response.error) {
           console.error("Terminology search error:", response.error);
           throw new Error(response.error.message || "Échec de la recherche terminologique");
         }
 
+        // Handle empty response data
         if (!response.data) {
           console.error("Terminology search returned no data");
           throw new Error("Aucun résultat reçu du service de traduction");
         }
 
+        // Handle error in response data
         if (response.data.error) {
           console.error("Terminology search returned error in data:", response.data.error);
           throw new Error(response.data.error);
+        }
+
+        // Additional verification for empty result
+        if (!response.data.result || response.data.result.trim() === "") {
+          console.error("Empty result received from terminology search");
+          throw new Error("Aucune traduction n'a été retournée. Veuillez réessayer.");
         }
 
         return response.data as TermSearchResponse;
@@ -101,9 +110,22 @@ export const useTerminologySearch = (userId?: string) => {
     },
     onError: (error: Error) => {
       console.error("Search error in onError handler:", error);
+      
+      // Show error toast with more user-friendly message
+      let errorMessage = error.message;
+      
+      // Map technical errors to user-friendly messages
+      if (errorMessage.includes("non-2xx")) {
+        errorMessage = "Le service de traduction n'est pas disponible. Veuillez réessayer plus tard.";
+      } else if (errorMessage.includes("timeout")) {
+        errorMessage = "La recherche a pris trop de temps. Veuillez réessayer plus tard.";
+      } else if (errorMessage.includes("network") || errorMessage.includes("Failed to fetch")) {
+        errorMessage = "Problème de connexion au service de traduction. Vérifiez votre connexion internet.";
+      }
+      
       toast({
         title: "Erreur de recherche",
-        description: error.message || "Une erreur s'est produite lors de la recherche",
+        description: errorMessage || "Une erreur s'est produite lors de la recherche",
         variant: "destructive"
       });
     }
