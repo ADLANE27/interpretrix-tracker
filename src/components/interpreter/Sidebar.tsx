@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +55,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   };
 
   useEffect(() => {
+    setRealtimeUnreadCount(unreadMentions.length);
+    
     const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
       console.log('[Sidebar] Received unread mentions update:', count);
       setRealtimeUnreadCount(count);
@@ -64,16 +65,16 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [unreadMentions.length]);
 
-  // Always refresh mentions when component mounts, regardless of active tab
   useEffect(() => {
+    console.log('[Sidebar] Setting up mentions refresh');
     refreshMentions();
     
-    // Set up a regular refresh interval
     const intervalId = setInterval(() => {
+      console.log('[Sidebar] Refreshing mentions on interval');
       refreshMentions();
-    }, 60000); // Refresh every minute
+    }, 30000); // Refresh every 30 seconds
     
     return () => {
       clearInterval(intervalId);
@@ -299,3 +300,4 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     </div>
   );
 };
+
