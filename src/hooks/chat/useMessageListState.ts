@@ -17,6 +17,14 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
+  const hadMessagesRef = useRef<boolean>(false);
+
+  // Vérifier si nous avons reçu des messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      hadMessagesRef.current = true;
+    }
+  }, [messages.length]);
 
   // Transition des squelettes vers les messages réels
   useEffect(() => {
@@ -61,6 +69,7 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     isInitialLoad,
     showSkeletons,
     scrollToBottomFlag,
+    hadMessagesRef,
     setIsInitialLoad
   };
 };

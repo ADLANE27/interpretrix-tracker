@@ -36,7 +36,6 @@ export const MessageList: React.FC<MessageListProps> = ({
     lastMessageCountRef,
     isInitialLoad,
     hadMessagesRef,
-    stableMessages,
     showSkeletons,
     scrollToBottomFlag
   } = useMessageListState(messages, channelId);
@@ -55,11 +54,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { organizeThreads } = useMessageOrganizer(messages);
 
   // Call organize threads with current state
-  const memoizedOrganizeThreads = useCallback(() => {
-    return organizeThreads(messages, stableMessages, hadMessagesRef);
-  }, [messages, stableMessages, hadMessagesRef, organizeThreads]);
-
-  const { rootMessages, messageThreads } = memoizedOrganizeThreads();
+  const { rootMessages, messageThreads } = organizeThreads();
 
   // Show skeletons during initial load
   if (showSkeletons && (isInitialLoad || messages.length === 0)) {
