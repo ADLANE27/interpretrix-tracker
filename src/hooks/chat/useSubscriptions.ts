@@ -3,6 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { CONNECTION_CONSTANTS } from '@/hooks/supabase-connection/constants';
+import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from '@/lib/events';
+
+// New event name for incoming messages
+export const EVENT_NEW_MESSAGE_RECEIVED = 'new_message_received';
 
 interface SubscriptionState {
   status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR',
@@ -149,7 +153,21 @@ export const useSubscriptions = (
               lastEventTimestamp.current = extendedPayload.receivedAt;
 
               console.log(`[Chat ${userRole.current}] Message change received:`, extendedPayload.eventType, extendedPayload);
+              
+              // Call the provided callback
               onRealtimeEvent(extendedPayload);
+              
+              // Emit a global event for new messages that can be listened to anywhere in the app
+              // Only emit for INSERT events and if the message is not from the current user
+              if (extendedPayload.eventType === 'INSERT' && 
+                  extendedPayload.new && 
+                  extendedPayload.new.sender_id !== currentUserId) {
+                console.log(`[Chat ${userRole.current}] Emitting new message event`, extendedPayload.new);
+                eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
+                  message: extendedPayload.new,
+                  channelId
+                });
+              }
             }
           );
 

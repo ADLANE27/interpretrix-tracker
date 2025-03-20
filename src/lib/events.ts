@@ -1,29 +1,9 @@
 
-type EventCallback = (...args: any[]) => void;
+import mitt from 'mitt';
 
-class EventEmitter {
-  private events: Record<string, EventCallback[]> = {};
+// Create an event emitter instance
+export const eventEmitter = mitt();
 
-  public on(event: string, callback: EventCallback): () => void {
-    if (!this.events[event]) {
-      this.events[event] = [];
-    }
-    this.events[event].push(callback);
-    
-    // Return a function to remove this specific listener
-    return () => {
-      this.events[event] = this.events[event].filter(cb => cb !== callback);
-    };
-  }
-
-  public emit(event: string, ...args: any[]): void {
-    if (!this.events[event]) return;
-    this.events[event].forEach(callback => callback(...args));
-  }
-}
-
-// Create a singleton instance
-export const eventEmitter = new EventEmitter();
-
-// Event names constants
+// Define event names as constants to avoid typos
 export const EVENT_UNREAD_MENTIONS_UPDATED = 'unread_mentions_updated';
+export const EVENT_NEW_MESSAGE_RECEIVED = 'new_message_received';
