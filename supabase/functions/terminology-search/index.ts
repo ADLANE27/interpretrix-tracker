@@ -144,6 +144,9 @@ Special Instructions
 Output Format
 Present the analysis in a structured, hierarchical format with clear section headers. Use tables for comparative data, etymology timelines, and translation equivalents. Employ nested bullet points for semantic relationships.
 
+Response Language
+IMPORTANT: Your entire analysis MUST be written in ${targetLanguage}. All explanations, headers, and content should be in ${targetLanguage}, not in English.
+
 Final Note
 Apply the highest level of linguistic precision and academic rigor to this analysis. Draw upon historical linguistics, corpus linguistics, cognitive linguistics, and translation theory methodologies to ensure comprehensive coverage.
 `;
@@ -172,7 +175,7 @@ Apply the highest level of linguistic precision and academic rigor to this analy
           messages: [
             {
               role: 'system',
-              content: "You are a world-class linguistic expert proficient in etymology, lexicography, semantics, and translation theory. Provide detailed linguistic analysis."
+              content: `You are a world-class linguistic expert proficient in etymology, lexicography, semantics, and translation theory. Provide detailed linguistic analysis. Your response MUST be written entirely in ${targetLanguage}.`
             },
             {
               role: 'user',
@@ -180,7 +183,7 @@ Apply the highest level of linguistic precision and academic rigor to this analy
             }
           ],
           temperature: 0.1,
-          max_tokens: 2000, // Increased from 50 to 2000
+          max_tokens: 2000,
         }),
         signal: controller.signal
       });
