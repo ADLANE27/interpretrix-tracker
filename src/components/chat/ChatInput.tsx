@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -183,11 +182,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if ('type' in suggestion && suggestion.type === 'language') {
       insertText = `@${suggestion.name} `;
     } else {
-      // Add special format for admin users to ensure correct routing
-      if (suggestion.role === 'admin') {
-        insertText = `@admin:${suggestion.name} `;
+      const memberSuggestion = suggestion as MemberSuggestion;
+      if (memberSuggestion.role === 'admin') {
+        insertText = `@admin:${memberSuggestion.name} `;
+        console.log(`[Mention Debug] Added admin mention with prefix: ${insertText}`);
       } else {
-        insertText = `@${suggestion.name} `;
+        insertText = `@${memberSuggestion.name} `;
+        console.log(`[Mention Debug] Added interpreter mention: ${insertText}`);
       }
     }
     

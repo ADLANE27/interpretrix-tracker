@@ -45,6 +45,7 @@ export const useUnreadMentions = () => {
         if (!user) return;
 
         setCurrentUserId(user.id);
+        console.log(`[Mentions Debug] Current user ID: ${user.id}`);
 
         const { data } = await supabase
           .from('user_roles')
@@ -65,7 +66,7 @@ export const useUnreadMentions = () => {
   }, []);
 
   const fetchUnreadMentions = useCallback(async () => {
-    console.log(`[Mentions Debug] Fetching unread mentions... (Role: ${userRole || 'unknown'})`);
+    console.log(`[Mentions Debug] Fetching unread mentions... (Role: ${userRole || 'unknown'}, User ID: ${currentUserId || 'unknown'})`);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -166,7 +167,7 @@ export const useUnreadMentions = () => {
               return null;
             }
 
-            return {
+            const result = {
               mention_id: mention.id,
               message_id: mention.message_id,
               channel_id: mention.channel_id,
@@ -174,12 +175,15 @@ export const useUnreadMentions = () => {
               mentioning_user_name: senderData[0]?.name || 'Unknown User',
               created_at: new Date(mention.created_at)
             };
+
+            console.log('[Mentions Debug] Processed mention result:', result);
+            return result;
           })
       );
 
       const validMentions = mentionsWithNames.filter(mention => mention !== null) as UnreadMention[];
 
-      console.log('[Mentions Debug] Processed mentions:', validMentions);
+      console.log('[Mentions Debug] Final processed mentions:', validMentions);
       
       if (validMentions.length > 0) {
         const newestMention = validMentions[0];
@@ -219,7 +223,7 @@ export const useUnreadMentions = () => {
     } catch (error) {
       console.error('[Mentions Debug] Error in fetchUnreadMentions:', error);
     }
-  }, [lastMentionId, showNotification, userRole, toast]);
+  }, [lastMentionId, showNotification, userRole, toast, currentUserId]);
 
   const markMentionAsRead = async (mentionId: string) => {
     try {
