@@ -588,44 +588,6 @@ export type Database = {
           },
         ]
       }
-      saved_terms: {
-        Row: {
-          created_at: string
-          id: string
-          result: string
-          source_language: string
-          target_language: string
-          term: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          result: string
-          source_language: string
-          target_language: string
-          term: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          result?: string
-          source_language?: string
-          target_language?: string
-          term?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "saved_terms_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       secrets: {
         Row: {
           created_at: string
@@ -649,44 +611,6 @@ export type Database = {
           value?: string
         }
         Relationships: []
-      }
-      terminology_searches: {
-        Row: {
-          created_at: string
-          id: string
-          result: string
-          source_language: string
-          target_language: string
-          term: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          result: string
-          source_language: string
-          target_language: string
-          term: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          result?: string
-          source_language?: string
-          target_language?: string
-          term?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "terminology_searches_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "mission_creators"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_roles: {
         Row: {

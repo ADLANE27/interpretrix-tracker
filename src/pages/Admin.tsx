@@ -33,34 +33,17 @@ const Admin = () => {
           return;
         }
 
-        // Log for debugging
-        console.log('Admin authenticated, checking for unread mentions');
-
         // Mark unread mentions as read when admin enters the dashboard
-        const { data: unreadMentions, error: fetchError } = await supabase
+        const { error: mentionsError } = await supabase
           .from('message_mentions')
-          .select('id, status')
+          .update({ status: 'read' })
           .eq('mentioned_user_id', user.id)
           .eq('status', 'unread');
-          
-        if (fetchError) {
-          console.error('Error fetching unread mentions:', fetchError);
+
+        if (mentionsError) {
+          console.error('Error marking mentions as read:', mentionsError);
         } else {
-          console.log(`Found ${unreadMentions?.length || 0} unread mentions for admin:`, user.id);
-          
-          if (unreadMentions && unreadMentions.length > 0) {
-            const { error: updateError } = await supabase
-              .from('message_mentions')
-              .update({ status: 'read' })
-              .eq('mentioned_user_id', user.id)
-              .eq('status', 'unread');
-  
-            if (updateError) {
-              console.error('Error marking mentions as read:', updateError);
-            } else {
-              console.log(`Successfully marked ${unreadMentions.length} mentions as read`);
-            }
-          }
+          console.log('All unread mentions marked as read for admin:', user.id);
         }
       } catch (error) {
         console.error('Auth check error:', error);
