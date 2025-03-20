@@ -14,6 +14,7 @@ export const useMessageProcessing = (channelId: string) => {
   const lastFetchTimestamp = useRef<string | null>(null);
   const userRole = useRef<string>('unknown');
   const { identifyUserRole } = useRoleIdentification();
+  const updateCounter = useRef<number>(0);
 
   // Check user role
   const checkUserRole = useCallback(async () => {
@@ -25,7 +26,11 @@ export const useMessageProcessing = (channelId: string) => {
 
   // Update messages array
   const updateMessagesArray = useCallback(() => {
+    updateCounter.current += 1;
+    const currentUpdateId = updateCounter.current;
+    
     if (messagesMap.current.size === 0) {
+      console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Setting empty messages array`);
       setMessages([]);
       return;
     }
@@ -33,8 +38,8 @@ export const useMessageProcessing = (channelId: string) => {
     const updatedMessages = Array.from(messagesMap.current.values())
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
+    console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
     setMessages(updatedMessages);
-    console.log(`[useMessageProcessing ${userRole.current}] Updated messages array:`, updatedMessages.length);
   }, [userRole]);
 
   // Process a single message
@@ -106,6 +111,21 @@ export const useMessageProcessing = (channelId: string) => {
         }
       }
 
+      // Process attachments
+      const attachments = messageData.attachments 
+        ? messageData.attachments.map(attachment => {
+            if (typeof attachment === 'object' && attachment !== null) {
+              return attachment;
+            }
+            return {
+              url: '',
+              filename: '',
+              type: '',
+              size: 0
+            };
+          }) 
+        : [];
+
       // Create message object
       const message: Message = {
         id: messageData.id,
@@ -117,25 +137,14 @@ export const useMessageProcessing = (channelId: string) => {
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
-        attachments: messageData.attachments ? messageData.attachments.map(attachment => {
-          if (typeof attachment === 'object') {
-            return attachment as any;
-          }
-          // Handle case where attachment might be a string or other format
-          return {
-            url: '',
-            filename: '',
-            type: '',
-            size: 0
-          };
-        }) : [],
+        attachments,
         channelType: channelType,
         reactions: messageReactions
       };
 
       // Add to map
       messagesMap.current.set(message.id, message);
-      console.log(`[useMessageProcessing ${userRole.current}] Processed message:`, message.id);
+      console.log(`[useMessageProcessing ${userRole.current}] Processed new message:`, message.id);
 
     } catch (error) {
       console.error(`[useMessageProcessing ${userRole.current}] Error processing message:`, error);

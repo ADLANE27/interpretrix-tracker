@@ -28,6 +28,12 @@ export const MessageList: React.FC<MessageListProps> = ({
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollPositionRef = useRef<number>(0);
   const lastMessageCountRef = useRef<number>(0);
+  const renderCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    renderCountRef.current += 1;
+    console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
+  });
 
   const { rootMessages, messageThreads } = organizeMessageThreads(messages);
 
@@ -49,6 +55,24 @@ export const MessageList: React.FC<MessageListProps> = ({
       });
     }
   }, [messages]);
+
+  // This effect forces a scroll to bottom when messages are first loaded
+  useEffect(() => {
+    if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current) {
+      console.log(`[MessageList] Scrolling to bottom due to first message load`);
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages.length > 0]);
+
+  if (messages.length === 0) {
+    return (
+      <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
+           ref={messageContainerRef}>
+        <p className="text-gray-500">Aucun message dans cette conversation</p>
+        <div ref={messagesEndRef} />
+      </div>
+    );
+  }
 
   return (
     <div 

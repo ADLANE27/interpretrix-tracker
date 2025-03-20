@@ -22,7 +22,11 @@ export const useChat = (channelId: string) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Get message fetching functions
-  const { fetchMessages, loadMoreMessages } = useFetchMessages(
+  const { 
+    fetchMessages, 
+    loadMoreMessages,
+    forceRefresh 
+  } = useFetchMessages(
     channelId, 
     messageProcessing
   );
@@ -106,8 +110,18 @@ export const useChat = (channelId: string) => {
       messagesMap.current.clear();
       messageProcessing.lastFetchTimestamp.current = null;
       fetchMessages(0);
+      
+      // Add a backup fetch after a delay in case the initial fetch didn't update the UI
+      const timer = setTimeout(() => {
+        if (messages.length === 0 && !isLoading) {
+          console.log(`[useChat] Backup fetch triggered due to empty messages array`);
+          forceRefresh();
+        }
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [channelId, fetchMessages, messagesMap, messageProcessing.lastFetchTimestamp]);
+  }, [channelId, fetchMessages, messagesMap, messageProcessing.lastFetchTimestamp, messages.length, isLoading, forceRefresh]);
 
   // Periodic refresh
   useEffect(() => {
@@ -128,6 +142,11 @@ export const useChat = (channelId: string) => {
   const handleLoadMoreMessages = useCallback(() => {
     loadMoreMessages(messages.length, isLoading, hasMoreMessages);
   }, [loadMoreMessages, messages.length, isLoading, hasMoreMessages]);
+  
+  // Debug log for initial mount and updates
+  useEffect(() => {
+    console.log(`[useChat] Component update - messages count: ${messages.length}, isLoading: ${isLoading}, isSubscribed: ${isSubscribed}`);
+  }, [messages.length, isLoading, isSubscribed]);
 
   return {
     messages,
@@ -139,7 +158,7 @@ export const useChat = (channelId: string) => {
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
-    forceFetch,
+    forceFetch: forceRefresh, // Use the enhanced refresh function
     loadMoreMessages: handleLoadMoreMessages,
     hasMoreMessages
   };

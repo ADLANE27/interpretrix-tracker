@@ -53,6 +53,7 @@ export const useFetchMessages = (
   } = messageProcessing;
 
   const lastFetchTime = useRef<Date | null>(null);
+  const initialFetchDone = useRef<boolean>(false);
 
   const fetchMessages = useCallback(async (limit = 50) => {
     if (!channelId || processingMessage.current) return;
@@ -60,7 +61,7 @@ export const useFetchMessages = (
     try {
       processingMessage.current = true;
       setIsLoading(true);
-      console.log(`[useFetchMessages] Fetching messages for channel ${channelId}, limit: ${limit}`);
+      console.log(`[useFetchMessages] Fetching messages for channel ${channelId}, limit: ${limit}, initialFetchDone: ${initialFetchDone.current}`);
 
       const { data: channel, error: channelError } = await supabase
         .from('chat_channels')
@@ -92,20 +93,25 @@ export const useFetchMessages = (
         return;
       }
 
+      console.log(`[useFetchMessages] Retrieved ${messages?.length || 0} messages from database`);
+
       if (!messages || messages.length === 0) {
         console.log('[useFetchMessages] No messages found');
         updateMessagesArray();
         setHasMoreMessages(false);
+        initialFetchDone.current = true;
         return;
       }
 
       console.log(`[useFetchMessages] Processing ${messages.length} messages`);
 
       // Process each message
-      for (const messageData of messages) {
-        await processMessage(convertToMessageData(messageData), channelType);
-      }
-
+      const processPromises = messages.map(messageData => 
+        processMessage(convertToMessageData(messageData), channelType)
+      );
+      
+      await Promise.all(processPromises);
+      
       // Update the last fetch timestamp
       if (messages.length > 0) {
         lastFetchTimestamp.current = messages[0].created_at;
@@ -114,8 +120,21 @@ export const useFetchMessages = (
         setHasMoreMessages(false);
       }
 
+      // Force update the messages array
+      console.log(`[useFetchMessages] Calling updateMessagesArray with ${messagesMap.current.size} messages`);
       updateMessagesArray();
+      
       lastFetchTime.current = new Date();
+      initialFetchDone.current = true;
+      
+      // Force a second update after a short delay to ensure UI updates
+      setTimeout(() => {
+        if (messagesMap.current.size > 0) {
+          console.log(`[useFetchMessages] Triggering secondary update with ${messagesMap.current.size} messages`);
+          updateMessagesArray();
+        }
+      }, 100);
+      
     } catch (error) {
       console.error('[useFetchMessages] Error in fetchMessages:', error);
     } finally {
@@ -144,9 +163,17 @@ export const useFetchMessages = (
     await fetchMessages(currentCount + 50);
   }, [channelId, fetchMessages]);
 
+  const forceRefresh = useCallback(() => {
+    console.log('[useFetchMessages] Forcing a refresh of messages');
+    initialFetchDone.current = false;
+    return fetchMessages(50);
+  }, [fetchMessages]);
+
   return {
     fetchMessages,
     loadMoreMessages,
-    lastFetchTime: lastFetchTime.current
+    forceRefresh,
+    lastFetchTime: lastFetchTime.current,
+    initialFetchDone: initialFetchDone.current
   };
 };
