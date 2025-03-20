@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -47,13 +46,15 @@ export const MentionsPopover = ({
 
   // Listen to global events for mention updates regardless of tab
   useEffect(() => {
-    const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
+    const handleMentionsUpdate = (count: number) => {
       console.log('[MentionsPopover] Received unread mentions update event:', count);
       setLocalCount(count);
-    });
+    };
+    
+    eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, handleMentionsUpdate);
     
     return () => {
-      unsubscribe();
+      eventEmitter.off(EVENT_UNREAD_MENTIONS_UPDATED, handleMentionsUpdate);
     };
   }, []);
 
@@ -86,21 +87,7 @@ export const MentionsPopover = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="relative"
-        >
-          <Bell className="h-5 w-5" />
-          {localCount > 0 && (
-            <Badge 
-              variant="destructive" 
-              className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
-            >
-              {localCount}
-            </Badge>
-          )}
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent 
         className="sm:max-w-[500px] p-0 gap-0 overflow-hidden"

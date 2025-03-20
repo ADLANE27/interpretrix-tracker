@@ -14,7 +14,7 @@ export const useGlobalNotification = () => {
     console.log('[GlobalNotification] Setting up global notification listeners');
     
     // Listen for new message events
-    const messageUnsubscribe = eventEmitter.on(EVENT_NEW_MESSAGE_RECEIVED, async (data: any) => {
+    const handleNewMessage = async (data: any) => {
       console.log('[GlobalNotification] New message received:', data);
       
       try {
@@ -50,11 +50,14 @@ export const useGlobalNotification = () => {
       } catch (error) {
         console.error('[GlobalNotification] Error processing message notification:', error);
       }
-    });
+    };
+
+    // Subscribe to new message events
+    eventEmitter.on(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     
     // Cleanup function
     return () => {
-      messageUnsubscribe();
+      eventEmitter.off(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     };
   }, [toast, navigate]);
   

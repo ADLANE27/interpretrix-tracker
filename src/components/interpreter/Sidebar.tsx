@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,13 +63,15 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     
     setRealtimeUnreadCount(unreadMentions.length);
     
-    const unsubscribe = eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, (count: number) => {
+    const handleUnreadMentionsUpdated = (count: number) => {
       console.log('[Sidebar] Received unread mentions update event:', count);
       setRealtimeUnreadCount(count);
-    });
+    };
+    
+    eventEmitter.on(EVENT_UNREAD_MENTIONS_UPDATED, handleUnreadMentionsUpdated);
     
     return () => {
-      unsubscribe();
+      eventEmitter.off(EVENT_UNREAD_MENTIONS_UPDATED, handleUnreadMentionsUpdated);
     };
   }, [unreadMentions.length]);
   
