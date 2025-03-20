@@ -1,35 +1,14 @@
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   text?: string;
-  delayMs?: number;
 }
 
-export function LoadingSpinner({ 
-  size = "md", 
-  className, 
-  text, 
-  delayMs = 500 // Reduced delay for faster feedback
-}: LoadingSpinnerProps) {
-  const [showSpinner, setShowSpinner] = useState(delayMs === 0);
-  
-  useEffect(() => {
-    if (delayMs === 0) return;
-    
-    const timer = setTimeout(() => {
-      setShowSpinner(true);
-    }, delayMs);
-    
-    return () => clearTimeout(timer);
-  }, [delayMs]);
-  
-  if (!showSpinner) return null;
-  
+export function LoadingSpinner({ size = "md", className, text }: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: "h-4 w-4",
     md: "h-8 w-8",

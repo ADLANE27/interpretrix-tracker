@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,23 +118,11 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
     console.log("File attachment functionality placeholder");
   };
 
-  // Remove debug logging for reactions which no longer exist
-  console.log(`[Chat ${userRole}] Messages count:`, messages.length);
-
-  const handleReactToMessage = async (messageId: string, emoji: string) => {
-    try {
-      console.log('[Chat] Adding reaction:', { messageId, emoji });
-      await reactToMessage(messageId, emoji);
-      console.log('[Chat] Reaction added successfully');
-    } catch (error) {
-      console.error('[Chat] Error adding reaction:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter la réaction",
-        variant: "destructive",
-      });
-    }
-  };
+  console.log(`[Chat ${userRole}] Rendering with messages:`, messages.length);
+  console.log(`[Chat ${userRole}] Is subscribed:`, isSubscribed);
+  console.log(`[Chat ${userRole}] Subscription status:`, subscriptionStatus);
+  console.log(`[Chat ${userRole}] Current user ID:`, currentUserId);
+  console.log(`[Chat ${userRole}] Last message timestamp:`, messages.length > 0 ? messages[messages.length - 1].timestamp : 'none');
 
   return (
     <div className="flex flex-col h-full">
@@ -190,7 +179,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
           messages={messages}
           currentUserId={currentUserId}
           onDeleteMessage={deleteMessage}
-          onReactToMessage={handleReactToMessage}
+          onReactToMessage={reactToMessage}
           replyTo={replyTo}
           setReplyTo={setReplyTo}
           channelId={channelId}

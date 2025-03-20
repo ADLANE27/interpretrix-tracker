@@ -11,9 +11,9 @@ export interface Message {
   };
   timestamp: Date;
   parent_message_id?: string | null;
+  reactions?: Record<string, string[]>;
   attachments?: Attachment[];
   channelType?: 'group' | 'direct';
-  reactions: Record<string, string[]>;
 }
 
 export interface MessageData {
@@ -22,7 +22,7 @@ export interface MessageData {
   sender_id: string;
   created_at: string;
   parent_message_id?: string | null;
-  reactions?: Record<string, string[]> | string;
+  reactions: Record<string, string[]>;
   attachments?: Array<{
     url: string;
     filename: string;

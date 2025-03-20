@@ -1,11 +1,15 @@
 
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
-import { MessageThread } from './MessageThread';
-import { DateSeparator } from './DateSeparator';
-import { shouldShowDate, organizeMessageThreads } from './utils/messageUtils';
-import { LoadingSpinner } from '../ui/loading-spinner';
-import { Skeleton } from '../ui/skeleton';
+import { MessageAttachment } from './MessageAttachment';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { format, isToday, isYesterday } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { Button } from "@/components/ui/button";
+import { useMessageVisibility } from '@/hooks/useMessageVisibility';
+import { useTimestampFormat } from '@/hooks/useTimestampFormat';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MessageListProps {
   messages: Message[];
@@ -17,17 +21,6 @@ interface MessageListProps {
   channelId: string;
 }
 
-// MessageSkeleton component for showing loading state
-const MessageSkeleton = () => (
-  <div className="animate-pulse space-y-3 py-2">
-    <div className="flex items-center gap-2">
-      <Skeleton className="h-8 w-8 rounded-full" />
-      <Skeleton className="h-4 w-24" />
-    </div>
-    <Skeleton className="h-16 w-full max-w-[80%] rounded-md" />
-  </div>
-);
-
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
@@ -37,141 +30,192 @@ export const MessageList: React.FC<MessageListProps> = ({
   setReplyTo,
   channelId,
 }) => {
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const { observeMessage } = useMessageVisibility(channelId);
+  const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageContainerRef = useRef<HTMLDivElement | null>(null);
-  const scrollPositionRef = useRef<number>(0);
-  const lastMessageCountRef = useRef<number>(0);
-  const renderCountRef = useRef<number>(0);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const hadMessagesRef = useRef<boolean>(false); 
-  const stableMessages = useRef<Message[]>([]);
-  const lastStableUpdateTimestamp = useRef<number>(Date.now());
-  const [showSkeletons, setShowSkeletons] = useState(true);
+  const isMobile = useIsMobile();
 
-  // Show skeletons immediately on mount, hide after real messages arrive
   useEffect(() => {
-    if (messages.length > 0) {
-      // Remove skeletons once we have real messages
-      setShowSkeletons(false);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
-  }, [messages.length]);
+  }, [messages]);
 
-  // Store the latest valid messages to prevent flickering
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Only update stable messages every 2 seconds to prevent loops
-      const now = Date.now();
-      if (now - lastStableUpdateTimestamp.current > 2000) {
-        console.log(`[MessageList] Updating stable messages with ${messages.length} messages`);
-        stableMessages.current = [...messages]; // Create a new array to ensure reference changes
-        lastStableUpdateTimestamp.current = now;
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const formatMessageDate = (date: Date) => {
+    if (isToday(date)) {
+      return "Aujourd'hui";
+    } else if (isYesterday(date)) {
+      return "Hier";
+    }
+    return format(date, 'EEEE d MMMM yyyy', { locale: fr });
+  };
+
+  const shouldShowDate = (currentMessage: Message, previousMessage?: Message) => {
+    if (!previousMessage) return true;
+    
+    const currentDate = new Date(currentMessage.timestamp);
+    const previousDate = new Date(previousMessage.timestamp);
+    
+    return (
+      currentDate.getDate() !== previousDate.getDate() ||
+      currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
+      currentDate.getFullYear() !== previousDate.getFullYear()
+    );
+  };
+
+  const toggleThread = (messageId: string) => {
+    setExpandedThreads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
       }
-      hadMessagesRef.current = true;
-      
-      // Once we have real messages, we're no longer in initial load state
-      setIsInitialLoad(false);
+      return newSet;
+    });
+  };
+
+  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
+    const threadId = message.parent_message_id || message.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
     }
-  }, [messages]);
+    acc[threadId].push(message);
+    return acc;
+  }, {});
 
-  useEffect(() => {
-    renderCountRef.current += 1;
-    console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
-  });
+  const rootMessages = messages.filter(message => !message.parent_message_id);
 
-  const memoizedOrganizeThreads = useCallback(() => {
-    // Always use stable messages when they exist and current messages are empty
-    const messagesToUse = messages.length > 0 ? messages : 
-      (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
-    
-    return organizeMessageThreads(messagesToUse);
-  }, [messages]);
+  const renderMessage = (message: Message, isThreadReply = false) => (
+    <div 
+      ref={(el) => observeMessage(el)}
+      key={message.id}
+      data-message-id={message.id}
+      className={`flex gap-3 ${
+        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+      } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
+    >
+      {message.sender.id !== currentUserId && (
+        <Avatar className="h-10 w-10 shrink-0 mt-1">
+          <AvatarImage 
+            src={message.sender.avatarUrl} 
+            alt={message.sender.name}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+            {getInitials(message.sender.name)}
+          </AvatarFallback>
+        </Avatar>
+      )}
+      <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
+        message.sender.id === currentUserId ? 'items-end' : 'items-start'
+      }`}>
+        {!isThreadReply && message.sender.id !== currentUserId && (
+          <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
+            {message.sender.name}
+          </span>
+        )}
+        <div className={`group relative ${
+          message.sender.id === currentUserId 
+            ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
+            : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+        } px-4 py-3 break-words overflow-hidden`}>
+          <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
+          <div className="absolute right-4 bottom-2 flex items-center gap-1">
+            <span className="text-xs text-gray-500">
+              {formatMessageTime(message.timestamp)}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 mt-1 mr-1">
+          {message.sender.id === currentUserId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDeleteMessage(message.id)}
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+              aria-label="Supprimer le message"
+            >
+              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
+            </Button>
+          )}
+          {!isThreadReply && setReplyTo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyTo(message)}
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+            >
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+            </Button>
+          )}
+        </div>
 
-  const { rootMessages, messageThreads } = memoizedOrganizeThreads();
-
-  useEffect(() => {
-    if (!messageContainerRef.current) return;
-    
-    // Save current scroll position
-    scrollPositionRef.current = messageContainerRef.current.scrollTop;
-    
-    const isNewMessage = messages.length > lastMessageCountRef.current;
-    lastMessageCountRef.current = messages.length || stableMessages.current.length;
-    
-    if (isNewMessage && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-    } else {
-      requestAnimationFrame(() => {
-        if (messageContainerRef.current) {
-          messageContainerRef.current.scrollTop = scrollPositionRef.current;
-        }
-      });
-    }
-  }, [messages]);
-
-  // Force scroll to bottom when messages are first loaded
-  useEffect(() => {
-    if (messages.length > 0 && messagesEndRef.current && messageContainerRef.current) {
-      console.log(`[MessageList] Scrolling to bottom due to first message load`);
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-    }
-  }, [messages.length > 0]);
-
-  // Use the stable messages if current messages are empty to prevent flickering
-  const displayMessages = messages.length > 0 ? messages : 
-    (hadMessagesRef.current && stableMessages.current.length > 0 ? stableMessages.current : messages);
-
-  // Show skeletons during initial load
-  if (showSkeletons && isInitialLoad && displayMessages.length === 0) {
-    return (
-      <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
-           ref={messageContainerRef}>
-        {Array.from({ length: 5 }).map((_, index) => (
-          <MessageSkeleton key={index} />
+        {message.attachments && message.attachments.map((attachment, index) => (
+          <div key={index} className="relative group max-w-sm mt-2">
+            <MessageAttachment
+              url={attachment.url}
+              filename={attachment.filename}
+              locale="fr"
+            />
+          </div>
         ))}
-        <div ref={messagesEndRef} />
       </div>
-    );
-  }
-
-  // Don't show empty state if we're still in initial load or if we've ever had messages
-  if (displayMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
-    return (
-      <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
-           ref={messageContainerRef}>
-        <p className="text-gray-500">Aucun message dans cette conversation</p>
-        <div ref={messagesEndRef} />
-      </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div 
-      className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
-      ref={messageContainerRef}
-    >
+    <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {rootMessages.map((message, index) => {
-          // Get replies for this message (if any)
-          const replies = messageThreads[message.id]?.filter(m => m.id !== message.id) || [];
-          
-          return (
-            <React.Fragment key={message.id}>
-              {shouldShowDate(message, rootMessages[index - 1]) && (
-                <DateSeparator date={message.timestamp} />
-              )}
-              
-              <MessageThread 
-                rootMessage={message}
-                replies={replies}
-                currentUserId={currentUserId}
-                onDeleteMessage={onDeleteMessage}
-                onReactToMessage={onReactToMessage}
-                setReplyTo={setReplyTo}
-                channelId={channelId}
-              />
-            </React.Fragment>
-          );
-        })}
+        {messages.map((message, index) => (
+          <React.Fragment key={message.id}>
+            {shouldShowDate(message, messages[index - 1]) && (
+              <div className="flex justify-center my-5">
+                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
+                  {formatMessageDate(message.timestamp)}
+                </div>
+              </div>
+            )}
+            {renderMessage(message)}
+            
+            {messageThreads[message.id]?.length > 1 && (
+              <div className="ml-12 mt-2 mb-5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleThread(message.id)}
+                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
+                >
+                  {expandedThreads.has(message.id) ? (
+                    <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {messageThreads[message.id].length - 1} réponses
+                </Button>
+                
+                {expandedThreads.has(message.id) && (
+                  <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
+                    {messageThreads[message.id]
+                      .filter(reply => reply.id !== message.id)
+                      .map(reply => renderMessage(reply, true))}
+                  </div>
+                )}
+              </div>
+            )}
+          </React.Fragment>
+        ))}
       </div>
       <div ref={messagesEndRef} />
     </div>
