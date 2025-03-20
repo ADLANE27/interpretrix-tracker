@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
@@ -20,7 +20,7 @@ interface MessageListProps {
   channelId: string;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({
+export const MessageList: React.FC<MessageListProps> = React.memo(({
   messages,
   currentUserId,
   onDeleteMessage,
@@ -29,7 +29,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   setReplyTo,
   channelId,
 }) => {
-  // Use custom hooks for state management and scroll behavior
+  // Use custom hooks for state management with improved stability
   const {
     messagesEndRef,
     messageContainerRef,
@@ -42,7 +42,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     renderStabilityCounter
   } = useMessageListState(messages, channelId);
 
-  // Handle scroll behavior
+  // Stable scroll handler with built-in debouncing
   useMessageScroll(
     messages, 
     isInitialLoad, 
@@ -52,35 +52,47 @@ export const MessageList: React.FC<MessageListProps> = ({
     messageContainerRef
   );
 
-  // Use the enhanced message organizer with improved caching
-  const { organizeThreads, cacheVersion } = useMessageOrganizer(messages);
+  // Enhanced message organizer with improved caching
+  const { organizeThreads } = useMessageOrganizer(messages);
 
-  // Use a stable and memoized organization of messages
+  // Memoize organization result to prevent re-renders
   const { rootMessages, messageThreads } = useMemo(() => {
+    // Return empty results during loading states
     if (showSkeletons || isInitialLoad) {
       return { rootMessages: [], messageThreads: {} };
     }
     
-    // Only log on significant changes to reduce console noise
-    if (messages.length % 5 === 0 || messages.length <= 5) {
-      console.log(`[MessageList] Organizing ${messages.length} messages for channel: ${channelId} (v${cacheVersion})`);
+    // Only log organization on significant changes
+    if (messages.length % 10 === 0 || messages.length <= 5) {
+      console.log(`[MessageList] Organizing ${messages.length} messages for channel: ${channelId}`);
     }
     
+    // Use the cached organization when possible
     return organizeThreads();
-  }, [organizeThreads, messages.length, cacheVersion, channelId, showSkeletons, isInitialLoad]);
+  }, [organizeThreads, showSkeletons, isInitialLoad, messages.length, channelId]);
+
+  // Stable handler for message delete operations
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    await onDeleteMessage(messageId);
+  }, [onDeleteMessage]);
+
+  // Stable handler for reactions
+  const handleReactToMessage = useCallback(async (messageId: string, emoji: string) => {
+    await onReactToMessage(messageId, emoji);
+  }, [onReactToMessage]);
 
   // Display skeletons during initial loading
   if (showSkeletons && (isInitialLoad || messages.length === 0)) {
     return (
       <div className="space-y-4 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
            ref={messageContainerRef}>
-        <MessageSkeleton count={10} />
+        <MessageSkeleton count={5} />
         <div ref={messagesEndRef} />
       </div>
     );
   }
 
-  // Don't show empty state if we're still in initial loading or if we've already had messages
+  // Show empty state when appropriate
   if (rootMessages.length === 0 && !isInitialLoad && !hadMessagesRef.current) {
     return (
       <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none items-center justify-center"
@@ -91,7 +103,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   }
 
-  // Render the message list with memoized message threads
+  // Main message list with memoized components
   return (
     <div 
       className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none"
@@ -115,8 +127,8 @@ export const MessageList: React.FC<MessageListProps> = ({
                 rootMessage={message}
                 replies={replies}
                 currentUserId={currentUserId}
-                onDeleteMessage={onDeleteMessage}
-                onReactToMessage={onReactToMessage}
+                onDeleteMessage={handleDeleteMessage}
+                onReactToMessage={handleReactToMessage}
                 setReplyTo={setReplyTo}
                 channelId={channelId}
               />
@@ -127,4 +139,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       <div ref={messagesEndRef} />
     </div>
   );
-};
+});
+
+// Add display name for better debugging
+MessageList.displayName = 'MessageList';

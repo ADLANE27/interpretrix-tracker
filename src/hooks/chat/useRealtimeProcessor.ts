@@ -16,39 +16,38 @@ export const useRealtimeProcessor = (
     getNextFromQueue: () => any | null,
     processingTimeout: React.MutableRefObject<NodeJS.Timeout | null>
   ) => {
-    // Avoid concurrent processing
+    // Skip if already processing
     if (processingMessage.current || isProcessingEvent.current) {
       return false;
     }
     
+    // Set flags to prevent concurrent processing
     isProcessingEvent.current = true;
     processingMessage.current = true;
     
     try {
+      // Validate payload
       if (!payload || !payload.new || !channelId) {
-        processingMessage.current = false;
-        isProcessingEvent.current = false;
         return true;
       }
       
       const messageData = payload.new;
+      
+      // Skip if message is for different channel
       if (messageData.channel_id !== channelId) {
-        processingMessage.current = false;
-        isProcessingEvent.current = false;
         return true;
       }
       
+      // Handle message insert or update
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-        // Avoid duplicates
+        // Skip duplicates for inserts
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useRealtimeProcessor ${userRole.current}] Skipping duplicate message:`, messageData.id);
-          processingMessage.current = false;
-          isProcessingEvent.current = false;
           return true;
         }
         
         try {
-          // Get channel type
+          // Get channel type once
           const { data: channelData } = await supabase
             .from('chat_channels')
             .select('channel_type')
@@ -58,69 +57,56 @@ export const useRealtimeProcessor = (
           // Process the message
           await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
           
-          // Staggered UI updates for stability
-          // Wait before doing the first update
+          // Single update with delay instead of multiple
           setTimeout(() => {
-            // First update
             updateMessagesArray();
-            
-            // Second update after a delay
-            setTimeout(() => {
-              updateMessagesArray();
-            }, 300);
           }, 100);
           
-          console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message added/updated:`, messageData.id);
+          console.log(`[useRealtimeProcessor ${userRole.current}] Message processed:`, messageData.id);
         } catch (error) {
-          console.error(`[useRealtimeProcessor ${userRole.current}] Error processing realtime message:`, error);
+          console.error(`[useRealtimeProcessor ${userRole.current}] Error processing message:`, error);
           return false;
         }
       } 
+      // Handle message deletion
       else if (payload.eventType === 'DELETE') {
         const deletedId = payload.old.id;
+        
+        // Remove from map and update UI
         if (messagesMap.current.has(deletedId)) {
           messagesMap.current.delete(deletedId);
           
-          // Staggered updates for stability
+          // Single update with delay
           setTimeout(() => {
             updateMessagesArray();
-            
-            // Additional update for consistency
-            setTimeout(() => { 
-              updateMessagesArray(); 
-            }, 300);
           }, 100);
           
-          console.log(`[useRealtimeProcessor ${userRole.current}] Realtime: Message deleted:`, deletedId);
+          console.log(`[useRealtimeProcessor ${userRole.current}] Message deleted:`, deletedId);
         }
       }
       
       return true;
     } catch (error) {
-      console.error(`[useRealtimeProcessor ${userRole.current}] Error handling realtime message:`, error);
+      console.error(`[useRealtimeProcessor ${userRole.current}] Error handling event:`, error);
       return false;
     } finally {
-      // Progressive lock release to avoid conflicts
-      // Release the processing message lock first
+      // Release locks with sequential delays
       setTimeout(() => {
         processingMessage.current = false;
+        
+        // Release event lock after processing lock
+        setTimeout(() => {
+          isProcessingEvent.current = false;
+          
+          // Process next item with adequate delay
+          const nextItem = getNextFromQueue();
+          if (nextItem) {
+            processingTimeout.current = setTimeout(() => {
+              processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
+            }, 500);
+          }
+        }, 200);
       }, 300);
-      
-      // Then release the event processing lock
-      setTimeout(() => {
-        isProcessingEvent.current = false;
-      }, 400);
-      
-      // If there are more items in the queue, schedule processing the next one with a longer delay
-      if (!isProcessingEvent.current && !processingMessage.current) {
-        const nextItem = getNextFromQueue();
-        if (nextItem) {
-          // Increased delay for more stability
-          processingTimeout.current = setTimeout(() => {
-            processRealtimeEvent(nextItem, isProcessingEvent, getNextFromQueue, processingTimeout);
-          }, 600);
-        }
-      }
     }
   }, [channelId, messagesMap, processingMessage, processMessage, updateMessagesArray, userRole]);
 

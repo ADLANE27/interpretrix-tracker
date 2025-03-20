@@ -17,37 +17,43 @@ export const useMessageScroll = (
   const scrollStabilityCounter = useRef(0);
   const scrollLock = useRef(false);
   const lastMessagesLength = useRef(0);
+  const scrollOperationInProgress = useRef(false);
   
-  // Utiliser useLayoutEffect pour assurer que le défilement se produit avant le rendu visuel
+  // Use useLayoutEffect for more predictable scroll behavior
   useLayoutEffect(() => {
+    // Avoid scroll operations if container isn't available
     if (!messageContainerRef.current || messages.length === 0 || scrollLock.current) return;
     
-    // Éviter les mises à jour trop fréquentes si le nombre de messages n'a pas changé
+    // Skip if messages haven't changed
     if (messages.length === lastMessagesLength.current && initialScrollDone.current) {
       return;
     }
     
+    // Update tracked message count
     lastMessagesLength.current = messages.length;
+    
+    // Set scroll lock to prevent concurrent operations
     scrollLock.current = true;
+    scrollOperationInProgress.current = true;
     
     const isNewMessageBatch = messages.length > lastMessageCountRef.current;
     lastMessageCountRef.current = messages.length;
     
-    // Stocker la position de défilement actuelle
+    // Store current scroll position
     if (messageContainerRef.current) {
       lastScrollTop.current = messageContainerRef.current.scrollTop;
     }
     
-    // Effacer les délais de défilement précédents
+    // Clear any pending scroll operations
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = null;
     }
     
-    // Déterminer si nous devons défiler vers le bas
+    // Determine if we should scroll to bottom
     const container = messageContainerRef.current;
     const userWasAtBottom = container && 
-      (container.scrollHeight - container.scrollTop - container.clientHeight < 100);
+      (container.scrollHeight - container.scrollTop - container.clientHeight < 150);
     
     const shouldScrollToBottom = scrollToBottomFlag.current || 
                                (isNewMessageBatch && userWasAtBottom) || 
@@ -57,16 +63,20 @@ export const useMessageScroll = (
     if (shouldScrollToBottom && messagesEndRef.current) {
       isScrolling.current = true;
       
-      // Premier défilement immédiat pour le positionnement
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: 'auto',
-        block: 'end'
+      // First immediate scroll for positioning
+      requestAnimationFrame(() => {
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ 
+            behavior: 'auto',
+            block: 'end'
+          });
+        }
       });
       
-      // Définir le drapeau de défilement initial
+      // Set initial scroll flag
       initialScrollDone.current = true;
       
-      // Deuxième défilement avec délai pour la stabilité
+      // Second scroll with delay for stability
       scrollTimeoutRef.current = setTimeout(() => {
         if (messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ 
@@ -74,51 +84,53 @@ export const useMessageScroll = (
             block: 'end'
           });
           
-          // Réinitialiser le drapeau après le défilement
+          // Reset scroll to bottom flag
           if (scrollToBottomFlag.current) {
             scrollToBottomFlag.current = false;
           }
           
-          // Délai supplémentaire de stabilisation
+          // Additional stabilization delay
           scrollTimeoutRef.current = setTimeout(() => {
             isScrolling.current = false;
             scrollStabilityCounter.current += 1;
             scrollLock.current = false;
-            scrollTimeoutRef.current = null;
-          }, 300);
+            scrollOperationInProgress.current = false;
+          }, 200);
         }
-      }, 150);
+      }, 100);
       
     } else if (!shouldScrollToBottom && !isInitialLoad) {
-      // Restaurer la position de défilement précédente si l'utilisateur n'était pas en bas
+      // Restore previous scroll position
       scrollTimeoutRef.current = setTimeout(() => {
         if (messageContainerRef.current) {
           messageContainerRef.current.scrollTop = lastScrollTop.current;
           
+          // Release locks after a short delay
           scrollTimeoutRef.current = setTimeout(() => {
             isScrolling.current = false;
             scrollStabilityCounter.current += 1;
             scrollLock.current = false;
-            scrollTimeoutRef.current = null;
-          }, 150);
+            scrollOperationInProgress.current = false;
+          }, 100);
         }
       }, 50);
     } else {
-      // Libérer le verrou de défilement après un court délai
+      // Release locks if no scroll actions needed
       scrollTimeoutRef.current = setTimeout(() => {
         isScrolling.current = false;
         scrollStabilityCounter.current += 1;
         scrollLock.current = false;
-        scrollTimeoutRef.current = null;
-      }, 250);
+        scrollOperationInProgress.current = false;
+      }, 150);
     }
     
-    // Nettoyage du délai lors du démontage
+    // Clean up timeouts on unmount
     return () => {
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = null;
         scrollLock.current = false;
+        scrollOperationInProgress.current = false;
       }
     };
   }, [messages, isInitialLoad, messagesEndRef, lastMessageCountRef, scrollToBottomFlag, messageContainerRef]);

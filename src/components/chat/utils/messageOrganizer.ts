@@ -1,10 +1,9 @@
-
 import { Message } from "@/types/messaging";
 import { organizeMessageThreads } from './messageUtils';
 import { useRef, useCallback, useMemo } from 'react';
 
 export const useMessageOrganizer = (messages: Message[]) => {
-  // Stable cache references
+  // Enhanced cache references with better stability
   const lastOrganizedMessages = useRef<Message[]>([]);
   const organizedCache = useRef<ReturnType<typeof organizeMessageThreads> | null>(null);
   const cacheVersion = useRef<number>(0);
@@ -12,86 +11,96 @@ export const useMessageOrganizer = (messages: Message[]) => {
   const messagesStableVersionRef = useRef<string>("");
   const lastOrganizationTimestamp = useRef<number>(0);
   const forceCooldownPeriod = useRef<boolean>(false);
+  const messagesMappingRef = useRef<Map<string, true>>(new Map());
+  const cooldownActive = useRef<boolean>(false);
   
-  // Enhanced function for organizing message threads with improved caching
-  // to avoid costly reorganizations
+  // Function for creating a stable representation of messages for comparison
+  const createMessageSignature = useCallback((msgs: Message[]) => {
+    if (msgs.length === 0) return "";
+    
+    // Only consider ID and reaction counts for performance (no deep comparison)
+    return msgs.map(m => {
+      const reactionCount = m.reactions ? Object.keys(m.reactions).length : 0;
+      return `${m.id}-${reactionCount}`;
+    }).join(',');
+  }, []);
+  
+  // Enhanced message organization with improved caching and cooldown logic
   const organizeThreads = useCallback(() => {
-    // Don't reorganize if already processing
+    // Skip organization during active processing
     if (processingFlag.current) {
       return organizedCache.current || { rootMessages: [], messageThreads: {} };
     }
     
-    // Simple cooldown mechanism to prevent too frequent reorganizations
+    // Use fixed cooldown periods to improve stability
     const now = Date.now();
-    if (forceCooldownPeriod.current && now - lastOrganizationTimestamp.current < 2000) {
+    if (cooldownActive.current && now - lastOrganizationTimestamp.current < 1500) {
       return organizedCache.current || { rootMessages: [], messageThreads: {} };
     }
     
+    // Set processing flag at the start
     processingFlag.current = true;
     
     try {
-      // Quick reference check for performance
+      // Quick reference check to avoid unnecessary work
       if (messages === lastOrganizedMessages.current && organizedCache.current) {
         return organizedCache.current;
       }
       
-      // Create a stable signature of messages for comparison
-      const newMessagesStableVersion = messages.length > 0 ? 
-        messages.map(m => `${m.id}-${m.reactions ? Object.keys(m.reactions).length : 0}`).join(',') : "";
+      // Create a stable signature to detect unchanged content
+      const newSignature = createMessageSignature(messages);
       
-      // If the signature is the same, use the cache
-      if (newMessagesStableVersion === messagesStableVersionRef.current && organizedCache.current) {
+      // Return cached result if signature is unchanged
+      if (newSignature === messagesStableVersionRef.current && organizedCache.current) {
         return organizedCache.current;
       }
       
-      // Deep equality check (based only on ID and reactions count for performance)
-      const sameMessageList = messages.length === lastOrganizedMessages.current.length &&
-        messages.every((msg, i) => {
-          const prevMsg = lastOrganizedMessages.current[i];
-          if (!prevMsg || msg.id !== prevMsg.id) return false;
-          
-          // Also check reactions since they affect thread display
-          const msgReactionCount = msg.reactions ? Object.keys(msg.reactions).length : 0;
-          const prevReactionCount = prevMsg.reactions ? Object.keys(prevMsg.reactions).length : 0;
-          
-          return msgReactionCount === prevReactionCount;
-        });
+      // Build map of message IDs for fast lookups
+      const newMessageMap = new Map<string, true>();
+      messages.forEach(msg => newMessageMap.set(msg.id, true));
       
-      if (sameMessageList && organizedCache.current) {
+      // Check if messages array has the same elements (even if order changed)
+      const sameMessages = messages.length === lastOrganizedMessages.current.length &&
+        messages.every(msg => messagesMappingRef.current.has(msg.id)) &&
+        lastOrganizedMessages.current.every(msg => newMessageMap.has(msg.id));
+      
+      // If content is identical, return cached result
+      if (sameMessages && organizedCache.current && messagesStableVersionRef.current.length > 0) {
         return organizedCache.current;
       }
       
-      // If messages have changed, reorganize and update cache
+      // Organize threads if needed
       const result = organizeMessageThreads(messages);
       
-      // Update the cache
+      // Update all cache references
       lastOrganizedMessages.current = [...messages];
       organizedCache.current = result;
       cacheVersion.current += 1;
-      messagesStableVersionRef.current = newMessagesStableVersion;
+      messagesStableVersionRef.current = newSignature;
+      messagesMappingRef.current = newMessageMap;
       lastOrganizationTimestamp.current = now;
       
-      // After a significant change, enforce a cooldown period
-      if (result.rootMessages.length > 5) {
-        forceCooldownPeriod.current = true;
+      // Apply cooldown period for larger message sets
+      if (messages.length > 5) {
+        cooldownActive.current = true;
         setTimeout(() => {
-          forceCooldownPeriod.current = false;
-        }, 2000);
+          cooldownActive.current = false;
+        }, 1500);
       }
       
       return result;
     } finally {
-      // Ensure the flag is released even in case of error
+      // Release processing flag with delay for stability
       setTimeout(() => {
         processingFlag.current = false;
       }, 50);
     }
-  }, [messages]);
+  }, [messages, createMessageSignature]);
 
-  // Use memoization to further stabilize the result
+  // Use memoization to ensure stable reference to organization result
   const organizedThreads = useMemo(() => {
     return organizeThreads();
-  }, [organizeThreads, cacheVersion.current]);
+  }, [organizeThreads, messages.length, cacheVersion.current]);
 
   return { 
     organizeThreads: () => organizedThreads,

@@ -1,18 +1,18 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 
 export const useMessageListState = (messages: Message[], channelId: string) => {
-  // Références pour la gestion du défilement et de l'état
+  // UI state with reduced dependencies
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageCountRef = useRef<number>(0);
   
-  // État simplifié sans dépendances circulaires
+  // Main state flags
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showSkeletons, setShowSkeletons] = useState(true);
   
-  // Drapeaux pour contrôler le comportement
+  // Stability and control flags
   const initialSkeletonsShown = useRef(false);
   const lastChannelIdRef = useRef<string>('');
   const scrollToBottomFlag = useRef<boolean>(true);
@@ -21,38 +21,52 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
   const messageStabilityTimer = useRef<NodeJS.Timeout | null>(null);
   const updateLockRef = useRef<boolean>(false);
   const renderStabilityCounter = useRef<number>(0);
-  const lastStableMessagesSignature = useRef<string>("");
-
-  // Vérifier si nous avons reçu des messages
-  useEffect(() => {
+  const lastMessageSignature = useRef<string>("");
+  const uiUpdateScheduled = useRef<boolean>(false);
+  
+  // Track if we've received messages
+  const trackMessages = useCallback(() => {
     if (messages.length > 0) {
       hadMessagesRef.current = true;
       
-      // Créer une signature stable des messages pour éviter les rendus inutiles
-      const currentMessagesSignature = messages.map(m => m.id).join(',');
-      if (currentMessagesSignature === lastStableMessagesSignature.current) {
-        // Éviter les mises à jour d'état si les messages sont les mêmes
-        return;
+      // Create a signature of current messages for stable comparisons
+      const currentSignature = messages.slice(0, 10).map(m => m.id).join(',');
+      if (currentSignature === lastMessageSignature.current) {
+        // Skip unnecessary updates
+        return false;
       }
-      lastStableMessagesSignature.current = currentMessagesSignature;
+      lastMessageSignature.current = currentSignature;
+      return true;
     }
+    return false;
   }, [messages]);
 
-  // Transition des squelettes aux messages réels avec délai fixe et verrou
+  // Check for message updates
   useEffect(() => {
-    // Retourner immédiatement si une mise à jour est verrouillée
+    // Skip if update is locked
     if (updateLockRef.current) return;
     
-    // Définir le verrou de mise à jour pour éviter les mises à jour simultanées
-    updateLockRef.current = true;
+    const messagesChanged = trackMessages();
+    if (!messagesChanged && hadMessagesRef.current) return;
+  }, [messages, trackMessages]);
+
+  // Control skeleton display with fixed transition timing
+  useEffect(() => {
+    // Avoid conflicting updates
+    if (updateLockRef.current || uiUpdateScheduled.current) return;
     
-    // Effacer tout minuteur existant pour éviter les effets d'accumulation
+    // Set update lock
+    updateLockRef.current = true;
+    uiUpdateScheduled.current = true;
+    
+    // Clear existing timers
     if (messageStabilityTimer.current) {
       clearTimeout(messageStabilityTimer.current);
       messageStabilityTimer.current = null;
     }
     
-    if (!initialSkeletonsShown.current || lastChannelIdRef.current !== channelId) {
+    // Reset on channel change
+    if (lastChannelIdRef.current !== channelId) {
       setShowSkeletons(true);
       initialSkeletonsShown.current = true;
       lastChannelIdRef.current = channelId;
@@ -62,18 +76,19 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
     }
     
     if (messages.length > 0) {
-      // Utiliser un délai fixe pour éviter les fluctuations
+      // Use fixed delay for showing actual messages
       messageStabilityTimer.current = setTimeout(() => {
         setShowSkeletons(false);
-        // Marquer le rendu comme stable après délai
+        setIsInitialLoad(false);
         stableRenderRef.current = true;
-        renderStabilityCounter.current++;
+        renderStabilityCounter.current += 1;
         
-        // Libérer le verrou après la mise à jour de l'état
+        // Release locks after short delay
         setTimeout(() => {
           updateLockRef.current = false;
-        }, 150);
-      }, 1000); // Délai augmenté pour plus de stabilité
+          uiUpdateScheduled.current = false;
+        }, 100);
+      }, 800);
       
       return () => {
         if (messageStabilityTimer.current) {
@@ -81,56 +96,51 @@ export const useMessageListState = (messages: Message[], channelId: string) => {
           messageStabilityTimer.current = null;
         }
         updateLockRef.current = false;
+        uiUpdateScheduled.current = false;
       };
     } else {
-      // Libérer le verrou s'il n'y a pas de messages
+      // Release locks if no messages
       updateLockRef.current = false;
+      uiUpdateScheduled.current = false;
     }
   }, [messages.length, channelId]);
 
-  // Réinitialisation plus complète lorsque le canal change
+  // Complete reset when channel changes
   useEffect(() => {
-    // Arrêter les minuteries en cours
+    // Stop any pending timers
     if (messageStabilityTimer.current) {
       clearTimeout(messageStabilityTimer.current);
       messageStabilityTimer.current = null;
     }
     
-    // Définir le verrou de mise à jour pendant le changement de canal
+    // Reset all state for new channel
     updateLockRef.current = true;
-    
     scrollToBottomFlag.current = true;
     setIsInitialLoad(true);
     initialSkeletonsShown.current = false;
     stableRenderRef.current = false;
     renderStabilityCounter.current = 0;
-    lastStableMessagesSignature.current = "";
+    lastMessageSignature.current = "";
     setShowSkeletons(true);
     
-    // Forcer le défilement après un délai lorsque le canal change
-    if (messageContainerRef.current) {
-      const timer = setTimeout(() => {
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          // Marquer comme stable après défilement
-          stableRenderRef.current = true;
-          renderStabilityCounter.current++;
-          
-          // Libérer le verrou après la mise à jour de l'état
-          setTimeout(() => {
-            updateLockRef.current = false;
-          }, 150);
-        }
-      }, 1200); // Délai plus long pour la stabilité
-      
-      return () => {
-        clearTimeout(timer);
-        updateLockRef.current = false;
-      };
-    } else {
-      // Libérer le verrou s'il n'y a pas de conteneur
+    // Force scroll on channel change
+    const timer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+        stableRenderRef.current = true;
+        renderStabilityCounter.current += 1;
+        
+        // Release update lock
+        setTimeout(() => {
+          updateLockRef.current = false;
+        }, 100);
+      }
+    }, 800);
+    
+    return () => {
+      clearTimeout(timer);
       updateLockRef.current = false;
-    }
+    };
   }, [channelId]);
 
   return {
