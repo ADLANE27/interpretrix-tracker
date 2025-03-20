@@ -1,4 +1,3 @@
-
 import type { Json } from '@/integrations/supabase/types';
 
 export interface Message {
@@ -22,13 +21,13 @@ export interface MessageData {
   sender_id: string;
   created_at: string;
   parent_message_id?: string | null;
+  reactions?: Record<string, string[]> | string;
   attachments?: Array<{
     url: string;
     filename: string;
     type: string;
     size: number;
   }>;
-  reactions?: Record<string, string[]> | string;
 }
 
 export interface Attachment {

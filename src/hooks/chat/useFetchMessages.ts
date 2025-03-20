@@ -1,106 +1,152 @@
 
 import { useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useMessageProcessing } from './useMessageProcessing';
-import { MessageMapRef, ChatChannelType } from './types/chatHooks';
+import { Json } from '@/integrations/supabase/types.generated';
+import { MessageData } from '@/types/messaging';
+
+// Define a type for the message processing interface
+interface MessageProcessingHook {
+  messagesMap: React.MutableRefObject<Map<string, any>>;
+  updateMessagesArray: () => void;
+  setIsLoading: (isLoading: boolean) => void;
+  processingMessage: React.MutableRefObject<boolean>;
+  lastFetchTimestamp: React.MutableRefObject<string | null>;
+  setHasMoreMessages: (hasMore: boolean) => void;
+  processMessage: (messageData: MessageData, channelType: 'group' | 'direct') => Promise<void>;
+}
+
+// Helper to convert from database message to MessageData
+const convertToMessageData = (dbMessage: any): MessageData => {
+  return {
+    id: dbMessage.id,
+    content: dbMessage.content,
+    sender_id: dbMessage.sender_id,
+    created_at: dbMessage.created_at,
+    parent_message_id: dbMessage.parent_message_id,
+    reactions: dbMessage.reactions,
+    attachments: dbMessage.attachments ? dbMessage.attachments.map((attachment: Json) => {
+      if (typeof attachment === 'object' && attachment !== null) {
+        return attachment as any;
+      }
+      return {
+        url: '',
+        filename: '',
+        type: '',
+        size: 0
+      };
+    }) : []
+  };
+};
 
 export const useFetchMessages = (
   channelId: string,
-  messageProcessing: ReturnType<typeof useMessageProcessing>
+  messageProcessing: MessageProcessingHook
 ) => {
-  const {
-    setIsLoading,
-    setHasMoreMessages,
-    userRole,
+  const { 
     messagesMap,
-    lastFetchTimestamp,
     updateMessagesArray,
+    setIsLoading,
+    processingMessage,
+    lastFetchTimestamp,
+    setHasMoreMessages,
     processMessage
   } = messageProcessing;
 
-  const fetchMessages = useCallback(async (offset = 0, limit = 100) => {
-    if (!channelId) return;
-    
-    setIsLoading(true);
+  const lastFetchTime = useRef<Date | null>(null);
+
+  const fetchMessages = useCallback(async (limit = 50) => {
+    if (!channelId || processingMessage.current) return;
+
     try {
-      console.log(`[useFetchMessages ${userRole.current}] Fetching messages for channel:`, channelId, `(offset: ${offset}, limit: ${limit})`);
-      
-      // Get channel type
-      const { data: channelData, error: channelError } = await supabase
+      processingMessage.current = true;
+      setIsLoading(true);
+      console.log(`[useFetchMessages] Fetching messages for channel ${channelId}, limit: ${limit}`);
+
+      const { data: channel, error: channelError } = await supabase
         .from('chat_channels')
-        .select('channel_type, created_by')
+        .select('channel_type')
         .eq('id', channelId)
         .single();
 
-      if (channelError) throw channelError;
-
-      if (!channelData?.channel_type || (channelData.channel_type !== 'group' && channelData.channel_type !== 'direct')) {
-        throw new Error('Invalid channel type');
+      if (channelError) {
+        console.error('[useFetchMessages] Error fetching channel:', channelError);
+        return;
       }
 
-      const channelType = channelData.channel_type as ChatChannelType;
+      const channelType = channel.channel_type as 'group' | 'direct';
 
-      // Count total messages
-      const { count, error: countError } = await supabase
-        .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('channel_id', channelId);
+      // Clear existing messages if this is a fresh fetch
+      if (limit > 0) {
+        messagesMap.current.clear();
+      }
 
-      if (countError) throw countError;
-      
-      // Get messages
-      const { data: messagesData, error: messagesError } = await supabase
+      const { data: messages, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+        .limit(limit);
 
-      if (messagesError) {
-        console.error(`[useFetchMessages ${userRole.current}] Error fetching messages:`, messagesError);
-        throw messagesError;
+      if (error) {
+        console.error('[useFetchMessages] Error fetching messages:', error);
+        return;
       }
-      
-      // Set if there are more messages
-      setHasMoreMessages(count !== null && count > offset + messagesData.length);
-      console.log(`[useFetchMessages ${userRole.current}] Retrieved messages:`, messagesData?.length, `(total: ${count})`);
+
+      if (!messages || messages.length === 0) {
+        console.log('[useFetchMessages] No messages found');
+        updateMessagesArray();
+        setHasMoreMessages(false);
+        return;
+      }
+
+      console.log(`[useFetchMessages] Processing ${messages.length} messages`);
 
       // Process each message
-      const senderDetailsPromises = messagesData?.map(message => 
-        processMessage(message, channelType)
-      ) || [];
+      for (const messageData of messages) {
+        await processMessage(convertToMessageData(messageData), channelType);
+      }
 
-      // Wait for all messages to be processed
-      await Promise.all(senderDetailsPromises);
-      
-      // Update messages state
-      if (offset === 0) {
-        updateMessagesArray();
+      // Update the last fetch timestamp
+      if (messages.length > 0) {
+        lastFetchTimestamp.current = messages[0].created_at;
+        setHasMoreMessages(messages.length === limit);
       } else {
-        updateMessagesArray();
-      }
-      
-      // Update last fetch timestamp
-      if (messagesData && messagesData.length > 0) {
-        const timestamps = messagesData.map(msg => msg.created_at);
-        lastFetchTimestamp.current = new Date(Math.max(...timestamps.map(ts => new Date(ts).getTime()))).toISOString();
+        setHasMoreMessages(false);
       }
 
-      console.log(`[useFetchMessages ${userRole.current}] Messages processed and set:`, messagesMap.current.size);
+      updateMessagesArray();
+      lastFetchTime.current = new Date();
     } catch (error) {
-      console.error(`[useFetchMessages ${userRole.current}] Error fetching messages:`, error);
+      console.error('[useFetchMessages] Error in fetchMessages:', error);
     } finally {
       setIsLoading(false);
+      processingMessage.current = false;
     }
-  }, [channelId, processMessage, setHasMoreMessages, setIsLoading, updateMessagesArray, userRole, lastFetchTimestamp, messagesMap]);
+  }, [
+    channelId,
+    processingMessage,
+    setIsLoading,
+    messagesMap,
+    lastFetchTimestamp,
+    setHasMoreMessages,
+    updateMessagesArray,
+    processMessage
+  ]);
 
-  const loadMoreMessages = useCallback((currentMessages: number, isLoading: boolean, hasMoreMessages: boolean) => {
-    if (isLoading || !hasMoreMessages) return;
-    fetchMessages(currentMessages);
-  }, [fetchMessages]);
+  const loadMoreMessages = useCallback(async (
+    currentCount: number,
+    isCurrentlyLoading: boolean,
+    hasMore: boolean
+  ) => {
+    if (!channelId || isCurrentlyLoading || !hasMore) return;
+    
+    console.log(`[useFetchMessages] Loading more messages, current count: ${currentCount}`);
+    await fetchMessages(currentCount + 50);
+  }, [channelId, fetchMessages]);
 
   return {
     fetchMessages,
-    loadMoreMessages
+    loadMoreMessages,
+    lastFetchTime: lastFetchTime.current
   };
 };

@@ -117,7 +117,18 @@ export const useMessageProcessing = (channelId: string) => {
         },
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
-        attachments: messageData.attachments,
+        attachments: messageData.attachments ? messageData.attachments.map(attachment => {
+          if (typeof attachment === 'object') {
+            return attachment as any;
+          }
+          // Handle case where attachment might be a string or other format
+          return {
+            url: '',
+            filename: '',
+            type: '',
+            size: 0
+          };
+        }) : [],
         channelType: channelType,
         reactions: messageReactions
       };
