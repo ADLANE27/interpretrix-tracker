@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -61,14 +62,14 @@ export const useTerminologySearch = (userId?: string) => {
       console.log("Starting terminology search:", searchParams);
       
       try {
-        // Set up a promise that will reject after the timeout
+        // Create the timeout ID outside the promise
+        let timeoutId: number | undefined;
+        
+        // Create the timeout promise with proper closure
         const timeoutPromise = new Promise<never>((_, reject) => {
-          const timeoutId = setTimeout(() => {
+          timeoutId = setTimeout(() => {
             reject(new Error("La recherche a pris trop de temps. Veuillez réessayer."));
           }, 15000); // 15 second timeout
-          
-          // Store the timeout ID on the promise so we can clear it later
-          (timeoutPromise as any).timeoutId = timeoutId;
         });
         
         // Create the invoke promise
@@ -80,7 +81,7 @@ export const useTerminologySearch = (userId?: string) => {
         const response = await Promise.race([invokePromise, timeoutPromise]);
         
         // If we get here, the invoke promise won, so clear the timeout
-        clearTimeout((timeoutPromise as any).timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         
         console.log("Terminology search response:", response);
 
