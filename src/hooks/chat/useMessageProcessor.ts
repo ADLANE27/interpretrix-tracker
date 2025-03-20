@@ -1,8 +1,8 @@
-
 import { useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { MessageData, Message } from '@/types/messaging';
 import { ChatChannelType } from './types/chatHooks';
+import { normalizeTimestampForSorting } from '@/utils/dateTimeUtils';
 
 export const useMessageProcessor = (userRole: React.MutableRefObject<string>) => {
   // Process a single message with improved error handling
@@ -59,7 +59,9 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           ...existingMessage,
           content: messageData.content || existingMessage.content,
           reactions: messageReactions,
-          attachments
+          attachments,
+          // Ensure we keep the original timestamp for consistency
+          timestamp: existingMessage.timestamp
         };
         
         messagesMap.set(messageData.id, updatedMessage);
@@ -118,7 +120,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           }) 
         : [];
 
-      // Create message object
+      // Create message object with a normalized timestamp
       const message: Message = {
         id: messageData.id,
         content: messageData.content,
@@ -127,6 +129,7 @@ export const useMessageProcessor = (userRole: React.MutableRefObject<string>) =>
           name: senderDetails[0].name,
           avatarUrl: senderDetails[0].avatar_url,
         },
+        // Create a stable timestamp that won't be affected by timezone issues
         timestamp: new Date(messageData.created_at),
         parent_message_id: messageData.parent_message_id,
         attachments,

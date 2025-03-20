@@ -62,3 +62,18 @@ export const fetchMessagesFromDb = async (channelId: string, limit: number = 100
   console.log(`[fetchUtils] Fetched ${messages?.length || 0} messages`);
   return messages || [];
 };
+
+// Additional utility to help with sorting messages by timestamp
+export const sortMessagesByTimestamp = (messages: any[]) => {
+  return [...messages].sort((a, b) => {
+    // Use created_at for database records
+    if (a.created_at && b.created_at) {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    // Use timestamp for processed Message objects
+    if (a.timestamp && b.timestamp) {
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    }
+    return 0;
+  });
+};

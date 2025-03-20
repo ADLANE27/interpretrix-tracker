@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Message } from '@/types/messaging';
+import { normalizeTimestampForSorting } from '@/utils/dateTimeUtils';
 
 export const useMessageMap = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -45,8 +46,13 @@ export const useMessageMap = () => {
         return;
       }
 
+      // Sort messages by their normalized timestamp for consistency
       const updatedMessages = Array.from(messagesMap.current.values())
-        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        .sort((a, b) => {
+          const timeA = normalizeTimestampForSorting(a.timestamp);
+          const timeB = normalizeTimestampForSorting(b.timestamp);
+          return timeA - timeB;
+        });
       
       // Don't update if nothing changed (prevents re-renders)
       if (messages.length === updatedMessages.length && 
