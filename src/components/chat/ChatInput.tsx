@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -182,6 +183,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if ('type' in suggestion && suggestion.type === 'language') {
       insertText = `@${suggestion.name} `;
     } else {
+      // This is a MemberSuggestion type
       const memberSuggestion = suggestion as MemberSuggestion;
       if (memberSuggestion.role === 'admin') {
         insertText = `@admin:${memberSuggestion.name} `;
