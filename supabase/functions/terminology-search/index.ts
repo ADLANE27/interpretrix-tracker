@@ -49,15 +49,15 @@ serve(async (req) => {
     console.log(`Searching for term: ${term} from ${sourceLanguage} to ${targetLanguage}`);
     
     try {
-      // Updated API endpoint
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      // Corrected API endpoint and model name
+      const response = await fetch('https://api.deepseek.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: 'deepseek-chat-1.0',
           messages: [
             {
               role: 'system',
@@ -74,6 +74,24 @@ serve(async (req) => {
       });
 
       console.log('DeepSeek API response status:', response.status);
+      
+      // Handle rate limit exceeded
+      if (response.status === 429) {
+        console.error('DeepSeek API rate limit exceeded');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Service temporarily unavailable. Please try again later.' 
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'Retry-After': response.headers.get('Retry-After') || '60'
+            } 
+          }
+        );
+      }
       
       // Log detailed error information
       if (!response.ok) {
