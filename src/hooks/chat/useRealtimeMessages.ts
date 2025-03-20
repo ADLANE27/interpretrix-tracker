@@ -19,22 +19,26 @@ export const useRealtimeMessages = (
 
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const isProcessingEvent = useRef(false);
   
   const handleRealtimeMessage = useCallback(async (payload: any) => {
-    if (processingMessage.current) return;
+    if (processingMessage.current || isProcessingEvent.current) return;
     
+    isProcessingEvent.current = true;
     processingMessage.current = true;
     console.log(`[useRealtimeMessages ${userRole.current}] Realtime message received:`, payload.eventType, payload);
     
     try {
       if (!payload || !payload.new || !channelId) {
         processingMessage.current = false;
+        isProcessingEvent.current = false;
         return;
       }
       
       const messageData = payload.new;
       if (messageData.channel_id !== channelId) {
         processingMessage.current = false;
+        isProcessingEvent.current = false;
         return;
       }
       
@@ -42,25 +46,33 @@ export const useRealtimeMessages = (
         if (payload.eventType === 'INSERT' && messagesMap.current.has(messageData.id)) {
           console.log(`[useRealtimeMessages ${userRole.current}] Skipping duplicate message:`, messageData.id);
           processingMessage.current = false;
+          isProcessingEvent.current = false;
           return;
         }
         
-        const { data: channelData } = await supabase
-          .from('chat_channels')
-          .select('channel_type')
-          .eq('id', channelId)
-          .single();
-        
-        // Process the message
-        await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
-        
-        // Update the messages array
-        updateMessagesArray();
-        
-        console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message added/updated:`, messageData.id, 'For channel:', channelId);
-        
-        const messageTimestamp = new Date(messageData.created_at);
-        setLastFetchTime(new Date());
+        try {
+          const { data: channelData } = await supabase
+            .from('chat_channels')
+            .select('channel_type')
+            .eq('id', channelId)
+            .single();
+          
+          // Process the message
+          await processMessage(messageData, channelData?.channel_type as 'group' | 'direct' || 'group');
+          
+          // Update the messages array
+          updateMessagesArray();
+          
+          console.log(`[useRealtimeMessages ${userRole.current}] Realtime: Message added/updated:`, messageData.id, 'For channel:', channelId);
+          
+          const messageTimestamp = new Date(messageData.created_at);
+          setLastFetchTime(new Date());
+        } catch (error) {
+          console.error(`[useRealtimeMessages ${userRole.current}] Error processing realtime message:`, error);
+          // If we fail to process a realtime message, trigger a full refresh
+          // This ensures we don't miss messages due to processing errors
+          setTimeout(() => forceFetch(), 500);
+        }
       } 
       else if (payload.eventType === 'DELETE') {
         const deletedId = payload.old.id;
@@ -74,12 +86,13 @@ export const useRealtimeMessages = (
       console.error(`[useRealtimeMessages ${userRole.current}] Error handling realtime message:`, error);
     } finally {
       processingMessage.current = false;
+      isProcessingEvent.current = false;
     }
   }, [channelId, messagesMap, processingMessage, userRole, processMessage, updateMessagesArray]);
 
   const forceFetch = useCallback(() => {
     console.log(`[useRealtimeMessages ${userRole.current}] Force fetching messages`);
-    fetchMessages();
+    return fetchMessages();
   }, [fetchMessages, userRole]);
 
   return {

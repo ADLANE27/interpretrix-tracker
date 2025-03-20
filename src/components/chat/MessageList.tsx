@@ -1,9 +1,10 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageThread } from './MessageThread';
 import { DateSeparator } from './DateSeparator';
 import { shouldShowDate, organizeMessageThreads } from './utils/messageUtils';
+import { LoadingSpinner } from '../ui/loading-spinner';
 
 interface MessageListProps {
   messages: Message[];
@@ -29,13 +30,24 @@ export const MessageList: React.FC<MessageListProps> = ({
   const scrollPositionRef = useRef<number>(0);
   const lastMessageCountRef = useRef<number>(0);
   const renderCountRef = useRef<number>(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     renderCountRef.current += 1;
     console.log(`[MessageList] Rendering with ${messages.length} messages (render #${renderCountRef.current})`);
   });
 
-  const { rootMessages, messageThreads } = organizeMessageThreads(messages);
+  const memoizedOrganizeThreads = useCallback(() => {
+    return organizeMessageThreads(messages);
+  }, [messages]);
+
+  const { rootMessages, messageThreads } = memoizedOrganizeThreads();
+
+  useEffect(() => {
+    if (messages.length > 0 && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [messages.length, isInitialLoad]);
 
   useEffect(() => {
     if (!messageContainerRef.current) return;

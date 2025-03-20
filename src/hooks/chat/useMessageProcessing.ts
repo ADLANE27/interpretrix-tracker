@@ -15,6 +15,8 @@ export const useMessageProcessing = (channelId: string) => {
   const userRole = useRef<string>('unknown');
   const { identifyUserRole } = useRoleIdentification();
   const updateCounter = useRef<number>(0);
+  const updateScheduled = useRef<boolean>(false);
+  const pendingMessageUpdates = useRef<Set<string>>(new Set());
 
   // Check user role
   const checkUserRole = useCallback(async () => {
@@ -24,27 +26,42 @@ export const useMessageProcessing = (channelId: string) => {
     return userRole.current;
   }, [identifyUserRole]);
 
-  // Update messages array
+  // Update messages array with debouncing to prevent too many state updates
   const updateMessagesArray = useCallback(() => {
     updateCounter.current += 1;
     const currentUpdateId = updateCounter.current;
     
-    if (messagesMap.current.size === 0) {
-      console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Setting empty messages array`);
-      setMessages([]);
+    if (updateScheduled.current) {
+      // Already scheduled an update, just mark we have more pending updates
       return;
     }
-
-    const updatedMessages = Array.from(messagesMap.current.values())
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     
-    console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
-    setMessages(updatedMessages);
+    updateScheduled.current = true;
+    
+    // Use requestAnimationFrame for smoother UI updates
+    requestAnimationFrame(() => {
+      updateScheduled.current = false;
+      
+      if (messagesMap.current.size === 0) {
+        console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Setting empty messages array`);
+        setMessages([]);
+        return;
+      }
+
+      const updatedMessages = Array.from(messagesMap.current.values())
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      console.log(`[useMessageProcessing ${userRole.current}] Update ${currentUpdateId}: Updating messages array with ${updatedMessages.length} messages`);
+      setMessages(updatedMessages);
+    });
   }, [userRole]);
 
-  // Process a single message
+  // Process a single message with improved error handling
   const processMessage = useCallback(async (messageData: MessageData, channelType: ChatChannelType) => {
     try {
+      // Track this message ID as pending an update
+      pendingMessageUpdates.current.add(messageData.id);
+      
       // Check if message already exists in map
       if (messagesMap.current.has(messageData.id)) {
         // Update existing message if needed
@@ -67,14 +84,32 @@ export const useMessageProcessing = (channelId: string) => {
           }
         }
         
+        // Process attachments - ensure they're properly formatted
+        const attachments = messageData.attachments 
+          ? messageData.attachments.map(attachment => {
+              if (typeof attachment === 'object' && attachment !== null) {
+                return attachment;
+              }
+              return {
+                url: '',
+                filename: '',
+                type: '',
+                size: 0
+              };
+            }) 
+          : existingMessage.attachments;
+        
         // Only update if something changed (reactions, etc.)
         const updatedMessage = {
           ...existingMessage,
-          reactions: messageReactions
+          content: messageData.content || existingMessage.content,
+          reactions: messageReactions,
+          attachments
         };
         
         messagesMap.current.set(messageData.id, updatedMessage);
         console.log(`[useMessageProcessing ${userRole.current}] Updated existing message:`, messageData.id);
+        pendingMessageUpdates.current.delete(messageData.id);
         return;
       }
 
@@ -86,11 +121,13 @@ export const useMessageProcessing = (channelId: string) => {
 
       if (senderError) {
         console.error(`[useMessageProcessing ${userRole.current}] Error getting sender details:`, senderError);
+        pendingMessageUpdates.current.delete(messageData.id);
         return;
       }
 
       if (!senderDetails || senderDetails.length === 0) {
         console.error(`[useMessageProcessing ${userRole.current}] No sender details found for:`, messageData.sender_id);
+        pendingMessageUpdates.current.delete(messageData.id);
         return;
       }
 
@@ -111,7 +148,7 @@ export const useMessageProcessing = (channelId: string) => {
         }
       }
 
-      // Process attachments
+      // Process attachments with better error handling
       const attachments = messageData.attachments 
         ? messageData.attachments.map(attachment => {
             if (typeof attachment === 'object' && attachment !== null) {
@@ -145,9 +182,11 @@ export const useMessageProcessing = (channelId: string) => {
       // Add to map
       messagesMap.current.set(message.id, message);
       console.log(`[useMessageProcessing ${userRole.current}] Processed new message:`, message.id);
+      pendingMessageUpdates.current.delete(messageData.id);
 
     } catch (error) {
-      console.error(`[useMessageProcessing ${userRole.current}] Error processing message:`, error);
+      console.error(`[useMessageProcessing ${userRole.current}] Error processing message:`, error, messageData);
+      pendingMessageUpdates.current.delete(messageData.id);
     }
   }, [userRole]);
 
@@ -164,6 +203,7 @@ export const useMessageProcessing = (channelId: string) => {
     userRole,
     updateMessagesArray,
     processMessage,
-    checkUserRole
+    checkUserRole,
+    pendingMessageUpdates
   };
 };

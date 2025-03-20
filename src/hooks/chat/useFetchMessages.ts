@@ -54,13 +54,41 @@ export const useFetchMessages = (
 
   const lastFetchTime = useRef<Date | null>(null);
   const initialFetchDone = useRef<boolean>(false);
+  const activeFetch = useRef<boolean>(false);
+  const fetchDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedSetLoading = useCallback((loading: boolean) => {
+    // Only show loading state after a delay to prevent flickering
+    if (loading) {
+      if (fetchDebounceTimer.current) {
+        clearTimeout(fetchDebounceTimer.current);
+      }
+      
+      // Short delay before showing loading state
+      fetchDebounceTimer.current = setTimeout(() => {
+        if (activeFetch.current) {
+          setIsLoading(true);
+        }
+      }, 500);
+    } else {
+      if (fetchDebounceTimer.current) {
+        clearTimeout(fetchDebounceTimer.current);
+        fetchDebounceTimer.current = null;
+      }
+      setIsLoading(false);
+    }
+  }, [setIsLoading]);
 
   const fetchMessages = useCallback(async (limit = 50) => {
-    if (!channelId || processingMessage.current) return;
+    if (!channelId || processingMessage.current || activeFetch.current) {
+      console.log(`[useFetchMessages] Skipping fetch, already in progress or invalid state`);
+      return;
+    }
 
     try {
+      activeFetch.current = true;
       processingMessage.current = true;
-      setIsLoading(true);
+      debouncedSetLoading(true);
       console.log(`[useFetchMessages] Fetching messages for channel ${channelId}, limit: ${limit}, initialFetchDone: ${initialFetchDone.current}`);
 
       const { data: channel, error: channelError } = await supabase
@@ -105,7 +133,7 @@ export const useFetchMessages = (
 
       console.log(`[useFetchMessages] Processing ${messages.length} messages`);
 
-      // Process each message
+      // Process all messages in parallel for faster loading
       const processPromises = messages.map(messageData => 
         processMessage(convertToMessageData(messageData), channelType)
       );
@@ -120,7 +148,7 @@ export const useFetchMessages = (
         setHasMoreMessages(false);
       }
 
-      // Force update the messages array
+      // Force update the messages array immediately
       console.log(`[useFetchMessages] Calling updateMessagesArray with ${messagesMap.current.size} messages`);
       updateMessagesArray();
       
@@ -128,6 +156,7 @@ export const useFetchMessages = (
       initialFetchDone.current = true;
       
       // Force a second update after a short delay to ensure UI updates
+      // This helps with race conditions where the state update might not trigger a re-render
       setTimeout(() => {
         if (messagesMap.current.size > 0) {
           console.log(`[useFetchMessages] Triggering secondary update with ${messagesMap.current.size} messages`);
@@ -138,13 +167,14 @@ export const useFetchMessages = (
     } catch (error) {
       console.error('[useFetchMessages] Error in fetchMessages:', error);
     } finally {
-      setIsLoading(false);
+      debouncedSetLoading(false);
       processingMessage.current = false;
+      activeFetch.current = false;
     }
   }, [
     channelId,
     processingMessage,
-    setIsLoading,
+    debouncedSetLoading,
     messagesMap,
     lastFetchTimestamp,
     setHasMoreMessages,
@@ -157,7 +187,7 @@ export const useFetchMessages = (
     isCurrentlyLoading: boolean,
     hasMore: boolean
   ) => {
-    if (!channelId || isCurrentlyLoading || !hasMore) return;
+    if (!channelId || isCurrentlyLoading || !hasMore || activeFetch.current) return;
     
     console.log(`[useFetchMessages] Loading more messages, current count: ${currentCount}`);
     await fetchMessages(currentCount + 50);
