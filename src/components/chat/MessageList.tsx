@@ -228,44 +228,46 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {rootMessages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, rootMessages[index - 1]) && (
-              <div className="flex justify-center my-5">
-                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
-                  {formatMessageDate(message.timestamp)}
-                </div>
-              </div>
-            )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-12 mt-2 mb-5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
-                >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  {messageThreads[message.id].length - 1} réponses
-                </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
+        {rootMessages.map((message, index) => {
+          return (
+            <React.Fragment key={message.id}>
+              {shouldShowDate(message, rootMessages[index - 1]) && (
+                <div className="flex justify-center my-5">
+                  <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
+                    {formatMessageDate(message.timestamp)}
                   </div>
-                )}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
+                </div>
+              )}
+              {renderMessage(message)}
+              
+              {messageThreads[message.id]?.length > 1 && (
+                <div className="ml-12 mt-2 mb-5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleThread(message.id)}
+                    className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
+                  >
+                    {expandedThreads.has(message.id) ? (
+                      <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                    )}
+                    {messageThreads[message.id].length - 1} réponses
+                  </Button>
+                  
+                  {expandedThreads.has(message.id) && (
+                    <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
+                      {messageThreads[message.id]
+                        .filter(reply => reply.id !== message.id)
+                        .map(reply => renderMessage(reply, true))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
       <div ref={messagesEndRef} />
     </div>
