@@ -5,6 +5,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 
+// Translation object for notification messages
+const NOTIFICATION_TRANSLATIONS = {
+  newMessage: {
+    fr: "Nouveau message de",
+    en: "New message from"
+  },
+  viewButton: {
+    fr: "Voir",
+    en: "View"
+  },
+  mentionNotice: {
+    fr: "Vous avez été mentionné dans un message",
+    en: "You were mentioned in a message"
+  }
+};
+
 export const useGlobalNotification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -39,17 +55,27 @@ export const useGlobalNotification = () => {
           
         console.log('[GlobalNotification] Channel details:', channelData);
         
+        // Check if the message contains a mention (for specialized notification)
+        const hasMention = data.message.mentions && 
+          Array.isArray(data.message.mentions) && 
+          data.message.mentions.length > 0;
+          
+        // Determine title based on whether it's a mention or regular message
+        const title = hasMention 
+          ? NOTIFICATION_TRANSLATIONS.mentionNotice.fr 
+          : `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
+        
         // Show toast notification with message preview
         console.log('[GlobalNotification] Displaying toast notification');
         toast({
-          title: `Nouveau message de ${sender.name}`,
+          title: title,
           description: `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`,
           action: (
             <button 
               className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90"
               onClick={() => navigate('/interpreter/messages')}
             >
-              Voir
+              {NOTIFICATION_TRANSLATIONS.viewButton.fr}
             </button>
           ),
           duration: 5000, // Keep longer duration for better visibility

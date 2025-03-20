@@ -144,9 +144,16 @@ export const useSubscriptions = (
                   extendedPayload.new.sender_id !== currentUserId) {
                 console.log(`[Chat ${userRole.current}] Emitting new message event`, extendedPayload.new);
                 
+                const userMentioned = extendedPayload.new.mentions && 
+                  Array.isArray(extendedPayload.new.mentions) && 
+                  extendedPayload.new.mentions.includes(currentUserId);
+                
+                console.log(`[Chat ${userRole.current}] User mentioned in message:`, userMentioned);
+                
                 eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
                   message: extendedPayload.new,
-                  channelId
+                  channelId,
+                  isMention: userMentioned
                 });
               }
             }
