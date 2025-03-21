@@ -6,6 +6,9 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -31,7 +34,34 @@ const workLocationConfig = {
   }
 };
 
-export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
+export const InterpreterListItem = ({ interpreter: initialInterpreter }: InterpreterListItemProps) => {
+  const [interpreter, setInterpreter] = useState(initialInterpreter);
+  
+  // Use real-time subscription to listen for status changes
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'interpreter_profiles',
+      filter: `id=eq.${interpreter.id}`
+    },
+    (payload) => {
+      if (payload.new && payload.new.status) {
+        console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, payload.new.status);
+        setInterpreter(prev => ({
+          ...prev,
+          status: payload.new.status
+        }));
+      }
+    },
+    {
+      enabled: true,
+      retryInterval: 5000,
+      maxRetries: 3,
+      onError: (error) => console.error(`[InterpreterListItem] Subscription error:`, error)
+    }
+  );
+
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -41,6 +71,11 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
+
+  // Update the local state when props change
+  useEffect(() => {
+    setInterpreter(initialInterpreter);
+  }, [initialInterpreter]);
 
   return (
     <Card className="p-4 hover-elevate gradient-border">

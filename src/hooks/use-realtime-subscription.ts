@@ -34,6 +34,12 @@ export function useRealtimeSubscription(
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
+  const callbackRef = useRef(callback);
+
+  // Update the callback ref when the callback changes
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -48,9 +54,8 @@ export function useRealtimeSubscription(
           channelRef.current = null;
         }
 
-        // Use the table name as the base for the channel name
-        // This ensures consistent naming across different components
-        const channelName = `realtime-${config.table}`;
+        // Use a unique channel name to prevent conflicts with other subscribers
+        const channelName = `realtime-${config.table}-${instanceIdRef.current}`;
         console.log('[Realtime] Setting up new channel with name:', channelName);
         
         const channel = supabase.channel(channelName);
@@ -91,7 +96,7 @@ export function useRealtimeSubscription(
             }
             
             console.log(`[Realtime] Received ${config.event} event for ${config.table}:`, payload);
-            callback(payload);
+            callbackRef.current(payload);
           }
         );
 
@@ -132,7 +137,66 @@ export function useRealtimeSubscription(
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [enabled, config.table, config.event, config.schema, config.filter, callback, maxRetries, retryInterval, onError]);
+  }, [enabled, config.table, config.event, config.schema, config.filter, maxRetries, retryInterval, onError]);
+
+  // Anytime the filter changes, we need to re-setup the channel
+  useEffect(() => {
+    if (channelRef.current && config.filter) {
+      const setupChannel = () => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+        
+        const channelName = `realtime-${config.table}-${instanceIdRef.current}`;
+        console.log('[Realtime] Re-setting up channel with name due to filter change:', channelName);
+        
+        const channel = supabase.channel(channelName);
+        
+        channelRef.current = channel.on(
+          'postgres_changes' as any,
+          {
+            event: config.event,
+            schema: config.schema || 'public',
+            table: config.table,
+            filter: config.filter,
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            console.log(`[Realtime] Received ${config.event} event for ${config.table} with filter:`, payload);
+            callbackRef.current(payload);
+          }
+        );
+        
+        channelRef.current.subscribe((status) => {
+          console.log(`[Realtime] Subscription status for ${config.table} with filter:`, status);
+        });
+      };
+      
+      setupChannel();
+    }
+  }, [config.filter]);
+
+  // Make sure the Supabase table has realtime enabled
+  useEffect(() => {
+    const enableRealtime = async () => {
+      try {
+        // This query is just to make sure the table exists and has REPLICA IDENTITY FULL
+        const { error } = await supabase.rpc('ensure_realtime_setup', { 
+          table_name: config.table 
+        }).maybeSingle();
+        
+        if (error) {
+          console.warn(`[Realtime] Couldn't verify realtime setup: ${error.message}`);
+        }
+      } catch (err) {
+        console.warn('[Realtime] Failed to check realtime setup:', err);
+      }
+    };
+    
+    if (enabled) {
+      enableRealtime();
+    }
+  }, [enabled, config.table]);
 
   return { isConnected };
 }
