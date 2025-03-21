@@ -39,7 +39,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
   const { toast } = useToast();
   const lastUpdateRef = useRef<string | null>(null);
 
-  // Setup real-time subscription to status updates with improved configuration
+  // Setup real-time subscription to status updates
   useRealtimeSubscription(
     {
       event: 'UPDATE',
@@ -61,7 +61,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
         if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
           setInterpreterStatus(newStatus as Profile['status']);
           
-          // Show toast for status changes (optional)
+          // Show toast for status changes
           toast({
             title: "Statut mis à jour",
             description: `Le statut de ${interpreter.name} a été mis à jour`,

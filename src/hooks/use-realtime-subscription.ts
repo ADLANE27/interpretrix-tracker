@@ -92,17 +92,16 @@ export function useRealtimeSubscription(
         // Create the channel
         const channel = supabase.channel(channelName);
         
-        // This is a type assertion to handle TS type incompatibility
-        // while maintaining the correct realtime subscription pattern
+        // Configure the postgres_changes event with proper typing
         channel.on(
-          'postgres_changes' as any, 
+          'postgres_changes', 
           { 
             event: config.event, 
             schema: config.schema || 'public', 
             table: config.table, 
             filter: config.filter 
           }, 
-          (payload: RealtimePostgresChangesPayload<any>) => {
+          (payload) => {
             // Generate a unique event ID for deduplication
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
