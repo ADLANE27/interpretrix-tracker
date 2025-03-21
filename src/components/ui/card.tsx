@@ -3,12 +3,10 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { motion, HTMLMotionProps } from "framer-motion"
 
-// Create a more specific type for motionProps to avoid conflicts
-type MotionDivProps = Omit<HTMLMotionProps<"div">, "className" | "children">;
-
+// Create a specialized type for our Card component when used with motion
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asMotion?: boolean;
-  motionProps?: MotionDivProps;
+  motionProps?: Omit<HTMLMotionProps<"div">, "className" | "children">;
 }
 
 const Card = React.forwardRef<
@@ -16,17 +14,21 @@ const Card = React.forwardRef<
   CardProps
 >(({ className, asMotion = false, motionProps, ...props }, ref) => {
   if (asMotion) {
+    // We need to separate React DOM props from Framer Motion props
+    // Extract any Framer-specific event handlers that might conflict
+    const { onDrag, onDragStart, onDragEnd, ...restProps } = props;
+    
     return (
       <motion.div
-        // Cast the ref to any to bypass the TypeScript checking
         ref={ref as React.Ref<HTMLDivElement>}
         className={cn(
           "rounded-xl border bg-white/80 dark:bg-gray-800/80 text-card-foreground shadow-md hover:shadow-xl backdrop-blur-sm transition-all duration-300",
           className
         )}
-        // Spread motionProps and props separately to avoid type conflicts
+        // Only apply compatible props
+        {...restProps}
+        // Apply motion-specific props, which will correctly handle onDrag, etc.
         {...(motionProps || {})}
-        {...props}
       />
     )
   }
