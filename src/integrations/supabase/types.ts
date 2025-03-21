@@ -375,6 +375,61 @@ export type Database = {
           },
         ]
       }
+      interpreter_notes: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          interpreter_id: string
+          is_pinned: boolean | null
+          mission_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          interpreter_id: string
+          is_pinned?: boolean | null
+          mission_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          interpreter_id?: string
+          is_pinned?: boolean | null
+          mission_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interpreter_notes_interpreter_id_fkey"
+            columns: ["interpreter_id"]
+            isOneToOne: false
+            referencedRelation: "mission_creators"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpreter_notes_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "interpretation_missions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interpreter_notes_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "mission_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interpreter_profiles: {
         Row: {
           address: Json | null
@@ -521,6 +576,53 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_recordings: {
+        Row: {
+          created_at: string
+          duration: number | null
+          file_path: string
+          id: string
+          note_id: string
+          source_language: string | null
+          status: string | null
+          target_language: string | null
+          transcription: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration?: number | null
+          file_path: string
+          id?: string
+          note_id: string
+          source_language?: string | null
+          status?: string | null
+          target_language?: string | null
+          transcription?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration?: number | null
+          file_path?: string
+          id?: string
+          note_id?: string
+          source_language?: string | null
+          status?: string | null
+          target_language?: string | null
+          transcription?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_recordings_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "interpreter_notes"
             referencedColumns: ["id"]
           },
         ]

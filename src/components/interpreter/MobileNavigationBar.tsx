@@ -1,10 +1,7 @@
 
-import React from 'react';
-import { Calendar, MessageCircle, Search, User, Home } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { motion } from 'framer-motion';
-import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
+import { Calendar, MessageCircle, Headset, Search, FileText } from "lucide-react";
 
 interface MobileNavigationBarProps {
   activeTab: string;
@@ -13,82 +10,63 @@ interface MobileNavigationBarProps {
   unreadMessagesCount?: number;
 }
 
-export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({ 
-  activeTab, 
+export const MobileNavigationBar = ({
+  activeTab,
   onTabChange,
   pendingMissionsCount = 0,
   unreadMessagesCount = 0
-}) => {
-  const isMobile = useIsMobile();
-  
-  if (!isMobile) return null;
-  
+}: MobileNavigationBarProps) => {
   const tabs = [
-    { id: "missions", label: "Missions", icon: Home, badge: pendingMissionsCount },
-    { id: "messages", label: "Messages", icon: MessageCircle, badge: unreadMessagesCount },
-    { id: "terminology", label: "Recherche", icon: Search },
-    { id: "profile", label: "Profil", icon: User }
+    { 
+      id: "missions", 
+      icon: Calendar, 
+      label: "Missions",
+      badge: pendingMissionsCount > 0 ? pendingMissionsCount : undefined 
+    },
+    { 
+      id: "messages", 
+      icon: MessageCircle, 
+      label: "Messages",
+      badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined
+    },
+    { id: "terminology", icon: Search, label: "Recherche" },
+    { id: "notes", icon: FileText, label: "Notes" },
+    { id: "profile", icon: Headset, label: "Profil" }
   ];
 
   return (
-    <motion.div 
-      className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 safe-area-bottom z-50 shadow-lg"
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.3, type: "spring" }}
-    >
-      <div className="flex items-center justify-around px-2 py-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          
-          return (
-            <button
-              key={tab.id}
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-md z-50 md:hidden py-1">
+      <div className="flex justify-around items-center">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={cn(
+              "flex flex-col items-center justify-center px-1 py-2 relative",
+              "focus:outline-none transition-colors duration-200",
+              activeTab === tab.id 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => onTabChange(tab.id)}
+          >
+            <tab.icon 
               className={cn(
-                "flex flex-col items-center justify-center py-2 px-3 relative",
-                "transition-all duration-200 rounded-lg",
-                "focus:outline-none touch-feedback",
-                isActive 
-                  ? "text-primary" 
-                  : "text-gray-500 dark:text-gray-400"
-              )}
-              onClick={() => onTabChange(tab.id)}
-            >
-              <div className="relative">
-                <Icon className={cn(
-                  "w-5 h-5 mb-1",
-                  isActive && "text-primary"
-                )} />
-                
-                {tab.badge && tab.badge > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -right-2 -top-2 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
-                  >
-                    {tab.badge}
-                  </Badge>
-                )}
-              </div>
-              
-              <span className={cn(
-                "text-xs font-medium",
-                isActive ? "text-primary" : "text-gray-500 dark:text-gray-400"
-              )}>
-                {tab.label}
-              </span>
-              
-              {isActive && (
-                <motion.div
-                  layoutId="bottomNavIndicator"
-                  className="absolute -bottom-1 left-[25%] right-[25%] h-0.5 bg-primary rounded-full"
-                  transition={{ duration: 0.2 }}
-                />
-              )}
-            </button>
-          );
-        })}
+                "h-5 w-5 mb-1",
+                activeTab === tab.id && "animate-pulse"
+              )} 
+            />
+            <span className="text-xs">{tab.label}</span>
+            {tab.badge && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+              >
+                {tab.badge}
+              </Badge>
+            )}
+          </button>
+        ))}
       </div>
-    </motion.div>
+    </div>
   );
 };
