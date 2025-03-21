@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
-import { User, Lock, Sparkles } from "lucide-react";
+import { User, Lock, Sparkles, Headset } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email("Veuillez saisir une adresse email valide"),
@@ -157,11 +156,20 @@ export const InterpreterLoginForm = () => {
           className="flex justify-center mb-2"
         >
           <div className="relative">
-            <img 
-              src="/icon.svg" 
-              alt="Logo"
+            <motion.div
+              animate={{
+                rotate: [0, 5, 0, -5, 0],
+                scale: [1, 1.05, 1, 1.05, 1]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "loop"
+              }}
               className="w-16 h-16 text-palette-vivid-purple"
-            />
+            >
+              <Headset size={64} className="text-palette-vivid-purple" />
+            </motion.div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
