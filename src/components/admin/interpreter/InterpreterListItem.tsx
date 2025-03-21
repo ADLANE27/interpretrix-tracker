@@ -9,6 +9,7 @@ import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 import { useEffect, useState, useRef } from "react";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useToast } from "@/hooks/use-toast";
+import { convertStringsToLanguagePairs, LanguagePair, formatLanguageString } from "@/types/languages";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -86,12 +87,11 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
-  const parsedLanguages = interpreter.languages
-    .map(lang => {
-      const [source, target] = lang.split('→').map(l => l.trim());
-      return { source, target };
-    })
-    .filter(lang => lang.source && lang.target);
+  // Parse language pairs using our utility functions
+  const parsedLanguages = interpreter.languages.map(lang => formatLanguageString);
+
+  // Convert array of language strings to language pair objects
+  const languagePairs: LanguagePair[] = convertStringsToLanguagePairs(interpreter.languages);
 
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
@@ -113,7 +113,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-palette-ocean-blue" />
               <div className="flex flex-wrap gap-1">
-                {parsedLanguages.map((lang, index) => (
+                {languagePairs.map((lang, index) => (
                   <div
                     key={index}
                     className="px-3 py-1 bg-gradient-to-r from-palette-soft-blue to-palette-soft-purple text-slate-700 rounded-lg text-sm flex items-center gap-1 shadow-sm"
