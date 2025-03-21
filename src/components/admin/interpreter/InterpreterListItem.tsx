@@ -53,16 +53,17 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
       onError: (error) => {
         console.error(`[InterpreterListItem] Error in realtime subscription for ${interpreter.id}:`, error);
       },
-      debugMode: true // Enable detailed logging for debugging
+      debugMode: true
     }
   );
 
   // Update local state when props change
   useEffect(() => {
     if (interpreter.status !== interpreterStatus) {
+      console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
     }
-  }, [interpreter.status]);
+  }, [interpreter.status, interpreter.id]);
 
   const parsedLanguages = interpreter.languages
     .map(lang => {

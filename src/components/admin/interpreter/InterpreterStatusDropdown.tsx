@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -66,11 +66,20 @@ export const InterpreterStatusDropdown = ({
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
+  // Update local state when prop changes
+  useEffect(() => {
+    if (currentStatus && currentStatus !== localStatus) {
+      console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
+      setLocalStatus(currentStatus);
+    }
+  }, [currentStatus, interpreterId]);
+
   const handleStatusSelect = (status: Status) => {
-    if (status === currentStatus) {
+    if (status === localStatus) {
       setIsOpen(false);
       return;
     }
@@ -86,6 +95,9 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      // Optimistically update the local status
+      setLocalStatus(pendingStatus);
+      
       // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
@@ -94,6 +106,8 @@ export const InterpreterStatusDropdown = ({
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
+        // Revert on error
+        setLocalStatus(currentStatus);
         throw error;
       }
 
@@ -122,18 +136,18 @@ export const InterpreterStatusDropdown = ({
 
   // Content based on display format
   const triggerContent = () => {
-    const StatusIcon = statusConfig[currentStatus].icon;
-    const displayLabel = isMobile ? statusConfig[currentStatus].mobileLabel : statusConfig[currentStatus].label;
+    const StatusIcon = statusConfig[localStatus].icon;
+    const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;
     
     if (displayFormat === "badge") {
       return (
-        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
+        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
           {displayLabel}
         </div>
       );
     } else {
       return (
-        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[currentStatus].color} ${className}`}>
+        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
           <StatusIcon className="h-4 w-4" />
           <span>{displayLabel}</span>
         </div>
@@ -154,7 +168,7 @@ export const InterpreterStatusDropdown = ({
               <DropdownMenuItem 
                 key={status}
                 onClick={() => handleStatusSelect(status as Status)}
-                className={`flex items-center gap-2 ${currentStatus === status ? 'bg-muted' : ''}`}
+                className={`flex items-center gap-2 ${localStatus === status ? 'bg-muted' : ''}`}
               >
                 <StatusIcon className="h-4 w-4" />
                 <span>{config.label}</span>

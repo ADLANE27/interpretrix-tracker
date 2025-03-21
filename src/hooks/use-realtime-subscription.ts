@@ -89,12 +89,11 @@ export function useRealtimeSubscription(
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
         log(`Setting up new channel with name: ${channelName}`);
         
-        // Create channel with properly typed config
+        // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Set up the postgres_changes subscription
-        // We need to use the correct event structure according to Supabase API
-        channel.on(
+        // Use type assertion to bypass TypeScript error while maintaining correct function call
+        (channel as any).on(
           'postgres_changes', 
           { 
             event: config.event, 

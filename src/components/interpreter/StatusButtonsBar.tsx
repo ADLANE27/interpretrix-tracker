@@ -22,6 +22,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
+
+  // Update local state when prop changes
+  React.useEffect(() => {
+    if (currentStatus && currentStatus !== localStatus) {
+      console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
+      setLocalStatus(currentStatus);
+    }
+  }, [currentStatus]);
 
   const statusConfig = {
     available: {
@@ -55,11 +64,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || currentStatus === newStatus || isUpdating) return;
+    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
     
     try {
       setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
+      
+      // Optimistically update local state
+      setLocalStatus(newStatus);
+      
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
@@ -70,6 +83,9 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       });
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
+      
+      // Revert to previous status on error
+      setLocalStatus(currentStatus);
       
       // Show error toast
       toast({
@@ -90,7 +106,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       {(Object.keys(statusConfig) as Status[]).map((statusKey) => {
         const config = statusConfig[statusKey];
         const Icon = config.icon;
-        const isActive = currentStatus === statusKey;
+        const isActive = localStatus === statusKey;
         
         return (
           <motion.button

@@ -25,6 +25,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
+      console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
     }
   }, [currentStatus]);
@@ -109,6 +110,9 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
+      // Optimistically update local state
+      setStatus(newStatus);
+      
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
         p_status: newStatus as string
@@ -116,6 +120,8 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
       if (error) {
         console.error('[StatusManager] Database error:', error);
+        // Revert on error
+        setStatus(status);
         throw error;
       }
 
@@ -125,7 +131,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
         await onStatusChange(newStatus);
       }
 
-      setStatus(newStatus);
       toast({
         title: "Statut mis à jour",
         description: `Votre statut est maintenant "${statusConfig[newStatus].label}"`,
