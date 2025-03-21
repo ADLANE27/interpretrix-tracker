@@ -92,9 +92,9 @@ export function useRealtimeSubscription(
         // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Use type assertion to bypass TypeScript error while maintaining correct function call
-        (channel as any).on(
-          'postgres_changes', 
+        // Use type assertion to bypass TypeScript error
+        channel.on(
+          'postgres_changes' as any, 
           { 
             event: config.event, 
             schema: config.schema || 'public', 

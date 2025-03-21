@@ -76,7 +76,7 @@ export const InterpreterStatusDropdown = ({
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
-  }, [currentStatus, interpreterId]);
+  }, [currentStatus, interpreterId, localStatus]);
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {

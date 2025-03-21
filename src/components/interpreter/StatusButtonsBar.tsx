@@ -30,7 +30,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
-  }, [currentStatus]);
+  }, [currentStatus, localStatus]);
 
   const statusConfig = {
     available: {

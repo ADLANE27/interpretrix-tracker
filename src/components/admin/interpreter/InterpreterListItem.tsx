@@ -36,7 +36,7 @@ const workLocationConfig = {
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
 
-  // Setup real-time subscription to status updates
+  // Setup real-time subscription to status updates with improved configuration
   useRealtimeSubscription(
     {
       event: 'UPDATE',
@@ -45,8 +45,13 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     },
     (payload) => {
       if (payload.new && payload.new.status) {
-        console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, payload.new.status);
-        setInterpreterStatus(payload.new.status as Profile['status']);
+        const newStatus = payload.new.status;
+        console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, newStatus);
+        
+        // Validate the incoming status
+        if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
+          setInterpreterStatus(newStatus as Profile['status']);
+        }
       }
     },
     {
