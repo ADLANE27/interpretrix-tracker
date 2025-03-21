@@ -1,15 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 
 interface LanguageComboboxProps {
@@ -35,6 +27,7 @@ export function LanguageCombobox({
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Sort languages alphabetically
   const sortedLanguages = React.useMemo(() => {
@@ -84,8 +77,22 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={dropdownRef}>
       <div 
         className={cn(
           "flex items-center w-full border rounded-md h-10 px-3 py-2 bg-background",
@@ -105,13 +112,13 @@ export function LanguageCombobox({
           onChange={(e) => setSearchQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
         />
-        {(searchQuery || value) && (
+        {(searchQuery || value !== "all") && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               handleClearSearch();
-              if (value) onChange("all");
+              if (value !== "all") onChange("all");
             }}
             className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -122,7 +129,7 @@ export function LanguageCombobox({
 
       {isOpen && (
         <div 
-          className="absolute z-[200] w-full mt-1 bg-popover border rounded-md shadow-md"
+          className="absolute z-[500] w-full mt-1 bg-popover border rounded-md shadow-lg"
           style={{ maxHeight: "350px", overflow: "hidden" }}
         >
           <ScrollArea className="h-72 w-full">
@@ -226,14 +233,6 @@ export function LanguageCombobox({
             </div>
           </ScrollArea>
         </div>
-      )}
-
-      {/* Close dropdown when clicking outside */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-[199]" 
-          onClick={() => setIsOpen(false)}
-        />
       )}
     </div>
   );
