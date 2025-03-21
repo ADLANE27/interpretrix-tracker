@@ -294,7 +294,7 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
-        style={isMobile && orientation === "landscape" ? { position: 'fixed', bottom: 0, width: '100%' } : {}}
+        style={isMobile && orientation === "landscape" ? { position: 'fixed', bottom: 0, width: '100%' } : undefined}
       />
     </div>
   );
