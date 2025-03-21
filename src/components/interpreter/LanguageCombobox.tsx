@@ -1,11 +1,10 @@
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Check, ChevronsUpDown, Search, X } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -30,14 +29,12 @@ export function LanguageCombobox({
 }: LanguageComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-language-selector]")) {
         setIsOpen(false);
       }
     };
@@ -46,32 +43,11 @@ export function LanguageCombobox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   
-  // Focus input when dropdown opens
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-  
   // Reset search when dropdown closes
   useEffect(() => {
     if (!isOpen) {
       setSearchTerm("");
     }
-  }, [isOpen]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-      
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   // Normalize a string for comparison (remove accents, lowercase)
@@ -136,12 +112,6 @@ export function LanguageCombobox({
     setIsOpen(!isOpen);
   };
 
-  // Handle clearing the selection
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange("");
-  };
-
   // Handle selecting a language
   const handleSelectLanguage = (lang: string) => {
     onChange(lang);
@@ -158,64 +128,36 @@ export function LanguageCombobox({
   const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
   return (
-    <div className={cn("relative w-full", className)} ref={containerRef} data-language-selector>
+    <div className="relative w-full" data-language-selector>
       {/* Main selector button */}
       <Button
-        ref={triggerRef}
         type="button"
         variant="outline"
         role="combobox"
-        aria-expanded={isOpen}
         className={cn(
-          "w-full flex items-center justify-between text-left font-normal",
+          "w-full justify-between text-left font-normal",
           !value && "text-muted-foreground",
-          "pr-2" // Reduced right padding to accommodate clear button
+          className
         )}
         onClick={handleButtonClick}
+        aria-expanded={isOpen}
       >
-        <span className="truncate flex-grow">{displayValue}</span>
-        <div className="flex items-center gap-1">
-          {value && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 p-0 opacity-70 hover:opacity-100"
-              onClick={handleClear}
-              aria-label="Effacer la sélection"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          <ChevronsUpDown className="h-4 w-4 opacity-50 ml-1 shrink-0" />
-        </div>
+        <span className="truncate">{displayValue}</span>
+        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 w-full mt-1 rounded-md border border-input bg-white dark:bg-gray-800 shadow-lg">
+        <div className="absolute top-full left-0 z-50 w-full mt-1 rounded-md border border-input bg-white shadow-lg">
           {/* Search input */}
-          <div className="p-2 border-b relative">
+          <div className="p-2 border-b">
             <Input
-              ref={inputRef}
               autoFocus
               placeholder="Rechercher..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-9 pl-8"
+              className="h-8"
             />
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            {searchTerm && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 absolute right-4 top-1/2 transform -translate-y-1/2 p-0"
-                onClick={() => setSearchTerm("")}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
           </div>
           
           {/* Language list */}
@@ -240,45 +182,32 @@ export function LanguageCombobox({
               {/* Common languages section (if not searching) */}
               {!searchTerm && (
                 <>
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-gray-50 dark:bg-gray-700">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                     Langues courantes
                   </div>
-                  <div className="p-2 grid grid-cols-2 gap-1">
-                    {commonLanguages
-                      .filter(lang => languages.includes(lang))
-                      .map((language) => (
-                        <Button
-                          key={language}
-                          variant={value === language ? "secondary" : "outline"}
-                          size="sm"
+                  {commonLanguages
+                    .filter(lang => languages.includes(lang))
+                    .map((language) => (
+                      <Button
+                        key={language}
+                        variant={value === language ? "secondary" : "ghost"}
+                        className="w-full justify-start font-normal mb-1"
+                        onClick={() => handleSelectLanguage(language)}
+                      >
+                        <Check
                           className={cn(
-                            "justify-start font-normal h-auto py-1.5 text-left truncate",
-                            value === language ? "bg-primary/20 border-primary/30" : ""
+                            "mr-2 h-4 w-4",
+                            value === language ? "opacity-100" : "opacity-0"
                           )}
-                          onClick={() => handleSelectLanguage(language)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-1 h-3.5 w-3.5 flex-shrink-0",
-                              value === language ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span className="truncate">{language}</span>
-                        </Button>
-                      ))
-                    }
-                  </div>
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-gray-50 dark:bg-gray-700">
+                        />
+                        {language}
+                      </Button>
+                    ))
+                  }
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                     Toutes les langues
                   </div>
                 </>
-              )}
-              
-              {/* Show quick notice if we have search results */}
-              {searchTerm && filteredLanguages.length > 0 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">
-                  {filteredLanguages.length} résultat{filteredLanguages.length > 1 ? 's' : ''}
-                </div>
               )}
               
               {filteredLanguages.length === 0 ? (
@@ -286,36 +215,25 @@ export function LanguageCombobox({
                   {emptyMessage}
                 </div>
               ) : (
-                <div className={cn(
-                  searchTerm ? "p-1" : "px-1 py-0",
-                  "grid",
-                  searchTerm ? "grid-cols-1" : "grid-cols-2 md:grid-cols-3 gap-1"
-                )}>
-                  {filteredLanguages.map((language) => (
-                    // Skip common languages when not searching, as they're already shown above
-                    (!isCommonLanguage(language) || searchTerm) && (
-                      <Button
-                        key={language}
-                        variant={value === language ? "secondary" : searchTerm ? "ghost" : "outline"}
-                        size="sm"
+                filteredLanguages.map((language) => (
+                  // Skip common languages when not searching, as they're already shown above
+                  (!isCommonLanguage(language) || searchTerm) && (
+                    <Button
+                      key={language}
+                      variant={value === language ? "secondary" : "ghost"}
+                      className="w-full justify-start font-normal mb-1"
+                      onClick={() => handleSelectLanguage(language)}
+                    >
+                      <Check
                         className={cn(
-                          "justify-start font-normal mb-1 truncate",
-                          searchTerm ? "h-9" : "h-auto py-1.5",
-                          value === language && !searchTerm ? "bg-primary/20 border-primary/30" : ""
+                          "mr-2 h-4 w-4",
+                          value === language ? "opacity-100" : "opacity-0"
                         )}
-                        onClick={() => handleSelectLanguage(language)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-3.5 w-3.5 flex-shrink-0",
-                            value === language ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <span className="truncate">{language}</span>
-                      </Button>
-                    )
-                  ))}
-                </div>
+                      />
+                      {language}
+                    </Button>
+                  )
+                ))
               )}
             </div>
           </ScrollArea>
