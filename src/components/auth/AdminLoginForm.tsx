@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
-import { User, Lock, Sparkles, Clipboard, Calendar, ClipboardCheck } from "lucide-react";
+import { User, Lock, Calendar, Clock } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email("Veuillez saisir une adresse email valide"),
@@ -158,7 +159,7 @@ export const AdminLoginForm = () => {
               }}
               className="w-16 h-16 text-yellow-500"
             >
-              <ClipboardCheck size={64} className="text-yellow-500" />
+              <Clock size={64} className="text-yellow-500" />
             </motion.div>
             <motion.div
               initial={{ opacity: 0 }}
