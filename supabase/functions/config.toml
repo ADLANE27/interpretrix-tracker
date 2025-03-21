@@ -2,7 +2,7 @@
 project_id = "bblpiatmtnlhnbavhkau"
 
 [functions.is-admin]
-verify_jwt = true
+verify_jwt = false
 
 [functions.get-user-info]
 verify_jwt = true

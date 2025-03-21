@@ -14,10 +14,17 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client
+    // Create Supabase client with more tolerant settings
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false
+        }
+      }
     )
 
     // Get the JWT token from the request headers
@@ -26,10 +33,9 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Get user from the token
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    )
+    // Get user from the token using a more direct approach
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     
     if (userError || !user) {
       throw new Error('Invalid token')
@@ -37,7 +43,8 @@ serve(async (req) => {
 
     console.log('Checking admin status for user:', user.id);
 
-    // Check if user is admin
+    // Check if user is admin using a direct query with the service role
+    // This bypasses JWT verification issues
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
