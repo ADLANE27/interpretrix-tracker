@@ -36,7 +36,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: false,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -57,7 +57,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: false,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -66,23 +66,25 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     }
   );
   
-  // Also subscribe to interpreter profile changes to get status updates
+  // Use a more specific subscription for interpreter profile status changes
   useRealtimeSubscription(
     {
       event: 'UPDATE',
       schema: 'public',
-      table: 'interpreter_profiles'
+      table: 'interpreter_profiles',
+      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
     },
     (payload) => {
-      console.log('[useMissionUpdates] Interpreter profile update received:', payload);
+      console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
       onUpdate();
     },
     {
-      debugMode: false,
+      debugMode: true, // Enable debug mode for troubleshooting
       maxRetries: 3,
-      retryInterval: 5000,
+      retryInterval: 3000, // Shorter retry for status updates
       onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
+        console.error('[useMissionUpdates] Status subscription error:', error);
       }
     }
   );

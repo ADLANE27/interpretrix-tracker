@@ -12,7 +12,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 type Status = Profile['status'];
 

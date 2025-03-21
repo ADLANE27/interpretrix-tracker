@@ -47,6 +47,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
   const handleStatusChange = (newStatus: Profile['status']) => {
+    console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
     setInterpreterStatus(newStatus);
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
