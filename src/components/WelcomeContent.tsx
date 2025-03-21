@@ -79,7 +79,7 @@ export const WelcomeContent = () => {
           {/* Buttons with enhanced visibility */}
           <motion.div 
             variants={item}
-            className="flex flex-col sm:flex-row justify-center gap-8 mb-8"
+            className="flex flex-col sm:flex-row justify-center gap-8 mb-6"
           >
             <Button 
               asChild 
@@ -108,12 +108,12 @@ export const WelcomeContent = () => {
             </Button>
           </motion.div>
           
-          {/* Copyright text below buttons */}
+          {/* Copyright text below buttons - with improved visibility and padding */}
           <motion.div
             variants={item}
-            className="mb-12 mt-4"
+            className="mb-8 mt-8 px-4 mx-auto max-w-md"
           >
-            <p className="text-xs text-slate-500">
+            <p className="text-xs sm:text-sm text-slate-500 border-t pt-4 border-slate-200">
               Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.
             </p>
           </motion.div>
