@@ -53,7 +53,13 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
 
   const handleStatusChange = async (newStatus: Status) => {
     if (!onStatusChange || currentStatus === newStatus) return;
-    await onStatusChange(newStatus);
+    
+    try {
+      await onStatusChange(newStatus);
+      console.log('[StatusButtonsBar] Status changed to:', newStatus);
+    } catch (error) {
+      console.error('[StatusButtonsBar] Error changing status:', error);
+    }
   };
 
   return (

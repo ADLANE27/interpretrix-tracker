@@ -6,6 +6,8 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
+import { useEffect, useState } from "react";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -32,6 +34,35 @@ const workLocationConfig = {
 };
 
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
+  const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
+
+  // Setup real-time subscription to status updates
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      table: 'interpreter_profiles',
+      filter: `id=eq.${interpreter.id}`
+    },
+    (payload) => {
+      if (payload.new && payload.new.status) {
+        console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, payload.new.status);
+        setInterpreterStatus(payload.new.status as Profile['status']);
+      }
+    },
+    {
+      onError: (error) => {
+        console.error(`[InterpreterListItem] Error in realtime subscription for ${interpreter.id}:`, error);
+      }
+    }
+  );
+
+  // Update local state when props change
+  useEffect(() => {
+    if (interpreter.status !== interpreterStatus) {
+      setInterpreterStatus(interpreter.status);
+    }
+  }, [interpreter.status]);
+
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -49,7 +80,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
           <div className="flex items-center gap-3 min-w-0">
             <InterpreterStatusDropdown 
               interpreterId={interpreter.id}
-              currentStatus={interpreter.status}
+              currentStatus={interpreterStatus}
               displayFormat="badge"
             />
             <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>

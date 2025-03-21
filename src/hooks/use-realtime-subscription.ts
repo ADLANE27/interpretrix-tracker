@@ -35,10 +35,30 @@ export function useRealtimeSubscription(
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
 
+  // Function to enable realtime for table via edge function
+  const enableRealtimeForTable = async (tableName: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('enable-realtime', {
+        body: { table: tableName }
+      });
+      
+      if (error) {
+        console.error(`[Realtime] Error enabling realtime for table ${tableName}:`, error);
+        return false;
+      }
+      
+      console.log(`[Realtime] Successfully enabled realtime for table ${tableName}:`, data);
+      return true;
+    } catch (error) {
+      console.error(`[Realtime] Error calling enable-realtime function for table ${tableName}:`, error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
-    const setupChannel = () => {
+    const setupChannel = async () => {
       if (!enabled) return;
 
       try {
@@ -47,6 +67,9 @@ export function useRealtimeSubscription(
           supabase.removeChannel(channelRef.current);
           channelRef.current = null;
         }
+
+        // First ensure realtime is enabled for this table
+        await enableRealtimeForTable(config.table);
 
         // Use the table name as the base for the channel name
         // This ensures consistent naming across different components
