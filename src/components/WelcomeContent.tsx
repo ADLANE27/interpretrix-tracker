@@ -79,7 +79,7 @@ export const WelcomeContent = () => {
           {/* Buttons with enhanced visibility */}
           <motion.div 
             variants={item}
-            className="flex flex-col sm:flex-row justify-center gap-8 mb-12"
+            className="flex flex-col sm:flex-row justify-center gap-8 mb-8"
           >
             <Button 
               asChild 
@@ -108,6 +108,16 @@ export const WelcomeContent = () => {
             </Button>
           </motion.div>
           
+          {/* Copyright text below buttons */}
+          <motion.div
+            variants={item}
+            className="mb-12 mt-4"
+          >
+            <p className="text-xs text-slate-500">
+              Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.
+            </p>
+          </motion.div>
+          
           {/* Decorative Elements */}
           <motion.div 
             className="absolute bottom-0 left-0 w-40 h-40 bg-palette-soft-purple opacity-30 rounded-full -ml-20 -mb-20"
@@ -127,13 +137,12 @@ export const WelcomeContent = () => {
       
       {/* Footer */}
       <motion.footer 
-        className="py-6 text-center text-slate-500 text-sm flex flex-col space-y-2"
+        className="py-6 text-center text-slate-500 text-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
       >
         <p>© {new Date().getFullYear()} Interprétation professionnelle. Tous droits réservés.</p>
-        <p className="text-xs">Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
       </motion.footer>
     </div>
   );
