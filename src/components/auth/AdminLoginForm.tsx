@@ -144,7 +144,7 @@ export const AdminLoginForm = () => {
           initial="initial"
           animate="animate"
           variants={logoVariants}
-          className="flex justify-center mb-2 items-center gap-3"
+          className="flex justify-center mb-4 items-center gap-4"
         >
           <div className="relative">
             <motion.div
@@ -157,9 +157,9 @@ export const AdminLoginForm = () => {
                 repeat: Infinity,
                 repeatType: "loop"
               }}
-              className="w-16 h-16 text-yellow-500"
+              className="w-12 h-12 text-yellow-500"
             >
-              <Clock size={64} className="text-yellow-500" />
+              <Clock size={48} className="text-yellow-500" />
             </motion.div>
             <motion.div
               initial={{ opacity: 0 }}
@@ -172,9 +172,9 @@ export const AdminLoginForm = () => {
                 repeatType: "loop",
                 duration: 2
               }}
-              className="absolute -right-3 -top-2"
+              className="absolute -right-2 -top-2"
             >
-              <Calendar className="w-6 h-6 text-palette-bright-orange" />
+              <Calendar className="w-5 h-5 text-palette-bright-orange" />
             </motion.div>
           </div>
           
@@ -187,7 +187,7 @@ export const AdminLoginForm = () => {
               type: "spring",
               stiffness: 100
             }}
-            className="relative h-14"
+            className="relative h-20"
           >
             <motion.img 
               src="/lovable-uploads/ee99dcb2-dbd6-4573-9c75-84eb06cfcaa9.png"
