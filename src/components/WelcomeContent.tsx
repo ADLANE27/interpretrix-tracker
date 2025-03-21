@@ -49,7 +49,7 @@ export const WelcomeContent = () => {
           initial="hidden"
           animate="visible"
         >
-          {/* Logo Animation - reduced margin */}
+          {/* Logo Animation - increased size */}
           <motion.div 
             className="mb-8 md:mb-12"
             initial={{ opacity: 0, scale: 0.8 }}
@@ -59,7 +59,7 @@ export const WelcomeContent = () => {
             <img 
               src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
               alt="Logo" 
-              className="h-24 md:h-32 mx-auto" 
+              className="h-32 md:h-48 mx-auto" 
             />
           </motion.div>
           
