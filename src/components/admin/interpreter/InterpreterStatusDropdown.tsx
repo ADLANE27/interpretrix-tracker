@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -69,10 +69,52 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const lastUpdateRef = useRef<string | null>(null);
+
+  // Setup real-time subscription to get status updates
+  useEffect(() => {
+    const channel = supabase.channel(`interpreter-status-${interpreterId}`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${interpreterId}`
+        },
+        (payload: any) => {
+          if (payload.new && payload.new.status) {
+            const newStatus = payload.new.status;
+            const updateId = `${newStatus}-${Date.now()}`;
+            
+            // Prevent duplicate updates
+            if (updateId === lastUpdateRef.current) return;
+            lastUpdateRef.current = updateId;
+            
+            console.log(`[InterpreterStatusDropdown] Received real-time status update for ${interpreterId}:`, newStatus);
+            
+            if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
+              setLocalStatus(newStatus as Status);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [interpreterId]);
 
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
+      const updateId = `${currentStatus}-${Date.now()}`;
+      
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
+      
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }

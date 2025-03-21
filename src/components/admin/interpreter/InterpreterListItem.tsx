@@ -6,8 +6,9 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useToast } from "@/hooks/use-toast";
 
 interface InterpreterListItemProps {
   interpreter: {
@@ -35,6 +36,8 @@ const workLocationConfig = {
 
 export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
+  const { toast } = useToast();
+  const lastUpdateRef = useRef<string | null>(null);
 
   // Setup real-time subscription to status updates with improved configuration
   useRealtimeSubscription(
@@ -46,11 +49,24 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     (payload) => {
       if (payload.new && payload.new.status) {
         const newStatus = payload.new.status;
+        const updateId = `${newStatus}-${Date.now()}`;
+        
+        // Prevent duplicate updates
+        if (updateId === lastUpdateRef.current) return;
+        lastUpdateRef.current = updateId;
+        
         console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, newStatus);
         
         // Validate the incoming status
         if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
           setInterpreterStatus(newStatus as Profile['status']);
+          
+          // Show toast for status changes (optional)
+          toast({
+            title: "Statut mis à jour",
+            description: `Le statut de ${interpreter.name} a été mis à jour`,
+            variant: "default",
+          });
         }
       }
     },
@@ -68,7 +84,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
     }
-  }, [interpreter.status, interpreter.id]);
+  }, [interpreter.status, interpreter.id, interpreterStatus]);
 
   const parsedLanguages = interpreter.languages
     .map(lang => {

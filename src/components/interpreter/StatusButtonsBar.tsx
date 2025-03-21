@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from "@/integrations/supabase/client";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -23,10 +24,30 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
+  const lastUpdateRef = useRef<string | null>(null);
+  const userId = useRef<string | null>(null);
+
+  // Get user ID once on component mount
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        userId.current = user.id;
+      }
+    };
+    
+    fetchUserId();
+  }, []);
 
   // Update local state when prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
+      const updateId = `${currentStatus}-${Date.now()}`;
+      
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
+      
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
@@ -73,6 +94,19 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
+      // Update status directly in database as a backup
+      if (userId.current) {
+        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+          p_interpreter_id: userId.current,
+          p_status: newStatus as string
+        });
+        
+        if (dbError) {
+          console.error('[StatusButtonsBar] Database error:', dbError);
+        }
+      }
+      
+      // Call the parent handler
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
       

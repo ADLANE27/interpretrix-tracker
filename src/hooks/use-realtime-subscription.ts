@@ -92,7 +92,8 @@ export function useRealtimeSubscription(
         // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Use type assertion to bypass TypeScript error
+        // This is a type assertion to handle TS type incompatibility
+        // while maintaining the correct realtime subscription pattern
         channel.on(
           'postgres_changes' as any, 
           { 
