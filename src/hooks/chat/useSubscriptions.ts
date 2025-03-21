@@ -152,15 +152,43 @@ export const useSubscriptions = (
                   extendedPayload.new.mentions.includes(currentUserId)
                 );
                 
+                // Check if this is a thread reply to the current user's message
+                const isThreadReplyToUser = extendedPayload.new.parent_message_id && 
+                  currentUserId && 
+                  extendedPayload.new.sender_id !== currentUserId;
+                
+                let isReplyToUserMessage = false;
+                
+                // If it's a thread reply, check if the parent message was from the current user
+                if (isThreadReplyToUser) {
+                  const { data: parentMessage } = await supabase
+                    .from('chat_messages')
+                    .select('sender_id')
+                    .eq('id', extendedPayload.new.parent_message_id)
+                    .single();
+                    
+                  isReplyToUserMessage = Boolean(parentMessage && parentMessage.sender_id === currentUserId);
+                  
+                  console.log(`[Chat ${userRole.current}] Thread reply check:`, {
+                    isReplyToUserMessage,
+                    parentSenderId: parentMessage?.sender_id,
+                    currentUserId
+                  });
+                }
+                
                 console.log(`[Chat ${userRole.current}] User mentioned in message:`, userMentioned, {
                   mentions: extendedPayload.new.mentions,
-                  currentUserId: currentUserId
+                  currentUserId: currentUserId,
+                  isThreadReply: isThreadReplyToUser,
+                  isReplyToUserMessage
                 });
                 
                 eventEmitter.emit(EVENT_NEW_MESSAGE_RECEIVED, {
                   message: extendedPayload.new,
                   channelId,
-                  isMention: userMentioned
+                  isMention: userMentioned,
+                  isThreadReply: isThreadReplyToUser,
+                  isReplyToUserMessage
                 });
               }
             }

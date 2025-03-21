@@ -173,7 +173,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const handleEmojiSelect = (messageId: string, emoji: any) => {
     onReactToMessage(messageId, emoji.native);
-    setOpenEmojiPickerId(null);
+    setOpenEmojiPickerId(null); // Ferme le sélecteur d'emoji après la sélection
   };
 
   const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {

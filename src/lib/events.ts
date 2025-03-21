@@ -8,6 +8,8 @@ type EventTypes = {
     message: any; 
     channelId: string;
     isMention?: boolean;
+    isThreadReply?: boolean;
+    isReplyToUserMessage?: boolean;
   };
 };
 

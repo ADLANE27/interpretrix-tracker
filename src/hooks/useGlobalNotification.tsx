@@ -23,6 +23,14 @@ const NOTIFICATION_TRANSLATIONS = {
   mentionText: {
     fr: "Vous avez été mentionné dans un message",
     en: "You were mentioned in a message"
+  },
+  threadReplyNotice: {
+    fr: "Nouvelle réponse",
+    en: "New reply"
+  },
+  threadReplyText: {
+    fr: "Quelqu'un a répondu à votre message",
+    en: "Someone replied to your message"
   }
 };
 
@@ -38,6 +46,8 @@ export const useGlobalNotification = () => {
       console.log('[GlobalNotification] New message received:', data);
       console.log('[GlobalNotification] Message mentions:', data.message.mentions);
       console.log('[GlobalNotification] Is mention flag:', data.isMention);
+      console.log('[GlobalNotification] Is thread reply:', data.isThreadReply);
+      console.log('[GlobalNotification] Is reply to user message:', data.isReplyToUserMessage);
       
       try {
         // Get sender details to display in toast
@@ -70,6 +80,10 @@ export const useGlobalNotification = () => {
         
         console.log('[GlobalNotification] Has mention detected:', hasMention);
         
+        // Check for thread replies to user's messages
+        const isReplyToUserMessage = Boolean(data.isReplyToUserMessage);
+        console.log('[GlobalNotification] Is reply to user message:', isReplyToUserMessage);
+        
         let title, description;
         
         // ALWAYS use French translations for notifications
@@ -81,30 +95,41 @@ export const useGlobalNotification = () => {
             title,
             description
           });
+        } else if (isReplyToUserMessage) {
+          // Use French translations for thread reply notifications
+          title = NOTIFICATION_TRANSLATIONS.threadReplyNotice.fr;
+          description = NOTIFICATION_TRANSLATIONS.threadReplyText.fr;
+          console.log('[GlobalNotification] Using thread reply notification in French:', {
+            title,
+            description
+          });
         } else {
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
           description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
           console.log('[GlobalNotification] Using regular message notification in French');
         }
         
-        // Play sound notification
-        await playNotificationSound();
-        
-        // Show toast notification with French text
-        console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
-        toast({
-          title: title,
-          description: description,
-          action: (
-            <button 
-              className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90"
-              onClick={() => navigate('/interpreter/messages')}
-            >
-              {NOTIFICATION_TRANSLATIONS.viewButton.fr}
-            </button>
-          ),
-          duration: 5000, // Keep longer duration for better visibility
-        });
+        // Only proceed with notification if it's a mention or reply to user message
+        if (hasMention || isReplyToUserMessage) {
+          // Play sound notification
+          await playNotificationSound();
+          
+          // Show toast notification with French text
+          console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
+          toast({
+            title: title,
+            description: description,
+            action: (
+              <button 
+                className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+                onClick={() => navigate('/interpreter/messages')}
+              >
+                {NOTIFICATION_TRANSLATIONS.viewButton.fr}
+              </button>
+            ),
+            duration: 5000, // Keep longer duration for better visibility
+          });
+        }
       } catch (error) {
         console.error('[GlobalNotification] Error processing message notification:', error);
       }
