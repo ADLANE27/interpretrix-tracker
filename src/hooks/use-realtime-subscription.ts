@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,7 +16,19 @@ interface UseRealtimeSubscriptionOptions {
   maxRetries?: number;
   onError?: (error: any) => void;
   debugMode?: boolean;
+  enableRealtimeConfig?: boolean;
 }
+
+// Global cache to track which tables have had realtime enabled
+const enabledTablesCache = new Set<string>();
+// Circuit breaker state to prevent repeated failed calls
+const circuitBreakerState = {
+  isOpen: false,
+  failureCount: 0,
+  lastFailureTime: 0,
+  resetTimeout: 60000, // 1 minute before trying again
+  failureThreshold: 3
+};
 
 export function useRealtimeSubscription(
   config: SubscriptionConfig,
@@ -27,7 +40,8 @@ export function useRealtimeSubscription(
     retryInterval = 5000,
     maxRetries = 3,
     onError,
-    debugMode = false
+    debugMode = false,
+    enableRealtimeConfig = true
   } = options;
 
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -36,17 +50,48 @@ export function useRealtimeSubscription(
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const seenEvents = useRef<Set<string>>(new Set());
 
-  const log = (message: string, ...args: any[]) => {
+  const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
       console.log(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
     }
-  };
+  }, [debugMode]);
 
-  const logError = (message: string, ...args: any[]) => {
+  const logError = useCallback((message: string, ...args: any[]) => {
     console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
-  };
+  }, []);
 
-  const enableRealtimeForTable = async (tableName: string) => {
+  const shouldTryEnableRealtime = useCallback((tableName: string) => {
+    // If cache shows this table is already enabled, skip
+    if (enabledTablesCache.has(tableName)) {
+      log(`Table ${tableName} is already cached as enabled, skipping enablement`);
+      return false;
+    }
+    
+    // Check circuit breaker state
+    if (circuitBreakerState.isOpen) {
+      const now = Date.now();
+      const timeSinceLastFailure = now - circuitBreakerState.lastFailureTime;
+      
+      // If enough time has passed, reset the circuit breaker
+      if (timeSinceLastFailure > circuitBreakerState.resetTimeout) {
+        log(`Circuit breaker reset after ${timeSinceLastFailure}ms`);
+        circuitBreakerState.isOpen = false;
+        circuitBreakerState.failureCount = 0;
+      } else {
+        log(`Circuit breaker is open, skipping enablement request`);
+        return false;
+      }
+    }
+    
+    return true;
+  }, [log]);
+
+  const enableRealtimeForTable = useCallback(async (tableName: string) => {
+    // Skip if disabled or if we shouldn't try
+    if (!enableRealtimeConfig || !shouldTryEnableRealtime(tableName)) {
+      return true; // Return true to continue with subscription setup
+    }
+    
     try {
       log(`Enabling realtime for table ${tableName}`);
       const { data, error } = await supabase.functions.invoke('enable-realtime', {
@@ -55,16 +100,44 @@ export function useRealtimeSubscription(
       
       if (error) {
         logError(`Error enabling realtime for table ${tableName}:`, error);
+        
+        // Update circuit breaker on failure
+        circuitBreakerState.failureCount++;
+        circuitBreakerState.lastFailureTime = Date.now();
+        
+        if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
+          circuitBreakerState.isOpen = true;
+          logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+        }
+        
         return false;
       }
       
       log(`Successfully enabled realtime for table ${tableName}:`, data);
+      
+      // Add to global cache on success
+      enabledTablesCache.add(tableName);
+      
+      // Reset circuit breaker on success
+      circuitBreakerState.failureCount = 0;
+      circuitBreakerState.isOpen = false;
+      
       return true;
     } catch (error) {
       logError(`Error calling enable-realtime function for table ${tableName}:`, error);
+      
+      // Update circuit breaker on exception
+      circuitBreakerState.failureCount++;
+      circuitBreakerState.lastFailureTime = Date.now();
+      
+      if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
+        circuitBreakerState.isOpen = true;
+        logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+      }
+      
       return false;
     }
-  };
+  }, [enableRealtimeConfig, shouldTryEnableRealtime, log, logError]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -79,6 +152,8 @@ export function useRealtimeSubscription(
           channelRef.current = null;
         }
 
+        // Try to enable realtime for this table, but proceed with subscription even if it fails
+        // This allows reconnection attempts even if the realtime enablement failed
         await enableRealtimeForTable(config.table);
 
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
@@ -157,7 +232,20 @@ export function useRealtimeSubscription(
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [enabled, config.table, config.event, config.schema, config.filter, callback, maxRetries, retryInterval, onError, debugMode]);
+  }, [
+    enabled, 
+    config.table, 
+    config.event, 
+    config.schema, 
+    config.filter, 
+    callback, 
+    maxRetries, 
+    retryInterval, 
+    onError, 
+    enableRealtimeForTable,
+    log,
+    logError
+  ]);
 
   return { isConnected };
 }
