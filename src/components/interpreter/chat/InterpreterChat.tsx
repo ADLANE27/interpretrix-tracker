@@ -11,11 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
-import { StatusManager } from "@/components/interpreter/StatusManager";
-import { Menu, ArrowLeft } from "lucide-react";
+import { StatusButtonsBar } from "@/components/interpreter/StatusButtonsBar";
+import { Menu, ArrowLeft, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { motion } from "framer-motion";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -225,44 +226,59 @@ export const InterpreterChat = ({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top">
+      <motion.div 
+        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm flex flex-col px-3 md:px-6 sticky top-0 z-40 safe-area-top border-b border-gray-200 dark:border-gray-700 shadow-sm"
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
         <div className="h-[56px] md:h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isMobile && onBackToChannels && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onBackToChannels}>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={onBackToChannels}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
             )}
             {isMobile && onMenuClick && (
-              <Button variant="ghost" size="icon" className="-ml-1" onClick={onMenuClick}>
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={onMenuClick}>
                 <Menu className="h-5 w-5" />
               </Button>
             )}
           </div>
           
-          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left">{channel?.name}</h2>
+          <h2 className="text-lg font-semibold truncate flex-1 text-center md:text-left text-gradient-primary">
+            {channel?.name}
+          </h2>
           
           <ChannelMembersPopover 
             channelId={channelId} 
             channelName={channel?.name || ''} 
             channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
             userRole="interpreter"
-          />
+          >
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <Users className="h-5 w-5" />
+            </Button>
+          </ChannelMembersPopover>
         </div>
         
         {isMobile && profile && onStatusChange && orientation === "portrait" && (
           <div className="pb-3 w-full overflow-visible">
-            <StatusManager currentStatus={profile.status} onStatusChange={onStatusChange} />
+            <StatusButtonsBar 
+              currentStatus={profile.status}
+              onStatusChange={onStatusChange}
+              variant="compact"
+            />
           </div>
         )}
-      </div>
+      </motion.div>
 
       <div 
-        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" 
+        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative p-2 sm:p-4" 
         ref={messageContainerRef} 
         id="messages-container" 
         data-channel-id={channelId}
-        style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 250px)' } : {}}
+        style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 160px)' } : {}}
       >
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
@@ -284,18 +300,23 @@ export const InterpreterChat = ({
         />
       </div>
 
-      <ChatInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        handleFileChange={handleFileChange}
-        attachments={attachments}
-        handleRemoveAttachment={handleRemoveAttachment}
-        inputRef={inputRef}
-        replyTo={replyTo}
-        setReplyTo={setReplyTo}
-        style={isMobile && orientation === "landscape" ? { position: 'fixed', bottom: 0, width: '100%' } : undefined}
-      />
+      <div className={`
+        ${isMobile && orientation === "landscape" ? "fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700" : ""}
+        ${isMobile ? "pt-1 pb-2 px-2" : "px-4 py-2"}
+      `}>
+        <ChatInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          handleFileChange={handleFileChange}
+          attachments={attachments}
+          handleRemoveAttachment={handleRemoveAttachment}
+          inputRef={inputRef}
+          replyTo={replyTo}
+          setReplyTo={setReplyTo}
+          style={isMobile ? { maxHeight: '120px', overflow: 'auto' } : undefined}
+        />
+      </div>
     </div>
   );
 };
