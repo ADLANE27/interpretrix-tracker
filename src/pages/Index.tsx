@@ -74,43 +74,76 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-soft-blue to-palette-soft-purple">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-palette-vivid-purple"></div>
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center"
+        >
+          <motion.div 
+            animate={{ 
+              rotate: 360,
+              transition: {
+                duration: 1.5,
+                ease: "linear",
+                repeat: Infinity
+              }
+            }}
+            className="w-16 h-16 border-t-4 border-palette-vivid-purple rounded-full"
+          />
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-4 text-slate-600 dark:text-slate-300"
+          >
+            Chargement...
+          </motion.p>
+        </motion.div>
       </div>
     );
   }
 
   if (!userRole) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-white to-palette-soft-blue dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
-        <div className="relative z-10 min-h-screen">
-          <WelcomeContent />
-        </div>
-      </div>
+      <motion.div 
+        className="min-h-screen bg-white dark:bg-gray-900"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <WelcomeContent />
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <motion.div 
+      className="min-h-screen bg-gray-50 dark:bg-gray-900"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {userRole === 'admin' ? (
         <AdminDashboard />
       ) : userRole === 'interpreter' ? (
         <InterpreterDashboard />
       ) : (
         <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold mb-4">Rôle non reconnu</h2>
-            <p className="text-gray-600 mb-4">Votre compte n'a pas les permissions nécessaires.</p>
-            <button
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4 text-center">Rôle non reconnu</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-center">Votre compte n'a pas les permissions nécessaires.</p>
+            <Button
               onClick={() => supabase.auth.signOut()}
-              className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+              className="w-full py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
               Se déconnecter
-            </button>
+            </Button>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
