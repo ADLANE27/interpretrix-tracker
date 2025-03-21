@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -224,8 +225,10 @@ export const InterpreterChat = ({
     setChatMembers(Array.from(uniqueMembers.values()));
   }, [messages, currentUserId]);
 
+  // Show status buttons in all cases when in mobile portrait mode
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
-  const statusButtonsInHeader = document.querySelector('.StatusButtonsBar-in-header') !== null;
+  // Don't check for status buttons in header anymore
+  // const statusButtonsInHeader = document.querySelector('.StatusButtonsBar-in-header') !== null;
 
   return (
     <div className="flex flex-col h-full">
@@ -264,6 +267,17 @@ export const InterpreterChat = ({
             </Button>
           </ChannelMembersPopover>
         </div>
+
+        {/* Always show status buttons in the header for mobile portrait mode */}
+        {showStatusButtons && profile && onStatusChange && (
+          <div className="pb-2 w-full overflow-visible">
+            <StatusButtonsBar 
+              currentStatus={profile.status} 
+              onStatusChange={onStatusChange}
+              variant="compact" 
+            />
+          </div>
+        )}
       </motion.div>
 
       <div 
