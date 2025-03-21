@@ -34,39 +34,14 @@ serve(async (req) => {
     }
     
     // Execute SQL to enable REPLICA IDENTITY FULL and add table to realtime publication
-    // This is SQL directly executed in the database, not through an RPC function
-    const { data, error } = await supabaseClient
-      .from('_setup_queries')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle()
-      .then(async () => {
-        // First, set REPLICA IDENTITY to FULL for the table
-        const replicaResult = await supabaseClient.rpc('execute_sql', {
-          sql_query: `ALTER TABLE "${table_name}" REPLICA IDENTITY FULL;`
-        })
-        
-        // Then, add the table to the supabase_realtime publication
-        const publicationResult = await supabaseClient.rpc('execute_sql', {
-          sql_query: `
-            ALTER PUBLICATION supabase_realtime ADD TABLE "${table_name}";
-          `
-        })
-        
-        return { 
-          data: { 
-            success: true,
-            replicaResult,
-            publicationResult
-          }, 
-          error: replicaResult.error || publicationResult.error 
-        }
-      })
+    const { data, error } = await supabaseClient.rpc('enable_realtime_for_table', {
+      p_table_name: table_name
+    })
     
     if (error) {
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to set up realtime for table', 
+          error: 'Failed to check realtime setup', 
           details: error 
         }),
         { headers: { 'Content-Type': 'application/json' }, status: 500 }

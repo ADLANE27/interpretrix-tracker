@@ -180,18 +180,13 @@ export function useRealtimeSubscription(
   useEffect(() => {
     const ensureRealtimeSetup = async () => {
       try {
-        // Call the Edge Function directly instead of using RPC
-        const response = await fetch(`${supabase.supabaseUrl}/functions/v1/ensure_realtime_setup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`
-          },
-          body: JSON.stringify({ table_name: config.table })
-        });
+        // Using the RPC approach which was working before
+        const { error } = await supabase.rpc('enable_realtime_for_table', {
+          p_table_name: config.table
+        }).maybeSingle();
         
-        if (!response.ok) {
-          console.warn(`[Realtime] Couldn't verify realtime setup for ${config.table}: ${response.statusText}`);
+        if (error) {
+          console.warn(`[Realtime] Couldn't verify realtime setup for ${config.table}: ${error.message}`);
         }
       } catch (err) {
         console.warn('[Realtime] Failed to check realtime setup:', err);
