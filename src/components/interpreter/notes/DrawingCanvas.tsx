@@ -23,7 +23,7 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
       const parent = canvasRef.current.parentElement;
       if (parent) {
         const width = parent.clientWidth;
-        const height = parent.clientHeight - 40; // Subtract toolbar height to match text editor content area
+        const height = parent.clientHeight;
         
         canvas.setDimensions({ width, height });
         canvas.renderAll();
@@ -64,7 +64,7 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
 
     window.addEventListener("resize", handleResize);
     // Initial resize after a short delay to ensure parent has proper dimensions
-    setTimeout(resizeCanvas, 100);
+    setTimeout(resizeCanvas, 200);
 
     // Set up onChange handler
     const handleCanvasChange = () => {
@@ -219,8 +219,8 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
         </div>
       </div>
 
-      <div className="flex-1 relative flex items-center justify-center bg-background">
-        <canvas ref={canvasRef} />
+      <div className="flex-1 relative w-full h-full bg-background">
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       </div>
     </div>
   );
