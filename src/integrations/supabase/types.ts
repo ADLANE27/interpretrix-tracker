@@ -377,32 +377,41 @@ export type Database = {
       }
       interpreter_notes: {
         Row: {
+          color: string | null
           content: string | null
           created_at: string
+          drawing_data: string | null
           id: string
           interpreter_id: string
           is_pinned: boolean | null
           mission_id: string | null
+          note_type: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          color?: string | null
           content?: string | null
           created_at?: string
+          drawing_data?: string | null
           id?: string
           interpreter_id: string
           is_pinned?: boolean | null
           mission_id?: string | null
+          note_type?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          color?: string | null
           content?: string | null
           created_at?: string
+          drawing_data?: string | null
           id?: string
           interpreter_id?: string
           is_pinned?: boolean | null
           mission_id?: string | null
+          note_type?: string | null
           title?: string
           updated_at?: string
         }
