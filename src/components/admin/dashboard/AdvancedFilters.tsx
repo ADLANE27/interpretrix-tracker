@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -64,7 +63,6 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   };
 
   const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
-    // Fix: Create a new array instead of using a function for state update
     if (employmentStatusFilters.includes(status)) {
       setEmploymentStatusFilters(employmentStatusFilters.filter(s => s !== status));
     } else {
