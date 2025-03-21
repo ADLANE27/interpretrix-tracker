@@ -134,7 +134,7 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    console.log("[AdminDashboard] Setting up real-time subscriptions");
+    console.log("[AdminDashboard] Setting up real-time subscriptions and event listeners");
     const channels: RealtimeChannel[] = [];
 
     // Channel for interpreter profile changes (status updates)
@@ -162,6 +162,14 @@ const AdminDashboard = () => {
       console.log(`[AdminDashboard] Private reservations subscription status:`, status);
     });
     channels.push(reservationsChannel);
+    
+    // Listen for interpreter status update events from useMissionUpdates
+    const handleStatusUpdate = () => {
+      console.log("[AdminDashboard] Received interpreter status update event");
+      fetchInterpreters();
+    };
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("[AdminDashboard] Tab became visible, refreshing data");
@@ -182,11 +190,12 @@ const AdminDashboard = () => {
     // Initial fetch
     fetchInterpreters();
     return () => {
-      console.log("[AdminDashboard] Cleaning up subscriptions");
+      console.log("[AdminDashboard] Cleaning up subscriptions and event listeners");
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
       clearInterval(connectionCheckInterval);
     };
   }, []);
