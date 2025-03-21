@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { motion } from "framer-motion";
-import { User, Lock, Sparkles, Shield } from "lucide-react";
+import { User, Lock, Sparkles, Clipboard, Calendar, ClipboardCheck } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email("Veuillez saisir une adresse email valide"),
@@ -38,7 +37,6 @@ export const AdminLoginForm = () => {
     console.log("Tentative de connexion admin avec:", values.email);
 
     try {
-      // First attempt to sign in
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password
@@ -56,7 +54,6 @@ export const AdminLoginForm = () => {
       console.log("Connexion réussie, données utilisateur:", signInData.user);
       console.log("Vérification du rôle admin...");
 
-      // Use the access token to make a request to the is-admin edge function
       const { data, error } = await supabase.functions.invoke('is-admin', {
         method: 'GET'
       });
@@ -75,7 +72,6 @@ export const AdminLoginForm = () => {
 
       console.log("Rôle admin confirmé, redirection...");
 
-      // If all checks pass, show success and navigate
       toast({
         title: "Connexion réussie",
         description: "Vous êtes maintenant connecté en tant qu'administrateur",
@@ -162,19 +158,22 @@ export const AdminLoginForm = () => {
               }}
               className="w-16 h-16 text-yellow-500"
             >
-              <Shield size={64} className="text-yellow-500" />
+              <ClipboardCheck size={64} className="text-yellow-500" />
             </motion.div>
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              animate={{ 
+                opacity: [0, 1, 0],
+                y: [0, -5, 0]
+              }}
               transition={{ 
                 repeat: Infinity,
-                repeatType: "reverse",
+                repeatType: "loop",
                 duration: 2
               }}
               className="absolute -right-3 -top-2"
             >
-              <Sparkles className="w-6 h-6 text-palette-bright-orange" />
+              <Calendar className="w-6 h-6 text-palette-bright-orange" />
             </motion.div>
           </div>
         </motion.div>
