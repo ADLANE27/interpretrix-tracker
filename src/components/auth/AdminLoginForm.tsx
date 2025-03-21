@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,12 @@ export const AdminLoginForm = () => {
 
       if (signInError) {
         console.error("Erreur de connexion:", signInError);
+        
+        // Check for JWT timing error (JWTIssuedAtFuture)
+        if (signInError.message.includes("JWT") || signInError.message.includes("future")) {
+          throw new Error("Erreur temporelle lors de l'authentification. Veuillez vérifier que l'heure de votre appareil est correcte.");
+        }
+        
         throw signInError;
       }
 
@@ -39,31 +46,48 @@ export const AdminLoginForm = () => {
       console.log("Connexion réussie, données utilisateur:", signInData.user);
       console.log("Vérification du rôle admin...");
 
-      // Verify admin role using RLS and the is_admin() function
-      const { data: isAdmin, error: roleError } = await supabase
-        .rpc('is_admin');
+      // Use a try-catch block specific to the role check
+      try {
+        // Verify admin role using RLS and the is_admin() function
+        const { data: isAdmin, error: roleError } = await supabase
+          .rpc('is_admin');
 
-      console.log("Résultat vérification rôle:", { isAdmin, roleError });
+        console.log("Résultat vérification rôle:", { isAdmin, roleError });
 
-      if (roleError) {
-        console.error("Erreur lors de la vérification du rôle:", roleError);
-        throw new Error(`Erreur lors de la vérification du rôle: ${roleError.message}`);
+        if (roleError) {
+          console.error("Erreur lors de la vérification du rôle:", roleError);
+          
+          // Check for JWT timing error in the role verification
+          if (roleError.message.includes("JWT") || roleError.message.includes("future")) {
+            throw new Error("Erreur temporelle lors de la vérification du rôle. Veuillez vérifier que l'heure de votre appareil est correcte.");
+          }
+          
+          throw new Error(`Erreur lors de la vérification du rôle: ${roleError.message}`);
+        }
+
+        if (!isAdmin) {
+          console.error("L'utilisateur n'est pas administrateur");
+          throw new Error("Vous n'avez pas les droits d'administrateur nécessaires.");
+        }
+
+        console.log("Rôle admin confirmé, redirection...");
+
+        // If all checks pass, show success and navigate
+        toast({
+          title: "Connexion réussie",
+          description: "Vous êtes maintenant connecté en tant qu'administrateur",
+        });
+        
+        navigate("/admin");
+      } catch (roleCheckError: any) {
+        console.error("Erreur lors de la vérification du rôle:", roleCheckError);
+        await supabase.auth.signOut();
+        toast({
+          title: "Erreur de vérification du rôle",
+          description: roleCheckError.message,
+          variant: "destructive",
+        });
       }
-
-      if (!isAdmin) {
-        console.error("L'utilisateur n'est pas administrateur");
-        throw new Error("Vous n'avez pas les droits d'administrateur nécessaires.");
-      }
-
-      console.log("Rôle admin confirmé, redirection...");
-
-      // If all checks pass, show success and navigate
-      toast({
-        title: "Connexion réussie",
-        description: "Vous êtes maintenant connecté en tant qu'administrateur",
-      });
-      
-      navigate("/admin");
     } catch (error: any) {
       console.error("Erreur complète:", error);
       await supabase.auth.signOut();
