@@ -74,49 +74,17 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-palette-soft-blue to-palette-soft-purple">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-palette-vivid-purple"></div>
       </div>
     );
   }
 
   if (!userRole) {
     return (
-      <div className="min-h-screen w-full bg-white dark:bg-gray-900 overflow-y-auto">
-        <div className="relative z-10 min-h-screen flex flex-col">
-          <motion.header 
-            className="py-6 px-8 flex items-center justify-between"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <motion.div
-              className="text-xl font-bold"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 400, damping: 10 }}
-            >
-              <img 
-                src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
-                alt="Logo" 
-                className="h-10 w-auto" 
-              />
-            </motion.div>
-          </motion.header>
-          
-          <div className="flex-1 flex items-center justify-center gradient-bg-subtle">
-            <WelcomeContent />
-          </div>
-          
-          <motion.footer 
-            className="text-center py-6 text-slate-600 dark:text-slate-400 text-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.5 }}
-          >
-            <div className="max-w-6xl mx-auto px-4">
-              <p>© {new Date().getFullYear()} Interprétation professionnelle. Tous droits réservés.</p>
-            </div>
-          </motion.footer>
+      <div className="min-h-screen w-full bg-gradient-to-br from-white to-palette-soft-blue dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
+        <div className="relative z-10 min-h-screen">
+          <WelcomeContent />
         </div>
       </div>
     );
