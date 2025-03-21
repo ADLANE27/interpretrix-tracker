@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -50,38 +51,40 @@ export function LanguageCombobox({
       <SelectTrigger className={cn("w-full", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent className="max-h-80 overflow-y-auto z-[200]">
-        {allLanguagesOption && (
-          <SelectItem value="all">{allLanguagesLabel}</SelectItem>
-        )}
-        
-        {/* Common languages section */}
-        {availableCommonLanguages.length > 0 && (
-          <>
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              Langues courantes
-            </div>
-            {availableCommonLanguages.map((language) => (
-              <SelectItem key={`common-${language}`} value={language}>
+      <SelectContent className="z-[200]">
+        <ScrollArea className="h-72">
+          {allLanguagesOption && (
+            <SelectItem value="all">{allLanguagesLabel}</SelectItem>
+          )}
+          
+          {/* Common languages section */}
+          {availableCommonLanguages.length > 0 && (
+            <>
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                Langues courantes
+              </div>
+              {availableCommonLanguages.map((language) => (
+                <SelectItem key={`common-${language}`} value={language}>
+                  {language}
+                </SelectItem>
+              ))}
+              
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                Toutes les langues
+              </div>
+            </>
+          )}
+          
+          {/* All languages */}
+          {sortedLanguages.map((language) => (
+            // Skip languages that are already in the common languages section
+            !availableCommonLanguages.includes(language) && (
+              <SelectItem key={language} value={language}>
                 {language}
               </SelectItem>
-            ))}
-            
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              Toutes les langues
-            </div>
-          </>
-        )}
-        
-        {/* All languages */}
-        {sortedLanguages.map((language) => (
-          // Skip languages that are already in the common languages section
-          !availableCommonLanguages.includes(language) && (
-            <SelectItem key={language} value={language}>
-              {language}
-            </SelectItem>
-          )
-        ))}
+            )
+          ))}
+        </ScrollArea>
       </SelectContent>
     </Select>
   );
