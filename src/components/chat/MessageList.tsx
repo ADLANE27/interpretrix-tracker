@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight, Smile } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { useTimestampFormat } from '@/hooks/useTimestampFormat';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
+import { useTheme } from 'next-themes';
 
 interface MessageListProps {
   messages: Message[];
@@ -35,6 +39,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -96,6 +101,29 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const rootMessages = messages.filter(message => !message.parent_message_id);
 
+  const renderReactions = (message: Message) => {
+    if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {Object.entries(message.reactions).map(([emoji, users]) => (
+          <div 
+            key={emoji} 
+            className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer ${
+              users.includes(currentUserId || '') 
+                ? 'bg-primary/20 dark:bg-primary/30' 
+                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+            onClick={() => onReactToMessage(message.id, emoji)}
+          >
+            <span>{emoji}</span>
+            <span className="text-gray-600 dark:text-gray-400">{users.length}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderMessage = (message: Message, isThreadReply = false) => (
     <div 
       ref={(el) => observeMessage(el)}
@@ -138,7 +166,34 @@ export const MessageList: React.FC<MessageListProps> = ({
           </div>
         </div>
         
+        {renderReactions(message)}
+        
         <div className="flex items-center gap-2 mt-1 mr-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+                aria-label="Réagir avec un emoji"
+              >
+                <Smile className="h-4 w-4 text-gray-500 hover:text-yellow-500" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
+              <Picker 
+                data={data} 
+                onEmojiSelect={(emoji: any) => {
+                  onReactToMessage(message.id, emoji.native);
+                }}
+                theme={theme === 'dark' ? 'dark' : 'light'}
+                previewPosition="none"
+                skinTonePosition="none"
+                perLine={8}
+              />
+            </PopoverContent>
+          </Popover>
+          
           {message.sender.id === currentUserId && (
             <Button
               variant="ghost"
