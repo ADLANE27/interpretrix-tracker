@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Building, Headset, ChevronRight } from "lucide-react";
@@ -142,9 +141,8 @@ export const WelcomeContent = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
       >
-        <p>© {new Date().getFullYear()} Interprétation professionnelle. Tous droits réservés.</p>
+        <p>Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.</p>
       </motion.footer>
     </div>
   );
 };
-
