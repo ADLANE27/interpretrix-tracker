@@ -91,6 +91,19 @@ export function LanguageCombobox({
     };
   }, []);
 
+  // Determine if we should show the dropdown list
+  const shouldShowDropdown = isOpen && (searchQuery.length >= 2 || isOpen && value !== "all" && !searchQuery);
+
+  // Get display value for the input
+  const getDisplayValue = () => {
+    if (value === "all") {
+      return allLanguagesLabel;
+    } else if (value && languages.includes(value)) {
+      return value;
+    }
+    return "";
+  };
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div 
@@ -107,9 +120,12 @@ export function LanguageCombobox({
         <input
           ref={inputRef}
           className="w-full bg-transparent focus:outline-none placeholder:text-muted-foreground/60 text-sm"
-          placeholder={value ? value : placeholder}
+          placeholder={getDisplayValue() || placeholder}
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setIsOpen(true);
+          }}
           onFocus={() => setIsOpen(true)}
         />
         {(searchQuery || value !== "all") && (
@@ -127,7 +143,7 @@ export function LanguageCombobox({
         )}
       </div>
 
-      {isOpen && (
+      {shouldShowDropdown && (
         <div 
           className="absolute z-[9999] w-full mt-1 bg-popover border rounded-md shadow-lg"
           style={{ maxHeight: "350px", overflow: "hidden" }}
