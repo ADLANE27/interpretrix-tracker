@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -33,6 +33,8 @@ export function LanguageCombobox({
   allLanguagesLabel = "Toutes les langues",
 }: LanguageComboboxProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sort languages alphabetically
   const sortedLanguages = React.useMemo(() => {
@@ -66,89 +68,173 @@ export function LanguageCombobox({
 
   const handleClearSearch = () => {
     setSearchQuery("");
+    inputRef.current?.focus();
   };
 
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn("w-full", className)}>
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="z-[200]">
-        <div className="p-2 border-b sticky top-0 bg-white z-10">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher une langue..." 
-              className="pl-8 pr-8 h-9"
-            />
-            {searchQuery && (
-              <button 
-                onClick={handleClearSearch}
-                className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-        <ScrollArea className="h-72">
-          {allLanguagesOption && !searchQuery && (
-            <SelectItem value="all">{allLanguagesLabel}</SelectItem>
-          )}
-          
-          {/* Show all languages option if searching and it matches the search */}
-          {allLanguagesOption && searchQuery && 
-           allLanguagesLabel.toLowerCase().includes(searchQuery.toLowerCase()) && (
-            <SelectItem value="all">{allLanguagesLabel}</SelectItem>
-          )}
-          
-          {/* Common languages section */}
-          {filteredCommonLanguages.length > 0 && !searchQuery && (
-            <>
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                Langues courantes
-              </div>
-              {filteredCommonLanguages.map((language) => (
-                <SelectItem key={`common-${language}`} value={language}>
-                  {language}
-                </SelectItem>
-              ))}
-              
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                Toutes les langues
-              </div>
-            </>
-          )}
-          
-          {/* When searching, show common languages that match without headers */}
-          {filteredCommonLanguages.length > 0 && searchQuery && (
-            filteredCommonLanguages.map((language) => (
-              <SelectItem key={`common-${language}`} value={language}>
-                {language}
-              </SelectItem>
-            ))
-          )}
-          
-          {/* All languages */}
-          {filteredLanguages.map((language) => (
-            // Skip languages that are already in the common languages section
-            (!availableCommonLanguages.includes(language) || searchQuery) && (
-              <SelectItem key={language} value={language}>
-                {language}
-              </SelectItem>
-            )
-          ))}
+  const handleSelectLanguage = (language: string) => {
+    onChange(language);
+    setSearchQuery("");
+    setIsOpen(false);
+  };
 
-          {/* Show message when no languages match the search */}
-          {filteredLanguages.length === 0 && (
-            <div className="px-2 py-4 text-sm text-center text-muted-foreground">
-              Aucune langue trouvée
+  // Focus the input when dropdown is opened
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  return (
+    <div className="relative w-full">
+      <div 
+        className={cn(
+          "flex items-center w-full border rounded-md h-10 px-3 py-2 bg-background",
+          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background",
+          "border-input hover:border-purple-400 transition-all duration-200",
+          { "ring-2 ring-ring": isOpen },
+          className
+        )}
+        onClick={() => setIsOpen(true)}
+      >
+        <Search className="w-4 h-4 mr-2 shrink-0 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          className="w-full bg-transparent focus:outline-none placeholder:text-muted-foreground/60 text-sm"
+          placeholder={value ? value : placeholder}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+        />
+        {(searchQuery || value) && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearSearch();
+              if (value) onChange("all");
+            }}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div 
+          className="absolute z-[200] w-full mt-1 bg-popover border rounded-md shadow-md"
+          style={{ maxHeight: "350px", overflow: "hidden" }}
+        >
+          <ScrollArea className="h-72 w-full">
+            <div className="p-1">
+              {allLanguagesOption && (
+                <div
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                    { "bg-accent text-accent-foreground": value === "all" }
+                  )}
+                  onClick={() => handleSelectLanguage("all")}
+                >
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                    {value === "all" && (
+                      <span className="h-4 w-4 flex items-center">✓</span>
+                    )}
+                  </span>
+                  {allLanguagesLabel}
+                </div>
+              )}
+              
+              {/* Common languages section */}
+              {filteredCommonLanguages.length > 0 && !searchQuery && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Langues courantes
+                  </div>
+                  {filteredCommonLanguages.map((language) => (
+                    <div
+                      key={`common-${language}`}
+                      className={cn(
+                        "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                        { "bg-accent text-accent-foreground": value === language }
+                      )}
+                      onClick={() => handleSelectLanguage(language)}
+                    >
+                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                        {value === language && (
+                          <span className="h-4 w-4 flex items-center">✓</span>
+                        )}
+                      </span>
+                      {language}
+                    </div>
+                  ))}
+                  
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    Toutes les langues
+                  </div>
+                </>
+              )}
+              
+              {/* When searching, show common languages that match without headers */}
+              {filteredCommonLanguages.length > 0 && searchQuery && (
+                filteredCommonLanguages.map((language) => (
+                  <div
+                    key={`common-${language}`}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                      { "bg-accent text-accent-foreground": value === language }
+                    )}
+                    onClick={() => handleSelectLanguage(language)}
+                  >
+                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                      {value === language && (
+                        <span className="h-4 w-4 flex items-center">✓</span>
+                      )}
+                    </span>
+                    {language}
+                  </div>
+                ))
+              )}
+              
+              {/* All languages */}
+              {filteredLanguages.map((language) => (
+                // Skip languages that are already in the common languages section
+                (!availableCommonLanguages.includes(language) || searchQuery) && (
+                  <div
+                    key={language}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+                      { "bg-accent text-accent-foreground": value === language }
+                    )}
+                    onClick={() => handleSelectLanguage(language)}
+                  >
+                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                      {value === language && (
+                        <span className="h-4 w-4 flex items-center">✓</span>
+                      )}
+                    </span>
+                    {language}
+                  </div>
+                )
+              ))}
+
+              {/* Show message when no languages match the search */}
+              {filteredLanguages.length === 0 && (
+                <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+                  Aucune langue trouvée
+                </div>
+              )}
             </div>
-          )}
-        </ScrollArea>
-      </SelectContent>
-    </Select>
+          </ScrollArea>
+        </div>
+      )}
+
+      {/* Close dropdown when clicking outside */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-[199]" 
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </div>
   );
 }

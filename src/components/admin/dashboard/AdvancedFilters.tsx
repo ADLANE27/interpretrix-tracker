@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -174,4 +175,4 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       </Collapsible>
     </Card>
   );
-};
+}
