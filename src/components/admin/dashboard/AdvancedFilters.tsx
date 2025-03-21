@@ -64,13 +64,12 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   };
 
   const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
-    setEmploymentStatusFilters(current => {
-      if (current.includes(status)) {
-        return current.filter(s => s !== status);
-      } else {
-        return [...current, status];
-      }
-    });
+    // Fix: Create a new array instead of using a function for state update
+    if (employmentStatusFilters.includes(status)) {
+      setEmploymentStatusFilters(employmentStatusFilters.filter(s => s !== status));
+    } else {
+      setEmploymentStatusFilters([...employmentStatusFilters, status]);
+    }
   };
 
   return (
