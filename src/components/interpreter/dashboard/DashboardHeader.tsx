@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "../ThemeToggle";
 import { StatusManager } from "../StatusManager";
 import { Profile } from "@/types/profile";
-import { HowToUseGuide } from "../HowToUseGuide";
+import { useOrientation } from "@/hooks/use-orientation";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -19,6 +19,9 @@ export const DashboardHeader = ({
   onMenuClick,
   isMobile
 }: DashboardHeaderProps) => {
+  const orientation = useOrientation();
+  const showStatusButtons = !isMobile || (isMobile && orientation === "landscape");
+
   return (
     <header className="h-auto bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 safe-area-top">
       <div className="h-[56px] md:h-16 flex items-center justify-between">
@@ -32,9 +35,11 @@ export const DashboardHeader = ({
         </div>
       </div>
       
-      <div className="pb-3 md:py-3 w-full overflow-visible">
-        <StatusManager currentStatus={profile?.status} onStatusChange={onStatusChange} />
-      </div>
+      {showStatusButtons && (
+        <div className="pb-3 md:py-3 w-full overflow-visible">
+          <StatusManager currentStatus={profile?.status} onStatusChange={onStatusChange} />
+        </div>
+      )}
     </header>
   );
 };

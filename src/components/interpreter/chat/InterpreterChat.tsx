@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -6,6 +5,7 @@ import { MessageList } from "@/components/chat/MessageList";
 import { Message } from "@/types/messaging";
 import { ChannelMembersPopover } from "@/components/chat/ChannelMembersPopover";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOrientation } from "@/hooks/use-orientation";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from '@/utils/notificationSound';
@@ -61,6 +61,7 @@ export const InterpreterChat = ({
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
+  const orientation = useOrientation();
   const messageContainerRef = useRef<HTMLDivElement>(null);
 
   const [chatMembers, setChatMembers] = useState([
@@ -242,7 +243,7 @@ export const InterpreterChat = ({
           />
         </div>
         
-        {isMobile && profile && onStatusChange && (
+        {isMobile && profile && onStatusChange && orientation === "portrait" && (
           <div className="pb-3 w-full overflow-visible">
             <StatusManager currentStatus={profile.status} onStatusChange={onStatusChange} />
           </div>
@@ -284,4 +285,3 @@ export const InterpreterChat = ({
     </div>
   );
 };
-
