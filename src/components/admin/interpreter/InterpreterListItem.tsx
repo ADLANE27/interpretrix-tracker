@@ -6,8 +6,7 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState, useRef } from "react";
-import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface InterpreterListItemProps {
@@ -21,6 +20,7 @@ interface InterpreterListItemProps {
     next_mission_duration?: number | null;
     work_location?: WorkLocation;
   };
+  onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
 const workLocationConfig = {
@@ -34,49 +34,9 @@ const workLocationConfig = {
   }
 };
 
-export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) => {
+export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
-  const lastUpdateRef = useRef<string | null>(null);
-
-  // Setup real-time subscription to status updates using our improved hook
-  useRealtimeSubscription(
-    {
-      event: 'UPDATE',
-      table: 'interpreter_profiles',
-      filter: `id=eq.${interpreter.id}`
-    },
-    (payload) => {
-      if (payload.new && payload.new.status) {
-        const newStatus = payload.new.status;
-        const updateId = `${newStatus}-${Date.now()}`;
-        
-        // Prevent duplicate updates
-        if (updateId === lastUpdateRef.current) return;
-        lastUpdateRef.current = updateId;
-        
-        console.log(`[InterpreterListItem] Status update for ${interpreter.id}:`, newStatus);
-        
-        // Validate the incoming status
-        if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
-          setInterpreterStatus(newStatus as Profile['status']);
-          
-          // Show toast for status changes
-          toast({
-            title: "Statut mis à jour",
-            description: `Le statut de ${interpreter.name} a été mis à jour`,
-            variant: "default",
-          });
-        }
-      }
-    },
-    {
-      onError: (error) => {
-        console.error(`[InterpreterListItem] Error in realtime subscription for ${interpreter.id}:`, error);
-      },
-      debugMode: true
-    }
-  );
 
   // Update local state when props change
   useEffect(() => {
@@ -85,6 +45,13 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
       setInterpreterStatus(interpreter.status);
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
+
+  const handleStatusChange = (newStatus: Profile['status']) => {
+    setInterpreterStatus(newStatus);
+    if (onStatusChange) {
+      onStatusChange(interpreter.id, newStatus);
+    }
+  };
 
   const parsedLanguages = interpreter.languages
     .map(lang => {
@@ -105,6 +72,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
               interpreterId={interpreter.id}
               currentStatus={interpreterStatus}
               displayFormat="badge"
+              onStatusChange={handleStatusChange}
             />
             <span className="font-medium truncate text-gradient-primary">{interpreter.name}</span>
           </div>

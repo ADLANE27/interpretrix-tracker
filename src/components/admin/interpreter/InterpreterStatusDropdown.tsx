@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -27,6 +28,7 @@ interface InterpreterStatusDropdownProps {
   currentStatus: Status;
   className?: string;
   displayFormat?: "badge" | "button";
+  onStatusChange?: (newStatus: Status) => void;
 }
 
 const statusConfig: Record<Status, StatusConfigItem> = {
@@ -60,7 +62,8 @@ export const InterpreterStatusDropdown = ({
   interpreterId, 
   currentStatus, 
   className = "", 
-  displayFormat = "badge" 
+  displayFormat = "badge",
+  onStatusChange
 }: InterpreterStatusDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
@@ -70,37 +73,6 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
-
-  // Use the dedicated hook for realtime subscriptions
-  useRealtimeSubscription(
-    {
-      event: 'UPDATE',
-      table: 'interpreter_profiles',
-      filter: `id=eq.${interpreterId}`
-    },
-    (payload) => {
-      if (payload.new && payload.new.status) {
-        const newStatus = payload.new.status;
-        const updateId = `${newStatus}-${Date.now()}`;
-        
-        // Prevent duplicate updates
-        if (updateId === lastUpdateRef.current) return;
-        lastUpdateRef.current = updateId;
-        
-        console.log(`[InterpreterStatusDropdown] Received real-time status update for ${interpreterId}:`, newStatus);
-        
-        if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
-          setLocalStatus(newStatus as Status);
-        }
-      }
-    },
-    {
-      onError: (error) => {
-        console.error(`[InterpreterStatusDropdown] Realtime subscription error:`, error);
-      },
-      debugMode: true
-    }
-  );
 
   // Update local state when prop changes
   useEffect(() => {
@@ -135,6 +107,11 @@ export const InterpreterStatusDropdown = ({
       
       // Optimistically update the local status
       setLocalStatus(pendingStatus);
+      
+      // Notify parent component of the status change if callback is provided
+      if (onStatusChange) {
+        onStatusChange(pendingStatus);
+      }
       
       // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {

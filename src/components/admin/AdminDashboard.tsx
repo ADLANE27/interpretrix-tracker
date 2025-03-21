@@ -113,6 +113,26 @@ const AdminDashboard = () => {
     setActiveTab
   } = useTabPersistence("interpreters");
 
+  const handleInterpreterStatusChange = (interpreterId: string, newStatus: Profile['status']) => {
+    console.log(`[AdminDashboard] Status change for interpreter ${interpreterId}: ${newStatus}`);
+    
+    setInterpreters(current => 
+      current.map(interpreter => 
+        interpreter.id === interpreterId 
+          ? { ...interpreter, status: newStatus } 
+          : interpreter
+      )
+    );
+
+    const interpreter = interpreters.find(i => i.id === interpreterId);
+    if (interpreter) {
+      toast({
+        title: "Statut mis à jour",
+        description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour`,
+      });
+    }
+  };
+
   useEffect(() => {
     console.log("[AdminDashboard] Setting up real-time subscriptions");
     const channels: RealtimeChannel[] = [];
@@ -537,7 +557,9 @@ const AdminDashboard = () => {
                 professional_phone: interpreter.professional_phone,
                 work_hours: interpreter.work_hours,
                 work_location: interpreter.work_location as WorkLocation
-              }} /> : <InterpreterListItem key={interpreter.id} interpreter={{
+              }} 
+              onStatusChange={handleInterpreterStatusChange}
+              /> : <InterpreterListItem key={interpreter.id} interpreter={{
                 id: interpreter.id,
                 name: `${interpreter.first_name} ${interpreter.last_name}`,
                 status: interpreter.status || "unavailable",
@@ -546,7 +568,9 @@ const AdminDashboard = () => {
                 next_mission_start: interpreter.next_mission_start,
                 next_mission_duration: interpreter.next_mission_duration,
                 work_location: interpreter.work_location as WorkLocation
-              }} />)}
+              }}
+              onStatusChange={handleInterpreterStatusChange}
+              />)}
               </div>
             </div>
           </TabsContent>

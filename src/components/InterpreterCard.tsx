@@ -33,6 +33,7 @@ interface InterpreterCardProps {
     } | null;
     work_location?: WorkLocation;
   };
+  onStatusChange?: (interpreterId: string, newStatus: Profile['status']) => void;
 }
 
 const workLocationConfig = {
@@ -46,7 +47,7 @@ const workLocationConfig = {
   }
 };
 
-const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
+const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter, onStatusChange }) => {
   const parsedLanguages = interpreter.languages
     .map(lang => {
       const [source, target] = lang.split('→').map(l => l.trim());
@@ -64,6 +65,12 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
   const workLocation = interpreter.work_location || "on_site";
   const LocationIcon = workLocationConfig[workLocation].icon;
 
+  const handleStatusChange = (newStatus: Profile['status']) => {
+    if (onStatusChange) {
+      onStatusChange(interpreter.id, newStatus);
+    }
+  };
+
   return (
     <Card className="hover-elevate gradient-border">
       <CardHeader className="card-header-gradient">
@@ -73,6 +80,7 @@ const InterpreterCard: React.FC<InterpreterCardProps> = ({ interpreter }) => {
             interpreterId={interpreter.id}
             currentStatus={interpreter.status}
             displayFormat="badge"
+            onStatusChange={handleStatusChange}
           />
         </div>
         <div className="flex items-center justify-between">

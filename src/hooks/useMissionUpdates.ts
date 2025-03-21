@@ -3,10 +3,10 @@ import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
+  // Setup visibility change event listeners
   useEffect(() => {
-    console.log('[useMissionUpdates] Setting up realtime subscriptions');
+    console.log('[useMissionUpdates] Setting up visibility change event listeners');
     
-    // Setup visibility change event listeners
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
@@ -54,6 +54,27 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
+      onUpdate();
+    },
+    {
+      debugMode: false,
+      maxRetries: 3,
+      retryInterval: 5000,
+      onError: (error) => {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      }
+    }
+  );
+  
+  // Also subscribe to interpreter profile changes to get status updates
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'interpreter_profiles'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Interpreter profile update received:', payload);
       onUpdate();
     },
     {
