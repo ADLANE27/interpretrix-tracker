@@ -36,6 +36,8 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
     const newCanvas = new fabric.Canvas(canvasRef.current, {
       isDrawingMode: true,
       backgroundColor: "#f8f9fa",
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight,
     });
 
     newCanvas.freeDrawingBrush.width = 2;
@@ -62,7 +64,7 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
 
     window.addEventListener("resize", handleResize);
     // Initial resize after a delay to ensure parent has proper dimensions
-    setTimeout(resizeCanvas, 300);
+    setTimeout(resizeCanvas, 100);
 
     // Set up onChange handler
     const handleCanvasChange = () => {
@@ -219,8 +221,8 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
 
       <div 
         ref={containerRef} 
-        className="flex-1 relative w-full h-full bg-gray-100 rounded-md"
-        style={{ minHeight: "400px" }}
+        className="flex-1 relative w-full h-full bg-gray-100 rounded-md overflow-hidden"
+        style={{ minHeight: "500px", flex: "1 1 auto" }}
       >
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       </div>
