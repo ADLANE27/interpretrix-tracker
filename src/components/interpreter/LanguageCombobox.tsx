@@ -4,7 +4,6 @@ import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -50,48 +49,51 @@ export function LanguageCombobox({
     }
   }, [isOpen]);
 
-  // Normalize a string for comparison (remove accents, lowercase)
-  const normalizeString = (str: string): string => {
-    return str.toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-  };
-
-  // Sort and filter languages
+  // Sort and filter languages with improved search to match language variants exactly as they appear on cards
   const filteredLanguages = useMemo(() => {
     try {
       if (!searchTerm) {
-        return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
+        return [...languages].sort((a, b) => a.localeCompare(b));
       }
       
-      const normalizedSearchTerm = normalizeString(searchTerm);
+      const searchTermLower = searchTerm.toLowerCase();
       
       return [...languages]
         .filter(lang => {
-          const normalizedLang = normalizeString(lang);
-          return normalizedLang.includes(normalizedSearchTerm);
+          const langLower = lang.toLowerCase();
+          
+          // Simple matching by checking if language name contains the search term
+          return langLower.includes(searchTermLower);
         })
         .sort((a, b) => {
-          const normalizedA = normalizeString(a);
-          const normalizedB = normalizeString(b);
+          // Sort exact matches first
+          const aLower = a.toLowerCase();
+          const bLower = b.toLowerCase();
           
-          // Exact matches first
-          const aExactMatch = normalizedA === normalizedSearchTerm;
-          const bExactMatch = normalizedB === normalizedSearchTerm;
+          const aExactMatch = aLower === searchTermLower;
+          const bExactMatch = bLower === searchTermLower;
           
           if (aExactMatch && !bExactMatch) return -1;
           if (!aExactMatch && bExactMatch) return 1;
           
           // Then sort by whether it starts with the search term
-          const aStartsWith = normalizedA.startsWith(normalizedSearchTerm);
-          const bStartsWith = normalizedB.startsWith(normalizedSearchTerm);
+          const aStartsWith = aLower.startsWith(searchTermLower);
+          const bStartsWith = bLower.startsWith(searchTermLower);
           
           if (aStartsWith && !bStartsWith) return -1;
           if (!aStartsWith && bStartsWith) return 1;
           
-          // Then alphabetical order
-          return a.localeCompare(b, 'fr');
+          // Group variants of the same base language together
+          const aBaseLang = aLower.split(" ")[0];
+          const bBaseLang = bLower.split(" ")[0];
+          
+          if (aBaseLang === bBaseLang) {
+            // If they're variants of the same language, sort them alphabetically
+            return a.localeCompare(b);
+          }
+          
+          // Fall back to alphabetical sorting by base language
+          return aBaseLang.localeCompare(bBaseLang);
         });
     } catch (error) {
       console.error("Error filtering languages:", error);
@@ -118,14 +120,6 @@ export function LanguageCombobox({
     setIsOpen(false);
     setSearchTerm("");
   };
-
-  // Common languages to highlight at the top of the list
-  const commonLanguages = [
-    "Français", "Anglais", "Espagnol", "Arabe", "Arabe Maghrébin", "Dari", "Pashto", "Farsi", 
-    "Russe", "Chinois", "Allemand", "Italien", "Portugais"
-  ];
-  
-  const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
   return (
     <div className="relative w-full" data-language-selector>
@@ -161,82 +155,46 @@ export function LanguageCombobox({
           </div>
           
           {/* Language list */}
-          <ScrollArea className="max-h-[300px] overflow-auto">
-            <div className="p-1">
-              {allLanguagesOption && (
+          <div className="max-h-[300px] overflow-auto p-1">
+            {allLanguagesOption && (
+              <Button
+                variant={value === "all" ? "secondary" : "ghost"}
+                className="w-full justify-start font-normal mb-1"
+                onClick={() => handleSelectLanguage("all")}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === "all" ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {allLanguagesLabel}
+              </Button>
+            )}
+            
+            {filteredLanguages.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              filteredLanguages.map((language) => (
                 <Button
-                  variant={value === "all" ? "secondary" : "ghost"}
+                  key={language}
+                  variant={value === language ? "secondary" : "ghost"}
                   className="w-full justify-start font-normal mb-1"
-                  onClick={() => handleSelectLanguage("all")}
+                  onClick={() => handleSelectLanguage(language)}
                 >
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === "all" ? "opacity-100" : "opacity-0"
+                      value === language ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {allLanguagesLabel}
+                  {language}
                 </Button>
-              )}
-              
-              {/* Common languages section (if not searching) */}
-              {!searchTerm && (
-                <>
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                    Langues courantes
-                  </div>
-                  {commonLanguages
-                    .filter(lang => languages.includes(lang))
-                    .map((language) => (
-                      <Button
-                        key={language}
-                        variant={value === language ? "secondary" : "ghost"}
-                        className="w-full justify-start font-normal mb-1"
-                        onClick={() => handleSelectLanguage(language)}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === language ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {language}
-                      </Button>
-                    ))
-                  }
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                    Toutes les langues
-                  </div>
-                </>
-              )}
-              
-              {filteredLanguages.length === 0 ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </div>
-              ) : (
-                filteredLanguages.map((language) => (
-                  // Skip common languages when not searching, as they're already shown above
-                  (!isCommonLanguage(language) || searchTerm) && (
-                    <Button
-                      key={language}
-                      variant={value === language ? "secondary" : "ghost"}
-                      className="w-full justify-start font-normal mb-1"
-                      onClick={() => handleSelectLanguage(language)}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === language ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      {language}
-                    </Button>
-                  )
-                ))
-              )}
-            </div>
-          </ScrollArea>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

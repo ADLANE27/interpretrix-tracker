@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +16,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 
 interface Channel {
   id: string;
@@ -158,9 +158,6 @@ export const InterpreterChannelList = ({
       }, {});
 
       setUnreadMentions(counts);
-      
-      const totalUnread = Object.values(counts).reduce((total, count) => total + count, 0);
-      eventEmitter.emit(EVENT_UNREAD_MENTIONS_UPDATED, totalUnread);
     } catch (error) {
       console.error('[InterpreterChat] Error fetching unread mentions:', error);
     }

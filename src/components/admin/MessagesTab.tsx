@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CreateChannelDialog } from "./CreateChannelDialog";
 import { NewDirectMessageDialog } from "./NewDirectMessageDialog";
 import { ChannelMemberManagement } from "./ChannelMemberManagement";
-import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil } from 'lucide-react';
+import { PlusCircle, Settings, Paperclip, Send, Smile, Trash2, MessageSquare, UserPlus, ChevronDown, ChevronRight, ChevronLeft, Pencil, Bell } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
@@ -19,6 +18,9 @@ import { useTimestampFormat } from "@/hooks/useTimestampFormat";
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { useChat } from "@/hooks/useChat"; 
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
+import { Badge } from "@/components/ui/badge";
+import { MentionsPopover } from "@/components/chat/MentionsPopover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,8 +58,15 @@ export const MessagesTab = () => {
   const isMobile = useIsMobile();
   const currentUser = useRef<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { 
+    unreadMentions, 
+    totalUnreadCount, 
+    markMentionAsRead,
+    deleteMention,
+    markAllMentionsAsRead,
+    refreshMentions 
+  } = useUnreadMentions();
 
-  // First effect: just get the current user once
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -66,7 +75,6 @@ export const MessagesTab = () => {
     getCurrentUser();
   }, []);
 
-  // Second effect: fetch channels list only, without side effects
   useEffect(() => {
     const fetchChannels = async () => {
       setIsLoading(true);
@@ -82,7 +90,6 @@ export const MessagesTab = () => {
         if (error) throw error;
         if (data) {
           setChannels(data);
-          // Only set selected channel if none is selected and we have channels
           if (data.length > 0 && !selectedChannel) {
             setSelectedChannel(data[0]);
           }
@@ -100,7 +107,7 @@ export const MessagesTab = () => {
     };
 
     fetchChannels();
-  }, []); // No dependencies, only run once on component mount
+  }, []);
 
   const handleChannelCreated = () => {
     const fetchChannels = async () => {
@@ -128,6 +135,21 @@ export const MessagesTab = () => {
     };
     fetchChannels();
   };
+
+  useEffect(() => {
+    console.log('[MessagesTab] Setting up mention refresh');
+    refreshMentions();
+    
+    const intervalId = setInterval(() => {
+      console.log('[MessagesTab] Running periodic mention refresh');
+      refreshMentions();
+    }, 20000); // Refresh every 20 seconds
+    
+    return () => {
+      console.log('[MessagesTab] Cleaning up mention refresh interval');
+      clearInterval(intervalId);
+    };
+  }, [refreshMentions]);
 
   const handleDeleteChannel = async () => {
     if (!channelToDelete) return;
@@ -187,7 +209,6 @@ export const MessagesTab = () => {
 
       setEditingChannel(null);
       
-      // Update the channels list with the new name
       setChannels(channels.map(channel => 
         channel.id === channelId 
           ? { ...channel, display_name: newName.trim() }
@@ -208,7 +229,19 @@ export const MessagesTab = () => {
     }
   };
 
-  // Display a loading state while fetching channels
+  const handleMentionClick = (mention: any) => {
+    const channelId = mention.channel_id;
+    const channel = channels.find(c => c.id === channelId);
+    if (channel) {
+      setSelectedChannel(channel);
+      if (isMobile) setShowChannelList(false);
+      
+      markMentionAsRead(mention.mention_id);
+      
+      window.location.hash = `message-${mention.message_id}`;
+    }
+  };
+
   if (isLoading && channels.length === 0) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -233,6 +266,31 @@ export const MessagesTab = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Canaux</h2>
               <div className="flex gap-2">
+                <MentionsPopover
+                  mentions={unreadMentions}
+                  totalCount={totalUnreadCount}
+                  onMentionClick={handleMentionClick}
+                  onMarkAsRead={markMentionAsRead}
+                  onDelete={deleteMention}
+                  onMarkAllAsRead={markAllMentionsAsRead}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 relative"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {totalUnreadCount > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {totalUnreadCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </MentionsPopover>
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -346,7 +404,6 @@ export const MessagesTab = () => {
                 </Button>
               )}
               
-              {/* Use the standardized Chat component */}
               <Chat 
                 channelId={selectedChannel.id} 
                 userRole="admin"

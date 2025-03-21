@@ -1,9 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Profile } from "@/types/profile";
+import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 
 interface MessagingTabProps {
   profile?: Profile | null;
@@ -15,10 +16,28 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>({});
   const isMobile = useIsMobile();
+  const { refreshMentions } = useUnreadMentions();
 
   const handleClearFilters = () => {
     setFilters({});
   };
+
+  // Refresh mentions initially to ensure badge counts are up to date
+  useEffect(() => {
+    console.log('[MessagingTab] Initial mention refresh');
+    refreshMentions();
+    
+    // Set up a periodic refresh for mentions
+    const intervalId = setInterval(() => {
+      console.log('[MessagingTab] Periodic mention refresh');
+      refreshMentions();
+    }, 20000); // Every 20 seconds to match admin refresh rate
+    
+    return () => {
+      console.log('[MessagingTab] Cleaning up refresh interval');
+      clearInterval(intervalId);
+    };
+  }, [refreshMentions]);
 
   return (
     <div className="flex h-full">

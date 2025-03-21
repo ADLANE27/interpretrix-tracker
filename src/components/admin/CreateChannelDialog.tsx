@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,15 +28,31 @@ export const CreateChannelDialog = ({ isOpen, onClose, onChannelCreated }: Creat
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Non authentifié");
 
-      const { error: channelError } = await supabase
+      // Create the channel
+      const { data: channel, error: channelError } = await supabase
         .from('chat_channels')
         .insert({
           name,
           description,
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
       if (channelError) throw channelError;
+
+      // Important: Add creator as channel member
+      const { error: memberError } = await supabase
+        .from('channel_members')
+        .insert({
+          channel_id: channel.id,
+          user_id: user.id,
+        });
+
+      if (memberError) {
+        console.error('Error adding channel creator as member:', memberError);
+        throw memberError;
+      }
 
       toast({
         title: "Canal créé",

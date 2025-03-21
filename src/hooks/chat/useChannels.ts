@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -43,7 +43,7 @@ export const useChannels = () => {
   });
 
   // Fetch channels - now with detailed logging
-  const { data: channels = [], refetch: fetchChannels } = useQuery({
+  const { data: channels = [], refetch: refetchChannels } = useQuery({
     queryKey: ['channels'],
     queryFn: async () => {
       console.log('[Chat Debug] Starting to fetch channels');
@@ -76,6 +76,12 @@ export const useChannels = () => {
     },
     retry: 1
   });
+
+  // Enhanced fetchChannels function to force refresh
+  const fetchChannels = useCallback(async () => {
+    console.log('[Chat Debug] Manually refreshing channels');
+    await refetchChannels();
+  }, [refetchChannels]);
 
   return {
     channels,

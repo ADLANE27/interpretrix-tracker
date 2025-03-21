@@ -5,7 +5,6 @@ import { MissionsTab } from "../MissionsTab";
 import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
-import { TerminologyTab } from "../TerminologyTab";
 import { Profile } from "@/types/profile";
 
 interface DashboardContentProps {
@@ -46,8 +45,6 @@ export const DashboardContent = ({
         );
       case "calendar":
         return <MissionsCalendar missions={scheduledMissions} />;
-      case "terminology":
-        return <TerminologyTab userId={profile?.id} />;
       default:
         return <MissionsTab />;
     }

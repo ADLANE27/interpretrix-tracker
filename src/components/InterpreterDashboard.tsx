@@ -12,7 +12,6 @@ import { DashboardContent } from "./interpreter/dashboard/DashboardContent";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
-import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -50,15 +49,13 @@ export const InterpreterDashboard = () => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  useGlobalNotification();
-  
   useSupabaseConnection();
 
   useEffect(() => {
     const handleResize = () => {
       setIsSidebarOpen(false);
       
+      // Fix for mobile viewport height
       const vh = window.innerHeight * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
     };

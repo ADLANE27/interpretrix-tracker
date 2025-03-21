@@ -1,5 +1,5 @@
 
--- Update the process_message_mentions function to handle standardized languages
+-- Update the process_message_mentions function to better handle admin mentions
 CREATE OR REPLACE FUNCTION public.process_message_mentions()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -13,7 +13,7 @@ BEGIN
             -- Find mentioned interpreter
             SELECT id INTO mentioned_user_id
             FROM interpreter_profiles
-            WHERE CONCAT(first_name, ' ', last_name) = mention_name;
+            WHERE LOWER(CONCAT(first_name, ' ', last_name)) = LOWER(mention_name);
             
             -- If found an interpreter, insert the mention
             IF mentioned_user_id IS NOT NULL THEN
@@ -30,7 +30,7 @@ BEGIN
                     'unread'
                 );
             ELSE
-                -- If not found in interpreter profiles, check admin users
+                -- If not found in interpreter profiles, check admin users with case-insensitive matching
                 FOR admin_record IN
                     SELECT 
                         id, 
@@ -42,11 +42,11 @@ BEGIN
                     FROM auth.users u
                     JOIN user_roles ur ON u.id = ur.user_id
                     WHERE ur.role = 'admin'
-                    AND CONCAT(
+                    AND LOWER(CONCAT(
                         COALESCE(raw_user_meta_data->>'first_name', ''), 
                         ' ', 
                         COALESCE(raw_user_meta_data->>'last_name', '')
-                    ) = mention_name
+                    )) = LOWER(mention_name)
                 LOOP
                     INSERT INTO message_mentions (
                         message_id,
