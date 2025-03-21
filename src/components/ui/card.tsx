@@ -5,7 +5,7 @@ import { motion, HTMLMotionProps } from "framer-motion"
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asMotion?: boolean;
-  motionProps?: Omit<HTMLMotionProps<"div">, "className" | "children">;
+  motionProps?: Omit<HTMLMotionProps<"div">, "className" | "children" | "ref">;
 }
 
 const Card = React.forwardRef<
@@ -15,7 +15,7 @@ const Card = React.forwardRef<
   if (asMotion) {
     return (
       <motion.div
-        ref={ref}
+        ref={ref as any}
         className={cn(
           "rounded-xl border bg-white/80 dark:bg-gray-800/80 text-card-foreground shadow-md hover:shadow-xl backdrop-blur-sm transition-all duration-300",
           className
