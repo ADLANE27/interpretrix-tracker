@@ -217,8 +217,12 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
         </div>
       </div>
 
-      <div ref={containerRef} className="flex-1 relative w-full h-full overflow-hidden">
-        <canvas ref={canvasRef} className="absolute inset-0" />
+      <div 
+        ref={containerRef} 
+        className="flex-1 relative w-full h-full bg-gray-100 rounded-md"
+        style={{ minHeight: "400px" }}
+      >
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       </div>
     </div>
   );
