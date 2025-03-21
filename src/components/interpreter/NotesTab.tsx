@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Mic, MicOff, Pause, Play, Save, Trash, Pin, PinOff } from "lucide-react";
+import { PlusCircle, Mic, MicOff, Pause, Play, Save, Trash, Pin, PinOff, PencilLine, Type, Image } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +11,11 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
+import { RichTextEditor } from "./notes/RichTextEditor";
+import { DrawingCanvas } from "./notes/DrawingCanvas";
+import { ColorPicker } from "./notes/ColorPicker";
+import { getNoteColorStyles, sanitizeHtml, truncateHtml } from "@/utils/notesUtils";
+import DOMPurify from 'dompurify';
 
 interface Note {
   id: string;
@@ -21,6 +25,9 @@ interface Note {
   updated_at: string;
   is_pinned: boolean;
   mission_id: string | null;
+  color?: string;
+  drawing_data?: string | null;
+  note_type: 'text' | 'drawing' | 'mixed';
 }
 
 interface Recording {
@@ -51,6 +58,10 @@ export const NotesTab = () => {
   const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  
+  const [editorType, setEditorType] = useState<'text' | 'drawing'>('text');
+  const [drawingData, setDrawingData] = useState<string>('');
+  const [noteColor, setNoteColor] = useState<string>('transparent');
 
   useEffect(() => {
     fetchNotes();
@@ -123,6 +134,9 @@ export const NotesTab = () => {
     setCurrentNote(null);
     setNewTitle("");
     setNewContent("");
+    setEditorType('text');
+    setDrawingData('');
+    setNoteColor('transparent');
     setIsEditing(true);
     setRecordings([]);
     setAudioUrl(null);
@@ -136,6 +150,9 @@ export const NotesTab = () => {
     setCurrentNote(note);
     setNewTitle(note.title);
     setNewContent(note.content || "");
+    setNoteColor(note.color || 'transparent');
+    setDrawingData(note.drawing_data || '');
+    setEditorType(note.note_type === 'drawing' ? 'drawing' : 'text');
     setIsEditing(true);
     await fetchRecordings(note.id);
   };
@@ -161,12 +178,24 @@ export const NotesTab = () => {
         return;
       }
 
+      let noteType: 'text' | 'drawing' | 'mixed' = 'text';
+      if (editorType === 'drawing' && drawingData) {
+        noteType = 'drawing';
+      } else if (editorType === 'text' && newContent) {
+        noteType = 'text';
+      }
+      
+      const cleanContent = noteType === 'text' ? sanitizeHtml(newContent) : newContent;
+
       if (currentNote) {
         const { data, error } = await supabase
           .from("interpreter_notes")
           .update({
             title: newTitle,
-            content: newContent,
+            content: cleanContent,
+            color: noteColor,
+            drawing_data: drawingData || null,
+            note_type: noteType,
             updated_at: new Date().toISOString(),
           })
           .eq("id", currentNote.id)
@@ -188,8 +217,11 @@ export const NotesTab = () => {
           .from("interpreter_notes")
           .insert({
             title: newTitle,
-            content: newContent,
-            interpreter_id: authData.user.id
+            content: cleanContent,
+            interpreter_id: authData.user.id,
+            color: noteColor,
+            drawing_data: drawingData || null,
+            note_type: noteType
           })
           .select()
           .single();
@@ -501,6 +533,10 @@ export const NotesTab = () => {
     setAudioElement(audio);
   };
 
+  const handleEditorTypeChange = (type: 'text' | 'drawing') => {
+    setEditorType(type);
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -519,21 +555,59 @@ export const NotesTab = () => {
         </div>
       ) : isEditing ? (
         <div className="flex-1 flex flex-col">
-          <div className="mb-4">
+          <div className="mb-4 flex gap-3 items-center">
             <Input
               placeholder="Titre de la note"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="text-lg font-semibold"
+              className="text-lg font-semibold flex-1"
+            />
+            <ColorPicker 
+              selectedColor={noteColor} 
+              onChange={setNoteColor} 
             />
           </div>
-          <div className="flex-1 mb-4">
-            <Textarea
-              placeholder="Contenu de la note..."
-              value={newContent}
-              onChange={(e) => setNewContent(e.target.value)}
-              className="min-h-[200px] h-full"
-            />
+          
+          <div className="flex-1 mb-4 flex flex-col min-h-0">
+            <div className="flex items-center space-x-2 mb-2">
+              <Button
+                type="button"
+                variant={editorType === 'text' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleEditorTypeChange('text')}
+                className="gap-2"
+              >
+                <Type className="h-4 w-4" />
+                Texte
+              </Button>
+              <Button
+                type="button"
+                variant={editorType === 'drawing' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleEditorTypeChange('drawing')}
+                className="gap-2"
+              >
+                <PencilLine className="h-4 w-4" />
+                Dessin
+              </Button>
+            </div>
+            
+            <div className="flex-1 min-h-0">
+              {editorType === 'text' ? (
+                <RichTextEditor
+                  content={newContent}
+                  onChange={setNewContent}
+                  className="min-h-[200px] h-full"
+                  placeholder="Contenu de la note..."
+                />
+              ) : (
+                <DrawingCanvas
+                  onChange={setDrawingData}
+                  initialData={drawingData}
+                  className="min-h-[200px] h-full"
+                />
+              )}
+            </div>
           </div>
           
           <div className="mb-4 bg-muted/50 rounded-lg p-4">
@@ -636,7 +710,7 @@ export const NotesTab = () => {
                           onClick={() => playRecording(recording.file_path)}
                           className="p-1"
                         >
-                          <Play className="w-4 h-4" />
+                          <Play className="h-4 w-4" />
                         </Button>
                         <span className="ml-2">
                           {format(new Date(recording.created_at), 'dd/MM/yyyy HH:mm')}
@@ -699,7 +773,10 @@ export const NotesTab = () => {
                       exit={{ opacity: 0, scale: 0.9 }}
                       className="col-span-1"
                     >
-                      <Card className="h-full border-2 border-yellow-500/40 shadow-md hover:shadow-lg transition-shadow">
+                      <Card 
+                        className="h-full border-2 border-yellow-500/40 shadow-md hover:shadow-lg transition-shadow"
+                        style={getNoteColorStyles(note.color || 'transparent')}
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <CardTitle className="cursor-pointer" onClick={() => handleEditNote(note)}>
@@ -716,9 +793,19 @@ export const NotesTab = () => {
                           </div>
                         </CardHeader>
                         <CardContent className="pb-2">
-                          <p className="line-clamp-3 text-sm text-muted-foreground">
-                            {note.content || "Aucun contenu"}
-                          </p>
+                          {note.note_type === 'drawing' ? (
+                            <div className="flex justify-center items-center p-2 bg-muted/20 rounded">
+                              <Image className="h-5 w-5 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground ml-2">Dessin</span>
+                            </div>
+                          ) : (
+                            <div 
+                              className="line-clamp-3 text-sm text-muted-foreground"
+                              dangerouslySetInnerHTML={{ 
+                                __html: DOMPurify.sanitize(truncateHtml(note.content || "Aucun contenu")) 
+                              }}
+                            />
+                          )}
                         </CardContent>
                         <CardFooter className="flex justify-between pt-2">
                           <p className="text-xs text-muted-foreground">
@@ -754,7 +841,10 @@ export const NotesTab = () => {
                       exit={{ opacity: 0, scale: 0.9 }}
                       className="col-span-1"
                     >
-                      <Card className="h-full hover:shadow-md transition-shadow">
+                      <Card 
+                        className="h-full hover:shadow-md transition-shadow"
+                        style={getNoteColorStyles(note.color || 'transparent')}
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <CardTitle className="cursor-pointer" onClick={() => handleEditNote(note)}>
@@ -771,9 +861,19 @@ export const NotesTab = () => {
                           </div>
                         </CardHeader>
                         <CardContent className="pb-2">
-                          <p className="line-clamp-3 text-sm text-muted-foreground">
-                            {note.content || "Aucun contenu"}
-                          </p>
+                          {note.note_type === 'drawing' ? (
+                            <div className="flex justify-center items-center p-2 bg-muted/20 rounded">
+                              <Image className="h-5 w-5 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground ml-2">Dessin</span>
+                            </div>
+                          ) : (
+                            <div 
+                              className="line-clamp-3 text-sm text-muted-foreground"
+                              dangerouslySetInnerHTML={{ 
+                                __html: DOMPurify.sanitize(truncateHtml(note.content || "Aucun contenu")) 
+                              }}
+                            />
+                          )}
                         </CardContent>
                         <CardFooter className="flex justify-between pt-2">
                           <p className="text-xs text-muted-foreground">
@@ -824,7 +924,10 @@ export const NotesTab = () => {
                       exit={{ opacity: 0, scale: 0.9 }}
                       className="col-span-1"
                     >
-                      <Card className="h-full border-2 border-yellow-500/40 shadow-md hover:shadow-lg transition-shadow">
+                      <Card 
+                        className="h-full border-2 border-yellow-500/40 shadow-md hover:shadow-lg transition-shadow"
+                        style={getNoteColorStyles(note.color || 'transparent')}
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex justify-between items-start">
                             <CardTitle className="cursor-pointer" onClick={() => handleEditNote(note)}>
@@ -841,9 +944,19 @@ export const NotesTab = () => {
                           </div>
                         </CardHeader>
                         <CardContent className="pb-2">
-                          <p className="line-clamp-3 text-sm text-muted-foreground">
-                            {note.content || "Aucun contenu"}
-                          </p>
+                          {note.note_type === 'drawing' ? (
+                            <div className="flex justify-center items-center p-2 bg-muted/20 rounded">
+                              <Image className="h-5 w-5 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground ml-2">Dessin</span>
+                            </div>
+                          ) : (
+                            <div 
+                              className="line-clamp-3 text-sm text-muted-foreground"
+                              dangerouslySetInnerHTML={{ 
+                                __html: DOMPurify.sanitize(truncateHtml(note.content || "Aucun contenu")) 
+                              }}
+                            />
+                          )}
                         </CardContent>
                         <CardFooter className="flex justify-between pt-2">
                           <p className="text-xs text-muted-foreground">
