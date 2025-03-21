@@ -39,7 +39,7 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
   const { toast } = useToast();
   const lastUpdateRef = useRef<string | null>(null);
 
-  // Setup real-time subscription to status updates
+  // Setup real-time subscription to status updates using our improved hook
   useRealtimeSubscription(
     {
       event: 'UPDATE',

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -12,6 +11,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 type Status = Profile['status'];
 
@@ -71,40 +71,36 @@ export const InterpreterStatusDropdown = ({
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
 
-  // Setup real-time subscription to get status updates
-  useEffect(() => {
-    const channel = supabase.channel(`interpreter-status-${interpreterId}`)
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'interpreter_profiles',
-          filter: `id=eq.${interpreterId}`
-        },
-        (payload: any) => {
-          if (payload.new && payload.new.status) {
-            const newStatus = payload.new.status;
-            const updateId = `${newStatus}-${Date.now()}`;
-            
-            // Prevent duplicate updates
-            if (updateId === lastUpdateRef.current) return;
-            lastUpdateRef.current = updateId;
-            
-            console.log(`[InterpreterStatusDropdown] Received real-time status update for ${interpreterId}:`, newStatus);
-            
-            if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
-              setLocalStatus(newStatus as Status);
-            }
-          }
+  // Use the dedicated hook for realtime subscriptions
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      table: 'interpreter_profiles',
+      filter: `id=eq.${interpreterId}`
+    },
+    (payload) => {
+      if (payload.new && payload.new.status) {
+        const newStatus = payload.new.status;
+        const updateId = `${newStatus}-${Date.now()}`;
+        
+        // Prevent duplicate updates
+        if (updateId === lastUpdateRef.current) return;
+        lastUpdateRef.current = updateId;
+        
+        console.log(`[InterpreterStatusDropdown] Received real-time status update for ${interpreterId}:`, newStatus);
+        
+        if (['available', 'unavailable', 'pause', 'busy'].includes(newStatus)) {
+          setLocalStatus(newStatus as Status);
         }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [interpreterId]);
+      }
+    },
+    {
+      onError: (error) => {
+        console.error(`[InterpreterStatusDropdown] Realtime subscription error:`, error);
+      },
+      debugMode: true
+    }
+  );
 
   // Update local state when prop changes
   useEffect(() => {

@@ -92,16 +92,16 @@ export function useRealtimeSubscription(
         // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Configure the postgres_changes event with proper typing
+        // Fix TypeScript error by using type assertion
         channel.on(
-          'postgres_changes', 
+          'postgres_changes' as any, 
           { 
             event: config.event, 
             schema: config.schema || 'public', 
             table: config.table, 
             filter: config.filter 
           }, 
-          (payload) => {
+          (payload: RealtimePostgresChangesPayload<any>) => {
             // Generate a unique event ID for deduplication
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
