@@ -65,6 +65,7 @@ export const InterpreterStatusDropdown = ({
   const [isOpen, setIsOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -82,13 +83,19 @@ export const InterpreterStatusDropdown = ({
     if (!pendingStatus) return;
     
     try {
-      // Update interpreter status
+      setIsUpdating(true);
+      console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
+      
+      // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[InterpreterStatusDropdown] RPC error:', error);
+        throw error;
+      }
 
       toast({
         title: "Statut mis à jour",
@@ -104,6 +111,7 @@ export const InterpreterStatusDropdown = ({
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);
+      setIsUpdating(false);
     }
   };
 

@@ -89,19 +89,19 @@ export function useRealtimeSubscription(
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
         log(`Setting up new channel with name: ${channelName}`);
         
-        // Using the correct pattern for Supabase JS v2:
-        // First create the channel
+        // Create channel with properly typed config
         const channel = supabase.channel(channelName);
         
-        // Then set up event handlers using .on()
+        // Set up the postgres_changes subscription
+        // We need to use the correct event structure according to Supabase API
         channel.on(
-          'postgres_changes',
-          {
-            event: config.event,
-            schema: config.schema || 'public',
-            table: config.table,
-            filter: config.filter,
-          } as any, // Add type assertion to bypass the TypeScript error
+          'postgres_changes', 
+          { 
+            event: config.event, 
+            schema: config.schema || 'public', 
+            table: config.table, 
+            filter: config.filter 
+          }, 
           (payload: RealtimePostgresChangesPayload<any>) => {
             // Generate a unique event ID for deduplication
             const eventId = `${payload.eventType}-${
@@ -131,7 +131,7 @@ export function useRealtimeSubscription(
           }
         );
 
-        // Finally, subscribe to the channel
+        // Subscribe to the channel
         channelRef.current = channel.subscribe((status) => {
           log(`Subscription status for ${config.table}: ${status}`);
           

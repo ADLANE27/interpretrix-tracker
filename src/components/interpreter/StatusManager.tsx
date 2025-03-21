@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -30,7 +31,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
 
   // Get current user ID and set up real-time subscription
   useEffect(() => {
-    const setupSubscription = async () => {
+    const getCurrentUserId = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -39,35 +40,36 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
         }
 
         setUserId(user.id);
-
-        // Set up real-time subscription only after we have the user ID
-        const channel = supabase.channel('interpreter-status')
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'interpreter_profiles',
-            filter: `id=eq.${user.id}`
-          }, payload => {
-            console.log('[StatusManager] Status update received:', payload);
-            const newStatus = payload.new.status;
-            if (isValidStatus(newStatus)) {
-              setStatus(newStatus);
-            }
-          })
-          .subscribe(status => {
-            console.log('[StatusManager] Subscription status:', status);
-          });
-
-        return () => {
-          supabase.removeChannel(channel);
-        };
       } catch (error) {
-        console.error('[StatusManager] Error setting up subscription:', error);
+        console.error('[StatusManager] Error getting user:', error);
       }
     };
 
-    setupSubscription();
+    getCurrentUserId();
   }, []);
+
+  // Set up realtime subscription for status updates
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      table: 'interpreter_profiles',
+      filter: userId ? `id=eq.${userId}` : undefined
+    },
+    (payload) => {
+      console.log('[StatusManager] Status update received:', payload);
+      const newStatus = payload.new.status;
+      if (isValidStatus(newStatus)) {
+        setStatus(newStatus);
+      }
+    },
+    {
+      enabled: !!userId,
+      onError: (error) => {
+        console.error('[StatusManager] Error in realtime subscription:', error);
+      },
+      debugMode: true
+    }
+  );
 
   const isValidStatus = (status: string): status is Status => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);

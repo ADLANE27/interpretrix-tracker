@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -21,6 +21,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const statusConfig = {
     available: {
@@ -54,9 +55,10 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || currentStatus === newStatus) return;
+    if (!onStatusChange || currentStatus === newStatus || isUpdating) return;
     
     try {
+      setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
@@ -75,6 +77,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -98,12 +102,14 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
               isActive 
                 ? `bg-gradient-to-r ${config.color} text-white ${config.shadowColor} shadow-lg` 
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
-              "backdrop-blur-sm"
+              "backdrop-blur-sm",
+              isUpdating ? "opacity-70 cursor-not-allowed" : ""
             )}
             onClick={() => handleStatusChange(statusKey)}
             whileTap={{ scale: 0.95 }}
             animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
+            disabled={isUpdating}
           >
             <Icon className={cn(
               "flex-shrink-0",
