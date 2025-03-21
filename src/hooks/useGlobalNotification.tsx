@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,7 +6,7 @@ import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/notificationSound';
 import { AtSign, MessageSquare, Reply } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 
 const NOTIFICATION_TRANSLATIONS = {
   newMessage: {
@@ -37,8 +38,14 @@ const NOTIFICATION_TRANSLATIONS = {
 export const useGlobalNotification = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { permission, requestPermission, showNotification } = useBrowserNotification();
 
   useEffect(() => {
+    // Demander la permission dès le chargement du composant
+    if (permission !== 'granted') {
+      requestPermission();
+    }
+    
     console.log('[GlobalNotification] Setting up global notification listeners');
     
     const handleNewMessage = async (data: any) => {
@@ -49,6 +56,15 @@ export const useGlobalNotification = () => {
       console.log('[GlobalNotification] Is reply to user message:', data.isReplyToUserMessage);
       
       try {
+        const { data: userData } = await supabase.auth.getUser();
+        if (!userData.user) return;
+        
+        // Vérifier si ce message est envoyé par l'utilisateur actuel
+        if (data.message.sender_id === userData.user.id) {
+          console.log('[GlobalNotification] Skip notification for own message');
+          return;
+        }
+        
         const { data: senderData } = await supabase
           .rpc('get_message_sender_details', {
             sender_id: data.message.sender_id
@@ -79,11 +95,11 @@ export const useGlobalNotification = () => {
         const isReplyToUserMessage = Boolean(data.isReplyToUserMessage);
         console.log('[GlobalNotification] Is reply to user message:', isReplyToUserMessage);
         
-        let title, description, icon;
+        let title, description, icon, channelName = channelData?.name || 'un canal';
         
         if (hasMention) {
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
-          description = `${sender.name} vous a mentionné dans ${channelData?.name || 'un canal'}`;
+          description = `${sender.name} vous a mentionné dans ${channelName}`;
           icon = AtSign;
           console.log('[GlobalNotification] Using mention notification in French:', {
             title,
@@ -91,7 +107,7 @@ export const useGlobalNotification = () => {
           });
         } else if (isReplyToUserMessage) {
           title = NOTIFICATION_TRANSLATIONS.threadReplyNotice.fr;
-          description = `${sender.name} a répondu à votre message dans ${channelData?.name || 'un canal'}`;
+          description = `${sender.name} a répondu à votre message dans ${channelName}`;
           icon = Reply;
           console.log('[GlobalNotification] Using thread reply notification in French:', {
             title,
@@ -99,7 +115,7 @@ export const useGlobalNotification = () => {
           });
         } else {
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
-          description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
+          description = `${channelName}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
           icon = MessageSquare;
           console.log('[GlobalNotification] Using regular message notification in French');
         }
@@ -109,6 +125,17 @@ export const useGlobalNotification = () => {
           
           console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
           
+          // Déterminer le chemin de redirection en fonction du rôle de l'utilisateur
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userData.user.id)
+            .single();
+            
+          const userRole = roleData?.role;
+          const redirectPath = userRole === 'admin' ? '/admin/messages' : '/interpreter/messages';
+          
+          // Afficher une notification toast dans l'application
           toast({
             title: title,
             description: description,
@@ -116,7 +143,7 @@ export const useGlobalNotification = () => {
             action: (
               <button 
                 className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1.5"
-                onClick={() => navigate('/interpreter/messages')}
+                onClick={() => navigate(redirectPath)}
               >
                 {icon && React.createElement(icon, { className: "w-3 h-3" })}
                 {NOTIFICATION_TRANSLATIONS.viewButton.fr}
@@ -124,6 +151,19 @@ export const useGlobalNotification = () => {
             ),
             duration: 7000,
           });
+          
+          // Envoyer également une notification du navigateur si l'utilisateur a accordé la permission
+          if (permission === 'granted') {
+            showNotification(title, {
+              body: description,
+              tag: `message-${data.message.id}`,
+              icon: '/icon.svg',
+              data: {
+                url: redirectPath
+              },
+              requireInteraction: true
+            });
+          }
         }
       } catch (error) {
         console.error('[GlobalNotification] Error processing message notification:', error);
@@ -137,7 +177,7 @@ export const useGlobalNotification = () => {
       console.log('[GlobalNotification] Cleaning up global notification listeners');
       eventEmitter.off(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     };
-  }, [toast, navigate]);
+  }, [toast, navigate, permission, requestPermission, showNotification]);
   
   return null;
 };

@@ -97,6 +97,7 @@ const Chat = ({ channelId, userRole = 'admin' }: ChatProps) => {
   }, [channelId]);
 
   useEffect(() => {
+    // Demander la permission pour les notifications du navigateur
     requestPermission();
   }, [requestPermission]);
 
