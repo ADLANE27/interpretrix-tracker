@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { WelcomeContent } from "@/components/WelcomeContent";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button"; // Import the Button component
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
