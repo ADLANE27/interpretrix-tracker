@@ -302,7 +302,7 @@ export const InterpreterChat = ({
       if (inputRef.current) {
         inputRef.current.focus();
         const newPos = cursorPos + 1;
-        inputRef.current.selectionRange(newPos, newPos);
+        inputRef.current.setSelectionRange(newPos, newPos);
       }
     }, 0);
   };

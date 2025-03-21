@@ -1,5 +1,4 @@
-
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
@@ -8,7 +7,6 @@ import { playNotificationSound } from '@/utils/notificationSound';
 import { AtSign, MessageSquare, Reply } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-// Translation object for notification messages
 const NOTIFICATION_TRANSLATIONS = {
   newMessage: {
     fr: "Nouveau message de",
@@ -43,7 +41,6 @@ export const useGlobalNotification = () => {
   useEffect(() => {
     console.log('[GlobalNotification] Setting up global notification listeners');
     
-    // Listen for new message events
     const handleNewMessage = async (data: any) => {
       console.log('[GlobalNotification] New message received:', data);
       console.log('[GlobalNotification] Message mentions:', data.message.mentions);
@@ -52,7 +49,6 @@ export const useGlobalNotification = () => {
       console.log('[GlobalNotification] Is reply to user message:', data.isReplyToUserMessage);
       
       try {
-        // Get sender details to display in toast
         const { data: senderData } = await supabase
           .rpc('get_message_sender_details', {
             sender_id: data.message.sender_id
@@ -65,7 +61,6 @@ export const useGlobalNotification = () => {
           return;
         }
         
-        // Get channel name for context
         const { data: channelData } = await supabase
           .from('chat_channels')
           .select('name')
@@ -74,7 +69,6 @@ export const useGlobalNotification = () => {
           
         console.log('[GlobalNotification] Channel details:', channelData);
         
-        // Explicit check for mentions in different formats
         const hasMention = Boolean(data.isMention) || 
           (data.message.mentions && 
           Array.isArray(data.message.mentions) && 
@@ -82,15 +76,12 @@ export const useGlobalNotification = () => {
         
         console.log('[GlobalNotification] Has mention detected:', hasMention);
         
-        // Check for thread replies to user's messages
         const isReplyToUserMessage = Boolean(data.isReplyToUserMessage);
         console.log('[GlobalNotification] Is reply to user message:', isReplyToUserMessage);
         
         let title, description, icon;
         
-        // ALWAYS use French translations for notifications
         if (hasMention) {
-          // Explicitly use the French translations for mention notifications
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
           description = `${sender.name} vous a mentionné dans ${channelData?.name || 'un canal'}`;
           icon = AtSign;
@@ -99,7 +90,6 @@ export const useGlobalNotification = () => {
             description
           });
         } else if (isReplyToUserMessage) {
-          // Use French translations for thread reply notifications
           title = NOTIFICATION_TRANSLATIONS.threadReplyNotice.fr;
           description = `${sender.name} a répondu à votre message dans ${channelData?.name || 'un canal'}`;
           icon = Reply;
@@ -114,15 +104,11 @@ export const useGlobalNotification = () => {
           console.log('[GlobalNotification] Using regular message notification in French');
         }
         
-        // Only proceed with notification if it's a mention or reply to user message
         if (hasMention || isReplyToUserMessage) {
-          // Play sound notification
           await playNotificationSound();
           
-          // Show toast notification with French text
           console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
           
-          // Use the toast function with custom component for better visibility
           toast({
             title: title,
             description: description,
@@ -136,7 +122,7 @@ export const useGlobalNotification = () => {
                 {NOTIFICATION_TRANSLATIONS.viewButton.fr}
               </button>
             ),
-            duration: 7000, // Keep longer duration for better visibility
+            duration: 7000,
           });
         }
       } catch (error) {
@@ -144,16 +130,14 @@ export const useGlobalNotification = () => {
       }
     };
 
-    // Subscribe to new message events
     eventEmitter.on(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     console.log('[GlobalNotification] Successfully subscribed to new message events');
     
-    // Cleanup function
     return () => {
       console.log('[GlobalNotification] Cleaning up global notification listeners');
       eventEmitter.off(EVENT_NEW_MESSAGE_RECEIVED, handleNewMessage);
     };
   }, [toast, navigate]);
   
-  return null; // This hook doesn't return anything
+  return null;
 };
