@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -90,8 +91,16 @@ export const NotesTab = () => {
 
       if (notesError) throw notesError;
 
-      const pinned = notesData.filter(note => note.is_pinned);
-      const unpinned = notesData.filter(note => !note.is_pinned);
+      // Transform the data to ensure note_type field exists
+      const transformedNotes = notesData.map(note => ({
+        ...note,
+        note_type: note.note_type || (note.drawing_data ? 'drawing' : 'text'),
+        color: note.color || 'transparent',
+        drawing_data: note.drawing_data || null
+      })) as Note[];
+
+      const pinned = transformedNotes.filter(note => note.is_pinned);
+      const unpinned = transformedNotes.filter(note => !note.is_pinned);
       
       setPinnedNotes(pinned);
       setNotes(unpinned);
