@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Building, Headset, ChevronRight } from "lucide-react";
@@ -105,16 +106,6 @@ export const WelcomeContent = () => {
                 <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
-          </motion.div>
-          
-          {/* Copyright text - improved visibility and moved up */}
-          <motion.div
-            variants={item}
-            className="mt-6 px-4 mx-auto max-w-md"
-          >
-            <p className="text-xs text-slate-500 py-3 border-t border-slate-200 break-words">
-              Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.
-            </p>
           </motion.div>
           
           {/* Decorative Elements */}
