@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +25,7 @@ export function useRealtimeSubscription(
   const {
     enabled = true,
     retryInterval = 5000,
-    maxRetries = 5,
+    maxRetries = 3,
     onError,
     debugMode = false
   } = options;
@@ -47,7 +46,6 @@ export function useRealtimeSubscription(
     console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
   };
 
-  // Function to enable realtime for table via edge function
   const enableRealtimeForTable = async (tableName: string) => {
     try {
       log(`Enabling realtime for table ${tableName}`);
@@ -81,18 +79,13 @@ export function useRealtimeSubscription(
           channelRef.current = null;
         }
 
-        // First ensure realtime is enabled for this table
         await enableRealtimeForTable(config.table);
 
-        // Create a unique channel name based on the table, config and a unique ID
-        // This ensures we don't have conflicts with multiple subscriptions to the same table
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
         log(`Setting up new channel with name: ${channelName}`);
         
-        // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Fix TypeScript error by using type assertion
         channel.on(
           'postgres_changes' as any, 
           { 
@@ -102,25 +95,20 @@ export function useRealtimeSubscription(
             filter: config.filter 
           }, 
           (payload: RealtimePostgresChangesPayload<any>) => {
-            // Generate a unique event ID for deduplication
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 
               (payload.old as any)?.id : 
               (payload.new as any)?.id
             }-${payload.commit_timestamp}`;
             
-            // Skip if we've already seen this exact event
             if (seenEvents.current.has(eventId)) {
               log(`Skipping duplicate event: ${eventId}`);
               return;
             }
             
-            // Add to seen events set for deduplication
             seenEvents.current.add(eventId);
             
-            // Limit the size of the seen events set
             if (seenEvents.current.size > 100) {
-              // Convert to array, remove oldest entries
               const eventsArray = Array.from(seenEvents.current);
               seenEvents.current = new Set(eventsArray.slice(-50));
             }
@@ -130,7 +118,6 @@ export function useRealtimeSubscription(
           }
         );
 
-        // Subscribe to the channel
         channelRef.current = channel.subscribe((status) => {
           log(`Subscription status for ${config.table}: ${status}`);
           
@@ -142,7 +129,7 @@ export function useRealtimeSubscription(
             
             if (retryCountRef.current < maxRetries) {
               const currentRetry = retryCountRef.current + 1;
-              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1); // Exponential backoff
+              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1);
               log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
               retryCountRef.current = currentRetry;
               timeoutId = setTimeout(setupChannel, delayMs);
