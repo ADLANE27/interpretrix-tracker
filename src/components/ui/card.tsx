@@ -15,19 +15,24 @@ const Card = React.forwardRef<
 >(({ className, asMotion = false, motionProps, ...props }, ref) => {
   if (asMotion) {
     // We need to separate React DOM props from Framer Motion props
-    // Extract any Framer-specific event handlers that might conflict
-    const { onDrag, onDragStart, onDragEnd, ...restProps } = props;
+    // Extract ALL potential conflicting animation and drag event handlers
+    const {
+      onDrag, onDragStart, onDragEnd,
+      onAnimationStart, onAnimationComplete,
+      ...restProps
+    } = props;
     
+    // Cast the ref to avoid TypeScript errors with framer-motion
     return (
       <motion.div
-        ref={ref as React.Ref<HTMLDivElement>}
+        ref={ref as any}
         className={cn(
           "rounded-xl border bg-white/80 dark:bg-gray-800/80 text-card-foreground shadow-md hover:shadow-xl backdrop-blur-sm transition-all duration-300",
           className
         )}
-        // Only apply compatible props
+        // Only apply compatible props 
         {...restProps}
-        // Apply motion-specific props, which will correctly handle onDrag, etc.
+        // Apply motion-specific props, which will correctly handle all event handlers
         {...(motionProps || {})}
       />
     )
