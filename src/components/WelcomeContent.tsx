@@ -59,7 +59,7 @@ export const WelcomeContent = () => {
             <img 
               src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
               alt="Logo" 
-              className="h-32 md:h-48 mx-auto" 
+              className="h-40 md:h-64 mx-auto" 
             />
           </motion.div>
           
