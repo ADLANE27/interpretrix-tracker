@@ -12,6 +12,7 @@ interface DrawingCanvasProps {
 
 export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [drawing, setDrawing] = useState<boolean>(false);
   const [erasing, setErasing] = useState<boolean>(false);
@@ -19,21 +20,18 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
 
   // Helper function to resize canvas
   const resizeCanvas = () => {
-    if (canvas && canvasRef.current) {
-      const parent = canvasRef.current.parentElement;
-      if (parent) {
-        const width = parent.clientWidth;
-        const height = parent.clientHeight;
-        
-        canvas.setDimensions({ width, height });
-        canvas.renderAll();
-      }
+    if (canvas && containerRef.current) {
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      
+      canvas.setDimensions({ width, height });
+      canvas.renderAll();
     }
   };
 
   // Initialize canvas
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !containerRef.current) return;
 
     const newCanvas = new fabric.Canvas(canvasRef.current, {
       isDrawingMode: true,
@@ -63,8 +61,8 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
     };
 
     window.addEventListener("resize", handleResize);
-    // Initial resize after a short delay to ensure parent has proper dimensions
-    setTimeout(resizeCanvas, 200);
+    // Initial resize after a delay to ensure parent has proper dimensions
+    setTimeout(resizeCanvas, 300);
 
     // Set up onChange handler
     const handleCanvasChange = () => {
@@ -155,7 +153,7 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
   ];
 
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div className={`flex flex-col h-full ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2 bg-muted/50 p-2 rounded-md">
         <div className="flex items-center gap-1">
           <Button
@@ -219,8 +217,8 @@ export const DrawingCanvas = ({ onChange, initialData, className }: DrawingCanva
         </div>
       </div>
 
-      <div className="flex-1 relative w-full h-full bg-background">
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+      <div ref={containerRef} className="flex-1 relative w-full h-full overflow-hidden">
+        <canvas ref={canvasRef} className="absolute inset-0" />
       </div>
     </div>
   );
