@@ -107,7 +107,8 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            (payload: RealtimePostgresChangesPayload<any>) => {
+            // Mark this callback as async since it uses await
+            async (payload: RealtimePostgresChangesPayload<any>) => {
               if (!isSubscribed) return;
               
               const eventId = `${payload.eventType}-${
