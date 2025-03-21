@@ -36,6 +36,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null);
   const { observeMessage } = useMessageVisibility(channelId);
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,7 +75,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     
     return (
       currentDate.getDate() !== previousDate.getDate() ||
-      currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
+      currentDate.getMonth() !== previousDate.getMonth() ||
       currentDate.getFullYear() !== previousDate.getFullYear()
     );
   };
@@ -105,16 +106,47 @@ export const MessageList: React.FC<MessageListProps> = ({
     });
   };
 
-  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
-    const threadId = message.parent_message_id || message.id;
-    if (!acc[threadId]) {
-      acc[threadId] = [];
-    }
-    acc[threadId].push(message);
-    return acc;
-  }, {});
+  // Organize messages into threads
+  const processMessages = () => {
+    // Group messages by their parent or their own ID if they're a root message
+    const messageThreads: { [key: string]: Message[] } = {};
+    const displayMessages: Message[] = [];
+    const processedIds = new Set<string>();
 
-  const rootMessages = messages.filter(message => !message.parent_message_id);
+    // First pass: organize messages into thread groups
+    messages.forEach(message => {
+      const threadId = message.parent_message_id || message.id;
+      if (!messageThreads[threadId]) {
+        messageThreads[threadId] = [];
+      }
+      messageThreads[threadId].push(message);
+    });
+
+    // Second pass: add root messages and their replies to displayMessages
+    messages.forEach(message => {
+      if (processedIds.has(message.id)) return;
+
+      // If it's a root message (no parent) or its parent doesn't exist in our messages array
+      if (!message.parent_message_id || !messageThreads[message.parent_message_id]) {
+        displayMessages.push(message);
+        processedIds.add(message.id);
+
+        // If this message has replies, don't add them to the main display
+        // They'll be shown in the thread view
+        if (messageThreads[message.id] && messageThreads[message.id].length > 1) {
+          messageThreads[message.id].forEach(reply => {
+            if (reply.id !== message.id) {
+              processedIds.add(reply.id);
+            }
+          });
+        }
+      }
+    });
+
+    return { displayMessages, messageThreads };
+  };
+
+  const { displayMessages, messageThreads } = processMessages();
 
   const renderReactions = (message: Message) => {
     if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
@@ -139,8 +171,12 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   };
 
-  const renderMessage = (message: Message, index: number, isThreadReply = false) => {
-    const previousMessage = index > 0 ? messages[index - 1] : undefined;
+  const handleEmojiSelect = (messageId: string, emoji: any) => {
+    onReactToMessage(messageId, emoji.native);
+    setOpenEmojiPickerId(null);
+  };
+
+  const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
     const showSender = shouldShowSender(message, previousMessage);
     const isSelfMessage = message.sender.id === currentUserId;
 
@@ -156,7 +192,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         }`}
       >
         {/* Show date separator if needed */}
-        {!isThreadReply && shouldShowDate(message, previousMessage) && (
+        {!isThreadReply && index > 0 && shouldShowDate(message, previousMessage) && (
           <div className="flex justify-center my-4">
             <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium">
               {formatMessageDate(message.timestamp)}
@@ -217,7 +253,16 @@ export const MessageList: React.FC<MessageListProps> = ({
             <div className={`flex items-center gap-1 mt-1 ${
               hoveredMessageId === message.id || isMobile ? 'opacity-100' : 'opacity-0'
             } transition-opacity`}>
-              <Popover>
+              <Popover 
+                open={openEmojiPickerId === message.id}
+                onOpenChange={(open) => {
+                  if (open) {
+                    setOpenEmojiPickerId(message.id);
+                  } else {
+                    setOpenEmojiPickerId(null);
+                  }
+                }}
+              >
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
@@ -230,9 +275,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
                   <Picker 
                     data={data} 
-                    onEmojiSelect={(emoji: any) => {
-                      onReactToMessage(message.id, emoji.native);
-                    }}
+                    onEmojiSelect={(emoji: any) => handleEmojiSelect(message.id, emoji)}
                     theme={theme === 'dark' ? 'dark' : 'light'}
                     previewPosition="none"
                     skinTonePosition="none"
@@ -287,7 +330,12 @@ export const MessageList: React.FC<MessageListProps> = ({
               <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
                 {messageThreads[message.id]
                   .filter(reply => reply.id !== message.id)
-                  .map(reply => renderMessage(reply, -1, true))}
+                  .map((reply, idx, replies) => renderMessage(
+                    reply, 
+                    idx, 
+                    true, 
+                    idx > 0 ? replies[idx - 1] : undefined
+                  ))}
               </div>
             )}
           </div>
@@ -299,9 +347,9 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {messages.map((message, index) => (
+        {displayMessages.map((message, index) => (
           <React.Fragment key={message.id}>
-            {renderMessage(message, index)}
+            {renderMessage(message, index, false, index > 0 ? displayMessages[index - 1] : undefined)}
           </React.Fragment>
         ))}
       </div>
