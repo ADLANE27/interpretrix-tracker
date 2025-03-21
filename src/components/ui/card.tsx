@@ -1,7 +1,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { motion, HTMLMotionProps } from "framer-motion"
+import { motion, HTMLMotionProps, AnimationDefinition } from "framer-motion"
 
 // Create a specialized type for our Card component when used with motion
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -14,13 +14,14 @@ const Card = React.forwardRef<
   CardProps
 >(({ className, asMotion = false, motionProps, ...props }, ref) => {
   if (asMotion) {
-    // We need to separate React DOM props from Framer Motion props
-    // Extract ALL potential conflicting animation and drag event handlers
-    const {
+    // For TypeScript's benefit, we're not actually extracting these props from the props object
+    // We're just telling TypeScript that we know what we're doing and these props won't be passed to motion.div
+    const { 
       onDrag, onDragStart, onDragEnd,
-      onAnimationStart, onAnimationComplete,
-      ...restProps
-    } = props;
+      // These are React animation event handlers, not Framer Motion ones
+      onAnimationStart, onAnimationComplete, onAnimationEnd, onAnimationIteration,
+      ...restProps 
+    } = props as any; // Use type assertion to satisfy TypeScript
     
     // Cast the ref to avoid TypeScript errors with framer-motion
     return (
