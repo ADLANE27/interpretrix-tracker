@@ -192,7 +192,7 @@ export const AdminLoginForm = () => {
             <motion.img 
               src="/lovable-uploads/ee99dcb2-dbd6-4573-9c75-84eb06cfcaa9.png"
               alt="Interpretix Logo"
-              className="h-full object-contain"
+              className="h-full object-contain bg-transparent"
               initial={{ filter: "brightness(1)" }}
               animate={{ 
                 filter: ["brightness(1)", "brightness(1.2)", "brightness(1)"],
