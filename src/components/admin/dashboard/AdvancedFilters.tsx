@@ -72,7 +72,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 relative z-10">
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -102,7 +102,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               </div>
             </div>
 
-            <div className="space-y-2 relative">
+            <div className="space-y-2 relative z-50">
               <Label htmlFor="language">Langue</Label>
               <div className="relative">
                 <LanguageCombobox 
@@ -123,7 +123,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
             <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative z-40">
               <Label htmlFor="employment-status">Statut professionnel</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -132,7 +132,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0 z-[400]" align="start">
+                <PopoverContent className="w-full p-0 z-[9000]" align="start">
                   <div className="p-2">
                     <div className="flex items-center space-x-2 pb-2">
                       <Checkbox id="select-all-statuses" checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length} onCheckedChange={checked => {
@@ -160,13 +160,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               </Popover>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative z-30">
               <Label htmlFor="rate-sort">Trier par tarif</Label>
               <Select value={rateSort} onValueChange={setRateSort}>
                 <SelectTrigger id="rate-sort">
                   <SelectValue placeholder="Trier par tarif" />
                 </SelectTrigger>
-                <SelectContent className="z-[400]">
+                <SelectContent className="z-[9000]">
                   <SelectItem value="none">Pas de tri</SelectItem>
                   <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
                 </SelectContent>

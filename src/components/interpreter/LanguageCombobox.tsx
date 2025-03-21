@@ -129,7 +129,7 @@ export function LanguageCombobox({
 
       {isOpen && (
         <div 
-          className="absolute z-[500] w-full mt-1 bg-popover border rounded-md shadow-lg"
+          className="absolute z-[9999] w-full mt-1 bg-popover border rounded-md shadow-lg"
           style={{ maxHeight: "350px", overflow: "hidden" }}
         >
           <ScrollArea className="h-72 w-full">
