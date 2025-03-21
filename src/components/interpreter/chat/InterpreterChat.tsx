@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat } from "@/hooks/useChat";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -14,6 +15,7 @@ import { StatusManager } from "@/components/interpreter/StatusManager";
 import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -240,18 +242,21 @@ export const InterpreterChat = ({
           />
         </div>
         
+        {isMobile && profile && onStatusChange && (
+          <div className="pb-3 w-full overflow-visible">
+            <StatusManager currentStatus={profile.status} onStatusChange={onStatusChange} />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">Chargement des messages...</p>
+            <LoadingSpinner size="lg" text="Chargement des messages..." />
           </div>
         ) : !isSubscribed ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
-            <p className="text-lg font-semibold">
-              Connexion en cours...
-            </p>
+            <LoadingSpinner size="md" text="Connexion en cours..." />
           </div>
         ) : null}
         <MessageList
@@ -279,3 +284,4 @@ export const InterpreterChat = ({
     </div>
   );
 };
+
