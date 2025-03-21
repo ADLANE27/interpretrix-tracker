@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,7 +143,7 @@ export const AdminLoginForm = () => {
           initial="initial"
           animate="animate"
           variants={logoVariants}
-          className="flex justify-center mb-4 items-center gap-4"
+          className="flex justify-center mb-4 items-center"
         >
           <div className="relative">
             <motion.div
@@ -157,9 +156,9 @@ export const AdminLoginForm = () => {
                 repeat: Infinity,
                 repeatType: "loop"
               }}
-              className="w-12 h-12 text-yellow-500"
+              className="w-14 h-14 text-yellow-500"
             >
-              <Clock size={48} className="text-yellow-500" />
+              <Clock size={54} className="text-yellow-500" />
             </motion.div>
             <motion.div
               initial={{ opacity: 0 }}
@@ -174,47 +173,9 @@ export const AdminLoginForm = () => {
               }}
               className="absolute -right-2 -top-2"
             >
-              <Calendar className="w-5 h-5 text-palette-bright-orange" />
+              <Calendar className="w-6 h-6 text-palette-bright-orange" />
             </motion.div>
           </div>
-          
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ 
-              delay: 0.3,
-              duration: 0.8,
-              type: "spring",
-              stiffness: 100
-            }}
-            className="relative h-20"
-          >
-            <motion.img 
-              src="/lovable-uploads/ee99dcb2-dbd6-4573-9c75-84eb06cfcaa9.png"
-              alt="Interpretix Logo"
-              className="h-full object-contain bg-transparent"
-              initial={{ filter: "brightness(1)" }}
-              animate={{ 
-                filter: ["brightness(1)", "brightness(1.2)", "brightness(1)"],
-                scale: [1, 1.03, 1]
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                repeatType: "loop"
-              }}
-            />
-            <motion.div
-              className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-yellow-500 to-palette-bright-orange"
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ 
-                delay: 0.6, 
-                duration: 0.8,
-                ease: "easeOut"
-              }}
-            />
-          </motion.div>
         </motion.div>
         
         <motion.div
