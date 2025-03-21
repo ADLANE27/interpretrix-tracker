@@ -3,9 +3,12 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 import { motion, HTMLMotionProps } from "framer-motion"
 
+// Create a more specific type for motionProps to avoid conflicts
+type MotionDivProps = Omit<HTMLMotionProps<"div">, "className" | "children">;
+
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asMotion?: boolean;
-  motionProps?: Omit<HTMLMotionProps<"div">, "className" | "children" | "ref">;
+  motionProps?: MotionDivProps;
 }
 
 const Card = React.forwardRef<
@@ -15,12 +18,14 @@ const Card = React.forwardRef<
   if (asMotion) {
     return (
       <motion.div
-        ref={ref as any}
+        // Cast the ref to any to bypass the TypeScript checking
+        ref={ref as React.Ref<HTMLDivElement>}
         className={cn(
           "rounded-xl border bg-white/80 dark:bg-gray-800/80 text-card-foreground shadow-md hover:shadow-xl backdrop-blur-sm transition-all duration-300",
           className
         )}
-        {...motionProps}
+        // Spread motionProps and props separately to avoid type conflicts
+        {...(motionProps || {})}
         {...props}
       />
     )
