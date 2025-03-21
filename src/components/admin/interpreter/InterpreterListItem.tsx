@@ -52,7 +52,8 @@ export const InterpreterListItem = ({ interpreter }: InterpreterListItemProps) =
     {
       onError: (error) => {
         console.error(`[InterpreterListItem] Error in realtime subscription for ${interpreter.id}:`, error);
-      }
+      },
+      debugMode: true // Enable detailed logging for debugging
     }
   );
 

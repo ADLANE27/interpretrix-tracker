@@ -4,6 +4,7 @@ import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -19,6 +20,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   variant = 'default'
 }) => {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   const statusConfig = {
     available: {
@@ -55,10 +57,24 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     if (!onStatusChange || currentStatus === newStatus) return;
     
     try {
+      console.log('[StatusButtonsBar] Changing status to:', newStatus);
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
+      
+      // Show success toast
+      toast({
+        title: "Statut mis à jour",
+        description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
+      });
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
+      
+      // Show error toast
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
+        variant: "destructive",
+      });
     }
   };
 
