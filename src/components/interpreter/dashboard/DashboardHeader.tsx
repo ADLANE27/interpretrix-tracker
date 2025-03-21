@@ -77,7 +77,7 @@ export const DashboardHeader = ({
       </div>
       
       {showStatusButtons && (
-        <div className="pb-2 md:pb-3 md:py-2 w-full overflow-visible">
+        <div className="pb-2 md:pb-3 md:py-2 w-full overflow-visible StatusButtonsBar-in-header">
           <StatusButtonsBar 
             currentStatus={profile?.status} 
             onStatusChange={onStatusChange}

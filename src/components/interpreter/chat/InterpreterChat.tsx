@@ -224,6 +224,9 @@ export const InterpreterChat = ({
     setChatMembers(Array.from(uniqueMembers.values()));
   }, [messages, currentUserId]);
 
+  const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
+  const statusButtonsInHeader = document.querySelector('.StatusButtonsBar-in-header') !== null;
+
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -261,16 +264,6 @@ export const InterpreterChat = ({
             </Button>
           </ChannelMembersPopover>
         </div>
-        
-        {isMobile && profile && onStatusChange && orientation === "portrait" && (
-          <div className="pb-3 w-full overflow-visible">
-            <StatusButtonsBar 
-              currentStatus={profile.status}
-              onStatusChange={onStatusChange}
-              variant="compact"
-            />
-          </div>
-        )}
       </motion.div>
 
       <div 
