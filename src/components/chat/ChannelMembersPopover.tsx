@@ -19,6 +19,7 @@ interface ChannelMembersPopoverProps {
   channelName: string;
   channelType: 'group' | 'direct';
   userRole: 'admin' | 'interpreter';
+  children?: React.ReactNode;
 }
 
 export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
@@ -26,14 +27,12 @@ export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
   channelName,
   channelType,
   userRole,
+  children
 }) => {
   const isMobile = useIsMobile();
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(channelName);
   const [isOpen, setIsOpen] = useState(false);
-
-  // Debug log
-  console.log('ChannelMembersPopover props:', { channelId, channelName, channelType, userRole });
 
   const handleRename = async () => {
     if (!newName.trim()) return;
@@ -100,36 +99,55 @@ export const ChannelMembersPopover: React.FC<ChannelMembersPopoverProps> = ({
         </div>
       )}
 
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="whitespace-nowrap"
-          >
-            <Users className="h-4 w-4 mr-2" />
-            {!isMobile && "Participants"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-4" align="end">
-          <div className="space-y-4">
-            <h3 className="font-semibold">{channelName}</h3>
+      {/* Only show participants button for admin users or use the provided children */}
+      {userRole === 'admin' ? (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              {!isMobile && "Participants"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4" align="end">
+            <div className="space-y-4">
+              <h3 className="font-semibold">{channelName}</h3>
 
-            <MemberList 
-              channelId={channelId}
-              channelType={channelType}
-              userRole={userRole}
-            />
-            
-            {userRole === 'admin' && channelType === 'group' && (
-              <>
-                <div className="h-px bg-border" />
-                <AvailableUsersList channelId={channelId} />
-              </>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+              <MemberList 
+                channelId={channelId}
+                channelType={channelType}
+                userRole={userRole}
+              />
+              
+              {userRole === 'admin' && channelType === 'group' && (
+                <>
+                  <div className="h-px bg-border" />
+                  <AvailableUsersList channelId={channelId} />
+                </>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : children ? (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            {children}
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-4" align="end">
+            <div className="space-y-4">
+              <h3 className="font-semibold">{channelName}</h3>
+              <MemberList 
+                channelId={channelId}
+                channelType={channelType}
+                userRole={userRole}
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : null}
     </div>
   );
 };

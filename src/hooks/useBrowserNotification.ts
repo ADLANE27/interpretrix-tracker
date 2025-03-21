@@ -53,6 +53,9 @@ export const useBrowserNotification = (test = false) => {
 
       notification.onclick = () => {
         window.focus();
+        if (options?.data?.url) {
+          window.location.href = options.data.url;
+        }
         notification.close();
       };
     } catch (error) {

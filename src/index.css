@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -23,7 +24,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 262.1 83.3% 57.8%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -33,8 +34,8 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 40% 98%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
@@ -45,7 +46,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --ring: 263.4 70% 50.4%;
   }
 }
 
@@ -128,7 +129,21 @@
     touch-action: manipulation;
   }
 
-  /* New color utility classes */
+  /* Glass morphism styles */
+  .glass-card {
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-lg;
+  }
+  
+  .glass-navbar {
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50;
+  }
+  
+  .glass-button {
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200/70 dark:border-gray-700/50 
+    hover:bg-white/100 dark:hover:bg-gray-700/100 transition-colors;
+  }
+
+  /* Gradient styles */
   .gradient-border {
     @apply border-l-4 border-l-palette-ocean-blue hover:border-l-palette-vivid-purple transition-colors;
   }
@@ -145,7 +160,7 @@
     @apply transition-all hover:shadow-lg hover:-translate-y-1;
   }
 
-  /* New text gradient styles */
+  /* Text gradient styles */
   .text-gradient-primary {
     @apply bg-gradient-to-r from-palette-vivid-purple to-palette-ocean-blue bg-clip-text text-transparent;
   }

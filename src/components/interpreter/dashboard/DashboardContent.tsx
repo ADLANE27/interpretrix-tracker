@@ -1,11 +1,12 @@
 
-import { Card } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MissionsTab } from "../MissionsTab";
 import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
+import { TerminologyTab } from "../TerminologyTab";
 import { Profile } from "@/types/profile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -28,6 +29,8 @@ export const DashboardContent = ({
   onStatusChange,
   onMenuClick
 }: DashboardContentProps) => {
+  const isMobile = useIsMobile();
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "missions":
@@ -45,13 +48,15 @@ export const DashboardContent = ({
         );
       case "calendar":
         return <MissionsCalendar missions={scheduledMissions} />;
+      case "terminology":
+        return <TerminologyTab userId={profile?.id} />;
       default:
         return <MissionsTab />;
     }
   };
 
   return (
-    <div className="flex-1 overflow-auto h-full">
+    <div className="flex-1 overflow-auto h-full pb-16">
       <div className="container mx-auto p-0 h-full">
         <AnimatePresence mode="wait">
           <motion.div
@@ -62,11 +67,14 @@ export const DashboardContent = ({
             transition={{ duration: 0.15 }}
             className="w-full h-full"
           >
-            <Card className="shadow-sm border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm h-full rounded-none sm:border sm:rounded-xl">
-              <div className="p-3 sm:p-4 md:p-6 h-full overflow-auto">
-                {renderActiveTab()}
-              </div>
-            </Card>
+            <div className={`
+              ${isMobile ? 'p-2 sm:p-3' : 'p-4 md:p-6'} 
+              h-full overflow-auto
+              bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/70
+              backdrop-blur-sm rounded-md shadow-sm
+            `}>
+              {renderActiveTab()}
+            </div>
           </motion.div>
         </AnimatePresence>
       </div>

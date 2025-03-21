@@ -32,36 +32,6 @@ const Admin = () => {
           navigate('/admin/login');
           return;
         }
-
-        // Log for debugging
-        console.log('Admin authenticated, checking for unread mentions');
-
-        // Mark unread mentions as read when admin enters the dashboard
-        const { data: unreadMentions, error: fetchError } = await supabase
-          .from('message_mentions')
-          .select('id, status')
-          .eq('mentioned_user_id', user.id)
-          .eq('status', 'unread');
-          
-        if (fetchError) {
-          console.error('Error fetching unread mentions:', fetchError);
-        } else {
-          console.log(`Found ${unreadMentions?.length || 0} unread mentions for admin:`, user.id);
-          
-          if (unreadMentions && unreadMentions.length > 0) {
-            const { error: updateError } = await supabase
-              .from('message_mentions')
-              .update({ status: 'read' })
-              .eq('mentioned_user_id', user.id)
-              .eq('status', 'unread');
-  
-            if (updateError) {
-              console.error('Error marking mentions as read:', updateError);
-            } else {
-              console.log(`Successfully marked ${unreadMentions.length} mentions as read`);
-            }
-          }
-        }
       } catch (error) {
         console.error('Auth check error:', error);
         navigate('/admin/login');
@@ -82,7 +52,7 @@ const Admin = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate, toast]);
+  }, [navigate]);
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">

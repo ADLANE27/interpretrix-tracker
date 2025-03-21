@@ -4,7 +4,6 @@ import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Profile } from "@/types/profile";
-import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 
 interface MessagingTabProps {
   profile?: Profile | null;
@@ -16,33 +15,25 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>({});
   const isMobile = useIsMobile();
-  const { refreshMentions } = useUnreadMentions();
+
+  useEffect(() => {
+    // Set a data attribute to help identify we're in messages tab
+    document.body.setAttribute('data-in-messages-tab', 'true');
+    
+    return () => {
+      document.body.removeAttribute('data-in-messages-tab');
+      document.body.removeAttribute('data-in-chat');
+    };
+  }, []);
 
   const handleClearFilters = () => {
     setFilters({});
   };
 
-  // Refresh mentions initially to ensure badge counts are up to date
-  useEffect(() => {
-    console.log('[MessagingTab] Initial mention refresh');
-    refreshMentions();
-    
-    // Set up a periodic refresh for mentions
-    const intervalId = setInterval(() => {
-      console.log('[MessagingTab] Periodic mention refresh');
-      refreshMentions();
-    }, 20000); // Every 20 seconds to match admin refresh rate
-    
-    return () => {
-      console.log('[MessagingTab] Cleaning up refresh interval');
-      clearInterval(intervalId);
-    };
-  }, [refreshMentions]);
-
   return (
     <div className="flex h-full">
       {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6`}>
+        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full`}>
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />

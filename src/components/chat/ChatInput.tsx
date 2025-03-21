@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Message } from "@/types/messaging";
@@ -12,8 +11,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMessageFormatter } from "@/hooks/chat/useMessageFormatter";
 import { MemberSuggestion, Suggestion } from "@/types/messaging";
 import { debounce } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { playNotificationSound } from "@/utils/notificationSound";
 
 interface ChatInputProps {
   message: string;
@@ -25,6 +22,7 @@ interface ChatInputProps {
   inputRef: React.RefObject<HTMLTextAreaElement>;
   replyTo: Message | null;
   setReplyTo: (message: Message | null) => void;
+  style?: React.CSSProperties;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -37,8 +35,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   inputRef,
   replyTo,
   setReplyTo,
+  style,
 }) => {
-  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [mentionSuggestionsVisible, setMentionSuggestionsVisible] = useState(false);
@@ -97,69 +95,103 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setIsLoadingSuggestions(true);
       console.log("Fetching suggestions for", searchTerm, "in channel", channelId);
       
-      const { data: channelMembers, error: membersError } = await supabase
-        .rpc('get_channel_members', { channel_id: channelId });
-        
+      const { data: members, error: membersError } = await supabase
+        .from('channel_members')
+        .select(`
+          user_id
+        `)
+        .eq('channel_id', channelId);
+
       if (membersError) {
-        console.error('Error fetching channel members via RPC:', membersError);
+        console.error('Error fetching channel members:', membersError);
         setIsLoadingSuggestions(false);
         return;
       }
       
-      if (!channelMembers || channelMembers.length === 0) {
+      if (!members || members.length === 0) {
         console.log("No members found in channel");
         setSuggestions([]);
         setIsLoadingSuggestions(false);
         return;
       }
       
-      const adminMembers = channelMembers.filter(member => member.role === 'admin');
-      const interpreterMembers = channelMembers.filter(member => member.role === 'interpreter');
+      const memberIds = members.map(m => m.user_id);
       
-      const interpreterSuggestions: MemberSuggestion[] = interpreterMembers.map(interpreter => ({
-        id: interpreter.user_id,
-        name: `${interpreter.first_name} ${interpreter.last_name}`,
-        email: interpreter.email,
-        role: 'interpreter' as 'interpreter'
-      }));
+      const { data: interpreters, error: interpretersError } = await supabase
+        .from('interpreter_profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email,
+          profile_picture_url
+        `)
+        .in('id', memberIds);
       
-      const adminSuggestions: MemberSuggestion[] = adminMembers.map(admin => ({
-        id: admin.user_id,
-        name: `${admin.first_name} ${admin.last_name}`,
-        email: admin.email,
-        role: 'admin' as 'admin'
-      }));
-      
-      const allSuggestions = [...interpreterSuggestions, ...adminSuggestions];
-      
-      if (interpreterMembers.length > 0) {
-        const interpreterIds = interpreterMembers.map(m => m.user_id);
-        
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('interpreter_profiles')
-          .select('id, profile_picture_url')
-          .in('id', interpreterIds);
-          
-        if (!profilesError && profilesData) {
-          const pictureMap = new Map(
-            profilesData.map(profile => [profile.id, profile.profile_picture_url])
-          );
-          
-          allSuggestions.forEach(suggestion => {
-            if (suggestion.role === 'interpreter' && pictureMap.has(suggestion.id)) {
-              suggestion.avatarUrl = pictureMap.get(suggestion.id) || undefined;
-            }
-          });
-        }
+      const { data: admins, error: adminsError } = await supabase
+        .from('admin_profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          email
+        `)
+        .in('id', memberIds);
+
+      if (interpretersError) {
+        console.error('Error fetching interpreter profiles:', interpretersError);
       }
+
+      if (adminsError) {
+        console.error('Error fetching admin profiles:', adminsError);
+      }
+
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', memberIds);
+
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+      }
+
+      const roleMap = new Map<string, 'admin' | 'interpreter'>();
+      if (userRoles) {
+        userRoles.forEach(ur => {
+          roleMap.set(ur.user_id, ur.role as 'admin' | 'interpreter');
+        });
+      }
+
+      const interpreterSuggestions: MemberSuggestion[] = (interpreters || []).map(profile => {
+        const name = `${profile.first_name} ${profile.last_name}`;
+        return {
+          id: profile.id,
+          name,
+          email: profile.email,
+          role: roleMap.get(profile.id) || 'interpreter',
+          avatarUrl: profile.profile_picture_url || undefined
+        };
+      });
+
+      const adminSuggestions: MemberSuggestion[] = (admins || []).map(profile => {
+        const name = `${profile.first_name} ${profile.last_name}`;
+        return {
+          id: profile.id,
+          name,
+          email: profile.email,
+          role: roleMap.get(profile.id) || 'admin'
+        };
+      });
+
+      const combinedSuggestions = [...interpreterSuggestions, ...adminSuggestions];
       
       const filteredSuggestions = searchTerm 
-        ? allSuggestions.filter(suggestion => {
+        ? combinedSuggestions.filter(suggestion => {
             const normalizedName = suggestion.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const normalizedSearch = searchTerm.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return normalizedName.includes(normalizedSearch);
           })
-        : allSuggestions;
+        : combinedSuggestions;
       
       console.log("Found suggestions:", filteredSuggestions.length);
       setSuggestions(filteredSuggestions);
@@ -226,7 +258,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   }, [inputRef]);
 
   return (
-    <div className="p-3 bg-white dark:bg-gray-900">
+    <div className="p-3 bg-white dark:bg-gray-900" style={style}>
       {replyTo && (
         <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
           <span className="truncate flex-1">En réponse à : {replyTo.sender.name}</span>
