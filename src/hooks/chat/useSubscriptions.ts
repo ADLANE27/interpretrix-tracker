@@ -107,7 +107,7 @@ export const useSubscriptions = (
               table: 'chat_messages',
               filter: `channel_id=eq.${channelId}`
             },
-            // Mark this callback as async since it uses await
+            // Use an async function for the callback to allow await inside
             async (payload: RealtimePostgresChangesPayload<any>) => {
               if (!isSubscribed) return;
               

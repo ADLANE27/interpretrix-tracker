@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { eventEmitter, EVENT_NEW_MESSAGE_RECEIVED } from '@/lib/events';
 import { useNavigate } from 'react-router-dom';
 import { playNotificationSound } from '@/utils/notificationSound';
+import { AtSign, MessageSquare, Reply } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // Translation object for notification messages
 const NOTIFICATION_TRANSLATIONS = {
@@ -84,13 +86,14 @@ export const useGlobalNotification = () => {
         const isReplyToUserMessage = Boolean(data.isReplyToUserMessage);
         console.log('[GlobalNotification] Is reply to user message:', isReplyToUserMessage);
         
-        let title, description;
+        let title, description, icon;
         
         // ALWAYS use French translations for notifications
         if (hasMention) {
           // Explicitly use the French translations for mention notifications
           title = NOTIFICATION_TRANSLATIONS.mentionNotice.fr;
-          description = NOTIFICATION_TRANSLATIONS.mentionText.fr;
+          description = `${sender.name} vous a mentionné dans ${channelData?.name || 'un canal'}`;
+          icon = AtSign;
           console.log('[GlobalNotification] Using mention notification in French:', {
             title,
             description
@@ -98,7 +101,8 @@ export const useGlobalNotification = () => {
         } else if (isReplyToUserMessage) {
           // Use French translations for thread reply notifications
           title = NOTIFICATION_TRANSLATIONS.threadReplyNotice.fr;
-          description = NOTIFICATION_TRANSLATIONS.threadReplyText.fr;
+          description = `${sender.name} a répondu à votre message dans ${channelData?.name || 'un canal'}`;
+          icon = Reply;
           console.log('[GlobalNotification] Using thread reply notification in French:', {
             title,
             description
@@ -106,6 +110,7 @@ export const useGlobalNotification = () => {
         } else {
           title = `${NOTIFICATION_TRANSLATIONS.newMessage.fr} ${sender.name}`;
           description = `${channelData?.name || 'Canal'}: ${data.message.content.substring(0, 50)}${data.message.content.length > 50 ? '...' : ''}`;
+          icon = MessageSquare;
           console.log('[GlobalNotification] Using regular message notification in French');
         }
         
@@ -116,18 +121,22 @@ export const useGlobalNotification = () => {
           
           // Show toast notification with French text
           console.log('[GlobalNotification] Displaying toast notification in French:', { title, description });
+          
+          // Use the toast function with custom component for better visibility
           toast({
             title: title,
             description: description,
+            variant: "default",
             action: (
               <button 
-                className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+                className="px-3 py-1 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90 flex items-center gap-1.5"
                 onClick={() => navigate('/interpreter/messages')}
               >
+                {icon && React.createElement(icon, { className: "w-3 h-3" })}
                 {NOTIFICATION_TRANSLATIONS.viewButton.fr}
               </button>
             ),
-            duration: 5000, // Keep longer duration for better visibility
+            duration: 7000, // Keep longer duration for better visibility
           });
         }
       } catch (error) {

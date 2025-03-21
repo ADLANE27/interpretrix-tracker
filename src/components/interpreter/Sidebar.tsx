@@ -13,6 +13,7 @@ import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarProps {
   activeTab: string;
@@ -36,6 +37,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   } = useUnreadMentions();
   
   const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -62,6 +64,11 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     
     const handleUnreadMentionsUpdated = (count: number) => {
       console.log('[Sidebar] Received unread mentions update event:', count);
+      if (count > realtimeUnreadCount) {
+        setHasNewNotification(true);
+        // Reset the animation after 3 seconds
+        setTimeout(() => setHasNewNotification(false), 3000);
+      }
       setRealtimeUnreadCount(count);
     };
     
@@ -70,7 +77,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     return () => {
       eventEmitter.off(EVENT_UNREAD_MENTIONS_UPDATED, handleUnreadMentionsUpdated);
     };
-  }, [unreadMentions.length]);
+  }, [unreadMentions.length, realtimeUnreadCount]);
   
   useEffect(() => {
     console.log('[Sidebar] Refreshing mentions on mount');
@@ -153,6 +160,8 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       id: "messages", 
       label: "Messages", 
       icon: MessageCircle,
+      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined,
+      mentionsBadge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
@@ -194,16 +203,31 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
             <Button 
               variant="ghost" 
               size="icon"
-              className="relative"
+              className={cn(
+                "relative transition-all", 
+                hasNewNotification && "ring-2 ring-primary ring-offset-2"
+              )}
             >
-              <Bell className="h-5 w-5" />
+              <Bell className={cn(
+                "h-5 w-5 transition-transform",
+                hasNewNotification && "animate-bounce text-primary"
+              )} />
               {realtimeUnreadCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
-                >
-                  {realtimeUnreadCount}
-                </Badge>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                    className="absolute -right-1 -top-1"
+                  >
+                    <Badge 
+                      variant="destructive" 
+                      className="h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                    >
+                      {realtimeUnreadCount}
+                    </Badge>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </Button>
           </MentionsPopover>
@@ -260,6 +284,15 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                     className="ml-auto animate-pulse"
                   >
                     {tab.badge}
+                  </Badge>
+                )}
+                
+                {tab.id === "messages" && tab.mentionsBadge !== undefined && (
+                  <Badge 
+                    variant="destructive" 
+                    className="mr-1 animate-pulse bg-red-500 text-white"
+                  >
+                    @{tab.mentionsBadge}
                   </Badge>
                 )}
                 

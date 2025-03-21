@@ -13,11 +13,12 @@ import { playNotificationSound } from '@/utils/notificationSound';
 import { useToast } from "@/hooks/use-toast";
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { StatusButtonsBar } from "@/components/interpreter/StatusButtonsBar";
-import { Menu, ArrowLeft, Users } from "lucide-react";
+import { Menu, ArrowLeft, Users, RefreshCw, AtSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Profile } from "@/types/profile";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { motion } from "framer-motion";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InterpreterChatProps {
   channelId: string;
@@ -286,6 +287,26 @@ export const InterpreterChat = ({
     });
   };
 
+  // Function to trigger @mention
+  const triggerMention = () => {
+    if (!inputRef.current) return;
+    
+    const cursorPos = inputRef.current.selectionStart || 0;
+    const textBeforeCursor = message.substring(0, cursorPos);
+    const textAfterCursor = message.substring(cursorPos);
+    
+    const newMessage = textBeforeCursor + '@' + textAfterCursor;
+    setMessage(newMessage);
+    
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const newPos = cursorPos + 1;
+        inputRef.current.selectionRange(newPos, newPos);
+      }
+    }, 0);
+  };
+
   // Function to handle scroll to load more messages
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
@@ -324,16 +345,37 @@ export const InterpreterChat = ({
             {channel?.name}
           </h2>
           
-          <ChannelMembersPopover 
-            channelId={channelId} 
-            channelName={channel?.name || ''} 
-            channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
-            userRole="interpreter"
-          >
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Users className="h-5 w-5" />
-            </Button>
-          </ChannelMembersPopover>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="rounded-full" 
+                    onClick={forceFetch}
+                    aria-label="Actualiser les messages"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Actualiser les messages</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <ChannelMembersPopover 
+              channelId={channelId} 
+              channelName={channel?.name || ''} 
+              channelType={(channel?.channel_type || 'group') as 'group' | 'direct'} 
+              userRole="interpreter"
+            >
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Users className="h-5 w-5" />
+              </Button>
+            </ChannelMembersPopover>
+          </div>
         </div>
 
         {/* Afficher les boutons de statut uniquement dans l'en-tête du chat si StatusButtonsBar-in-header n'existe pas */}
@@ -372,8 +414,9 @@ export const InterpreterChat = ({
               size="sm" 
               variant="outline"
               onClick={loadMoreMessages}
-              className="text-xs"
+              className="text-xs flex items-center gap-1"
             >
+              <RefreshCw className="h-3 w-3" />
               Charger plus de messages
             </Button>
           </div>
