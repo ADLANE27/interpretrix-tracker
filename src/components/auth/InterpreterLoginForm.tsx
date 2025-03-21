@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +37,6 @@ export const InterpreterLoginForm = () => {
     console.log("Tentative de connexion interprète avec:", values.email);
 
     try {
-      // Connexion de l'utilisateur
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password
@@ -54,7 +52,6 @@ export const InterpreterLoginForm = () => {
 
       console.log("Connexion réussie, vérification du rôle interprète...");
 
-      // Vérification du rôle et du statut actif avec le nouveau système RLS
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('*')
@@ -73,7 +70,6 @@ export const InterpreterLoginForm = () => {
         throw new Error("Cette interface est réservée aux interprètes.");
       }
 
-      // Vérification du profil interprète
       const { data: interpreterData, error: interpreterError } = await supabase
         .from('interpreter_profiles')
         .select('*')
@@ -212,7 +208,7 @@ export const InterpreterLoginForm = () => {
       <CardFooter className="flex flex-col gap-4 pb-8 pt-2">
         <p className="text-xs text-center text-muted-foreground">
           Si vous rencontrez des difficultés pour vous connecter, veuillez contacter 
-          <a href="mailto:support@yourplatform.com" className="text-palette-vivid-purple ml-1 hover:underline">
+          <a href="mailto:com@aftraduction.fr" className="text-palette-vivid-purple ml-1 hover:underline">
             notre support
           </a>
         </p>
