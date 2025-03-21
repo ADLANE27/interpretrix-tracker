@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight, Smile } from 'lucide-react';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight, Smile, MoreHorizontal } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -35,6 +35,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   channelId,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const { observeMessage } = useMessageVisibility(channelId);
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -76,6 +77,20 @@ export const MessageList: React.FC<MessageListProps> = ({
       currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
       currentDate.getFullYear() !== previousDate.getFullYear()
     );
+  };
+
+  const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
+    if (!previousMessage) return true;
+    
+    // If different senders, always show
+    if (currentMessage.sender.id !== previousMessage.sender.id) return true;
+    
+    // If same sender but messages are far apart in time (> 5 minutes), show sender again
+    const currentTime = new Date(currentMessage.timestamp).getTime();
+    const previousTime = new Date(previousMessage.timestamp).getTime();
+    const fiveMinutesInMs = 5 * 60 * 1000;
+    
+    return (currentTime - previousTime) > fiveMinutesInMs;
   };
 
   const toggleThread = (messageId: string) => {
@@ -124,151 +139,169 @@ export const MessageList: React.FC<MessageListProps> = ({
     );
   };
 
-  const renderMessage = (message: Message, isThreadReply = false) => (
-    <div 
-      ref={(el) => observeMessage(el)}
-      key={message.id}
-      data-message-id={message.id}
-      className={`flex gap-3 ${
-        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
-      } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
-    >
-      {message.sender.id !== currentUserId && (
-        <Avatar className="h-10 w-10 shrink-0 mt-1">
-          <AvatarImage 
-            src={message.sender.avatarUrl} 
-            alt={message.sender.name}
-            className="object-cover"
-          />
-          <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
-            {getInitials(message.sender.name)}
-          </AvatarFallback>
-        </Avatar>
-      )}
-      <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
-        message.sender.id === currentUserId ? 'items-end' : 'items-start'
-      }`}>
-        {!isThreadReply && message.sender.id !== currentUserId && (
-          <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
-            {message.sender.name}
-          </span>
+  const renderMessage = (message: Message, index: number, isThreadReply = false) => {
+    const previousMessage = index > 0 ? messages[index - 1] : undefined;
+    const showSender = shouldShowSender(message, previousMessage);
+    const isSelfMessage = message.sender.id === currentUserId;
+
+    return (
+      <div 
+        ref={(el) => observeMessage(el)}
+        key={message.id}
+        data-message-id={message.id}
+        onMouseEnter={() => setHoveredMessageId(message.id)}
+        onMouseLeave={() => setHoveredMessageId(null)}
+        className={`group px-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
+          isThreadReply ? 'ml-10 pl-3' : ''
+        }`}
+      >
+        {/* Show date separator if needed */}
+        {!isThreadReply && shouldShowDate(message, previousMessage) && (
+          <div className="flex justify-center my-4">
+            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium">
+              {formatMessageDate(message.timestamp)}
+            </div>
+          </div>
         )}
-        <div className={`group relative ${
-          message.sender.id === currentUserId 
-            ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
-            : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
-        } px-4 py-3 break-words overflow-hidden`}>
-          <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
-          <div className="absolute right-4 bottom-2 flex items-center gap-1">
-            <span className="text-xs text-gray-500">
-              {formatMessageTime(message.timestamp)}
-            </span>
-          </div>
-        </div>
-        
-        {renderReactions(message)}
-        
-        <div className="flex items-center gap-2 mt-1 mr-1">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
-                aria-label="Réagir avec un emoji"
-              >
-                <Smile className="h-4 w-4 text-gray-500 hover:text-yellow-500" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
-              <Picker 
-                data={data} 
-                onEmojiSelect={(emoji: any) => {
-                  onReactToMessage(message.id, emoji.native);
-                }}
-                theme={theme === 'dark' ? 'dark' : 'light'}
-                previewPosition="none"
-                skinTonePosition="none"
-                perLine={8}
+
+        {/* Message content */}
+        <div className="flex items-start gap-2 relative">
+          {/* Avatar - only show for first message in a group */}
+          {showSender ? (
+            <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
+              <AvatarImage 
+                src={message.sender.avatarUrl} 
+                alt={message.sender.name}
+                className="object-cover"
               />
-            </PopoverContent>
-          </Popover>
-          
-          {message.sender.id === currentUserId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDeleteMessage(message.id)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
-              aria-label="Supprimer le message"
-            >
-              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
-            </Button>
+              <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+                {getInitials(message.sender.name)}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="w-9 flex-shrink-0"></div>
           )}
-          {!isThreadReply && setReplyTo && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setReplyTo(message)}
-              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
-            >
-              <MessageCircle className="h-4 w-4 text-gray-500" />
-            </Button>
-          )}
-        </div>
 
-        {message.attachments && message.attachments.map((attachment, index) => (
-          <div key={index} className="relative group max-w-sm mt-2">
-            <MessageAttachment
-              url={attachment.url}
-              filename={attachment.filename}
-              locale="fr"
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
-      <div className="flex-1">
-        {messages.map((message, index) => (
-          <React.Fragment key={message.id}>
-            {shouldShowDate(message, messages[index - 1]) && (
-              <div className="flex justify-center my-5">
-                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
-                  {formatMessageDate(message.timestamp)}
-                </div>
+          <div className="flex-1 min-w-0">
+            {/* Sender info and timestamp - only for first message in group */}
+            {showSender && (
+              <div className="flex items-baseline mb-1">
+                <span className="font-semibold text-sm mr-2">{message.sender.name}</span>
+                <span className="text-xs text-gray-500">{formatMessageTime(message.timestamp)}</span>
               </div>
             )}
-            {renderMessage(message)}
-            
-            {messageThreads[message.id]?.length > 1 && (
-              <div className="ml-12 mt-2 mb-5">
+
+            {/* Message content */}
+            <div className="text-sm break-words pr-10">
+              {message.content}
+            </div>
+
+            {/* Attachments */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 max-w-sm">
+                {message.attachments.map((attachment, idx) => (
+                  <MessageAttachment
+                    key={idx}
+                    url={attachment.url}
+                    filename={attachment.filename}
+                    locale="fr"
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Reactions */}
+            {renderReactions(message)}
+
+            {/* Message actions */}
+            <div className={`flex items-center gap-1 mt-1 ${
+              hoveredMessageId === message.id || isMobile ? 'opacity-100' : 'opacity-0'
+            } transition-opacity`}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
+                  >
+                    <Smile className="h-4 w-4 text-gray-500" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
+                  <Picker 
+                    data={data} 
+                    onEmojiSelect={(emoji: any) => {
+                      onReactToMessage(message.id, emoji.native);
+                    }}
+                    theme={theme === 'dark' ? 'dark' : 'light'}
+                    previewPosition="none"
+                    skinTonePosition="none"
+                    perLine={8}
+                  />
+                </PopoverContent>
+              </Popover>
+              
+              {setReplyTo && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => toggleThread(message.id)}
-                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
+                  onClick={() => setReplyTo(message)}
+                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
                 >
-                  {expandedThreads.has(message.id) ? (
-                    <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  {messageThreads[message.id].length - 1} réponses
+                  <MessageCircle className="h-4 w-4 text-gray-500" />
                 </Button>
-                
-                {expandedThreads.has(message.id) && (
-                  <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
-                    {messageThreads[message.id]
-                      .filter(reply => reply.id !== message.id)
-                      .map(reply => renderMessage(reply, true))}
-                  </div>
-                )}
+              )}
+              
+              {isSelfMessage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDeleteMessage(message.id)}
+                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
+                >
+                  <Trash2 className="h-4 w-4 text-gray-500" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Thread replies */}
+        {!isThreadReply && messageThreads[message.id]?.length > 1 && (
+          <div className="ml-11 mt-1 mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleThread(message.id)}
+              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2 py-1 h-auto"
+            >
+              {expandedThreads.has(message.id) ? (
+                <ChevronDown className="h-3.5 w-3.5 mr-1" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 mr-1" />
+              )}
+              {messageThreads[message.id].length - 1} réponses
+            </Button>
+            
+            {expandedThreads.has(message.id) && (
+              <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+                {messageThreads[message.id]
+                  .filter(reply => reply.id !== message.id)
+                  .map(reply => renderMessage(reply, -1, true))}
               </div>
             )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
+      <div className="flex-1">
+        {messages.map((message, index) => (
+          <React.Fragment key={message.id}>
+            {renderMessage(message, index)}
           </React.Fragment>
         ))}
       </div>
