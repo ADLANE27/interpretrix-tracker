@@ -8,7 +8,6 @@ import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface InterpreterListItemProps {
   interpreter: {

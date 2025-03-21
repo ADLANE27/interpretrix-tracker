@@ -178,15 +178,20 @@ export function useRealtimeSubscription(
 
   // Make sure the Supabase table has realtime enabled
   useEffect(() => {
-    const enableRealtime = async () => {
+    const ensureRealtimeSetup = async () => {
       try {
-        // This query is just to make sure the table exists and has REPLICA IDENTITY FULL
-        const { error } = await supabase.rpc('ensure_realtime_setup', { 
-          table_name: config.table 
-        }).maybeSingle();
+        // Call the Edge Function directly instead of using RPC
+        const response = await fetch(`${supabase.supabaseUrl}/functions/v1/ensure_realtime_setup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`
+          },
+          body: JSON.stringify({ table_name: config.table })
+        });
         
-        if (error) {
-          console.warn(`[Realtime] Couldn't verify realtime setup: ${error.message}`);
+        if (!response.ok) {
+          console.warn(`[Realtime] Couldn't verify realtime setup for ${config.table}: ${response.statusText}`);
         }
       } catch (err) {
         console.warn('[Realtime] Failed to check realtime setup:', err);
@@ -194,7 +199,7 @@ export function useRealtimeSubscription(
     };
     
     if (enabled) {
-      enableRealtime();
+      ensureRealtimeSetup();
     }
   }, [enabled, config.table]);
 
