@@ -7,6 +7,7 @@ import { useOrientation } from "@/hooks/use-orientation";
 import { StatusButtonsBar } from "../StatusButtonsBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -22,15 +23,37 @@ export const DashboardHeader = ({
   isMobile
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
+  const [isInChatTab, setIsInChatTab] = useState(false);
   
-  // Only hide status buttons in header if we're in a chat tab on portrait mode
-  // We'll let the MessagingTab component handle showing status buttons in chat
-  const isInChatTab = document.body.hasAttribute('data-in-chat');
+  // Use an effect to update the isInChatTab state whenever data-in-chat attribute changes
+  useEffect(() => {
+    const updateChatState = () => {
+      setIsInChatTab(document.body.hasAttribute('data-in-chat'));
+    };
+
+    // Initial check
+    updateChatState();
+
+    // Set up a MutationObserver to watch for changes to the data-in-chat attribute
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-in-chat') {
+          updateChatState();
+        }
+      });
+    });
+
+    observer.observe(document.body, { attributes: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   
   // Show status buttons in header except when in chat tab on portrait mode
   const showStatusButtons = !isMobile || 
-                           (isMobile && orientation === "landscape") || 
-                           (isMobile && !isInChatTab);
+                          (isMobile && orientation === "landscape") || 
+                          (isMobile && !isInChatTab);
 
   // Format the display name
   const getDisplayName = () => {

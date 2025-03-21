@@ -167,7 +167,9 @@ export const InterpreterChat = ({
   }, [channelId, markMentionsAsRead]);
 
   useEffect(() => {
+    // Add data-in-chat attribute to body to indicate we're in chat
     document.body.setAttribute('data-in-chat', 'true');
+    
     return () => {
       document.body.removeAttribute('data-in-chat');
     };
@@ -227,9 +229,7 @@ export const InterpreterChat = ({
 
   // Show status buttons in all cases when in mobile portrait mode
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
-  // Don't check for status buttons in header anymore
-  // const statusButtonsInHeader = document.querySelector('.StatusButtonsBar-in-header') !== null;
-
+  
   return (
     <div className="flex flex-col h-full">
       <motion.div 
@@ -268,8 +268,8 @@ export const InterpreterChat = ({
           </ChannelMembersPopover>
         </div>
 
-        {/* Always show status buttons in the header for mobile portrait mode */}
-        {showStatusButtons && profile && onStatusChange && (
+        {/* Afficher les boutons de statut uniquement dans l'en-tête du chat si StatusButtonsBar-in-header n'existe pas */}
+        {showStatusButtons && profile && onStatusChange && !document.querySelector('.StatusButtonsBar-in-header') && (
           <div className="pb-2 w-full overflow-visible">
             <StatusButtonsBar 
               currentStatus={profile.status} 
