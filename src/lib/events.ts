@@ -4,13 +4,7 @@ import mitt from 'mitt';
 // Define event types
 type EventTypes = {
   unread_mentions_updated: number;
-  new_message_received: {
-    message: any; 
-    channelId: string;
-    isMention?: boolean;
-    isThreadReply?: boolean;
-    isReplyToUserMessage?: boolean;
-  };
+  new_message_received: any; // Use a more specific type if available
 };
 
 // Create an event emitter instance with typed events

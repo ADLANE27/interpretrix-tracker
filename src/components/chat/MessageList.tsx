@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from "@/types/messaging";
 import { MessageAttachment } from './MessageAttachment';
-import { Trash2, MessageCircle, ChevronDown, ChevronRight, Smile, MoreHorizontal } from 'lucide-react';
+import { Trash2, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -10,11 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useMessageVisibility } from '@/hooks/useMessageVisibility';
 import { useTimestampFormat } from '@/hooks/useTimestampFormat';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
-import { useTheme } from 'next-themes';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MessageListProps {
   messages: Message[];
@@ -36,34 +31,16 @@ export const MessageList: React.FC<MessageListProps> = ({
   channelId,
 }) => {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
-  const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const { observeMessage } = useMessageVisibility(channelId);
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const threadRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
   const isMobile = useIsMobile();
-  const { theme } = useTheme();
 
-  // Auto scroll to the bottom when new messages are added
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages]);
-
-  // Scroll to the active thread when expanded
-  useEffect(() => {
-    if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
-      const threadElement = threadRefsMap.current.get(activeThreadId);
-      if (threadElement) {
-        setTimeout(() => {
-          threadElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
-    }
-  }, [activeThreadId, expandedThreads]);
 
   const getInitials = (name: string) => {
     return name
@@ -91,23 +68,9 @@ export const MessageList: React.FC<MessageListProps> = ({
     
     return (
       currentDate.getDate() !== previousDate.getDate() ||
-      currentDate.getMonth() !== previousDate.getMonth() ||
+      currentDate.getMonth() !== previousMessage.timestamp.getMonth() ||
       currentDate.getFullYear() !== previousDate.getFullYear()
     );
-  };
-
-  const shouldShowSender = (currentMessage: Message, previousMessage?: Message) => {
-    if (!previousMessage) return true;
-    
-    // If different senders, always show
-    if (currentMessage.sender.id !== previousMessage.sender.id) return true;
-    
-    // If same sender but messages are far apart in time (> 5 minutes), show sender again
-    const currentTime = new Date(currentMessage.timestamp).getTime();
-    const previousTime = new Date(previousMessage.timestamp).getTime();
-    const fiveMinutesInMs = 5 * 60 * 1000;
-    
-    return (currentTime - previousTime) > fiveMinutesInMs;
   };
 
   const toggleThread = (messageId: string) => {
@@ -115,273 +78,142 @@ export const MessageList: React.FC<MessageListProps> = ({
       const newSet = new Set(prev);
       if (newSet.has(messageId)) {
         newSet.delete(messageId);
-        setActiveThreadId(null);
       } else {
         newSet.add(messageId);
-        setActiveThreadId(messageId);
       }
       return newSet;
     });
   };
 
-  // Organize messages into threads
-  const processMessages = () => {
-    // Group messages by their parent or their own ID if they're a root message
-    const messageThreads: { [key: string]: Message[] } = {};
-    const displayMessages: Message[] = [];
-    const processedIds = new Set<string>();
+  const messageThreads = messages.reduce((acc: { [key: string]: Message[] }, message) => {
+    const threadId = message.parent_message_id || message.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
+    }
+    acc[threadId].push(message);
+    return acc;
+  }, {});
 
-    // First pass: organize messages into thread groups
-    messages.forEach(message => {
-      const threadId = message.parent_message_id || message.id;
-      if (!messageThreads[threadId]) {
-        messageThreads[threadId] = [];
-      }
-      messageThreads[threadId].push(message);
-    });
+  const rootMessages = messages.filter(message => !message.parent_message_id);
 
-    // Second pass: add root messages and their replies to displayMessages
-    messages.forEach(message => {
-      if (processedIds.has(message.id)) return;
-
-      // If it's a root message (no parent) or its parent doesn't exist in our messages array
-      if (!message.parent_message_id || !messageThreads[message.parent_message_id]) {
-        displayMessages.push(message);
-        processedIds.add(message.id);
-
-        // If this message has replies, don't add them to the main display
-        // They'll be shown in the thread view
-        if (messageThreads[message.id] && messageThreads[message.id].length > 1) {
-          messageThreads[message.id].forEach(reply => {
-            if (reply.id !== message.id) {
-              processedIds.add(reply.id);
-            }
-          });
-        }
-      }
-    });
-
-    return { displayMessages, messageThreads };
-  };
-
-  const { displayMessages, messageThreads } = processMessages();
-
-  const renderReactions = (message: Message) => {
-    if (!message.reactions || Object.keys(message.reactions).length === 0) return null;
-    
-    return (
-      <div className="flex flex-wrap gap-1 mt-1">
-        {Object.entries(message.reactions).map(([emoji, users]) => (
-          <div 
-            key={emoji} 
-            className={`text-xs rounded-full px-2 py-0.5 flex items-center gap-1 cursor-pointer ${
-              users.includes(currentUserId || '') 
-                ? 'bg-primary/20 dark:bg-primary/30' 
-                : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-            onClick={() => onReactToMessage(message.id, emoji)}
-          >
-            <span>{emoji}</span>
-            <span className="text-gray-600 dark:text-gray-400">{users.length}</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const handleEmojiSelect = (messageId: string, emoji: any) => {
-    onReactToMessage(messageId, emoji.native);
-    setOpenEmojiPickerId(null); // Close the emoji picker after selection
-  };
-
-  const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
-    const showSender = shouldShowSender(message, previousMessage);
-    const isSelfMessage = message.sender.id === currentUserId;
-
-    return (
-      <div 
-        ref={(el) => {
-          if (el) {
-            observeMessage(el);
-            // Store references to thread containers for scrolling
-            if (!isThreadReply && messageThreads[message.id]?.length > 1) {
-              threadRefsMap.current.set(message.id, el);
-            }
-          }
-        }}
-        key={message.id}
-        data-message-id={message.id}
-        data-is-thread-reply={isThreadReply ? 'true' : 'false'}
-        onMouseEnter={() => setHoveredMessageId(message.id)}
-        onMouseLeave={() => setHoveredMessageId(null)}
-        className={`group px-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-          isThreadReply ? 'ml-10 pl-3' : ''
-        }`}
-      >
-        {/* Show date separator if needed */}
-        {!isThreadReply && index > 0 && shouldShowDate(message, previousMessage) && (
-          <div className="flex justify-center my-4">
-            <div className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-4 py-1 rounded-full text-xs font-medium">
-              {formatMessageDate(message.timestamp)}
-            </div>
-          </div>
+  const renderMessage = (message: Message, isThreadReply = false) => (
+    <div 
+      ref={(el) => observeMessage(el)}
+      key={message.id}
+      data-message-id={message.id}
+      className={`flex gap-3 ${
+        message.sender.id === currentUserId ? 'flex-row-reverse' : 'flex-row'
+      } ${isThreadReply ? 'ml-10 mt-2 mb-2' : 'mb-4'}`}
+    >
+      {message.sender.id !== currentUserId && (
+        <Avatar className="h-10 w-10 shrink-0 mt-1">
+          <AvatarImage 
+            src={message.sender.avatarUrl} 
+            alt={message.sender.name}
+            className="object-cover"
+          />
+          <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
+            {getInitials(message.sender.name)}
+          </AvatarFallback>
+        </Avatar>
+      )}
+      <div className={`flex-1 max-w-[75%] space-y-1.5 relative group ${
+        message.sender.id === currentUserId ? 'items-end' : 'items-start'
+      }`}>
+        {!isThreadReply && message.sender.id !== currentUserId && (
+          <span className="text-sm font-medium text-gray-700 ml-1 mb-1 block">
+            {message.sender.name}
+          </span>
         )}
-
-        {/* Message content */}
-        <div className="flex items-start gap-2 relative">
-          {/* Avatar - only show for first message in a group */}
-          {showSender ? (
-            <Avatar className="h-9 w-9 mt-1 flex-shrink-0">
-              <AvatarImage 
-                src={message.sender.avatarUrl} 
-                alt={message.sender.name}
-                className="object-cover"
-              />
-              <AvatarFallback className="bg-purple-100 text-purple-600 text-sm font-medium">
-                {getInitials(message.sender.name)}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="w-9 flex-shrink-0"></div>
-          )}
-
-          <div className="flex-1 min-w-0">
-            {/* Sender info and timestamp - only for first message in group */}
-            {showSender && (
-              <div className="flex items-baseline mb-1">
-                <span className="font-semibold text-sm mr-2">{message.sender.name}</span>
-                <span className="text-xs text-gray-500">{formatMessageTime(message.timestamp)}</span>
-              </div>
-            )}
-
-            {/* Message content */}
-            <div className="text-sm break-words pr-10">
-              {message.content}
-            </div>
-
-            {/* Attachments */}
-            {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-2 max-w-sm">
-                {message.attachments.map((attachment, idx) => (
-                  <MessageAttachment
-                    key={idx}
-                    url={attachment.url}
-                    filename={attachment.filename}
-                    locale="fr"
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Reactions */}
-            {renderReactions(message)}
-
-            {/* Message actions */}
-            <div className={`flex items-center gap-1 mt-1 ${
-              hoveredMessageId === message.id || isMobile ? 'opacity-100' : 'opacity-0'
-            } transition-opacity`}>
-              <Popover 
-                open={openEmojiPickerId === message.id}
-                onOpenChange={(open) => {
-                  if (open) {
-                    setOpenEmojiPickerId(message.id);
-                  } else {
-                    setOpenEmojiPickerId(null);
-                  }
-                }}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                  >
-                    <Smile className="h-4 w-4 text-gray-500" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 border-none shadow-lg" side="top" align="start">
-                  <Picker 
-                    data={data} 
-                    onEmojiSelect={(emoji: any) => handleEmojiSelect(message.id, emoji)}
-                    theme={theme === 'dark' ? 'dark' : 'light'}
-                    previewPosition="none"
-                    skinTonePosition="none"
-                    perLine={8}
-                  />
-                </PopoverContent>
-              </Popover>
-              
-              {setReplyTo && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setReplyTo(message)}
-                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                >
-                  <MessageCircle className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-              
-              {isSelfMessage && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDeleteMessage(message.id)}
-                  className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 h-auto"
-                >
-                  <Trash2 className="h-4 w-4 text-gray-500" />
-                </Button>
-              )}
-            </div>
+        <div className={`group relative ${
+          message.sender.id === currentUserId 
+            ? 'bg-[#E7FFDB] text-gray-900 rounded-tl-2xl rounded-br-2xl rounded-bl-2xl shadow-sm' 
+            : 'bg-white text-gray-900 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl shadow-sm border border-gray-100'
+        } px-4 py-3 break-words overflow-hidden`}>
+          <div className="text-base mb-5 overflow-wrap-anywhere">{message.content}</div>
+          <div className="absolute right-4 bottom-2 flex items-center gap-1">
+            <span className="text-xs text-gray-500">
+              {formatMessageTime(message.timestamp)}
+            </span>
           </div>
         </div>
-
-        {/* Thread replies */}
-        {!isThreadReply && messageThreads[message.id]?.length > 1 && (
-          <div 
-            className="ml-11 mt-1 mb-2"
-            id={`thread-${message.id}`}
-          >
+        
+        <div className="flex items-center gap-2 mt-1 mr-1">
+          {message.sender.id === currentUserId && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toggleThread(message.id)}
-              className="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md px-2 py-1 h-auto"
+              onClick={() => onDeleteMessage(message.id)}
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+              aria-label="Supprimer le message"
             >
-              {expandedThreads.has(message.id) ? (
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 mr-1" />
-              )}
-              {messageThreads[message.id].length - 1} réponses
+              <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-500" />
             </Button>
-            
-            {expandedThreads.has(message.id) && (
-              <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                <ScrollArea className="max-h-80">
-                  {messageThreads[message.id]
-                    .filter(reply => reply.id !== message.id)
-                    .map((reply, idx, replies) => renderMessage(
-                      reply, 
-                      idx, 
-                      true, 
-                      idx > 0 ? replies[idx - 1] : undefined
-                    ))}
-                </ScrollArea>
-              </div>
-            )}
+          )}
+          {!isThreadReply && setReplyTo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setReplyTo(message)}
+              className="p-1 rounded-full hover:bg-gray-100 bg-white/90 shadow-sm h-auto"
+            >
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+            </Button>
+          )}
+        </div>
+
+        {message.attachments && message.attachments.map((attachment, index) => (
+          <div key={index} className="relative group max-w-sm mt-2">
+            <MessageAttachment
+              url={attachment.url}
+              filename={attachment.filename}
+              locale="fr"
+            />
           </div>
-        )}
+        ))}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
-    <div className="space-y-0 bg-white dark:bg-gray-900 min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
+    <div className="space-y-6 p-4 md:p-5 bg-[#F8F9FA] min-h-full rounded-md flex flex-col overflow-x-hidden overscroll-x-none">
       <div className="flex-1">
-        {displayMessages.map((message, index) => (
+        {messages.map((message, index) => (
           <React.Fragment key={message.id}>
-            {renderMessage(message, index, false, index > 0 ? displayMessages[index - 1] : undefined)}
+            {shouldShowDate(message, messages[index - 1]) && (
+              <div className="flex justify-center my-5">
+                <div className="bg-[#E2E2E2] text-[#8A898C] px-4 py-1.5 rounded-full text-sm font-medium shadow-sm">
+                  {formatMessageDate(message.timestamp)}
+                </div>
+              </div>
+            )}
+            {renderMessage(message)}
+            
+            {messageThreads[message.id]?.length > 1 && (
+              <div className="ml-12 mt-2 mb-5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleThread(message.id)}
+                  className="text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1.5 h-auto"
+                >
+                  {expandedThreads.has(message.id) ? (
+                    <ChevronDown className="h-3.5 w-3.5 mr-1.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {messageThreads[message.id].length - 1} réponses
+                </Button>
+                
+                {expandedThreads.has(message.id) && (
+                  <div className="space-y-2 mt-3 pl-3 border-l-2 border-gray-200">
+                    {messageThreads[message.id]
+                      .filter(reply => reply.id !== message.id)
+                      .map(reply => renderMessage(reply, true))}
+                  </div>
+                )}
+              </div>
+            )}
           </React.Fragment>
         ))}
       </div>

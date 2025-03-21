@@ -13,7 +13,6 @@ import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
-import { MobileNavigationBar } from "./interpreter/MobileNavigationBar";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -260,7 +259,7 @@ export const InterpreterDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -268,7 +267,7 @@ export const InterpreterDashboard = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4">
         <p className="text-destructive text-center">{error}</p>
         <button 
           onClick={() => navigate("/interpreter/login")}
@@ -281,7 +280,7 @@ export const InterpreterDashboard = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation">
+    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gray-50/50 dark:bg-gray-900 overflow-hidden touch-manipulation">
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
           isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
@@ -290,7 +289,7 @@ export const InterpreterDashboard = () => {
       />
       
       <div 
-        className={`fixed md:relative w-[270px] z-50 transition-transform duration-200 ease-out h-[100vh] ${
+        className={`fixed md:relative w-[270px] z-50 transition-transform duration-200 h-[100vh] ${
           isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
         } md:translate-x-0 overflow-hidden`}
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
@@ -336,15 +335,6 @@ export const InterpreterDashboard = () => {
             onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           />
         </div>
-        
-        {isMobile && (
-          <MobileNavigationBar
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            pendingMissionsCount={scheduledMissions.length}
-            unreadMessagesCount={0}
-          />
-        )}
       </main>
 
       <PasswordChangeDialog

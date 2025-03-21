@@ -1,4 +1,3 @@
-
 import { useNavigate } from "react-router-dom";
 import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +12,6 @@ import { Mission } from "@/types/mission";
 import { useUnreadMentions } from "@/hooks/chat/useUnreadMentions";
 import { eventEmitter, EVENT_UNREAD_MENTIONS_UPDATED } from "@/lib/events";
 import { MentionsPopover } from "@/components/chat/MentionsPopover";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarProps {
   activeTab: string;
@@ -37,7 +35,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
   } = useUnreadMentions();
   
   const [realtimeUnreadCount, setRealtimeUnreadCount] = useState(0);
-  const [hasNewNotification, setHasNewNotification] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -64,11 +61,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     
     const handleUnreadMentionsUpdated = (count: number) => {
       console.log('[Sidebar] Received unread mentions update event:', count);
-      if (count > realtimeUnreadCount) {
-        setHasNewNotification(true);
-        // Reset the animation after 3 seconds
-        setTimeout(() => setHasNewNotification(false), 3000);
-      }
       setRealtimeUnreadCount(count);
     };
     
@@ -77,7 +69,7 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     return () => {
       eventEmitter.off(EVENT_UNREAD_MENTIONS_UPDATED, handleUnreadMentionsUpdated);
     };
-  }, [unreadMentions.length, realtimeUnreadCount]);
+  }, [unreadMentions.length]);
   
   useEffect(() => {
     console.log('[Sidebar] Refreshing mentions on mount');
@@ -160,8 +152,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       id: "messages", 
       label: "Messages", 
       icon: MessageCircle,
-      badge: totalUnreadCount > 0 ? totalUnreadCount : undefined,
-      mentionsBadge: realtimeUnreadCount > 0 ? realtimeUnreadCount : undefined,
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
@@ -193,45 +183,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     <div className="h-screen w-64 bg-card border-r border-border flex flex-col p-4 dark:bg-card">
       <div className="flex flex-col items-center justify-center py-6 space-y-4">
         <div className="relative flex items-center gap-2">
-          <MentionsPopover
-            mentions={unreadMentions}
-            totalCount={realtimeUnreadCount}
-            onMentionClick={handleMentionClick}
-            onMarkAsRead={markMentionAsRead}
-            onDelete={deleteMention}
-          >
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className={cn(
-                "relative transition-all", 
-                hasNewNotification && "ring-2 ring-primary ring-offset-2"
-              )}
-            >
-              <Bell className={cn(
-                "h-5 w-5 transition-transform",
-                hasNewNotification && "animate-bounce text-primary"
-              )} />
-              {realtimeUnreadCount > 0 && (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -right-1 -top-1"
-                  >
-                    <Badge 
-                      variant="destructive" 
-                      className="h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
-                    >
-                      {realtimeUnreadCount}
-                    </Badge>
-                  </motion.div>
-                </AnimatePresence>
-              )}
-            </Button>
-          </MentionsPopover>
-          
           <div className={cn(
             "w-3 h-3 rounded-full absolute -right-1 -top-1",
             getStatusColor(),
@@ -247,6 +198,30 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
               <Headset className="w-6 h-6 text-primary" />
             </AvatarFallback>
           </Avatar>
+          
+          <MentionsPopover
+            mentions={unreadMentions}
+            totalCount={realtimeUnreadCount}
+            onMentionClick={handleMentionClick}
+            onMarkAsRead={markMentionAsRead}
+            onDelete={deleteMention}
+          >
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative"
+            >
+              <Bell className="h-5 w-5" />
+              {realtimeUnreadCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -right-1 -top-1 h-4 min-w-4 flex items-center justify-center p-0 text-[10px]"
+                >
+                  {realtimeUnreadCount}
+                </Badge>
+              )}
+            </Button>
+          </MentionsPopover>
         </div>
         <Button
           variant="ghost"
@@ -287,15 +262,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
                   </Badge>
                 )}
                 
-                {tab.id === "messages" && tab.mentionsBadge !== undefined && (
-                  <Badge 
-                    variant="destructive" 
-                    className="mr-1 animate-pulse bg-red-500 text-white"
-                  >
-                    @{tab.mentionsBadge}
-                  </Badge>
-                )}
-                
                 {tab.id === "messages" && tab.directMessagesBadge !== undefined && (
                   <Badge 
                     variant="secondary" 
@@ -314,3 +280,4 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
     </div>
   );
 };
+

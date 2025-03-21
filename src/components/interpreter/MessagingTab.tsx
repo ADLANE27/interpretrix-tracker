@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,16 +16,6 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const [filters, setFilters] = useState<any>({});
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    // Set a data attribute to help identify we're in messages tab
-    document.body.setAttribute('data-in-messages-tab', 'true');
-    
-    return () => {
-      document.body.removeAttribute('data-in-messages-tab');
-      document.body.removeAttribute('data-in-chat');
-    };
-  }, []);
-
   const handleClearFilters = () => {
     setFilters({});
   };
@@ -33,7 +23,7 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   return (
     <div className="flex h-full">
       {(!selectedChannelId || !isMobile) && (
-        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-64 lg:w-72 border-r border-border h-full`}>
+        <div className={`${selectedChannelId && isMobile ? 'hidden' : 'flex'} flex-col w-full md:w-80 lg:w-96 border-r border-border h-full md:mr-6`}>
           <InterpreterChannelList 
             onChannelSelect={(channelId) => setSelectedChannelId(channelId)} 
           />

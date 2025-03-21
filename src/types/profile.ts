@@ -6,7 +6,6 @@ export interface Profile {
   id: string;
   first_name: string;
   last_name: string;
-  name?: string; // Add this property
   email: string;
   phone_number: string | null;
   languages: {
