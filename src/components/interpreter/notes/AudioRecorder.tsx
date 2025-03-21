@@ -1,7 +1,7 @@
-
 import { format } from "date-fns";
 import { Mic, MicOff, Pause, Play, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 export interface Recording {
   id: string;
@@ -42,11 +42,51 @@ export const AudioRecorder = ({
   onPlayRecording,
   onDeleteRecording
 }: AudioRecorderProps) => {
+  const [playingId, setPlayingId] = useState<string | null>(null);
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (audioElement) {
+      const handleEnded = () => {
+        setPlayingId(null);
+      };
+      
+      audioElement.addEventListener('ended', handleEnded);
+      audioElement.addEventListener('pause', handleEnded);
+      
+      return () => {
+        audioElement.removeEventListener('ended', handleEnded);
+        audioElement.removeEventListener('pause', handleEnded);
+      };
+    }
+  }, [audioElement]);
+  
+  const togglePlayPause = () => {
+    if (audioElement) {
+      if (audioElement.paused) {
+        audioElement.play().catch(error => {
+          console.error("Error playing audio:", error);
+        });
+      } else {
+        audioElement.pause();
+      }
+    }
+  };
+  
+  const handlePlayRecording = (recording: Recording) => {
+    if (playingId === recording.id && audioElement && !audioElement.paused) {
+      audioElement.pause();
+      setPlayingId(null);
+      return;
+    }
+    
+    setPlayingId(recording.id);
+    onPlayRecording(recording.file_path);
   };
   
   return (
@@ -116,7 +156,7 @@ export const AudioRecorder = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={audioElement?.paused ? () => {audioElement?.play()} : () => {audioElement?.pause()}}
+              onClick={togglePlayPause}
               className="p-1"
             >
               {audioElement?.paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
@@ -147,10 +187,13 @@ export const AudioRecorder = ({
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => onPlayRecording(recording.file_path)}
+                    onClick={() => handlePlayRecording(recording)}
                     className="p-1"
                   >
-                    <Play className="h-4 w-4" />
+                    {playingId === recording.id && audioElement && !audioElement.paused ? 
+                      <Pause className="h-4 w-4" /> : 
+                      <Play className="h-4 w-4" />
+                    }
                   </Button>
                   <span className="ml-2">
                     {format(new Date(recording.created_at), 'dd/MM/yyyy HH:mm')}
