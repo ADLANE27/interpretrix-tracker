@@ -90,72 +90,72 @@ export function useRealtimeSubscription(
         log(`Setting up new channel with name: ${channelName}`);
         
         // Create a channel
-        const channel = supabase.channel(channelName);
+        channelRef.current = supabase.channel(channelName);
         
         // Set up the subscription
-        channelRef.current = channel
-          .on(
-            'postgres_changes',
-            {
-              event: config.event,
-              schema: config.schema || 'public',
-              table: config.table,
-              filter: config.filter,
-            },
-            (payload: RealtimePostgresChangesPayload<any>) => {
-              // Generate a unique event ID for deduplication
-              const eventId = `${payload.eventType}-${
-                payload.eventType === 'DELETE' ? 
-                (payload.old as any)?.id : 
-                (payload.new as any)?.id
-              }-${payload.commit_timestamp}`;
-              
-              // Skip if we've already seen this exact event
-              if (seenEvents.current.has(eventId)) {
-                log(`Skipping duplicate event: ${eventId}`);
-                return;
-              }
-              
-              // Add to seen events set for deduplication
-              seenEvents.current.add(eventId);
-              
-              // Limit the size of the seen events set
-              if (seenEvents.current.size > 100) {
-                // Convert to array, remove oldest entries
-                const eventsArray = Array.from(seenEvents.current);
-                seenEvents.current = new Set(eventsArray.slice(-50));
-              }
-              
-              log(`Received ${config.event} event for ${config.table}:`, payload);
-              callback(payload);
-            }
-          );
-
-        // Subscribe to the channel
-        channelRef.current
-          .subscribe((status) => {
-            log(`Subscription status for ${config.table}: ${status}`);
+        // Fix: Correctly configure the channel by calling .on() with postgres_changes option 
+        // and then call .subscribe() separately
+        channelRef.current = channelRef.current.on(
+          'postgres_changes',
+          {
+            event: config.event,
+            schema: config.schema || 'public',
+            table: config.table,
+            filter: config.filter,
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            // Generate a unique event ID for deduplication
+            const eventId = `${payload.eventType}-${
+              payload.eventType === 'DELETE' ? 
+              (payload.old as any)?.id : 
+              (payload.new as any)?.id
+            }-${payload.commit_timestamp}`;
             
-            if (status === 'SUBSCRIBED') {
-              setIsConnected(true);
-              retryCountRef.current = 0;
-            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              setIsConnected(false);
-              
-              if (retryCountRef.current < maxRetries) {
-                const currentRetry = retryCountRef.current + 1;
-                const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1); // Exponential backoff
-                log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
-                retryCountRef.current = currentRetry;
-                timeoutId = setTimeout(setupChannel, delayMs);
-              } else {
-                logError(`Max retries reached for ${config.table}`);
-                onError?.({
-                  message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
-                });
-              }
+            // Skip if we've already seen this exact event
+            if (seenEvents.current.has(eventId)) {
+              log(`Skipping duplicate event: ${eventId}`);
+              return;
             }
-          });
+            
+            // Add to seen events set for deduplication
+            seenEvents.current.add(eventId);
+            
+            // Limit the size of the seen events set
+            if (seenEvents.current.size > 100) {
+              // Convert to array, remove oldest entries
+              const eventsArray = Array.from(seenEvents.current);
+              seenEvents.current = new Set(eventsArray.slice(-50));
+            }
+            
+            log(`Received ${config.event} event for ${config.table}:`, payload);
+            callback(payload);
+          }
+        );
+
+        // Subscribe to the channel (this is now separate from the .on() call)
+        channelRef.current.subscribe((status) => {
+          log(`Subscription status for ${config.table}: ${status}`);
+          
+          if (status === 'SUBSCRIBED') {
+            setIsConnected(true);
+            retryCountRef.current = 0;
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setIsConnected(false);
+            
+            if (retryCountRef.current < maxRetries) {
+              const currentRetry = retryCountRef.current + 1;
+              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1); // Exponential backoff
+              log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
+              retryCountRef.current = currentRetry;
+              timeoutId = setTimeout(setupChannel, delayMs);
+            } else {
+              logError(`Max retries reached for ${config.table}`);
+              onError?.({
+                message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
+              });
+            }
+          }
+        });
 
       } catch (error) {
         logError(`Error setting up channel for ${config.table}:`, error);
