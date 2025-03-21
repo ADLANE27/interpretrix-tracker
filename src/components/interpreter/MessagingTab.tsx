@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { InterpreterChannelList } from "./chat/InterpreterChannelList";
 import { InterpreterChat } from "./chat/InterpreterChat";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,6 +15,16 @@ export const MessagingTab = ({ profile, onStatusChange, onMenuClick }: Messaging
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [filters, setFilters] = useState<any>({});
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    // Set a data attribute to help identify we're in messages tab
+    document.body.setAttribute('data-in-messages-tab', 'true');
+    
+    return () => {
+      document.body.removeAttribute('data-in-messages-tab');
+      document.body.removeAttribute('data-in-chat');
+    };
+  }, []);
 
   const handleClearFilters = () => {
     setFilters({});

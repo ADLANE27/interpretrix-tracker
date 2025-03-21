@@ -20,7 +20,14 @@ export const DashboardHeader = ({
   isMobile
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
-  const showStatusButtons = !isMobile || (isMobile && orientation === "landscape");
+  
+  // Always show status buttons in header except when in chat tab on portrait mode
+  // This will be handled by the MessagingTab directly
+  const isInChatTab = window.location.hash.includes('messages') || 
+                      document.querySelector('[data-channel-id]') !== null;
+  const showStatusButtons = !isMobile || 
+                           (isMobile && orientation === "landscape") || 
+                           (isMobile && !isInChatTab);
 
   return (
     <header className="h-auto bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm flex flex-col px-2 md:px-6 sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 safe-area-top">

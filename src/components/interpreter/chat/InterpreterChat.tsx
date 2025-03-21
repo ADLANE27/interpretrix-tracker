@@ -164,6 +164,13 @@ export const InterpreterChat = ({
     }
   }, [channelId, markMentionsAsRead]);
 
+  useEffect(() => {
+    document.body.setAttribute('data-in-chat', 'true');
+    return () => {
+      document.body.removeAttribute('data-in-chat');
+    };
+  }, []);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -250,7 +257,13 @@ export const InterpreterChat = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" ref={messageContainerRef} id="messages-container" data-channel-id={channelId}>
+      <div 
+        className="flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none relative" 
+        ref={messageContainerRef} 
+        id="messages-container" 
+        data-channel-id={channelId}
+        style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 250px)' } : {}}
+      >
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
             <LoadingSpinner size="lg" text="Chargement des messages..." />
@@ -281,6 +294,7 @@ export const InterpreterChat = ({
         inputRef={inputRef}
         replyTo={replyTo}
         setReplyTo={setReplyTo}
+        style={isMobile && orientation === "landscape" ? { position: 'fixed', bottom: 0, width: '100%' } : {}}
       />
     </div>
   );
