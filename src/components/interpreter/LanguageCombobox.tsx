@@ -148,7 +148,7 @@ export function LanguageCombobox({
       
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 w-full mt-1 rounded-md border border-input bg-white shadow-lg">
+        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-white shadow-xl">
           {/* Search input */}
           <div className="p-2 border-b">
             <Input
