@@ -93,19 +93,19 @@ export const NoteEditor = ({
           onChange={setEditorType}
         />
         
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 border rounded-lg overflow-hidden">
           {editorType === 'text' ? (
             <RichTextEditor
               content={content}
               onChange={setContent}
-              className="min-h-[200px] h-full"
+              className="min-h-[300px] h-full"
               placeholder="Contenu de la note..."
             />
           ) : (
             <DrawingCanvas
               onChange={setDrawingData}
               initialData={drawingData}
-              className="min-h-[200px] h-full"
+              className="min-h-[300px] h-full"
             />
           )}
         </div>
