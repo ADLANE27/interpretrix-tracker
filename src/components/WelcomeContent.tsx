@@ -31,7 +31,7 @@ export const WelcomeContent = () => {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero Section with Centered Content */}
-      <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center relative overflow-hidden pb-16">
         {/* Background with subtle animation */}
         <motion.div 
           className="absolute inset-0 -z-10 opacity-20"
@@ -42,16 +42,16 @@ export const WelcomeContent = () => {
           <div className="absolute inset-0 bg-gradient-to-br from-palette-soft-blue via-white to-palette-soft-purple" />
         </motion.div>
         
-        {/* Main content container */}
+        {/* Main content container - reduced vertical spacing */}
         <motion.div 
-          className="w-full max-w-6xl mx-auto px-6 py-8 text-center"
+          className="w-full max-w-6xl mx-auto px-6 py-4 text-center"
           variants={container}
           initial="hidden"
           animate="visible"
         >
-          {/* Logo Animation */}
+          {/* Logo Animation - reduced margin */}
           <motion.div 
-            className="mb-16"
+            className="mb-8 md:mb-12"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
@@ -59,38 +59,38 @@ export const WelcomeContent = () => {
             <img 
               src="/lovable-uploads/6e8ba30f-137d-474a-9c54-fd5f712b2b41.png" 
               alt="Logo" 
-              className="h-32 md:h-40 mx-auto" 
+              className="h-24 md:h-32 mx-auto" 
             />
           </motion.div>
           
-          {/* Title */}
+          {/* Title - reduced margins */}
           <motion.div 
             variants={item}
-            className="mb-16 max-w-3xl mx-auto"
+            className="mb-8 md:mb-12 max-w-3xl mx-auto"
           >
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-palette-ocean-blue to-palette-vivid-purple bg-clip-text text-transparent">
+            <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-palette-ocean-blue to-palette-vivid-purple bg-clip-text text-transparent">
               Interprétation Professionnelle
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
+            <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
               Connectez-vous à notre plateforme dédiée aux professionnels de l'interprétation
             </p>
           </motion.div>
           
-          {/* Buttons with enhanced visibility */}
+          {/* Buttons - reduced spacing */}
           <motion.div 
             variants={item}
-            className="flex flex-col sm:flex-row justify-center gap-8 mb-6"
+            className="flex flex-col sm:flex-row justify-center gap-4 mb-6"
           >
             <Button 
               asChild 
               size="lg" 
               variant="default"
-              className="text-lg px-10 py-7 rounded-xl shadow-lg shadow-palette-vivid-purple/20 hover:shadow-palette-vivid-purple/40 transition-all duration-300 group"
+              className="text-lg px-8 py-6 rounded-xl shadow-lg shadow-palette-vivid-purple/20 hover:shadow-palette-vivid-purple/40 transition-all duration-300 group"
             >
               <Link to="/admin/login" className="flex items-center gap-3">
-                <Building className="w-6 h-6" />
+                <Building className="w-5 h-5" />
                 <span>Espace Administrateur</span>
-                <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             
@@ -98,22 +98,22 @@ export const WelcomeContent = () => {
               asChild 
               size="lg" 
               variant="secondary"
-              className="text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group"
+              className="text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group"
             >
               <Link to="/interpreter/login" className="flex items-center gap-3">
-                <Headset className="w-6 h-6" />
+                <Headset className="w-5 h-5" />
                 <span>Espace Interprète</span>
-                <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
           </motion.div>
           
-          {/* Copyright text below buttons - with improved visibility and padding */}
+          {/* Copyright text - improved visibility and moved up */}
           <motion.div
             variants={item}
-            className="mb-8 mt-8 px-4 mx-auto max-w-md"
+            className="mt-6 px-4 mx-auto max-w-md"
           >
-            <p className="text-xs sm:text-sm text-slate-500 border-t pt-4 border-slate-200">
+            <p className="text-xs text-slate-500 py-3 border-t border-slate-200 break-words">
               Interpretix™ 2025 – Par AFTraduction, protégé par le droit d'auteur conformément à l'article L112-2 du Code de la propriété intellectuelle. Toute reproduction ou utilisation non autorisée est interdite.
             </p>
           </motion.div>
@@ -135,9 +135,9 @@ export const WelcomeContent = () => {
         </motion.div>
       </div>
       
-      {/* Footer */}
+      {/* Footer - reduced padding */}
       <motion.footer 
-        className="py-6 text-center text-slate-500 text-sm"
+        className="py-4 text-center text-slate-500 text-sm"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.5 }}
@@ -147,3 +147,4 @@ export const WelcomeContent = () => {
     </div>
   );
 };
+
