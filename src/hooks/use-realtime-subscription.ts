@@ -89,14 +89,11 @@ export function useRealtimeSubscription(
         const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
         log(`Setting up new channel with name: ${channelName}`);
         
-        // Create a new channel
+        // Create the channel
         const channel = supabase.channel(channelName);
         
-        // Set up the subscription with the correct pattern:
-        // 1. Create the channel
-        // 2. Set up event handlers with .on()
-        // 3. Subscribe to the channel
-        channelRef.current = channel.on(
+        // Set up the event handler
+        channel.on(
           'postgres_changes',
           {
             event: config.event,
@@ -133,8 +130,8 @@ export function useRealtimeSubscription(
           }
         );
 
-        // Subscribe to the channel after setting up the event handlers
-        channelRef.current.subscribe((status) => {
+        // Subscribe to the channel
+        channelRef.current = channel.subscribe((status) => {
           log(`Subscription status for ${config.table}: ${status}`);
           
           if (status === 'SUBSCRIBED') {
