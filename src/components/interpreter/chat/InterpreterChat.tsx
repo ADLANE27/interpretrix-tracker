@@ -62,12 +62,16 @@ export const InterpreterChat = ({
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messageContainerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const orientation = useOrientation();
-  const messageContainerRef = useRef<HTMLDivElement>(null);
+
+  // Track whether we should include thread replies in filtering
+  const [includeThreadReplies, setIncludeThreadReplies] = useState(true);
 
   const [chatMembers, setChatMembers] = useState([
     { id: 'current', name: 'Mes messages' },
+    { id: 'threads', name: 'Mes fils de discussion' },
   ]);
 
   const {
@@ -80,6 +84,9 @@ export const InterpreterChat = ({
     currentUserId,
     reactToMessage,
     markMentionsAsRead,
+    forceFetch,
+    loadMoreMessages,
+    hasMoreMessages
   } = useChat(channelId);
 
   const { showNotification, requestPermission } = useBrowserNotification();
@@ -88,12 +95,46 @@ export const InterpreterChat = ({
     let filtered = messages;
 
     if (filters.userId) {
-      filtered = filtered.filter(msg => {
-        if (filters.userId === 'current') {
-          return msg.sender.id === currentUserId;
-        }
-        return msg.sender.id === filters.userId;
-      });
+      if (filters.userId === 'current') {
+        // Show messages sent by the current user
+        filtered = filtered.filter(msg => msg.sender.id === currentUserId);
+      } else if (filters.userId === 'threads') {
+        // Show messages that are part of threads the current user has participated in
+        // First, find all thread IDs where the user has participated
+        const userThreadIds = new Set<string>();
+        
+        messages.forEach(msg => {
+          // If this is a user's message that is a reply, add the parent message id
+          if (msg.sender.id === currentUserId && msg.parent_message_id) {
+            userThreadIds.add(msg.parent_message_id);
+          }
+          
+          // If this is a thread parent message from the user, add it
+          if (msg.sender.id === currentUserId && !msg.parent_message_id) {
+            userThreadIds.add(msg.id);
+          }
+        });
+        
+        // Filter to get all messages that are either:
+        // 1. Parent messages of threads where the user participated
+        // 2. Replies in threads where the user participated
+        filtered = filtered.filter(msg => {
+          // Include all thread parent messages that the user participated in
+          if (userThreadIds.has(msg.id)) {
+            return true;
+          }
+          
+          // Include all replies to threads that the user participated in
+          if (msg.parent_message_id && userThreadIds.has(msg.parent_message_id)) {
+            return true;
+          }
+          
+          return false;
+        });
+      } else {
+        // Regular user filter
+        filtered = filtered.filter(msg => msg.sender.id === filters.userId);
+      }
     }
 
     if (filters.keyword) {
@@ -175,6 +216,44 @@ export const InterpreterChat = ({
     };
   }, []);
 
+  // Auto-scroll to bottom when new messages arrive, but only if already at bottom
+  useEffect(() => {
+    if (messageContainerRef.current) {
+      const container = messageContainerRef.current;
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+      
+      if (isAtBottom) {
+        setTimeout(() => {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const uniqueMembers = new Map();
+    
+    if (currentUserId) {
+      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
+      uniqueMembers.set('threads', { id: 'threads', name: 'Mes fils de discussion' });
+    }
+
+    messages.forEach(msg => {
+      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
+        uniqueMembers.set(msg.sender.id, {
+          id: msg.sender.id,
+          name: msg.sender.name,
+          avatarUrl: msg.sender.avatarUrl
+        });
+      }
+    });
+
+    setChatMembers(Array.from(uniqueMembers.values()));
+  }, [messages, currentUserId]);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -207,25 +286,14 @@ export const InterpreterChat = ({
     });
   };
 
-  useEffect(() => {
-    const uniqueMembers = new Map();
-    
-    if (currentUserId) {
-      uniqueMembers.set('current', { id: 'current', name: 'Mes messages' });
+  // Function to handle scroll to load more messages
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    // Load more messages when user scrolls near the top
+    if (target.scrollTop < 50 && !isLoading && hasMoreMessages) {
+      loadMoreMessages();
     }
-
-    messages.forEach(msg => {
-      if (!uniqueMembers.has(msg.sender.id) && msg.sender.id !== currentUserId) {
-        uniqueMembers.set(msg.sender.id, {
-          id: msg.sender.id,
-          name: msg.sender.name,
-          avatarUrl: msg.sender.avatarUrl
-        });
-      }
-    });
-
-    setChatMembers(Array.from(uniqueMembers.values()));
-  }, [messages, currentUserId]);
+  };
 
   // Show status buttons in all cases when in mobile portrait mode
   const showStatusButtons = isMobile && profile && onStatusChange && orientation === "portrait";
@@ -286,6 +354,7 @@ export const InterpreterChat = ({
         id="messages-container" 
         data-channel-id={channelId}
         style={isMobile && orientation === "landscape" ? { maxHeight: 'calc(var(--vh, 1vh) * 100 - 160px)' } : {}}
+        onScroll={handleScroll}
       >
         {isLoading ? (
           <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm flex items-center justify-center">
@@ -296,6 +365,20 @@ export const InterpreterChat = ({
             <LoadingSpinner size="md" text="Connexion en cours..." />
           </div>
         ) : null}
+        
+        {hasMoreMessages && !isLoading && (
+          <div className="flex justify-center my-3">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={loadMoreMessages}
+              className="text-xs"
+            >
+              Charger plus de messages
+            </Button>
+          </div>
+        )}
+        
         <MessageList
           messages={filteredMessages()}
           currentUserId={currentUserId}

@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import data from '@emoji-mart/data';
 import Picker from '@emoji-mart/react';
 import { useTheme } from 'next-themes';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MessageListProps {
   messages: Message[];
@@ -37,17 +38,32 @@ export const MessageList: React.FC<MessageListProps> = ({
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [openEmojiPickerId, setOpenEmojiPickerId] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const { observeMessage } = useMessageVisibility(channelId);
   const { formatMessageTime } = useTimestampFormat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const threadRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
   const isMobile = useIsMobile();
   const { theme } = useTheme();
 
+  // Auto scroll to the bottom when new messages are added
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages]);
+
+  // Scroll to the active thread when expanded
+  useEffect(() => {
+    if (activeThreadId && threadRefsMap.current.has(activeThreadId)) {
+      const threadElement = threadRefsMap.current.get(activeThreadId);
+      if (threadElement) {
+        setTimeout(() => {
+          threadElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, [activeThreadId, expandedThreads]);
 
   const getInitials = (name: string) => {
     return name
@@ -99,8 +115,10 @@ export const MessageList: React.FC<MessageListProps> = ({
       const newSet = new Set(prev);
       if (newSet.has(messageId)) {
         newSet.delete(messageId);
+        setActiveThreadId(null);
       } else {
         newSet.add(messageId);
+        setActiveThreadId(messageId);
       }
       return newSet;
     });
@@ -173,7 +191,7 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   const handleEmojiSelect = (messageId: string, emoji: any) => {
     onReactToMessage(messageId, emoji.native);
-    setOpenEmojiPickerId(null); // Ferme le sélecteur d'emoji après la sélection
+    setOpenEmojiPickerId(null); // Close the emoji picker after selection
   };
 
   const renderMessage = (message: Message, index: number, isThreadReply = false, previousMessage?: Message) => {
@@ -182,9 +200,18 @@ export const MessageList: React.FC<MessageListProps> = ({
 
     return (
       <div 
-        ref={(el) => observeMessage(el)}
+        ref={(el) => {
+          if (el) {
+            observeMessage(el);
+            // Store references to thread containers for scrolling
+            if (!isThreadReply && messageThreads[message.id]?.length > 1) {
+              threadRefsMap.current.set(message.id, el);
+            }
+          }
+        }}
         key={message.id}
         data-message-id={message.id}
+        data-is-thread-reply={isThreadReply ? 'true' : 'false'}
         onMouseEnter={() => setHoveredMessageId(message.id)}
         onMouseLeave={() => setHoveredMessageId(null)}
         className={`group px-4 py-0.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
@@ -311,7 +338,10 @@ export const MessageList: React.FC<MessageListProps> = ({
 
         {/* Thread replies */}
         {!isThreadReply && messageThreads[message.id]?.length > 1 && (
-          <div className="ml-11 mt-1 mb-2">
+          <div 
+            className="ml-11 mt-1 mb-2"
+            id={`thread-${message.id}`}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -328,14 +358,16 @@ export const MessageList: React.FC<MessageListProps> = ({
             
             {expandedThreads.has(message.id) && (
               <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
-                {messageThreads[message.id]
-                  .filter(reply => reply.id !== message.id)
-                  .map((reply, idx, replies) => renderMessage(
-                    reply, 
-                    idx, 
-                    true, 
-                    idx > 0 ? replies[idx - 1] : undefined
-                  ))}
+                <ScrollArea className="max-h-80">
+                  {messageThreads[message.id]
+                    .filter(reply => reply.id !== message.id)
+                    .map((reply, idx, replies) => renderMessage(
+                      reply, 
+                      idx, 
+                      true, 
+                      idx > 0 ? replies[idx - 1] : undefined
+                    ))}
+                </ScrollArea>
               </div>
             )}
           </div>
