@@ -13,7 +13,6 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTabPersistence } from "@/hooks/useTabPersistence";
 
-// Types for notes
 interface Note {
   id: string;
   title: string;
@@ -53,11 +52,9 @@ export const NotesTab = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  // Fetch notes on component mount
   useEffect(() => {
     fetchNotes();
     return () => {
-      // Clean up audio resources when component unmounts
       if (mediaRecorder) {
         if (mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop();
@@ -82,7 +79,6 @@ export const NotesTab = () => {
 
       if (notesError) throw notesError;
 
-      // Separate pinned notes
       const pinned = notesData.filter(note => note.is_pinned);
       const unpinned = notesData.filter(note => !note.is_pinned);
       
@@ -155,8 +151,17 @@ export const NotesTab = () => {
         return;
       }
 
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) {
+        toast({
+          title: "Erreur",
+          description: "Vous devez être connecté",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (currentNote) {
-        // Update existing note
         const { data, error } = await supabase
           .from("interpreter_notes")
           .update({
@@ -170,7 +175,6 @@ export const NotesTab = () => {
 
         if (error) throw error;
         
-        // Save audio if we have new recording chunks
         if (audioChunks.length > 0) {
           await saveRecording(currentNote.id);
         }
@@ -180,19 +184,18 @@ export const NotesTab = () => {
           description: "Note mise à jour avec succès",
         });
       } else {
-        // Create new note
         const { data, error } = await supabase
           .from("interpreter_notes")
           .insert({
             title: newTitle,
             content: newContent,
+            interpreter_id: authData.user.id
           })
           .select()
           .single();
 
         if (error) throw error;
         
-        // Save audio if we have recording chunks
         if (audioChunks.length > 0 && data) {
           await saveRecording(data.id);
         }
@@ -286,7 +289,6 @@ export const NotesTab = () => {
         setIsRecording(true);
         setIsPaused(false);
         
-        // Start a timer to track recording duration
         const timer = setInterval(() => {
           setRecordingTime(prev => prev + 1);
         }, 1000);
@@ -309,12 +311,10 @@ export const NotesTab = () => {
           URL.revokeObjectURL(audioUrl);
         }
         
-        // Create audio preview
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         
-        // Create audio element for playback
         const audio = new Audio(url);
         setAudioElement(audio);
       };
@@ -363,7 +363,6 @@ export const NotesTab = () => {
     if (mediaRecorder && (mediaRecorder.state === "recording" || mediaRecorder.state === "paused")) {
       mediaRecorder.stop();
       
-      // Stop all tracks on the stream
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
       
       if (recordingTimer) {
@@ -416,19 +415,16 @@ export const NotesTab = () => {
       const userId = authData.user.id;
       const filename = `${userId}/${noteId}/${Date.now()}.webm`;
       
-      // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('note_recordings')
         .upload(filename, audioBlob);
       
       if (uploadError) throw uploadError;
       
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('note_recordings')
         .getPublicUrl(filename);
       
-      // Save recording metadata to database
       const { data: recordingData, error: recordingError } = await supabase
         .from('note_recordings')
         .insert({
@@ -441,7 +437,6 @@ export const NotesTab = () => {
       
       if (recordingError) throw recordingError;
       
-      // Add to recordings list 
       setRecordings(prev => [recordingData, ...prev]);
       
       toast({
@@ -449,7 +444,6 @@ export const NotesTab = () => {
         description: "Enregistrement sauvegardé",
       });
       
-      // Reset recording state
       resetRecording();
     } catch (error) {
       console.error("Error saving recording:", error);
@@ -463,7 +457,6 @@ export const NotesTab = () => {
 
   const handleDeleteRecording = async (recordingId: string, filePath: string) => {
     try {
-      // Delete from database
       const { error: dbError } = await supabase
         .from('note_recordings')
         .delete()
@@ -471,12 +464,10 @@ export const NotesTab = () => {
       
       if (dbError) throw dbError;
       
-      // Extract filename from path
       const pathParts = filePath.split('note_recordings/');
       if (pathParts.length > 1) {
         const filename = pathParts[1];
         
-        // Delete from storage
         const { error: storageError } = await supabase.storage
           .from('note_recordings')
           .remove([filename]);
@@ -484,7 +475,6 @@ export const NotesTab = () => {
         if (storageError) console.error("Storage deletion error:", storageError);
       }
       
-      // Update UI
       setRecordings(prev => prev.filter(r => r.id !== recordingId));
       
       toast({
@@ -502,7 +492,6 @@ export const NotesTab = () => {
   };
 
   const playRecording = (url: string) => {
-    // Clean up previous audio element
     if (audioElement) {
       audioElement.pause();
     }
@@ -547,7 +536,6 @@ export const NotesTab = () => {
             />
           </div>
           
-          {/* Recording UI */}
           <div className="mb-4 bg-muted/50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium">Enregistrements audio</h3>
@@ -599,7 +587,6 @@ export const NotesTab = () => {
               </div>
             </div>
             
-            {/* Recording status */}
             {isRecording && (
               <div className="flex items-center mb-2">
                 <div className="mr-2">
@@ -609,7 +596,6 @@ export const NotesTab = () => {
               </div>
             )}
             
-            {/* Audio preview */}
             {audioUrl && !isRecording && (
               <div className="flex items-center justify-between mb-2 bg-background p-2 rounded">
                 <div className="flex items-center">
@@ -634,7 +620,6 @@ export const NotesTab = () => {
               </div>
             )}
             
-            {/* Existing recordings */}
             {recordings.length > 0 && (
               <div className="mt-4">
                 <h4 className="text-sm font-medium mb-2">Enregistrements existants</h4>
@@ -895,3 +880,4 @@ export const NotesTab = () => {
     </div>
   );
 };
+
