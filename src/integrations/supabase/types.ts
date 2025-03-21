@@ -944,6 +944,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      enable_realtime_for_table: {
+        Args: {
+          table_name: string
+        }
+        Returns: Json
+      }
       get_available_channel_users: {
         Args: {
           channel_id: string
@@ -1193,6 +1199,12 @@ export type Database = {
       is_admin_or_self: {
         Args: {
           user_id: string
+        }
+        Returns: boolean
+      }
+      is_table_realtime_enabled: {
+        Args: {
+          table_name: string
         }
         Returns: boolean
       }
