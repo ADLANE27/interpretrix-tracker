@@ -28,6 +28,9 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const userId = useRef<string | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const updateQueueRef = useRef<Status | null>(null);
+  const toastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
+  const errorCountRef = useRef(0);
+  const lastSuccessfulUpdateRef = useRef<number>(Date.now());
 
   // Get user ID once on component mount
   useEffect(() => {
@@ -45,6 +48,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
+      
+      // Dismiss any active toast
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+      }
     };
   }, []);
 
@@ -59,6 +67,16 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
+      
+      // Reset error count when status is successfully updated from props
+      errorCountRef.current = 0;
+      lastSuccessfulUpdateRef.current = Date.now();
+      
+      // Clear any active error toast 
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+        toastRef.current = null;
+      }
       
       // Clear any queued updates that match the new status
       if (updateQueueRef.current === currentStatus) {
@@ -110,6 +128,23 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const handleStatusChange = async (newStatus: Status) => {
     if (!userId.current || localStatus === newStatus) return;
     
+    // Don't allow new updates if too many errors in short period
+    const timeSinceLastSuccess = Date.now() - lastSuccessfulUpdateRef.current;
+    if (errorCountRef.current >= 3 && timeSinceLastSuccess < 60000) {
+      console.log('[StatusButtonsBar] Too many errors recently, blocking new updates temporarily');
+      
+      // Show rate limit toast instead of repeated error
+      if (!toastRef.current) {
+        toastRef.current = toast({
+          title: "Trop de tentatives",
+          description: "Veuillez attendre quelques instants avant de réessayer.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+      return;
+    }
+    
     // If already updating, queue this change
     if (isUpdating) {
       console.log('[StatusButtonsBar] Update already in progress, queueing:', newStatus);
@@ -121,11 +156,17 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
+      // Dismiss any previous error toast
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+        toastRef.current = null;
+      }
+      
       // Optimistically update local state
       setLocalStatus(newStatus);
       
       // Update status directly in database as the primary method
-      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+      const { data, error: dbError } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId.current,
         p_status: newStatus as string
       });
@@ -141,37 +182,58 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       }
       
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
+      lastSuccessfulUpdateRef.current = Date.now();
+      errorCountRef.current = 0;
       
       // Show success toast
       toast({
         title: "Statut mis à jour",
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
+        duration: 3000,
       });
+      
+      // Dispatch a status update event to synchronize other components
+      window.dispatchEvent(new CustomEvent('local-interpreter-status-update', { 
+        detail: { interpreterId: userId.current, status: newStatus }
+      }));
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
+      errorCountRef.current++;
       
       // Revert to previous status on error
       setLocalStatus(currentStatus);
       
-      // Show error toast
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
-        variant: "destructive",
-      });
+      // Show error toast (but don't show repeatedly)
+      if (!toastRef.current) {
+        toastRef.current = toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
+          variant: "destructive",
+          duration: errorCountRef.current >= 3 ? 10000 : 5000,
+        });
+      }
       
-      // Set up retry if there was an error
+      // Set up retry with exponential backoff if there was an error
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
       
-      retryTimeoutRef.current = setTimeout(() => {
-        console.log('[StatusButtonsBar] Retrying status update to:', newStatus);
-        retryTimeoutRef.current = null;
-        // Queue the retry
-        updateQueueRef.current = newStatus;
-        processQueuedUpdate();
-      }, 3000);
+      // Only retry a reasonable number of times with increasing delays
+      if (errorCountRef.current < 5) {
+        const retryDelay = Math.min(2000 * Math.pow(1.5, errorCountRef.current - 1), 15000);
+        
+        console.log(`[StatusButtonsBar] Will retry status update in ${retryDelay}ms`);
+        
+        retryTimeoutRef.current = setTimeout(() => {
+          console.log('[StatusButtonsBar] Retrying status update to:', newStatus);
+          retryTimeoutRef.current = null;
+          // Queue the retry
+          updateQueueRef.current = newStatus;
+          processQueuedUpdate();
+        }, retryDelay);
+      } else {
+        console.log('[StatusButtonsBar] Maximum retry attempts reached');
+      }
     } finally {
       setIsUpdating(false);
       
@@ -202,13 +264,16 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
                 : "bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300",
               "backdrop-blur-sm",
               (isUpdating && isActive) ? "opacity-70 cursor-wait" : "",
-              isUpdating && !isActive ? "opacity-70 cursor-not-allowed" : ""
+              isUpdating && !isActive ? "opacity-70 cursor-not-allowed" : "",
+              // Disable buttons if we've had too many errors recently
+              errorCountRef.current >= 3 && Date.now() - lastSuccessfulUpdateRef.current < 60000 
+                ? "opacity-50 cursor-not-allowed" : ""
             )}
             onClick={() => handleStatusChange(statusKey)}
             whileTap={{ scale: 0.95 }}
             animate={isActive ? { scale: [1, 1.03, 1] } : {}}
             transition={{ duration: 0.2 }}
-            disabled={isUpdating}
+            disabled={isUpdating || (errorCountRef.current >= 3 && Date.now() - lastSuccessfulUpdateRef.current < 60000)}
           >
             <Icon className={cn(
               "flex-shrink-0",

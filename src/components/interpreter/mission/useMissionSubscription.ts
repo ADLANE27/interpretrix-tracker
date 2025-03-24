@@ -15,9 +15,29 @@ export const useMissionSubscription = (
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { showNotification, requestPermission } = useBrowserNotification();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastProcessedMissionRef = useRef<string | null>(null);
+  
+  // Debounced update handler to prevent multiple rapid updates
+  const debouncedUpdate = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      onMissionUpdate();
+      debounceRef.current = null;
+    }, 300);
+  };
   
   useEffect(() => {
     requestPermission();
+    
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [requestPermission]);
 
   // Use the enhanced realtime subscription hook
@@ -36,6 +56,14 @@ export const useMissionSubscription = (
       }
 
       const mission = payload.new as Mission;
+      
+      // Prevent processing the same mission multiple times
+      if (lastProcessedMissionRef.current === mission.id) {
+        console.log('[useMissionSubscription] Already processed this mission');
+        return;
+      }
+      
+      lastProcessedMissionRef.current = mission.id;
 
       // Only show notification for missions that this interpreter can potentially accept
       const isAvailableForMission = mission.assigned_interpreter_id === null &&
@@ -69,7 +97,7 @@ export const useMissionSubscription = (
         requireInteraction: isImmediate,
       });
       
-      onMissionUpdate();
+      debouncedUpdate();
     },
     {
       debugMode: false,
@@ -82,7 +110,7 @@ export const useMissionSubscription = (
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionSubscription] App became visible');
-        onMissionUpdate();
+        debouncedUpdate();
       }
     };
 
@@ -94,5 +122,5 @@ export const useMissionSubscription = (
       window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [onMissionUpdate]);
+  }, []);
 };

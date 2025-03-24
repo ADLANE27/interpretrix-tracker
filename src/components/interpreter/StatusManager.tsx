@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,12 +21,25 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const toastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
+  const errorCountRef = useRef(0);
+  const lastSuccessfulUpdateRef = useRef<number>(Date.now());
 
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== status) {
       console.log('[StatusManager] Current status updated from prop:', currentStatus);
       setStatus(currentStatus);
+      
+      // Reset error count when status is successfully updated from props
+      errorCountRef.current = 0;
+      lastSuccessfulUpdateRef.current = Date.now();
+      
+      // Clear any active error toast
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+        toastRef.current = null;
+      }
     }
   }, [currentStatus]);
 
@@ -47,7 +60,27 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     };
 
     getCurrentUserId();
-  }, []);
+    
+    // Listen for local status updates from other components
+    const handleLocalStatusUpdate = (event: CustomEvent) => {
+      const { interpreterId, status: newStatus } = event.detail;
+      if (interpreterId === userId && isValidStatus(newStatus)) {
+        console.log('[StatusManager] Received local status update:', newStatus);
+        setStatus(newStatus);
+      }
+    };
+    
+    window.addEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
+      
+      // Dismiss any active toast
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+      }
+    };
+  }, [userId]);
 
   // Set up realtime subscription for status updates
   useRealtimeSubscription(
@@ -61,6 +94,16 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       const newStatus = payload.new.status;
       if (isValidStatus(newStatus)) {
         setStatus(newStatus);
+        
+        // Reset error count when status is successfully updated from server
+        errorCountRef.current = 0;
+        lastSuccessfulUpdateRef.current = Date.now();
+        
+        // Clear any active error toast
+        if (toastRef.current) {
+          toastRef.current.dismiss();
+          toastRef.current = null;
+        }
       }
     },
     {
@@ -106,7 +149,31 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const handleStatusChange = async (newStatus: Status) => {
     if (status === newStatus || !userId) return;
     
+    // Don't allow new updates if too many errors in short period
+    const timeSinceLastSuccess = Date.now() - lastSuccessfulUpdateRef.current;
+    if (errorCountRef.current >= 3 && timeSinceLastSuccess < 60000) {
+      console.log('[StatusManager] Too many errors recently, blocking new updates temporarily');
+      
+      // Show rate limit toast instead of repeated error
+      if (!toastRef.current) {
+        toastRef.current = toast({
+          title: "Trop de tentatives",
+          description: "Veuillez attendre quelques instants avant de réessayer.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+      return;
+    }
+    
     setIsLoading(true);
+    
+    // Dismiss any previous error toast
+    if (toastRef.current) {
+      toastRef.current.dismiss();
+      toastRef.current = null;
+    }
+    
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
@@ -126,6 +193,8 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       }
 
       console.log('[StatusManager] Status update successful');
+      lastSuccessfulUpdateRef.current = Date.now();
+      errorCountRef.current = 0;
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
@@ -134,14 +203,26 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       toast({
         title: "Statut mis à jour",
         description: `Votre statut est maintenant "${statusConfig[newStatus].label}"`,
+        duration: 3000,
       });
+      
+      // Dispatch a status update event to synchronize other components
+      window.dispatchEvent(new CustomEvent('local-interpreter-status-update', { 
+        detail: { interpreterId: userId, status: newStatus }
+      }));
     } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
-        variant: "destructive",
-      });
+      errorCountRef.current++;
+      
+      // Show error toast (but don't show repeatedly)
+      if (!toastRef.current) {
+        toastRef.current = toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour votre statut",
+          variant: "destructive",
+          duration: errorCountRef.current >= 3 ? 10000 : 5000,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -156,24 +237,28 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     >
       {(Object.keys(statusConfig) as Status[]).map((statusKey) => {
         const Icon = statusConfig[statusKey].icon;
+        const isButtonDisabled = isLoading || 
+          (errorCountRef.current >= 3 && Date.now() - lastSuccessfulUpdateRef.current < 60000);
+          
         return (
           <motion.div
             key={statusKey}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isButtonDisabled ? 1 : 1.02 }}
+            whileTap={{ scale: isButtonDisabled ? 1 : 0.98 }}
             className="flex-1 min-w-0"
           >
             <Button
               variant={status === statusKey ? "default" : "outline"}
               size="default"
               onClick={() => handleStatusChange(statusKey)}
-              disabled={isLoading}
+              disabled={isButtonDisabled}
               className={`
                 w-full transition-all duration-200
                 h-12 text-xs sm:text-sm font-medium px-1 sm:px-3
                 ${status === statusKey ? statusConfig[statusKey].color : ''}
                 ${status === statusKey ? 'shadow-lg' : ''}
                 ${status !== statusKey ? 'bg-white dark:bg-gray-950' : ''}
+                ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
               <Icon className="h-3 w-3 sm:h-4 sm:w-4 min-w-3 sm:min-w-4 mr-0.5 sm:mr-1 flex-shrink-0" />

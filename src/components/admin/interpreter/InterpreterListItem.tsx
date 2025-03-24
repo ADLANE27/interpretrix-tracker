@@ -6,7 +6,7 @@ import { EmploymentStatus, employmentStatusLabels } from "@/utils/employmentStat
 import { Profile } from "@/types/profile";
 import { WorkLocation, workLocationLabels } from "@/utils/workLocationStatus";
 import { InterpreterStatusDropdown } from "./InterpreterStatusDropdown";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 interface InterpreterListItemProps {
@@ -38,6 +38,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
   const [statusUpdateAttempts, setStatusUpdateAttempts] = useState(0);
+  const toastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
 
   // Update local state when props change
   useEffect(() => {
@@ -46,8 +47,42 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
       setInterpreterStatus(interpreter.status);
       // Reset status update attempts counter when status is updated from props
       setStatusUpdateAttempts(0);
+      
+      // Clear any active toast
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+        toastRef.current = null;
+      }
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
+
+  // Listen for local status update events
+  useEffect(() => {
+    const handleLocalStatusUpdate = (event: CustomEvent) => {
+      const { interpreterId, status } = event.detail;
+      if (interpreterId === interpreter.id) {
+        console.log(`[InterpreterListItem] Received local status update for ${interpreter.id}:`, status);
+        setInterpreterStatus(status);
+        setStatusUpdateAttempts(0);
+        
+        // Clear any active toast
+        if (toastRef.current) {
+          toastRef.current.dismiss();
+          toastRef.current = null;
+        }
+      }
+    };
+    
+    window.addEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
+      
+      if (toastRef.current) {
+        toastRef.current.dismiss();
+      }
+    };
+  }, [interpreter.id]);
 
   const handleStatusChange = async (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
@@ -64,6 +99,7 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         toast({
           title: "Nouvelle tentative",
           description: `Tentative de mise à jour du statut en cours...`,
+          duration: 3000,
         });
       }
       
@@ -72,30 +108,45 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         
         // Check if the result is a Promise
         if (result instanceof Promise) {
-          await result.catch(error => {
-            console.error(`[InterpreterListItem] Error updating status:`, error);
-            
-            // If there have been multiple failed attempts, show guidance
-            if (statusUpdateAttempts >= 2) {
-              toast({
-                title: "Problème de connexion",
-                description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
-                duration: 5000,
-              });
-            }
-          });
+          await result;
         }
-      } catch (error) {
-        console.error(`[InterpreterListItem] Error in status update:`, error);
         
-        // Handle synchronous errors
+        // Success - reset attempts counter
+        setStatusUpdateAttempts(0);
+        
+        // Clear any active toast
+        if (toastRef.current) {
+          toastRef.current.dismiss();
+          toastRef.current = null;
+        }
+        
+        // Dispatch event to notify other components
+        window.dispatchEvent(new CustomEvent('local-interpreter-status-update', { 
+          detail: { interpreterId: interpreter.id, status: newStatus }
+        }));
+      } catch (error) {
+        console.error(`[InterpreterListItem] Error updating status:`, error);
+        
+        // If there have been multiple failed attempts, show guidance
         if (statusUpdateAttempts >= 2) {
-          toast({
-            title: "Problème de connexion",
-            description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
+          if (!toastRef.current) {
+            toastRef.current = toast({
+              title: "Problème de connexion",
+              description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
+              duration: 10000,
+            });
+          }
+        } else if (!toastRef.current) {
+          toastRef.current = toast({
+            title: "Erreur",
+            description: "Impossible de mettre à jour le statut. Nouvelle tentative en cours...",
+            variant: "destructive",
             duration: 5000,
           });
         }
+        
+        // Revert to previous status on error
+        setInterpreterStatus(interpreter.status);
       }
     }
   };
