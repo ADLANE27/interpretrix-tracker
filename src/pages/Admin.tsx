@@ -1,49 +1,20 @@
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { useMissionUpdates } from '@/hooks/useMissionUpdates';
-import { Profile } from '@/types/profile';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
 
-  // Handler for general updates
-  const handleGeneralUpdate = useCallback(() => {
-    console.log('[Admin] General update triggered');
-    // Use a custom event that multiple components can listen to
-    window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+  // Simplified approach: just update the dashboard when needed
+  const refreshDashboard = () => {
+    console.log('[Admin] Refreshing dashboard');
     setLastUpdateTime(Date.now());
-  }, []);
-
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
-  useMissionUpdates(handleGeneralUpdate);
-
-  // Listen for specific interpreter updates
-  useEffect(() => {
-    const handleSpecificInterpreterUpdate = (event: Event) => {
-      const { interpreterId, newStatus } = (event as CustomEvent).detail;
-      console.log(`[Admin] Received specific update for interpreter ${interpreterId}: ${newStatus}`);
-      
-      // Dispatch a custom event with the specific interpreter ID and status
-      window.dispatchEvent(
-        new CustomEvent('specific-interpreter-update', {
-          detail: { interpreterId, newStatus }
-        })
-      );
-    };
-
-    // Listen for both general and specific updates
-    window.addEventListener('specific-interpreter-status-update', handleSpecificInterpreterUpdate);
-
-    return () => {
-      window.removeEventListener('specific-interpreter-status-update', handleSpecificInterpreterUpdate);
-    };
-  }, []);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -84,9 +55,17 @@ const Admin = () => {
     // Initial auth check
     checkAuth();
 
+    // Add simple refresh handler for updates from other components
+    const handleRefreshRequest = () => {
+      refreshDashboard();
+    };
+    
+    window.addEventListener('admin-refresh-needed', handleRefreshRequest);
+
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('admin-refresh-needed', handleRefreshRequest);
     };
   }, [navigate]);
 

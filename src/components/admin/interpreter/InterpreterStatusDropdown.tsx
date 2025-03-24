@@ -71,58 +71,10 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const lastUpdateRef = useRef<string | null>(null);
-
-  // Listen for specific interpreter updates from the Admin component
-  useEffect(() => {
-    const handleSpecificUpdate = (event: Event) => {
-      const { interpreterId: updatedId, newStatus } = (event as CustomEvent).detail;
-      
-      if (updatedId === interpreterId && newStatus !== localStatus) {
-        console.log(`[InterpreterStatusDropdown] Received specific update for ${interpreterId}: ${newStatus}`);
-        setLocalStatus(newStatus);
-      }
-    };
-
-    // Listen for general updates as well
-    const handleGeneralUpdate = async () => {
-      try {
-        // Fetch the latest status directly from the database
-        const { data, error } = await supabase
-          .from('interpreter_profiles')
-          .select('status')
-          .eq('id', interpreterId)
-          .single();
-          
-        if (error) throw error;
-        
-        if (data && data.status !== localStatus) {
-          console.log(`[InterpreterStatusDropdown] General update: ${interpreterId} status: ${data.status}`);
-          setLocalStatus(data.status as Status);
-        }
-      } catch (err) {
-        console.error(`[InterpreterStatusDropdown] Error fetching status:`, err);
-      }
-    };
-
-    window.addEventListener('specific-interpreter-update', handleSpecificUpdate);
-    window.addEventListener('interpreter-status-update', handleGeneralUpdate);
-    
-    return () => {
-      window.removeEventListener('specific-interpreter-update', handleSpecificUpdate);
-      window.removeEventListener('interpreter-status-update', handleGeneralUpdate);
-    };
-  }, [interpreterId, localStatus]);
-
+  
   // Update local state when prop changes
   useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
-      const updateId = `${currentStatus}-${Date.now()}`;
-      
-      // Prevent duplicate updates
-      if (updateId === lastUpdateRef.current) return;
-      lastUpdateRef.current = updateId;
-      
+    if (currentStatus !== localStatus) {
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
@@ -153,10 +105,14 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
+      // Generate a transaction ID for tracking
+      const transactionId = `admin-update-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
-        p_status: pendingStatus
+        p_status: pendingStatus,
+        p_transaction_id: transactionId
       });
 
       if (error) {
@@ -165,6 +121,9 @@ export const InterpreterStatusDropdown = ({
         setLocalStatus(currentStatus);
         throw error;
       }
+
+      // Dispatch event to notify the admin dashboard that a refresh might be needed
+      window.dispatchEvent(new CustomEvent('admin-refresh-needed'));
 
       toast({
         title: "Statut mis à jour",

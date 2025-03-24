@@ -2,7 +2,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { supabase } from '@/integrations/supabase/client';
-import { Profile } from '@/types/profile';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   const lastUpdateTimeRef = useRef<number>(Date.now());
@@ -46,8 +45,15 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       triggerUpdate();
     };
 
+    // Support simpler update mechanism from other components
+    const handleAdminRefresh = () => {
+      console.log('[useMissionUpdates] Admin refresh needed');
+      triggerUpdate();
+    };
+
     window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('admin-refresh-needed', handleAdminRefresh);
 
     // Set up polling as a fallback
     setupPolling();
@@ -56,6 +62,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Cleaning up event listeners and polling');
       window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('admin-refresh-needed', handleAdminRefresh);
       
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -63,45 +70,17 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
   }, [triggerUpdate, setupPolling]);
 
-  // Function to dispatch a targeted interpreter status update event
-  const dispatchInterpreterStatusUpdate = useCallback((interpreterId: string, newStatus: Profile['status']) => {
-    console.log(`[useMissionUpdates] Dispatching specific interpreter update: ${interpreterId} -> ${newStatus}`);
-    window.dispatchEvent(
-      new CustomEvent('specific-interpreter-status-update', {
-        detail: { interpreterId, newStatus }
-      })
-    );
-  }, []);
-
-  // Subscribe to interpreter profile changes (for status updates)
+  // Continue using subscriptions, but they're now a backup to our more reliable polling
   useRealtimeSubscription(
     {
-      event: 'UPDATE',
+      event: '*',
       schema: 'public',
       table: 'interpreter_profiles',
       filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
     },
     (payload) => {
-      console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      
-      if (payload.new && payload.old) {
-        const newStatus = payload.new.status;
-        const oldStatus = payload.old.status;
-        const interpreterId = payload.new.id;
-        
-        if (newStatus !== oldStatus) {
-          console.log(`[useMissionUpdates] Status changed from ${oldStatus} to ${newStatus} for interpreter ${interpreterId}`);
-          
-          // Dispatch targeted update for this specific interpreter
-          dispatchInterpreterStatusUpdate(interpreterId, newStatus as Profile['status']);
-          
-          // Also trigger a general update
-          triggerUpdate();
-        }
-      } else {
-        // If payload doesn't contain the expected data, trigger a general update
-        triggerUpdate();
-      }
+      console.log('[useMissionUpdates] Profile change received:', payload);
+      triggerUpdate();
     },
     {
       debugMode: true,
