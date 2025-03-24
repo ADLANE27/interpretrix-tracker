@@ -137,9 +137,10 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       // Optimistically update local state
       setStatus(newStatus);
       
+      // Use the standardized RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
-        p_status: newStatus as string
+        p_status: newStatus
       });
 
       if (error) {

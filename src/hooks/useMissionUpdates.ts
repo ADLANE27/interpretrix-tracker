@@ -15,12 +15,17 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionUpdates] App is online, triggering update');
+      onUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onUpdate]);
@@ -85,7 +90,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         });
       }
       
-      // This is a status update, trigger the refresh
+      // Trigger the refresh
       onUpdate();
     },
     {

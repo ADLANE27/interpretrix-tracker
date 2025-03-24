@@ -112,11 +112,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Update status directly in database
+      // Update status directly in database using the standard function
       if (userId.current) {
         const { error: dbError } = await supabase.rpc('update_interpreter_status', {
           p_interpreter_id: userId.current,
-          p_status: newStatus as string
+          p_status: newStatus
         });
         
         if (dbError) {
