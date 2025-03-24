@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 export const useMissionUpdates = (onUpdate: () => void) => {
   const updateIdRef = useRef<string | null>(null);
   const { toast } = useToast();
+  const isProcessingRef = useRef(false);
 
   // Setup visibility change event listeners
   useEffect(() => {
@@ -19,12 +20,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    // Listen for status update events
+    // Listen for status update events with improved de-duplication
     const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: string, timestamp?: number}>) => {
       console.log('[useMissionUpdates] Status update event received, triggering refresh');
       
       // Create a unique update identifier to prevent duplicate processing
-      const updateId = `${event.detail.status}-${event.detail.timestamp || Date.now()}`;
+      const updateId = `${event.detail.status}-${event.detail.timestamp || Date.now()}-${event.detail.interpreter_id}`;
       
       // Skip if this is a duplicate of our last update
       if (updateId === updateIdRef.current) {
@@ -48,12 +49,20 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     };
   }, [onUpdate]);
 
-  // Direct update function for immediate status changes
+  // Direct update function with improved error handling and transaction tracking
   const updateInterpreterStatus = async (interpreterId: string, status: string) => {
+    // Prevent concurrent updates
+    if (isProcessingRef.current) {
+      console.log('[useMissionUpdates] Skipping concurrent update request');
+      return false;
+    }
+
+    isProcessingRef.current = true;
+
     try {
       console.log(`[useMissionUpdates] Directly updating interpreter ${interpreterId} status to: ${status}`);
       
-      // Use database function for reliable updates
+      // Use database function for reliable status updates
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: status
@@ -69,9 +78,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         return false;
       }
 
-      // Dispatch a global event to notify other components
+      // Dispatch a global event with timestamp to notify other components
       const timestamp = Date.now();
-      const updateId = `${status}-${timestamp}`;
+      const updateId = `${status}-${timestamp}-${interpreterId}`;
       updateIdRef.current = updateId;
       
       window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
@@ -91,6 +100,11 @@ export const useMissionUpdates = (onUpdate: () => void) => {
         variant: "destructive",
       });
       return false;
+    } finally {
+      // Release lock after short delay to prevent rapid consecutive updates
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 300);
     }
   };
 
@@ -142,15 +156,15 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       event: 'UPDATE',
       schema: 'public',
       table: 'interpreter_profiles',
-      filter: `status=neq.null`
+      filter: `status=not.is.null` // Fixed filter syntax
     },
     (payload) => {
       if (!payload.new?.id || !payload.new?.status) return;
       
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       
-      // Create a unique update identifier
-      const updateId = `${payload.new.status}-${Date.now()}`;
+      // Create a unique update identifier with interpreter ID for better tracking
+      const updateId = `${payload.new.status}-${Date.now()}-${payload.new.id}`;
       
       // Skip if this is a duplicate of our last update
       if (updateId === updateIdRef.current) {

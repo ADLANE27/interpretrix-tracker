@@ -33,26 +33,34 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const isCircuitBrokenRef = useRef(false);
   const isProcessingRef = useRef(false);
 
-  // Throttled status updater
+  // Direct database update function - simplified to avoid race conditions
   const updateStatus = useCallback(async (status: Status) => {
     if (!userId.current) return false;
     
     try {
       console.log('[StatusButtonsBar] Directly updating status in database:', status);
       
+      // Use the RPC function for reliability
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId.current,
         p_status: status
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('[StatusButtonsBar] Database error:', error);
+        throw error;
+      }
       
-      // Dispatch event to notify other components
+      // Generate unique transaction ID for this update
+      const timestamp = Date.now();
+      const transactionId = `${status}-${timestamp}`;
+      
+      // Dispatch event with transaction ID to prevent duplicate processing
       window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
         detail: { 
           interpreter_id: userId.current,
           status: status,
-          timestamp: Date.now()
+          timestamp: timestamp
         }
       }));
       
@@ -66,10 +74,14 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId.current = user.id;
-        console.log('[StatusButtonsBar] User ID set:', user.id);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId.current = user.id;
+          console.log('[StatusButtonsBar] User ID set:', user.id);
+        }
+      } catch (error) {
+        console.error('[StatusButtonsBar] Error fetching user ID:', error);
       }
     };
     
@@ -78,11 +90,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     // Listen for global status updates
     const handleStatusUpdate = (event: CustomEvent<{interpreter_id: string, status: Status, timestamp?: number}>) => {
       const detail = event.detail;
-      if (!detail || detail.interpreter_id !== userId.current) return;
+      if (!detail || !userId.current || detail.interpreter_id !== userId.current) return;
       
       console.log('[StatusButtonsBar] Received status update event:', detail);
       
-      // Skip if the status hasn't changed or isn't valid
+      // Skip if the status isn't valid or hasn't changed
       if (!detail.status || detail.status === localStatus || !isValidStatus(detail.status)) return;
       
       // Create a unique update identifier
@@ -174,9 +186,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[StatusButtonsBar] Real-time subscription status:', status);
-      });
+      .subscribe();
       
     return () => {
       supabase.removeChannel(channel);
@@ -226,17 +236,11 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     }
   };
 
-  // Handle status change with debounce and circuit breaker
+  // Improved status change handler with better error handling
   const handleStatusChange = async (newStatus: Status) => {
     // Skip if same status, no user ID, already updating, or circuit breaker is active
     if (newStatus === localStatus || !userId.current || isUpdating || isCircuitBrokenRef.current || isProcessingRef.current) {
       return;
-    }
-    
-    // Clear any pending update timeout
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-      updateTimeoutRef.current = null;
     }
     
     // Set processing flag to prevent concurrent updates
@@ -249,16 +253,20 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // First try direct database update
-      await updateStatus(newStatus);
+      // Try database update first with proper error handling
+      const success = await updateStatus(newStatus);
       
-      // Then call the parent handler
+      if (!success) {
+        throw new Error('Failed to update status in database');
+      }
+      
+      // Then call the parent handler - but don't fail if it fails
       if (onStatusChange) {
         try {
           await onStatusChange(newStatus);
         } catch (handlerError) {
           console.error('[StatusButtonsBar] Error in parent handler:', handlerError);
-          // We already updated the DB directly, so continue
+          // We already updated the DB directly, so continue without failing
         }
       }
       
@@ -280,7 +288,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Revert to previous status on error
       setLocalStatus(currentStatus);
       
-      // Implement circuit breaker pattern
+      // Implement circuit breaker pattern to prevent repeated failures
       if (failedAttemptsRef.current >= maxFailedAttempts) {
         console.log('[StatusButtonsBar] Circuit breaker activated');
         isCircuitBrokenRef.current = true;

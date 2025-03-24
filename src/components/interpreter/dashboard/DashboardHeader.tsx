@@ -71,12 +71,21 @@ export const DashboardHeader = ({
     if (!profile?.id) return;
     
     try {
-      // Use our enhanced direct update method
+      console.log('[DashboardHeader] Updating status to:', newStatus);
+      
+      // Use our enhanced direct update method first
       const success = await updateInterpreterStatus(profile.id, newStatus);
       
       if (success) {
         // Only call the parent handler if direct update succeeded
-        await onStatusChange(newStatus);
+        try {
+          await onStatusChange(newStatus);
+        } catch (error) {
+          console.error('[DashboardHeader] Error in parent status handler:', error);
+          // The database was updated directly, so we can continue
+        }
+      } else {
+        throw new Error('Failed to update status directly');
       }
     } catch (error) {
       console.error('[DashboardHeader] Error updating status:', error);
