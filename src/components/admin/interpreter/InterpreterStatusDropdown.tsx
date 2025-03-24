@@ -73,6 +73,47 @@ export const InterpreterStatusDropdown = ({
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
 
+  // Listen for specific interpreter updates from the Admin component
+  useEffect(() => {
+    const handleSpecificUpdate = (event: Event) => {
+      const { interpreterId: updatedId, newStatus } = (event as CustomEvent).detail;
+      
+      if (updatedId === interpreterId && newStatus !== localStatus) {
+        console.log(`[InterpreterStatusDropdown] Received specific update for ${interpreterId}: ${newStatus}`);
+        setLocalStatus(newStatus);
+      }
+    };
+
+    // Listen for general updates as well
+    const handleGeneralUpdate = async () => {
+      try {
+        // Fetch the latest status directly from the database
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', interpreterId)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data && data.status !== localStatus) {
+          console.log(`[InterpreterStatusDropdown] General update: ${interpreterId} status: ${data.status}`);
+          setLocalStatus(data.status as Status);
+        }
+      } catch (err) {
+        console.error(`[InterpreterStatusDropdown] Error fetching status:`, err);
+      }
+    };
+
+    window.addEventListener('specific-interpreter-update', handleSpecificUpdate);
+    window.addEventListener('interpreter-status-update', handleGeneralUpdate);
+    
+    return () => {
+      window.removeEventListener('specific-interpreter-update', handleSpecificUpdate);
+      window.removeEventListener('interpreter-status-update', handleGeneralUpdate);
+    };
+  }, [interpreterId, localStatus]);
+
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {

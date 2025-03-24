@@ -94,6 +94,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
+      // Dispatch custom event first to ensure UI is updated immediately
+      if (userId.current) {
+        window.dispatchEvent(
+          new CustomEvent('specific-interpreter-status-update', {
+            detail: { interpreterId: userId.current, newStatus }
+          })
+        );
+      }
+      
       // Update status directly in database as a backup
       if (userId.current) {
         const { error: dbError } = await supabase.rpc('update_interpreter_status', {
