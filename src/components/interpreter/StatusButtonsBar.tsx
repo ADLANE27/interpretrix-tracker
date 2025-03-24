@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
+import { updateInterpreterStatus } from '@/utils/statusUpdates';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -27,6 +28,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const userId = useRef<string | null>(null);
   const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCount = useRef(0);
+  const maxRetries = 3;
 
   // Listen for status updates from other components
   useEffect(() => {
@@ -47,9 +50,16 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId.current = user.id;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          userId.current = user.id;
+          console.log('[StatusButtonsBar] User ID set:', user.id);
+        } else {
+          console.error('[StatusButtonsBar] No authenticated user found');
+        }
+      } catch (error) {
+        console.error('[StatusButtonsBar] Error fetching user:', error);
       }
     };
     
@@ -96,7 +106,7 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   };
 
   const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
+    if (!userId.current || localStatus === newStatus || isUpdating) return;
     
     try {
       setIsUpdating(true);
@@ -112,29 +122,20 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Update status directly in database using the standard function
-      if (userId.current) {
-        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-          p_interpreter_id: userId.current,
-          p_status: newStatus
-        });
-        
-        if (dbError) {
-          console.error('[StatusButtonsBar] Database error:', dbError);
-          throw dbError;
-        }
-        
-        // Emit the status update event
-        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-          interpreterId: userId.current,
-          status: newStatus,
-          previousStatus: previousStatus
-        });
+      // Use the centralized status update function
+      const result = await updateInterpreterStatus(userId.current, newStatus, previousStatus);
+
+      if (!result.success) {
+        throw result.error || new Error("Failed to update status");
       }
       
-      // Call the parent handler
-      await onStatusChange(newStatus);
-      console.log('[StatusButtonsBar] Status changed to:', newStatus);
+      // Call the parent handler if exists
+      if (onStatusChange) {
+        await onStatusChange(newStatus);
+      }
+      
+      retryCount.current = 0;
+      console.log('[StatusButtonsBar] Status successfully changed to:', newStatus);
       
       // Show success toast
       toast({
@@ -144,7 +145,21 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       
-      // Revert to previous status on error with a slight delay to avoid UI flicker
+      // Retry logic
+      if (retryCount.current < maxRetries) {
+        retryCount.current++;
+        const retryDelay = 1000 * Math.pow(2, retryCount.current - 1); // Exponential backoff
+        
+        console.log(`[StatusButtonsBar] Retrying status update (${retryCount.current}/${maxRetries}) in ${retryDelay}ms`);
+        
+        statusUpdateTimeoutRef.current = setTimeout(() => {
+          handleStatusChange(newStatus);
+        }, retryDelay);
+        
+        return;
+      }
+      
+      // Revert to previous status on final error with a slight delay to avoid UI flicker
       statusUpdateTimeoutRef.current = setTimeout(() => {
         setLocalStatus(currentStatus);
       }, 500);

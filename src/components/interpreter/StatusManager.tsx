@@ -7,6 +7,7 @@ import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
+import { updateInterpreterStatus } from "@/utils/statusUpdates";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -123,6 +124,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     if (status === newStatus || !userId) return;
     
     setIsLoading(true);
+    
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
@@ -136,25 +138,14 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       // Optimistically update local state
       setStatus(newStatus);
       
-      // Use the standardized RPC function
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId,
-        p_status: newStatus
-      });
+      // Use the centralized status update function
+      const result = await updateInterpreterStatus(userId, newStatus, previousStatus);
 
-      if (error) {
-        console.error('[StatusManager] Database error:', error);
-        throw error;
+      if (!result.success) {
+        throw result.error || new Error("Failed to update status");
       }
 
       console.log('[StatusManager] Status update successful');
-
-      // Emit the status update event
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-        interpreterId: userId,
-        status: newStatus,
-        previousStatus: previousStatus
-      });
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
@@ -174,7 +165,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
+        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {

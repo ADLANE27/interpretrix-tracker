@@ -10,6 +10,7 @@ import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
+import { updateInterpreterStatus } from "@/utils/statusUpdates";
 
 interface WorkHours {
   start_morning?: string;
@@ -57,36 +58,45 @@ export const InterpretersTab: React.FC = () => {
   const [todayMissionsCount, setTodayMissionsCount] = useState(0);
   const { toast } = useToast();
 
-  const handleInterpreterStatusChange = (interpreterId: string, newStatus: Profile['status']) => {
+  const handleInterpreterStatusChange = async (interpreterId: string, newStatus: Profile['status']) => {
     console.log(`[InterpretersTab] Status change for interpreter ${interpreterId}: ${newStatus}`);
     
-    setInterpreters(current => 
-      current.map(interpreter => 
-        interpreter.id === interpreterId 
-          ? { ...interpreter, status: newStatus } 
-          : interpreter
-      )
-    );
+    try {
+      const { success, error } = await updateInterpreterStatus(interpreterId, newStatus);
+      
+      if (!success) {
+        throw error || new Error("Failed to update interpreter status");
+      }
+      
+      setInterpreters(current => 
+        current.map(interpreter => 
+          interpreter.id === interpreterId 
+            ? { ...interpreter, status: newStatus } 
+            : interpreter
+        )
+      );
 
-    const interpreter = interpreters.find(i => i.id === interpreterId);
-    if (interpreter) {
+      const interpreter = interpreters.find(i => i.id === interpreterId);
+      if (interpreter) {
+        toast({
+          title: "Statut mis à jour",
+          description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour`,
+        });
+      }
+    } catch (error) {
+      console.error('[InterpretersTab] Error updating interpreter status:', error);
       toast({
-        title: "Statut mis à jour",
-        description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour`,
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut de l'interprète",
+        variant: "destructive"
       });
     }
-    
-    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-      interpreterId: interpreterId,
-      status: newStatus
-    });
   };
 
   useEffect(() => {
     console.log("[InterpretersTab] Setting up real-time subscriptions and event listeners");
     const channels: RealtimeChannel[] = [];
 
-    // Channel for interpreter profile changes (status updates)
     const interpreterChannel = supabase.channel('admin-interpreter-profiles').on('postgres_changes', {
       event: '*',
       schema: 'public',
@@ -116,7 +126,6 @@ export const InterpretersTab: React.FC = () => {
     });
     channels.push(interpreterChannel);
 
-    // Listen for status update events
     const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
       console.log(`[InterpretersTab] Received status update event for ${data.interpreterId}:`, data.status);
       
@@ -131,7 +140,6 @@ export const InterpretersTab: React.FC = () => {
     
     eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
 
-    // Channel for private reservations changes
     const reservationsChannel = supabase.channel('admin-private-reservations').on('postgres_changes', {
       event: '*',
       schema: 'public',
@@ -144,7 +152,6 @@ export const InterpretersTab: React.FC = () => {
     });
     channels.push(reservationsChannel);
     
-    // Listen for interpreter status update events from useMissionUpdates
     const handleStatusUpdateDeprecated = () => {
       console.log("[InterpretersTab] Received interpreter status update event");
       fetchInterpreters();
@@ -168,7 +175,6 @@ export const InterpretersTab: React.FC = () => {
     };
     const connectionCheckInterval = setInterval(handleConnectionState, 30000);
 
-    // Initial fetch
     fetchInterpreters();
     return () => {
       console.log("[InterpretersTab] Cleaning up subscriptions and event listeners");
@@ -216,11 +222,9 @@ export const InterpretersTab: React.FC = () => {
         }
         const now = new Date();
 
-        // Find next scheduled private reservation
         const nextReservation = interpreter.private_reservations?.find(reservation => reservation?.start_time && new Date(reservation.start_time) > now && reservation.status === 'scheduled');
         console.log(`[InterpretersTab] Interpreter ${interpreter.first_name} ${interpreter.last_name} next reservation:`, nextReservation);
         
-        // Make sure work_location is correctly typed
         const workLocation = interpreter.work_location as WorkLocation || "on_site";
         console.log(`[InterpretersTab] Interpreter ${interpreter.first_name} ${interpreter.last_name} work location:`, workLocation);
         
@@ -251,7 +255,6 @@ export const InterpretersTab: React.FC = () => {
       setInterpreters(mappedInterpreters);
       console.log("[InterpretersTab] Interpreters data updated:", mappedInterpreters.length, "records");
 
-      // Fetch scheduled missions and private reservations for today's count
       fetchTodayMissions();
     } catch (error) {
       console.error("[InterpretersTab] Error fetching interpreters:", error);
@@ -273,19 +276,8 @@ export const InterpretersTab: React.FC = () => {
       const tomorrowStart = tomorrow.toISOString();
       console.log("[InterpretersTab] Fetching today's missions", todayStart, tomorrowStart);
 
-      // Fetch scheduled missions for today
-      const {
-        data: scheduledMissions,
-        error: scheduledError
-      } = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
-      if (scheduledError) throw scheduledError;
-
-      // Fetch private reservations for today
-      const {
-        data: privateReservations,
-        error: reservationsError
-      } = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
-      if (reservationsError) throw reservationsError;
+      const scheduledMissions = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
+      const privateReservations = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
       const scheduledCount = scheduledMissions?.length || 0;
       const reservationsCount = privateReservations?.length || 0;
       const totalMissionsToday = scheduledCount + reservationsCount;
