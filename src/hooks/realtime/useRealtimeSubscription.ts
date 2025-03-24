@@ -10,6 +10,7 @@ import {
 import { useRealtimeEnabler } from './useRealtimeEnabler';
 import { useRealtimeLogger } from './useRealtimeLogger';
 import { useEventCache } from './useEventCache';
+import { useCircuitBreaker } from './useCircuitBreaker';
 
 export function useRealtimeSubscription(
   config: SubscriptionConfig,
@@ -34,6 +35,7 @@ export function useRealtimeSubscription(
   const { enableRealtimeForTable } = useRealtimeEnabler(debugMode);
   const { log, logError } = useRealtimeLogger(instanceIdRef.current, debugMode);
   const eventCache = useEventCache(100);
+  const { isCircuitOpen, recordSuccess, recordFailure } = useCircuitBreaker(debugMode);
 
   const processEvent = useCallback((payload: RealtimePostgresChangesPayload<any>) => {
     // Create a unique identifier for this event
@@ -54,27 +56,35 @@ export function useRealtimeSubscription(
     
     log(`Received ${payload.eventType} event for ${config.table}:`, payload);
     
-    // Dispatch status update globally if applicable
+    // Enhanced interpreter status update handling
     if (config.table === 'interpreter_profiles' && payload.eventType === 'UPDATE' &&
         payload.new && payload.new.id && payload.new.status) {
       log(`Dispatching global interpreter status update event for interpreter ${payload.new.id}`);
+      
+      // Create a unique event ID to help with deduplication across components
+      const statusEventId = `${payload.new.id}-${payload.new.status}-${Date.now()}`;
+      
       window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
         detail: { 
           interpreter_id: payload.new.id,
           status: payload.new.status,
-          timestamp: Date.now() // Add timestamp to help with deduplication
+          transaction_id: statusEventId,
+          timestamp: Date.now()
         }
       }));
     }
     
     // Execute the provided callback with the payload
     callback(payload);
-  }, [callback, config.table, eventCache, log]);
+    
+    // Record successful event processing
+    recordSuccess();
+  }, [callback, config.table, eventCache, log, recordSuccess]);
 
   useEffect(() => {
-    const setupChannel = async () => {
-      if (!enabled) return;
+    if (!enabled || isCircuitOpen()) return;
 
+    const setupChannel = async () => {
       try {
         if (channelRef.current) {
           log('Removing existing channel');
@@ -134,6 +144,7 @@ export function useRealtimeSubscription(
               timeoutRef.current = setTimeout(setupChannel, delayMs);
             } else {
               logError(`Max retries reached for ${config.table}`);
+              recordFailure();
               onError?.({
                 message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
               });
@@ -143,6 +154,7 @@ export function useRealtimeSubscription(
 
       } catch (error) {
         logError(`Error setting up channel for ${config.table}:`, error);
+        recordFailure();
         onError?.(error);
       }
     };
@@ -174,7 +186,8 @@ export function useRealtimeSubscription(
     log,
     logError,
     eventCache,
-    processEvent
+    processEvent,
+    isCircuitOpen
   ]);
 
   return { isConnected };
