@@ -85,8 +85,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       enabled: !!userId,
       onError: (error) => {
         console.error('[StatusManager] Error in realtime subscription:', error);
-      },
-      debugMode: true
+      }
     }
   );
 

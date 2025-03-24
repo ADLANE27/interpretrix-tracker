@@ -37,7 +37,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -58,7 +57,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -91,7 +89,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode for troubleshooting
       maxRetries: 3,
       retryInterval: 3000, // Shorter retry for status updates
       onError: (error) => {

@@ -25,7 +25,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
-  const lastUpdateRef = useRef<string | null>(null);
   const userId = useRef<string | null>(null);
   const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -60,12 +59,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
-      const updateId = `${currentStatus}-${Date.now()}`;
-      
-      // Prevent duplicate updates
-      if (updateId === lastUpdateRef.current) return;
-      lastUpdateRef.current = updateId;
-      
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
