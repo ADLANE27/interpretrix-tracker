@@ -1,6 +1,7 @@
 
 import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup visibility change event listeners
@@ -76,6 +77,16 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      
+      // Emit the status update event
+      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
+          interpreterId: payload.new.id,
+          status: payload.new.status,
+          previousStatus: payload.old.status
+        });
+      }
+      
       // This is a status update, trigger the refresh
       onUpdate();
     },

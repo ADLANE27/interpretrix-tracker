@@ -12,6 +12,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
 
 type Status = Profile['status'];
 
@@ -72,6 +73,23 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
+  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen for status updates from other components
+  useEffect(() => {
+    const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
+      if (data.interpreterId === interpreterId && data.status !== localStatus) {
+        console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, data.status);
+        setLocalStatus(data.status as Status);
+      }
+    };
+
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
+    };
+  }, [interpreterId, localStatus]);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -92,6 +110,7 @@ export const InterpreterStatusDropdown = ({
       setIsOpen(false);
       return;
     }
+    
     setPendingStatus(status);
     setIsConfirmDialogOpen(true);
     setIsOpen(false);
@@ -104,8 +123,15 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      const previousStatus = localStatus;
+      
       // Optimistically update the local status
       setLocalStatus(pendingStatus);
+      
+      // Clear any existing timeout
+      if (statusUpdateTimeoutRef.current) {
+        clearTimeout(statusUpdateTimeoutRef.current);
+      }
       
       // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
@@ -120,10 +146,15 @@ export const InterpreterStatusDropdown = ({
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
-        // Revert on error
-        setLocalStatus(currentStatus);
         throw error;
       }
+
+      // Emit the status update event
+      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
+        interpreterId: interpreterId,
+        status: pendingStatus,
+        previousStatus: previousStatus
+      });
 
       toast({
         title: "Statut mis à jour",
@@ -131,6 +162,12 @@ export const InterpreterStatusDropdown = ({
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
+      
+      // Revert on error with a slight delay to avoid UI flicker
+      statusUpdateTimeoutRef.current = setTimeout(() => {
+        setLocalStatus(currentStatus);
+      }, 500);
+      
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut",

@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -26,6 +27,23 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const lastUpdateRef = useRef<string | null>(null);
   const userId = useRef<string | null>(null);
+  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen for status updates from other components
+  useEffect(() => {
+    const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
+      if (userId.current && data.interpreterId === userId.current && data.status !== localStatus) {
+        console.log(`[StatusButtonsBar] Received status update event for ${userId.current}:`, data.status);
+        setLocalStatus(data.status as Status);
+      }
+    };
+
+    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
+    
+    return () => {
+      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
+    };
+  }, [localStatus]);
 
   // Get user ID once on component mount
   useEffect(() => {
@@ -91,10 +109,17 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
+      // Clear any existing timeout
+      if (statusUpdateTimeoutRef.current) {
+        clearTimeout(statusUpdateTimeoutRef.current);
+      }
+      
+      const previousStatus = localStatus;
+      
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Update status directly in database as a backup
+      // Update status directly in database
       if (userId.current) {
         const { error: dbError } = await supabase.rpc('update_interpreter_status', {
           p_interpreter_id: userId.current,
@@ -103,7 +128,15 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
         
         if (dbError) {
           console.error('[StatusButtonsBar] Database error:', dbError);
+          throw dbError;
         }
+        
+        // Emit the status update event
+        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
+          interpreterId: userId.current,
+          status: newStatus,
+          previousStatus: previousStatus
+        });
       }
       
       // Call the parent handler
@@ -118,8 +151,10 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       
-      // Revert to previous status on error
-      setLocalStatus(currentStatus);
+      // Revert to previous status on error with a slight delay to avoid UI flicker
+      statusUpdateTimeoutRef.current = setTimeout(() => {
+        setLocalStatus(currentStatus);
+      }, 500);
       
       // Show error toast
       toast({
