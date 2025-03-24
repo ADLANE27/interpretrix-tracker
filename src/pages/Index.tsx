@@ -8,31 +8,12 @@ import { useToast } from "@/hooks/use-toast";
 import { WelcomeContent } from "@/components/WelcomeContent";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button"; 
-import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Reset circuit breaker state when the index page loads
-  useEffect(() => {
-    resetCircuitBreaker();
-    console.log('[Index] Reset circuit breaker for realtime subscriptions');
-    
-    // Set up online/offline handlers to reset circuit breaker
-    const handleOnline = () => {
-      console.log('[Index] App came online, resetting circuit breaker');
-      resetCircuitBreaker();
-    };
-    
-    window.addEventListener('online', handleOnline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-    };
-  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {

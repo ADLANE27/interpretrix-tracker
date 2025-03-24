@@ -1,18 +1,9 @@
 
 import { useEffect } from 'react';
-import { useRealtimeSubscription, resetCircuitBreaker } from './use-realtime-subscription';
+import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
 
-// Track which tables have been subscribed to for better deduplication
-const subscribedTables = new Set<string>();
-
 export const useMissionUpdates = (onUpdate: () => void) => {
-  // Reset the circuit breaker when the hook is mounted
-  useEffect(() => {
-    resetCircuitBreaker();
-    console.log('[useMissionUpdates] Reset circuit breaker for realtime subscriptions');
-  }, []);
-
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
@@ -26,8 +17,6 @@ export const useMissionUpdates = (onUpdate: () => void) => {
 
     const handleOnline = () => {
       console.log('[useMissionUpdates] App is online, triggering update');
-      // Reset circuit breaker when we come back online
-      resetCircuitBreaker();
       onUpdate();
     };
 
