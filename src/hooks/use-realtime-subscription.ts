@@ -1,199 +1,251 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type SupabaseEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-
 interface SubscriptionConfig {
-  event: SupabaseEvent;
+  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
   schema?: string;
   table: string;
   filter?: string;
 }
 
-interface HookOptions {
+interface UseRealtimeSubscriptionOptions {
   enabled?: boolean;
-  debugMode?: boolean;
-  maxRetries?: number;
   retryInterval?: number;
-  onError?: (error: Error) => void;
+  maxRetries?: number;
+  onError?: (error: any) => void;
+  debugMode?: boolean;
+  enableRealtimeConfig?: boolean;
 }
 
-export const useRealtimeSubscription = <T = any>(
+// Global cache to track which tables have had realtime enabled
+const enabledTablesCache = new Set<string>();
+// Circuit breaker state to prevent repeated failed calls
+const circuitBreakerState = {
+  isOpen: false,
+  failureCount: 0,
+  lastFailureTime: 0,
+  resetTimeout: 60000, // 1 minute before trying again
+  failureThreshold: 3
+};
+
+export function useRealtimeSubscription(
   config: SubscriptionConfig,
-  callback: (payload: RealtimePostgresChangesPayload<T>) => void,
-  options: HookOptions = {}
-) => {
+  callback: (payload: any) => void,
+  options: UseRealtimeSubscriptionOptions = {}
+) {
   const {
     enabled = true,
-    debugMode = false,
+    retryInterval = 5000,
     maxRetries = 3,
-    retryInterval = 2000,
-    onError
+    onError,
+    debugMode = false,
+    enableRealtimeConfig = true
   } = options;
 
   const channelRef = useRef<RealtimeChannel | null>(null);
   const retryCountRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const callbackRef = useRef(callback);
-  const configRef = useRef(config);
   const [isConnected, setIsConnected] = useState(false);
-  const lastPayloadRef = useRef<RealtimePostgresChangesPayload<T> | null>(null);
+  const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
+  const seenEvents = useRef<Set<string>>(new Set());
 
-  // Update refs when dependencies change
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  useEffect(() => {
-    configRef.current = config;
-  }, [config]);
-
-  // Channel setup function
-  const setupChannel = () => {
-    if (!enabled) return;
-
-    // Clean up any existing channel
-    if (channelRef.current) {
-      if (debugMode) console.log('[useRealtimeSubscription] Removing existing channel');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    // Clear any pending reconnect timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    const { event, schema = 'public', table, filter } = configRef.current;
-
+  const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
-      console.log(`[useRealtimeSubscription] Setting up subscription: ${event} on ${table} with filter ${filter || 'none'}`);
+      console.log(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
     }
+  }, [debugMode]);
 
-    // Generate a unique channel name with timestamp
-    const channelName = `${table}-${event}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+  const logError = useCallback((message: string, ...args: any[]) => {
+    console.error(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
+  }, []);
 
-    try {
-      // Create the subscription config
-      const subscriptionConfig: any = {
-        event,
-        schema,
-        table
-      };
-
-      // Add filter if provided - careful with proper filter syntax
-      if (filter) {
-        subscriptionConfig.filter = filter;
+  const shouldTryEnableRealtime = useCallback((tableName: string) => {
+    // If cache shows this table is already enabled, skip
+    if (enabledTablesCache.has(tableName)) {
+      log(`Table ${tableName} is already cached as enabled, skipping enablement`);
+      return false;
+    }
+    
+    // Check circuit breaker state
+    if (circuitBreakerState.isOpen) {
+      const now = Date.now();
+      const timeSinceLastFailure = now - circuitBreakerState.lastFailureTime;
+      
+      // If enough time has passed, reset the circuit breaker
+      if (timeSinceLastFailure > circuitBreakerState.resetTimeout) {
+        log(`Circuit breaker reset after ${timeSinceLastFailure}ms`);
+        circuitBreakerState.isOpen = false;
+        circuitBreakerState.failureCount = 0;
+      } else {
+        log(`Circuit breaker is open, skipping enablement request`);
+        return false;
       }
+    }
+    
+    return true;
+  }, [log]);
 
-      // Create and set up the channel
-      channelRef.current = supabase.channel(channelName)
-        .on('postgres_changes', subscriptionConfig, (payload: RealtimePostgresChangesPayload<T>) => {
-          if (debugMode) {
-            console.log(`[useRealtimeSubscription] Received ${event} on ${table}:`, payload);
-          }
-          
-          // Save the last payload for reconnection
-          lastPayloadRef.current = payload;
-          
-          // Call the callback with the payload
-          callbackRef.current(payload);
-        })
-        .on('system', { event: 'reconnect' }, (event) => {
-          if (debugMode) {
-            console.log('[useRealtimeSubscription] System reconnect event:', event);
-          }
-          setIsConnected(true);
-          retryCountRef.current = 0;
-        })
-        .on('system', { event: 'connected' }, () => {
-          if (debugMode) {
-            console.log('[useRealtimeSubscription] Connected to Realtime');
-          }
-          setIsConnected(true);
-          retryCountRef.current = 0;
-        })
-        .on('system', { event: 'disconnected' }, () => {
-          if (debugMode) {
-            console.log('[useRealtimeSubscription] Disconnected from Realtime');
-          }
-          setIsConnected(false);
-        })
-        .on('system', { event: 'error' }, (err) => {
-          console.error(`[useRealtimeSubscription] Error on ${table}:`, err);
-          setIsConnected(false);
-          
-          if (onError) {
-            onError(new Error(`Realtime error: ${JSON.stringify(err)}`));
-          }
-        })
-        .subscribe(async (status) => {
-          if (debugMode) {
-            console.log(`[useRealtimeSubscription] Subscription status for ${table}:`, status);
-          }
+  const enableRealtimeForTable = useCallback(async (tableName: string) => {
+    // Skip if disabled or if we shouldn't try
+    if (!enableRealtimeConfig || !shouldTryEnableRealtime(tableName)) {
+      return true; // Return true to continue with subscription setup
+    }
+    
+    try {
+      log(`Enabling realtime for table ${tableName}`);
+      const { data, error } = await supabase.functions.invoke('enable-realtime', {
+        body: { table: tableName }
+      });
+      
+      if (error) {
+        logError(`Error enabling realtime for table ${tableName}:`, error);
+        
+        // Update circuit breaker on failure
+        circuitBreakerState.failureCount++;
+        circuitBreakerState.lastFailureTime = Date.now();
+        
+        if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
+          circuitBreakerState.isOpen = true;
+          logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+        }
+        
+        return false;
+      }
+      
+      log(`Successfully enabled realtime for table ${tableName}:`, data);
+      
+      // Add to global cache on success
+      enabledTablesCache.add(tableName);
+      
+      // Reset circuit breaker on success
+      circuitBreakerState.failureCount = 0;
+      circuitBreakerState.isOpen = false;
+      
+      return true;
+    } catch (error) {
+      logError(`Error calling enable-realtime function for table ${tableName}:`, error);
+      
+      // Update circuit breaker on exception
+      circuitBreakerState.failureCount++;
+      circuitBreakerState.lastFailureTime = Date.now();
+      
+      if (circuitBreakerState.failureCount >= circuitBreakerState.failureThreshold) {
+        circuitBreakerState.isOpen = true;
+        logError(`Circuit breaker opened after ${circuitBreakerState.failureCount} failures`);
+      }
+      
+      return false;
+    }
+  }, [enableRealtimeConfig, shouldTryEnableRealtime, log, logError]);
 
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const setupChannel = async () => {
+      if (!enabled) return;
+
+      try {
+        if (channelRef.current) {
+          log('Removing existing channel');
+          await supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+
+        // Try to enable realtime for this table, but proceed with subscription even if it fails
+        // This allows reconnection attempts even if the realtime enablement failed
+        await enableRealtimeForTable(config.table);
+
+        const channelName = `${config.table}-${config.event}${config.filter ? '-filtered' : ''}-${instanceIdRef.current}`;
+        log(`Setting up new channel with name: ${channelName}`);
+        
+        const channel = supabase.channel(channelName);
+        
+        channel.on(
+          'postgres_changes' as any, 
+          { 
+            event: config.event, 
+            schema: config.schema || 'public', 
+            table: config.table, 
+            filter: config.filter 
+          }, 
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const eventId = `${payload.eventType}-${
+              payload.eventType === 'DELETE' ? 
+              (payload.old as any)?.id : 
+              (payload.new as any)?.id
+            }-${payload.commit_timestamp}`;
+            
+            if (seenEvents.current.has(eventId)) {
+              log(`Skipping duplicate event: ${eventId}`);
+              return;
+            }
+            
+            seenEvents.current.add(eventId);
+            
+            if (seenEvents.current.size > 100) {
+              const eventsArray = Array.from(seenEvents.current);
+              seenEvents.current = new Set(eventsArray.slice(-50));
+            }
+            
+            log(`Received ${config.event} event for ${config.table}:`, payload);
+            callback(payload);
+          }
+        );
+
+        channelRef.current = channel.subscribe((status) => {
+          log(`Subscription status for ${config.table}: ${status}`);
+          
           if (status === 'SUBSCRIBED') {
             setIsConnected(true);
             retryCountRef.current = 0;
-          } else if (status === 'SUBSCRIPTION_ERROR' || status === 'CHANNEL_ERROR') {
-            console.error(`[useRealtimeSubscription] Subscription error for ${table}`);
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             setIsConnected(false);
             
-            // Handle retry logic
-            retryCountRef.current++;
-            
-            if (retryCountRef.current <= maxRetries) {
-              const delay = retryInterval * Math.pow(1.5, retryCountRef.current - 1);
-              console.log(`[useRealtimeSubscription] Retry attempt ${retryCountRef.current} in ${delay}ms`);
-              
-              // Set up reconnect timeout
-              reconnectTimeoutRef.current = setTimeout(() => {
-                if (debugMode) {
-                  console.log(`[useRealtimeSubscription] Reconnecting to ${table}...`);
-                }
-                setupChannel();
-              }, delay);
+            if (retryCountRef.current < maxRetries) {
+              const currentRetry = retryCountRef.current + 1;
+              const delayMs = retryInterval * Math.pow(1.5, currentRetry - 1);
+              log(`Attempting reconnection (${currentRetry}/${maxRetries}) for ${config.table} in ${delayMs}ms`);
+              retryCountRef.current = currentRetry;
+              timeoutId = setTimeout(setupChannel, delayMs);
             } else {
-              console.error(`[useRealtimeSubscription] Max retries reached for ${table}`);
-              
-              if (onError) {
-                onError(new Error(`Max reconnection attempts reached for ${table}`));
-              }
+              logError(`Max retries reached for ${config.table}`);
+              onError?.({
+                message: `Failed to establish realtime connection for ${config.table} after ${maxRetries} attempts`
+              });
             }
           }
         });
 
-      return () => {
-        if (channelRef.current) {
-          if (debugMode) {
-            console.log('[useRealtimeSubscription] Cleaning up channel');
-          }
-          supabase.removeChannel(channelRef.current);
-        }
-        
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-      };
-    } catch (error) {
-      console.error('[useRealtimeSubscription] Error setting up channel:', error);
-      
-      if (onError) {
-        onError(error instanceof Error ? error : new Error(String(error)));
+      } catch (error) {
+        logError(`Error setting up channel for ${config.table}:`, error);
+        onError?.(error);
       }
-    }
-  };
+    };
 
-  // Set up the subscription when the hook mounts or options change
-  useEffect(() => {
-    return setupChannel();
-  }, [enabled]);
+    setupChannel();
 
-  return {
-    isConnected,
-    lastPayload: lastPayloadRef.current
-  };
-};
+    return () => {
+      log(`Cleaning up subscription for ${config.table}`);
+      clearTimeout(timeoutId);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [
+    enabled, 
+    config.table, 
+    config.event, 
+    config.schema, 
+    config.filter, 
+    callback, 
+    maxRetries, 
+    retryInterval, 
+    onError, 
+    enableRealtimeForTable,
+    log,
+    logError
+  ]);
+
+  return { isConnected };
+}

@@ -1,32 +1,8 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
-  const updatedRef = useRef(false);
-  const lastUpdateTimeRef = useRef(Date.now());
-  
-  // Avoid update floods - wait at least 2 seconds between updates
-  const throttledUpdate = () => {
-    const now = Date.now();
-    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
-    
-    if (timeSinceLastUpdate < 2000) {
-      if (!updatedRef.current) {
-        updatedRef.current = true;
-        setTimeout(() => {
-          updatedRef.current = false;
-          lastUpdateTimeRef.current = Date.now();
-          onUpdate();
-        }, 2000 - timeSinceLastUpdate);
-      }
-    } else {
-      lastUpdateTimeRef.current = now;
-      onUpdate();
-    }
-  };
-  
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
@@ -34,40 +10,19 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
-        throttledUpdate();
+        onUpdate();
       }
     };
 
-    const handleOnlineStatus = () => {
-      if (navigator.onLine) {
-        console.log('[useMissionUpdates] App came online, triggering update');
-        throttledUpdate();
-      }
-    };
-
-    window.addEventListener("online", handleOnlineStatus);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleOnlineStatus);
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
-
-  // Listen for local status update events
-  useEffect(() => {
-    const handleLocalStatusUpdate = () => {
-      console.log('[useMissionUpdates] Detected local status update, triggering update');
-      throttledUpdate();
-    };
-    
-    window.addEventListener('local-interpreter-status-update', handleLocalStatusUpdate);
-    
-    return () => {
-      window.removeEventListener('local-interpreter-status-update', handleLocalStatusUpdate);
-    };
-  }, []);
+  }, [onUpdate]);
 
   // Subscribe to mission changes
   useRealtimeSubscription(
@@ -78,12 +33,15 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
-      throttledUpdate();
+      onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
-      retryInterval: 2000
+      retryInterval: 5000,
+      onError: (error) => {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      }
     }
   );
 
@@ -96,16 +54,19 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
-      throttledUpdate();
+      onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
-      retryInterval: 2000
+      retryInterval: 5000,
+      onError: (error) => {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      }
     }
   );
   
-  // Subscribe to interpreter profile status changes with correct filter
+  // Use a more specific subscription for interpreter profile status changes
   useRealtimeSubscription(
     {
       event: 'UPDATE',
@@ -115,16 +76,16 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      throttledUpdate();
-      
-      // Dispatch an event that other components can listen to
-      const statusUpdateEvent = new CustomEvent('interpreter-status-update', { detail: payload });
-      window.dispatchEvent(statusUpdateEvent);
+      // This is a status update, trigger the refresh
+      onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode for troubleshooting
       maxRetries: 3,
-      retryInterval: 2000
+      retryInterval: 3000, // Shorter retry for status updates
+      onError: (error) => {
+        console.error('[useMissionUpdates] Status subscription error:', error);
+      }
     }
   );
 };

@@ -27,7 +27,7 @@ interface InterpreterStatusDropdownProps {
   currentStatus: Status;
   className?: string;
   displayFormat?: "badge" | "button";
-  onStatusChange?: (newStatus: Status) => void | Promise<void>;
+  onStatusChange?: (newStatus: Status) => void;
 }
 
 const statusConfig: Record<Status, StatusConfigItem> = {
@@ -72,21 +72,6 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const errorCountRef = useRef(0);
-  const toastRef = useRef<{ id: string; dismiss: () => void } | null>(null);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-      if (toastRef.current) {
-        toastRef.current.dismiss();
-      }
-    };
-  }, []);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -99,34 +84,8 @@ export const InterpreterStatusDropdown = ({
       
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
-      
-      // Reset error count
-      errorCountRef.current = 0;
-      
-      // Clear any active toast
-      if (toastRef.current) {
-        toastRef.current.dismiss();
-        toastRef.current = null;
-      }
     }
   }, [currentStatus, interpreterId, localStatus]);
-
-  // Listen for local status update events
-  useEffect(() => {
-    const handleLocalStatusUpdate = (event: CustomEvent) => {
-      const { interpreterId: updatedId, status: newStatus } = event.detail;
-      if (updatedId === interpreterId) {
-        console.log(`[InterpreterStatusDropdown] Received local status update for ${interpreterId}:`, newStatus);
-        setLocalStatus(newStatus);
-      }
-    };
-    
-    window.addEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
-    
-    return () => {
-      window.removeEventListener('local-interpreter-status-update', handleLocalStatusUpdate as EventListener);
-    };
-  }, [interpreterId]);
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
@@ -145,16 +104,15 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
-      // Dismiss any existing error toast
-      if (toastRef.current) {
-        toastRef.current.dismiss();
-        toastRef.current = null;
-      }
-      
       // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      // Update interpreter status using RPC function - this is the authoritative update
+      // Notify parent component of the status change if callback is provided
+      if (onStatusChange) {
+        onStatusChange(pendingStatus);
+      }
+      
+      // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -166,58 +124,18 @@ export const InterpreterStatusDropdown = ({
         setLocalStatus(currentStatus);
         throw error;
       }
-      
-      // Notify parent component of the status change if callback is provided
-      if (onStatusChange) {
-        try {
-          const result = onStatusChange(pendingStatus);
-          if (result instanceof Promise) {
-            await result;
-          }
-        } catch (error) {
-          console.error('[InterpreterStatusDropdown] Error in parent callback:', error);
-          // We don't revert the status here since the database update succeeded
-        }
-      }
 
-      // Reset error count on success
-      errorCountRef.current = 0;
-      
       toast({
         title: "Statut mis à jour",
         description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
-        duration: 3000,
       });
-      
-      // Dispatch an event to synchronize other components
-      window.dispatchEvent(new CustomEvent('local-interpreter-status-update', { 
-        detail: { interpreterId, status: pendingStatus }
-      }));
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
-      errorCountRef.current++;
-      
-      if (!toastRef.current) {
-        toastRef.current = toast({
-          title: "Erreur",
-          description: "Impossible de mettre à jour le statut",
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-      
-      // Retry the update once after a delay if it's not a user-rejected operation
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
-      
-      if (errorCountRef.current < 2) {
-        retryTimeoutRef.current = setTimeout(() => {
-          console.log(`[InterpreterStatusDropdown] Retrying status update for ${interpreterId} to ${pendingStatus}`);
-          retryTimeoutRef.current = null;
-          handleConfirm();
-        }, 3000);
-      }
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);
@@ -258,12 +176,12 @@ export const InterpreterStatusDropdown = ({
           {triggerContent()}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[180px]">
-          {(Object.entries(statusConfig) as [Status, StatusConfigItem][]).map(([status, config]) => {
+          {Object.entries(statusConfig).map(([status, config]) => {
             const StatusIcon = config.icon;
             return (
               <DropdownMenuItem 
                 key={status}
-                onClick={() => handleStatusSelect(status)}
+                onClick={() => handleStatusSelect(status as Status)}
                 className={`flex items-center gap-2 ${localStatus === status ? 'bg-muted' : ''}`}
               >
                 <StatusIcon className="h-4 w-4" />

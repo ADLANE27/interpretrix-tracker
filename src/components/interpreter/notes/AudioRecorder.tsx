@@ -1,8 +1,7 @@
-
 import { format } from "date-fns";
 import { Mic, MicOff, Pause, Play, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 export interface Recording {
   id: string;
@@ -44,12 +43,10 @@ export const AudioRecorder = ({
   onDeleteRecording
 }: AudioRecorderProps) => {
   const [playingId, setPlayingId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
+    const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
@@ -59,24 +56,12 @@ export const AudioRecorder = ({
         setPlayingId(null);
       };
       
-      const handleTimeUpdate = () => {
-        setCurrentTime(audioElement.currentTime);
-      };
-      
-      const handleDurationChange = () => {
-        setDuration(audioElement.duration);
-      };
-      
       audioElement.addEventListener('ended', handleEnded);
       audioElement.addEventListener('pause', handleEnded);
-      audioElement.addEventListener('timeupdate', handleTimeUpdate);
-      audioElement.addEventListener('durationchange', handleDurationChange);
       
       return () => {
         audioElement.removeEventListener('ended', handleEnded);
         audioElement.removeEventListener('pause', handleEnded);
-        audioElement.removeEventListener('timeupdate', handleTimeUpdate);
-        audioElement.removeEventListener('durationchange', handleDurationChange);
       };
     }
   }, [audioElement]);
@@ -84,28 +69,22 @@ export const AudioRecorder = ({
   const togglePlayPause = () => {
     if (audioElement) {
       if (audioElement.paused) {
-        console.log("Playing audio from URL:", audioUrl);
         audioElement.play().catch(error => {
           console.error("Error playing audio:", error);
         });
       } else {
-        console.log("Pausing audio");
         audioElement.pause();
       }
-    } else {
-      console.error("Audio element is null, cannot play/pause");
     }
   };
   
   const handlePlayRecording = (recording: Recording) => {
     if (playingId === recording.id && audioElement && !audioElement.paused) {
-      console.log("Stopping current playback");
       audioElement.pause();
       setPlayingId(null);
       return;
     }
     
-    console.log("Playing recording from URL:", recording.file_path);
     setPlayingId(recording.id);
     onPlayRecording(recording.file_path);
   };
@@ -172,49 +151,26 @@ export const AudioRecorder = ({
       )}
       
       {audioUrl && !isRecording && (
-        <div className="flex flex-col mb-2 bg-background p-2 rounded">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={togglePlayPause}
-                className="p-1"
-              >
-                {audioElement?.paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-              </Button>
-              <span className="ml-2">Nouvel enregistrement - {formatTime(recordingTime)}</span>
-            </div>
+        <div className="flex items-center justify-between mb-2 bg-background p-2 rounded">
+          <div className="flex items-center">
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={onResetRecording}
-              className="text-destructive hover:text-destructive p-1"
+              onClick={togglePlayPause}
+              className="p-1"
             >
-              <Trash className="w-4 h-4" />
+              {audioElement?.paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
             </Button>
+            <span className="ml-2">Nouvel enregistrement - {formatTime(recordingTime)}</span>
           </div>
-          
-          {audioElement && (
-            <div className="mt-2 px-2">
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={currentTime}
-                onChange={(e) => {
-                  if (audioElement) {
-                    audioElement.currentTime = Number(e.target.value);
-                  }
-                }}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
-          )}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onResetRecording}
+            className="text-destructive hover:text-destructive p-1"
+          >
+            <Trash className="w-4 h-4" />
+          </Button>
         </div>
       )}
       
@@ -225,56 +181,33 @@ export const AudioRecorder = ({
             {recordings.map((recording) => (
               <div 
                 key={recording.id} 
-                className="flex flex-col bg-background p-2 rounded"
+                className="flex items-center justify-between bg-background p-2 rounded"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handlePlayRecording(recording)}
-                      className="p-1"
-                    >
-                      {playingId === recording.id && audioElement && !audioElement.paused ? 
-                        <Pause className="h-4 w-4" /> : 
-                        <Play className="h-4 w-4" />
-                      }
-                    </Button>
-                    <span className="ml-2">
-                      {format(new Date(recording.created_at), 'dd/MM/yyyy HH:mm')}
-                      {recording.duration && ` - ${formatTime(recording.duration)}`}
-                    </span>
-                  </div>
+                <div className="flex items-center">
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => onDeleteRecording(recording.id, recording.file_path)}
-                    className="text-destructive hover:text-destructive p-1"
+                    onClick={() => handlePlayRecording(recording)}
+                    className="p-1"
                   >
-                    <Trash className="w-4 h-4" />
+                    {playingId === recording.id && audioElement && !audioElement.paused ? 
+                      <Pause className="h-4 w-4" /> : 
+                      <Play className="h-4 w-4" />
+                    }
                   </Button>
+                  <span className="ml-2">
+                    {format(new Date(recording.created_at), 'dd/MM/yyyy HH:mm')}
+                    {recording.duration && ` - ${formatTime(recording.duration)}`}
+                  </span>
                 </div>
-                
-                {playingId === recording.id && audioElement && (
-                  <div className="mt-2 px-2">
-                    <input
-                      type="range"
-                      min="0"
-                      max={duration || 100}
-                      value={currentTime}
-                      onChange={(e) => {
-                        if (audioElement) {
-                          audioElement.currentTime = Number(e.target.value);
-                        }
-                      }}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-                  </div>
-                )}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => onDeleteRecording(recording.id, recording.file_path)}
+                  className="text-destructive hover:text-destructive p-1"
+                >
+                  <Trash className="w-4 h-4" />
+                </Button>
               </div>
             ))}
           </div>
