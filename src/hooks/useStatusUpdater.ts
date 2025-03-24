@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { StatusConfig } from '@/components/interpreter/StatusButton';
@@ -119,12 +120,25 @@ export const useStatusUpdater = ({
       setIsUpdating(true);
       console.log('[useStatusUpdater] Changing status to:', newStatus);
       
+      // Update local state immediately for better UX
       setLocalStatus(newStatus);
       
+      // Use the direct RPC function for reliable updates
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId.current,
+        p_status: newStatus
+      });
+      
+      if (error) {
+        console.error('[useStatusUpdater] RPC error:', error);
+        throw new Error(`RPC failed: ${error.message}`);
+      }
+      
+      // Now use our helper from useMissionUpdates for the event dispatch
       const success = await updateInterpreterStatus(userId.current, newStatus);
       
       if (!success) {
-        throw new Error('Failed to update status in database');
+        throw new Error('Failed to dispatch status update event');
       }
       
       if (onStatusChange) {
@@ -132,6 +146,7 @@ export const useStatusUpdater = ({
           await onStatusChange(newStatus);
         } catch (handlerError) {
           console.error('[useStatusUpdater] Error in parent handler:', handlerError);
+          // Continue since the database update worked
         }
       }
       
@@ -148,6 +163,7 @@ export const useStatusUpdater = ({
       failedAttemptsRef.current += 1;
       console.log(`[useStatusUpdater] Failed attempts: ${failedAttemptsRef.current}/${maxFailedAttempts}`);
       
+      // Revert local status back to previous state
       setLocalStatus(currentStatus);
       
       if (failedAttemptsRef.current >= maxFailedAttempts) {

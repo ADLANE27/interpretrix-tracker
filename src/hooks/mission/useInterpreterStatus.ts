@@ -27,6 +27,8 @@ export const useInterpreterStatus = () => {
     
     try {
       await updateInterpreterStatusInternal(operation.interpreterId, operation.status);
+    } catch (error) {
+      console.error('[useInterpreterStatus] Error processing queue:', error);
     } finally {
       // Release lock with small delay to prevent race conditions
       setTimeout(() => {
@@ -48,7 +50,7 @@ export const useInterpreterStatus = () => {
       const timestamp = Date.now();
       const transactionId = `${interpreterId}-${status}-${timestamp}`;
       
-      // Use RPC function for reliable status updates
+      // Use RPC function for reliable status updates - this is the ONLY place that directly calls the database
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: status
@@ -60,6 +62,7 @@ export const useInterpreterStatus = () => {
       }
       
       // Dispatch global event with transaction ID to prevent duplicate processing
+      // This helps synchronize status across components
       window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
         detail: { 
           interpreter_id: interpreterId,

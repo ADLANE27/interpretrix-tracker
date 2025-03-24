@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { 
   DropdownMenu, 
@@ -77,12 +78,33 @@ export const InterpreterStatusDropdown = ({
 
   const updateStatus = useCallback(async (status: Status) => {
     try {
+      setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} to ${status}`);
       
-      return await updateInterpreterStatus(interpreterId, status);
+      // Use RPC function for direct database update
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: status
+      });
+      
+      if (error) {
+        console.error('[InterpreterStatusDropdown] RPC error:', error);
+        throw new Error(error.message);
+      }
+      
+      // Use the helper to publish an event for all components to react to
+      const success = await updateInterpreterStatus(interpreterId, status);
+      
+      if (!success) {
+        console.error('[InterpreterStatusDropdown] Event dispatch failed');
+      }
+      
+      return true;
     } catch (error) {
       console.error(`[InterpreterStatusDropdown] Error updating status:`, error);
       throw error;
+    } finally {
+      setIsUpdating(false);
     }
   }, [interpreterId, updateInterpreterStatus]);
 
@@ -123,9 +145,31 @@ export const InterpreterStatusDropdown = ({
     window.addEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
     isSubscribedRef.current = true;
     
+    // Setup a realtime subscription to interpreter_profiles table for this interpreter
+    const channel = supabase.channel(`interpreter-status-${interpreterId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'interpreter_profiles',
+        filter: `id=eq.${interpreterId}`
+      }, (payload) => {
+        if (payload.new && payload.new.status && payload.new.status !== localStatus) {
+          console.log(`[InterpreterStatusDropdown] Database change for ${interpreterId}:`, payload.new.status);
+          setLocalStatus(payload.new.status as Status);
+          
+          if (onStatusChange) {
+            onStatusChange(payload.new.status as Status);
+          }
+        }
+      })
+      .subscribe((status) => {
+        console.log(`[InterpreterStatusDropdown] Subscription status: ${status}`);
+      });
+    
     return () => {
       console.log(`[InterpreterStatusDropdown] Cleaning up status handlers for interpreter ${interpreterId}`);
       window.removeEventListener('interpreter-status-update', handleStatusUpdate as EventListener);
+      supabase.removeChannel(channel);
       isSubscribedRef.current = false;
     };
   }, [interpreterId, localStatus, onStatusChange]);
@@ -157,12 +201,14 @@ export const InterpreterStatusDropdown = ({
     try {
       setIsUpdating(true);
       
+      // Update local state for instant feedback
       setLocalStatus(pendingStatus);
       
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
+      // Update in database and dispatch event
       await updateStatus(pendingStatus);
       
       toast({
@@ -173,6 +219,7 @@ export const InterpreterStatusDropdown = ({
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
       
+      // Revert local status on error
       setLocalStatus(currentStatus);
       
       toast({
