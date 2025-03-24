@@ -8,13 +8,15 @@ interface MobileNavigationBarProps {
   onTabChange: (tab: string) => void;
   pendingMissionsCount?: number;
   unreadMessagesCount?: number;
+  onShowHelp?: () => void;
 }
 
 export const MobileNavigationBar = ({
   activeTab,
   onTabChange,
   pendingMissionsCount = 0,
-  unreadMessagesCount = 0
+  unreadMessagesCount = 0,
+  onShowHelp
 }: MobileNavigationBarProps) => {
   const tabs = [
     { 
@@ -47,7 +49,13 @@ export const MobileNavigationBar = ({
                 ? "text-primary" 
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => {
+              if (tab.id === "help" && onShowHelp) {
+                onShowHelp();
+              } else {
+                onTabChange(tab.id);
+              }
+            }}
           >
             <tab.icon 
               className={cn(

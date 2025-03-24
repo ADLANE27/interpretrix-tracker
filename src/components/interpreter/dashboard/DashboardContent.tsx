@@ -14,10 +14,11 @@ interface DashboardContentProps {
   profile: Profile | null;
   scheduledMissions: any[];
   onProfileUpdate: () => Promise<void>;
-  onProfilePictureUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  onProfilePictureDelete: () => Promise<void>;
+  onProfilePictureUpload?: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onProfilePictureDelete?: () => Promise<void>;
   onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
   onMenuClick?: () => void;
+  onMissionsUpdate?: () => Promise<void>;
 }
 
 export const DashboardContent = ({
@@ -28,7 +29,8 @@ export const DashboardContent = ({
   onProfilePictureUpload,
   onProfilePictureDelete,
   onStatusChange,
-  onMenuClick
+  onMenuClick,
+  onMissionsUpdate
 }: DashboardContentProps) => {
   const isMobile = useIsMobile();
 

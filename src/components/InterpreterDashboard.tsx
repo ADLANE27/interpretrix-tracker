@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,31 +124,26 @@ export const InterpreterDashboard = () => {
         throw error;
       }
 
-      // Basic validation of profile data
       if (!data) {
         console.error('[InterpreterDashboard] No profile data found');
         throw new Error("Profil introuvable");
       }
 
-      // Validate status
       if (data.status && !isValidStatus(data.status)) {
         console.warn(`[InterpreterDashboard] Invalid status: ${data.status}, defaulting to 'available'`);
         data.status = 'available';
       }
 
-      // Validate address
       if (data.address && !isValidAddress(data.address)) {
         console.warn('[InterpreterDashboard] Invalid address format, setting to null');
         data.address = null;
       }
 
-      // Validate work hours
       if (data.work_hours && !isValidWorkHours(data.work_hours)) {
         console.warn('[InterpreterDashboard] Invalid work hours format, setting to null');
         data.work_hours = null;
       }
 
-      // Convert the languages from string[] to {source: string, target: string}[]
       const formattedLanguages = (data.languages || []).map((langStr: string) => {
         const parts = langStr.split(' → ');
         return {
@@ -158,7 +152,6 @@ export const InterpreterDashboard = () => {
         };
       });
 
-      // Construct a valid Profile object from the data
       const profileData: Profile = {
         ...data as any,
         languages: formattedLanguages
@@ -212,7 +205,6 @@ export const InterpreterDashboard = () => {
     }
   };
 
-  // Handle status update with proper error handling and retries
   const handleStatusChange = useCallback(async (newStatus: Profile['status']) => {
     if (!profile || isUpdatingStatus || profile.status === newStatus) {
       return;
@@ -222,10 +214,8 @@ export const InterpreterDashboard = () => {
     setIsUpdatingStatus(true);
     
     try {
-      // Optimistically update the profile locally
       setProfile(prev => prev ? { ...prev, status: newStatus } : null);
       
-      // Broadcast the status change to other components
       if (profile.id) {
         eventEmitter.emit(EVENT_STATUS_UPDATE, {
           status: newStatus,
@@ -233,7 +223,6 @@ export const InterpreterDashboard = () => {
         });
       }
       
-      // Update status in the database
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: profile.id,
         p_status: newStatus as string
@@ -242,7 +231,6 @@ export const InterpreterDashboard = () => {
       if (error) {
         console.error('[InterpreterDashboard] Error updating status:', error);
         
-        // Revert the optimistic update on error
         setProfile(prev => prev ? { ...prev, status: profile.status } : null);
         
         toast({
@@ -261,7 +249,6 @@ export const InterpreterDashboard = () => {
     } catch (error) {
       console.error('[InterpreterDashboard] Error updating status:', error);
       
-      // Revert the optimistic update on error
       setProfile(prev => prev ? { ...prev, status: profile.status } : null);
       
       toast({
@@ -274,7 +261,6 @@ export const InterpreterDashboard = () => {
     }
   }, [profile, isUpdatingStatus, toast]);
 
-  // Listen for status updates from other components
   useEffect(() => {
     if (!profile?.id) return;
     
@@ -291,6 +277,10 @@ export const InterpreterDashboard = () => {
       eventEmitter.off(EVENT_STATUS_UPDATE, handleStatusUpdate);
     };
   }, [profile?.id, profile?.status]);
+
+  const showHelpGuide = () => {
+    setIsGuideOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -329,19 +319,18 @@ export const InterpreterDashboard = () => {
         
         <div className="flex flex-1">
           <Sidebar
-            open={isSidebarOpen}
-            onOpenChange={open => setIsSidebarOpen(open)}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onShowHelp={() => setIsGuideOpen(true)}
+            userStatus={profile?.status || "available"}
+            profilePictureUrl={profile?.profile_picture_url || undefined}
           />
           
           <DashboardContent
             activeTab={activeTab}
             profile={profile}
             onProfileUpdate={fetchProfile}
-            onMissionsUpdate={fetchScheduledMissions}
             scheduledMissions={scheduledMissions}
+            onMissionsUpdate={fetchScheduledMissions}
           />
         </div>
         
@@ -349,20 +338,20 @@ export const InterpreterDashboard = () => {
           <MobileNavigationBar
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onShowHelp={() => setIsGuideOpen(true)}
+            onShowHelp={showHelpGuide}
           />
         )}
       </div>
       
       <PasswordChangeDialog
         open={isPasswordDialogOpen}
-        onOpenChange={open => setIsPasswordDialogOpen(open)}
-        onPasswordChange={fetchProfile}
+        onOpenChange={setIsPasswordDialogOpen}
+        onPasswordChanged={fetchProfile}
       />
       
       <HowToUseGuide 
         open={isGuideOpen} 
-        onOpenChange={open => setIsGuideOpen(open)} 
+        onOpenChange={setIsGuideOpen} 
       />
     </>
   );
