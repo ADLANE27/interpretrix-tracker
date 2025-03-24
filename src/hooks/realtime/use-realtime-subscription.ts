@@ -95,16 +95,19 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
-        // Fix: Use the correct method signature for the Supabase Realtime API
-        // @ts-ignore - Ignoring TypeScript error as the Supabase types might be out of date
-        channel.on(
+        // Use a type assertion to handle the mismatch between TypeScript types and the actual Supabase API
+        const postgresConfig = { 
+          event: config.event, 
+          schema: config.schema || 'public', 
+          table: config.table, 
+          filter: config.filter 
+        };
+        
+        // Using type assertion to bypass TypeScript's strict checking
+        // This is necessary because Supabase's TypeScript definitions might be outdated
+        (channel as any).on(
           'postgres_changes', 
-          { 
-            event: config.event, 
-            schema: config.schema || 'public', 
-            table: config.table, 
-            filter: config.filter 
-          }, 
+          postgresConfig, 
           (payload: RealtimePostgresChangesPayload<any>) => {
             if (!mountedRef.current) return;
             
