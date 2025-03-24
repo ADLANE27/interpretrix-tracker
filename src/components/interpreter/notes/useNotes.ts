@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -320,8 +321,6 @@ export const useNotes = () => {
         
         const audio = new Audio(url);
         setAudioElement(audio);
-        
-        console.log("Recording stopped, created audio URL:", url);
       };
       
       recorder.start();
@@ -491,39 +490,12 @@ export const useNotes = () => {
   };
 
   const playRecording = (url: string) => {
-    console.log("Playing recording from URL:", url);
-    
     if (audioElement) {
       audioElement.pause();
     }
     
     const audio = new Audio(url);
-    
-    // Add event listener to handle load error
-    audio.addEventListener('error', (e) => {
-      console.error("Error loading audio:", e);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger l'enregistrement audio",
-        variant: "destructive",
-      });
-    });
-    
-    // Set audio to load first, then play
-    audio.preload = "auto";
-    
-    audio.addEventListener('canplaythrough', () => {
-      console.log("Audio loaded and can play");
-      audio.play().catch(error => {
-        console.error("Error playing audio:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de lire l'enregistrement audio",
-          variant: "destructive",
-        });
-      });
-    });
-    
+    audio.play();
     setAudioElement(audio);
   };
 

@@ -26,8 +26,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const lastUpdateRef = useRef<string | null>(null);
   const userId = useRef<string | null>(null);
-  const pendingTransactionsRef = useRef<Map<string, Status>>(new Map());
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get user ID once on component mount
   useEffect(() => {
@@ -54,71 +52,6 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, localStatus]);
-
-  // Verify pending transactions
-  const verifyPendingTransaction = useCallback(async (transactionId: string) => {
-    if (!userId.current || !pendingTransactionsRef.current.has(transactionId)) return;
-    
-    try {
-      console.log(`[StatusButtonsBar] Verifying pending transaction: ${transactionId}`);
-      
-      // Get the expected status from the pending transactions map
-      const expectedStatus = pendingTransactionsRef.current.get(transactionId);
-      if (!expectedStatus) return;
-      
-      // Fetch the current status from the database
-      const { data, error } = await supabase
-        .from('interpreter_profiles')
-        .select('status')
-        .eq('id', userId.current)
-        .single();
-        
-      if (error) throw error;
-      
-      const currentDbStatus = data.status as Status;
-      
-      // If the database status doesn't match what we expect
-      if (currentDbStatus !== expectedStatus) {
-        console.warn(`[StatusButtonsBar] Status verification failed. Expected: ${expectedStatus}, Got: ${currentDbStatus}`);
-        
-        // Attempt to retry the update
-        if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-        
-        retryTimeoutRef.current = setTimeout(async () => {
-          console.log(`[StatusButtonsBar] Retrying update to ${expectedStatus}`);
-          
-          const { error: retryError } = await supabase.rpc('update_interpreter_status', {
-            p_interpreter_id: userId.current,
-            p_status: expectedStatus as string,
-            p_transaction_id: `retry-${transactionId}`
-          });
-          
-          if (retryError) {
-            console.error('[StatusButtonsBar] Retry failed:', retryError);
-            toast({
-              title: "Erreur de synchronisation",
-              description: "Votre statut n'a pas pu être mis à jour correctement. Veuillez réessayer.",
-              variant: "destructive",
-            });
-            
-            // Set local status to match what's in the database
-            setLocalStatus(currentDbStatus);
-          } else {
-            console.log(`[StatusButtonsBar] Retry successful: ${expectedStatus}`);
-          }
-          
-          // Remove from pending transactions
-          pendingTransactionsRef.current.delete(transactionId);
-        }, 2000);
-      } else {
-        console.log(`[StatusButtonsBar] Status verified successfully: ${expectedStatus}`);
-        pendingTransactionsRef.current.delete(transactionId);
-      }
-    } catch (error) {
-      console.error('[StatusButtonsBar] Verification error:', error);
-      pendingTransactionsRef.current.delete(transactionId);
-    }
-  }, [toast]);
 
   const statusConfig = {
     available: {
@@ -158,48 +91,24 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
-      // Create a unique transaction ID
-      const transactionId = `status-update-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
       // Optimistically update local state
       setLocalStatus(newStatus);
       
-      // Add to pending transactions
-      pendingTransactionsRef.current.set(transactionId, newStatus);
-      
-      // Update status directly in database first
+      // Update status directly in database as a backup
       if (userId.current) {
-        console.log(`[StatusButtonsBar] Updating database status with transaction ID: ${transactionId}`);
-        
         const { error: dbError } = await supabase.rpc('update_interpreter_status', {
           p_interpreter_id: userId.current,
-          p_status: newStatus as string,
-          p_transaction_id: transactionId
+          p_status: newStatus as string
         });
         
         if (dbError) {
           console.error('[StatusButtonsBar] Database error:', dbError);
-          throw dbError;
         }
-      }
-      
-      // Dispatch custom event after database update
-      if (userId.current) {
-        window.dispatchEvent(
-          new CustomEvent('specific-interpreter-status-update', {
-            detail: { interpreterId: userId.current, newStatus, transactionId }
-          })
-        );
       }
       
       // Call the parent handler
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
-      
-      // Verify the transaction after a short delay
-      setTimeout(() => {
-        verifyPendingTransaction(transactionId);
-      }, 3000);
       
       // Show success toast
       toast({

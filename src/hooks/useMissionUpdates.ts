@@ -1,34 +1,8 @@
 
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { supabase } from '@/integrations/supabase/client';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
-  const lastUpdateTimeRef = useRef<number>(Date.now());
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const triggerUpdate = useCallback(() => {
-    const now = Date.now();
-    // Prevent excessive updates (debounce-like behavior)
-    if (now - lastUpdateTimeRef.current > 1000) {
-      lastUpdateTimeRef.current = now;
-      onUpdate();
-    }
-  }, [onUpdate]);
-
-  // Handle manual polling as a fallback mechanism
-  const setupPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-
-    // Poll every 30 seconds as a fallback
-    pollingIntervalRef.current = setInterval(() => {
-      console.log('[useMissionUpdates] Polling for updates');
-      triggerUpdate();
-    }, 30000); // 30 seconds polling interval
-  }, [triggerUpdate]);
-
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
@@ -36,86 +10,21 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
-        triggerUpdate();
+        onUpdate();
       }
     };
 
-    const handleOnline = () => {
-      console.log('[useMissionUpdates] Network is online, triggering update');
-      triggerUpdate();
-    };
-
-    // Support simpler update mechanism from other components
-    const handleAdminRefresh = () => {
-      console.log('[useMissionUpdates] Admin refresh needed');
-      triggerUpdate();
-    };
-
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('admin-refresh-needed', handleAdminRefresh);
-
-    // Set up polling as a fallback
-    setupPolling();
 
     return () => {
-      console.log('[useMissionUpdates] Cleaning up event listeners and polling');
-      window.removeEventListener("online", handleOnline);
+      console.log('[useMissionUpdates] Cleaning up event listeners');
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('admin-refresh-needed', handleAdminRefresh);
-      
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
     };
-  }, [triggerUpdate, setupPolling]);
+  }, [onUpdate]);
 
-  // Continue using subscriptions, but they're now a backup to our more reliable polling
-  useRealtimeSubscription(
-    {
-      event: '*',
-      schema: 'public',
-      table: 'interpreter_profiles',
-      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
-    },
-    (payload) => {
-      console.log('[useMissionUpdates] Profile change received:', payload);
-      triggerUpdate();
-    },
-    {
-      debugMode: true,
-      maxRetries: 5,
-      retryInterval: 3000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Status subscription error:', error);
-        // If subscription fails, rely on polling
-        setupPolling();
-      }
-    }
-  );
-
-  // Subscribe to private reservation changes
-  useRealtimeSubscription(
-    {
-      event: '*',
-      schema: 'public',
-      table: 'private_reservations'
-    },
-    (payload) => {
-      console.log('[useMissionUpdates] Private reservation update received:', payload);
-      triggerUpdate();
-    },
-    {
-      debugMode: true,
-      maxRetries: 3,
-      retryInterval: 5000,
-      onError: (error) => {
-        console.error('[useMissionUpdates] Subscription error:', error);
-      }
-    }
-  );
-  
-  // Subscribe to interpretation missions changes
+  // Subscribe to mission changes
   useRealtimeSubscription(
     {
       event: '*',
@@ -124,14 +33,58 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
-      triggerUpdate();
+      onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
+      }
+    }
+  );
+
+  // Subscribe to reservation changes
+  useRealtimeSubscription(
+    {
+      event: '*',
+      schema: 'public',
+      table: 'private_reservations'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Private reservation update received:', payload);
+      onUpdate();
+    },
+    {
+      debugMode: true, // Enable debug mode to see more logs
+      maxRetries: 3,
+      retryInterval: 5000,
+      onError: (error) => {
+        console.error('[useMissionUpdates] Subscription error:', error);
+      }
+    }
+  );
+  
+  // Use a more specific subscription for interpreter profile status changes
+  useRealtimeSubscription(
+    {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'interpreter_profiles',
+      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+    },
+    (payload) => {
+      console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
+      onUpdate();
+    },
+    {
+      debugMode: true, // Enable debug mode for troubleshooting
+      maxRetries: 3,
+      retryInterval: 3000, // Shorter retry for status updates
+      onError: (error) => {
+        console.error('[useMissionUpdates] Status subscription error:', error);
       }
     }
   );

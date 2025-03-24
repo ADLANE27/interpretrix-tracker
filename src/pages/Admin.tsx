@@ -1,20 +1,20 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useMissionUpdates } from '@/hooks/useMissionUpdates';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
 
-  // Simplified approach: just update the dashboard when needed
-  const refreshDashboard = () => {
-    console.log('[Admin] Refreshing dashboard');
-    setLastUpdateTime(Date.now());
-  };
+  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
+  useMissionUpdates(() => {
+    // Dispatch a custom event that the AdminDashboard will listen for
+    window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -55,24 +55,16 @@ const Admin = () => {
     // Initial auth check
     checkAuth();
 
-    // Add simple refresh handler for updates from other components
-    const handleRefreshRequest = () => {
-      refreshDashboard();
-    };
-    
-    window.addEventListener('admin-refresh-needed', handleRefreshRequest);
-
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('admin-refresh-needed', handleRefreshRequest);
     };
   }, [navigate]);
 
   return (
     <div className="h-screen w-full bg-gradient-to-br from-[#1a2844] to-[#0f172a] transition-colors duration-300 overflow-hidden">
       <div className="h-full w-full">
-        <AdminDashboard key={`admin-dashboard-${lastUpdateTime}`} />
+        <AdminDashboard />
       </div>
     </div>
   );
