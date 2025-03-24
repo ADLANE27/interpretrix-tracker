@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Coffee, X, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -5,7 +6,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
-import { eventEmitter, EVENT_STATUS_UPDATE } from '@/lib/events';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -24,79 +24,34 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
-  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdateRef = useRef<{ id: string, timestamp: number } | null>(null);
+  const lastUpdateRef = useRef<string | null>(null);
   const userId = useRef<string | null>(null);
-  const retryCountRef = useRef(0);
-  const maxRetries = 3;
 
+  // Get user ID once on component mount
   useEffect(() => {
     const fetchUserId = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         userId.current = user.id;
-        console.log('[StatusButtonsBar] User ID set:', user.id);
       }
     };
     
     fetchUserId();
   }, []);
 
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
-      const now = Date.now();
-      const updateId = `${currentStatus}-${now}`;
+      const updateId = `${currentStatus}-${Date.now()}`;
       
-      if (lastUpdateRef.current && 
-          now - lastUpdateRef.current.timestamp < 500 &&
-          lastUpdateRef.current.id.startsWith(currentStatus)) {
-        console.log('[StatusButtonsBar] Ignoring duplicate update:', currentStatus);
-        return;
-      }
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
       
-      lastUpdateRef.current = { id: updateId, timestamp: now };
       console.log('[StatusButtonsBar] Current status updated from prop:', currentStatus);
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, localStatus]);
-
-  useEffect(() => {
-    const handleExternalStatusUpdate = (data: { status: Status, userId: string }) => {
-      if (data.userId === userId.current) {
-        console.log('[StatusButtonsBar] Received external status update:', data.status);
-        
-        const now = Date.now();
-        const updateId = `${data.status}-${now}-external`;
-        
-        if (lastUpdateRef.current && 
-            now - lastUpdateRef.current.timestamp < 500 &&
-            lastUpdateRef.current.id.includes(data.status)) {
-          console.log('[StatusButtonsBar] Ignoring duplicate external update');
-          return;
-        }
-        
-        lastUpdateRef.current = { id: updateId, timestamp: now };
-        
-        if (statusUpdateTimeoutRef.current) {
-          clearTimeout(statusUpdateTimeoutRef.current);
-          statusUpdateTimeoutRef.current = null;
-        }
-        
-        setLocalStatus(data.status);
-      }
-    };
-    
-    eventEmitter.on(EVENT_STATUS_UPDATE, handleExternalStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_STATUS_UPDATE, handleExternalStatusUpdate);
-      
-      if (statusUpdateTimeoutRef.current) {
-        clearTimeout(statusUpdateTimeoutRef.current);
-        statusUpdateTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   const statusConfig = {
     available: {
@@ -129,112 +84,49 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     }
   };
 
-  const updateStatusInDatabase = async (newStatus: Status): Promise<boolean> => {
-    if (!userId.current) {
-      console.error('[StatusButtonsBar] No user ID available');
-      return false;
-    }
-    
-    try {
-      console.log('[StatusButtonsBar] Updating status in database:', newStatus);
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId.current,
-        p_status: newStatus
-      });
-      
-      if (error) {
-        console.error('[StatusButtonsBar] Database error:', error);
-        return false;
-      }
-      
-      console.log('[StatusButtonsBar] Database update successful');
-      return true;
-    } catch (error) {
-      console.error('[StatusButtonsBar] Database update error:', error);
-      return false;
-    }
-  };
-
   const handleStatusChange = async (newStatus: Status) => {
     if (!onStatusChange || localStatus === newStatus || isUpdating) return;
     
-    retryCountRef.current = 0;
-    setIsUpdating(true);
-    
     try {
+      setIsUpdating(true);
       console.log('[StatusButtonsBar] Changing status to:', newStatus);
       
-      if (statusUpdateTimeoutRef.current) {
-        clearTimeout(statusUpdateTimeoutRef.current);
-        statusUpdateTimeoutRef.current = null;
-      }
-      
+      // Optimistically update local state
       setLocalStatus(newStatus);
       
-      const dbUpdateSuccess = await updateStatusInDatabase(newStatus);
-      
+      // Update status directly in database as a backup
       if (userId.current) {
-        eventEmitter.emit(EVENT_STATUS_UPDATE, { 
-          status: newStatus, 
-          userId: userId.current 
+        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+          p_interpreter_id: userId.current,
+          p_status: newStatus as string
         });
+        
+        if (dbError) {
+          console.error('[StatusButtonsBar] Database error:', dbError);
+        }
       }
       
+      // Call the parent handler
       await onStatusChange(newStatus);
       console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
+      // Show success toast
       toast({
         title: "Statut mis à jour",
         description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('[StatusButtonsBar] Error changing status:', error);
       
-      const attemptRetry = async () => {
-        if (retryCountRef.current < maxRetries) {
-          retryCountRef.current++;
-          console.log(`[StatusButtonsBar] Retrying status update (${retryCountRef.current}/${maxRetries})`);
-          
-          try {
-            const dbUpdateSuccess = await updateStatusInDatabase(newStatus);
-            
-            if (dbUpdateSuccess) {
-              console.log('[StatusButtonsBar] Retry successful');
-              
-              if (userId.current) {
-                eventEmitter.emit(EVENT_STATUS_UPDATE, { 
-                  status: newStatus, 
-                  userId: userId.current 
-                });
-              }
-              
-              toast({
-                title: "Statut mis à jour",
-                description: `Votre statut a été changé en "${statusConfig[newStatus].label}"`,
-              });
-              
-              return;
-            }
-          } catch (retryError) {
-            console.error('[StatusButtonsBar] Retry failed:', retryError);
-          }
-          
-          const backoffDelay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000);
-          statusUpdateTimeoutRef.current = setTimeout(attemptRetry, backoffDelay);
-        } else {
-          console.error('[StatusButtonsBar] Max retries exceeded, reverting to previous status');
-          
-          setLocalStatus(currentStatus);
-          
-          toast({
-            title: "Erreur",
-            description: "Impossible de mettre à jour votre statut après plusieurs tentatives. Veuillez réessayer.",
-            variant: "destructive",
-          });
-        }
-      };
+      // Revert to previous status on error
+      setLocalStatus(currentStatus);
       
-      attemptRetry();
+      // Show error toast
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }

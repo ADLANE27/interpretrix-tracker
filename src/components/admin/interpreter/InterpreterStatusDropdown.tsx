@@ -12,7 +12,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { eventEmitter, EVENT_STATUS_UPDATE } from "@/lib/events";
 
 type Status = Profile['status'];
 
@@ -73,24 +72,6 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
-  const retryCountRef = useRef(0);
-  const maxRetries = 3;
-
-  // Listen for status updates from elsewhere in the application
-  useEffect(() => {
-    const handleExternalStatusUpdate = (data: { status: Status, userId: string }) => {
-      if (data.userId === interpreterId) {
-        console.log(`[InterpreterStatusDropdown] Received external status update for ${interpreterId}:`, data.status);
-        setLocalStatus(data.status as Status);
-      }
-    };
-    
-    eventEmitter.on(EVENT_STATUS_UPDATE, handleExternalStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_STATUS_UPDATE, handleExternalStatusUpdate);
-    };
-  }, [interpreterId]);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -106,29 +87,6 @@ export const InterpreterStatusDropdown = ({
     }
   }, [currentStatus, interpreterId, localStatus]);
 
-  const updateInterpreterStatusInDatabase = async (status: Status): Promise<boolean> => {
-    try {
-      console.log(`[InterpreterStatusDropdown] Updating status for ${interpreterId} to ${status} in database`);
-      
-      // Update interpreter status using RPC function
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: interpreterId,
-        p_status: status
-      });
-
-      if (error) {
-        console.error('[InterpreterStatusDropdown] RPC error:', error);
-        return false;
-      }
-      
-      console.log(`[InterpreterStatusDropdown] Database update for ${interpreterId} successful`);
-      return true;
-    } catch (error) {
-      console.error('[InterpreterStatusDropdown] Database update error:', error);
-      return false;
-    }
-  };
-
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
       setIsOpen(false);
@@ -142,10 +100,8 @@ export const InterpreterStatusDropdown = ({
   const handleConfirm = async () => {
     if (!pendingStatus) return;
     
-    retryCountRef.current = 0;
-    setIsUpdating(true);
-    
     try {
+      setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
       // Optimistically update the local status
@@ -156,17 +112,17 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Broadcast the status update
-      eventEmitter.emit(EVENT_STATUS_UPDATE, {
-        status: pendingStatus,
-        userId: interpreterId
+      // Update interpreter status using RPC function
+      const { error } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: interpreterId,
+        p_status: pendingStatus
       });
-      
-      // Update interpreter status in database
-      const success = await updateInterpreterStatusInDatabase(pendingStatus);
-      
-      if (!success) {
-        throw new Error('Failed to update status in database');
+
+      if (error) {
+        console.error('[InterpreterStatusDropdown] RPC error:', error);
+        // Revert on error
+        setLocalStatus(currentStatus);
+        throw error;
       }
 
       toast({
@@ -175,46 +131,11 @@ export const InterpreterStatusDropdown = ({
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
-      
-      // Implement retry logic for database updates
-      const attemptRetry = async () => {
-        if (retryCountRef.current < maxRetries) {
-          retryCountRef.current++;
-          console.log(`[InterpreterStatusDropdown] Retrying status update (${retryCountRef.current}/${maxRetries})`);
-          
-          try {
-            const success = await updateInterpreterStatusInDatabase(pendingStatus);
-            
-            if (success) {
-              console.log('[InterpreterStatusDropdown] Retry successful');
-              toast({
-                title: "Statut mis à jour",
-                description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
-              });
-              return;
-            }
-          } catch (retryError) {
-            console.error('[InterpreterStatusDropdown] Retry failed:', retryError);
-          }
-          
-          // Schedule another retry with exponential backoff
-          setTimeout(attemptRetry, 1000 * Math.pow(2, retryCountRef.current));
-        } else {
-          console.error('[InterpreterStatusDropdown] Max retries exceeded, reverting to previous status');
-          
-          // Revert on error after max retries
-          setLocalStatus(currentStatus);
-          
-          toast({
-            title: "Erreur",
-            description: "Impossible de mettre à jour le statut après plusieurs tentatives",
-            variant: "destructive",
-          });
-        }
-      };
-      
-      // Start retry process
-      attemptRetry();
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);

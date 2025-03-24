@@ -5,7 +5,6 @@ import { MessagingTab } from "../MessagingTab";
 import { InterpreterProfile } from "../InterpreterProfile";
 import { MissionsCalendar } from "../MissionsCalendar";
 import { TerminologyTab } from "../TerminologyTab";
-import { NotesTab } from "../NotesTab";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -14,11 +13,10 @@ interface DashboardContentProps {
   profile: Profile | null;
   scheduledMissions: any[];
   onProfileUpdate: () => Promise<void>;
-  onProfilePictureUpload?: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  onProfilePictureDelete?: () => Promise<void>;
+  onProfilePictureUpload: (event: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  onProfilePictureDelete: () => Promise<void>;
   onStatusChange?: (newStatus: Profile['status']) => Promise<void>;
   onMenuClick?: () => void;
-  onMissionsUpdate?: () => Promise<void>;
 }
 
 export const DashboardContent = ({
@@ -29,8 +27,7 @@ export const DashboardContent = ({
   onProfilePictureUpload,
   onProfilePictureDelete,
   onStatusChange,
-  onMenuClick,
-  onMissionsUpdate
+  onMenuClick
 }: DashboardContentProps) => {
   const isMobile = useIsMobile();
 
@@ -53,8 +50,6 @@ export const DashboardContent = ({
         return <MissionsCalendar missions={scheduledMissions} />;
       case "terminology":
         return <TerminologyTab userId={profile?.id} />;
-      case "notes":
-        return <NotesTab />;
       default:
         return <MissionsTab />;
     }

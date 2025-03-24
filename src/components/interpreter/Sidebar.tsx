@@ -1,6 +1,6 @@
 
 import { useNavigate } from "react-router-dom";
-import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell, FileText } from "lucide-react";
+import { LogOut, MessageCircle, Calendar, Headset, BookOpen, Search, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -165,7 +165,6 @@ export const Sidebar = ({ activeTab, onTabChange, userStatus, profilePictureUrl 
       directMessagesBadge: unreadDirectMessages > 0 ? unreadDirectMessages : undefined
     },
     { id: "terminology", label: "Recherche", icon: Search },
-    { id: "notes", label: "Mes Notes", icon: FileText },
     { id: "profile", label: "Profil", icon: Headset },
     { id: "calendar", label: "Calendrier", icon: Calendar },
     { id: "guide", label: "Guide", icon: BookOpen, onClick: () => setIsGuideOpen(true) },

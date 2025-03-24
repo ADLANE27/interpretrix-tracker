@@ -1,7 +1,6 @@
 
-import { Clock, RefreshCw, Coffee, X, Phone, Calendar } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CalendarDays, CheckCircle2, Clock, Coffee, Phone, Users, X } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface StatisticsCardsProps {
   totalInterpreters: number;
@@ -10,8 +9,6 @@ interface StatisticsCardsProps {
   pauseCount: number;
   unavailableCount: number;
   todayMissionsCount: number;
-  isDataStale?: boolean;
-  onRefresh?: () => void;
 }
 
 export const StatisticsCards = ({
@@ -20,87 +17,72 @@ export const StatisticsCards = ({
   busyCount,
   pauseCount,
   unavailableCount,
-  todayMissionsCount,
-  isDataStale = false,
-  onRefresh
+  todayMissionsCount
 }: StatisticsCardsProps) => {
-  const stats = [
+  const cards = [
+    {
+      title: "Interprètes",
+      value: totalInterpreters,
+      icon: Users,
+      color: "from-palette-ocean-blue to-palette-soft-blue",
+      textColor: "text-white",
+    },
+    {
+      title: "Missions aujourd'hui",
+      value: todayMissionsCount,
+      icon: CalendarDays,
+      color: "from-palette-vivid-purple to-palette-soft-purple",
+      textColor: "text-white",
+    },
     {
       title: "Disponibles",
       value: availableCount,
-      icon: Clock,
-      color: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      iconColor: "text-green-600 dark:text-green-400",
-      percent: totalInterpreters > 0 ? Math.round((availableCount / totalInterpreters) * 100) : 0
+      icon: CheckCircle2,
+      color: "from-green-400 to-emerald-600",
+      textColor: "text-white",
     },
     {
       title: "En appel",
       value: busyCount,
       icon: Phone,
-      color: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
-      iconColor: "text-violet-600 dark:text-violet-400",
-      percent: totalInterpreters > 0 ? Math.round((busyCount / totalInterpreters) * 100) : 0
+      color: "from-indigo-400 to-palette-vivid-purple",
+      textColor: "text-white",
     },
     {
       title: "En pause",
       value: pauseCount,
       icon: Coffee,
-      color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-      iconColor: "text-orange-600 dark:text-orange-400",
-      percent: totalInterpreters > 0 ? Math.round((pauseCount / totalInterpreters) * 100) : 0
+      color: "from-amber-400 to-palette-bright-orange",
+      textColor: "text-white",
     },
     {
       title: "Indisponibles",
       value: unavailableCount,
       icon: X,
-      color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      iconColor: "text-red-600 dark:text-red-400",
-      percent: totalInterpreters > 0 ? Math.round((unavailableCount / totalInterpreters) * 100) : 0
+      color: "from-red-400 to-rose-600",
+      textColor: "text-white",
     },
-    {
-      title: "Missions du jour",
-      value: todayMissionsCount,
-      icon: Calendar,
-      color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-      iconColor: "text-blue-600 dark:text-blue-400",
-    }
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Tableau de bord</h2>
-        {isDataStale && onRefresh && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={onRefresh}
-            className="flex items-center gap-1 text-xs"
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {cards.map((card, index) => {
+        const Icon = card.icon;
+        return (
+          <Card
+            key={index}
+            className={`bg-gradient-to-br ${card.color} ${card.textColor} p-4 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 border-0`}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Actualiser</span>
-          </Button>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {stats.map(stat => (
-          <Card key={stat.title}>
-            <CardContent className="p-4 flex flex-col md:p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2 rounded-lg ${stat.color}`}>
-                  <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
-                </div>
-                {stat.percent !== undefined && (
-                  <span className="text-xs font-medium text-muted-foreground">{stat.percent}%</span>
-                )}
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                <Icon className="h-6 w-6" />
               </div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">{stat.title}</p>
-              <h3 className="text-2xl font-bold">{stat.value}</h3>
-            </CardContent>
+              <span className="text-xl font-bold">{card.value}</span>
+              <span className="text-xs opacity-90">{card.title}</span>
+            </div>
           </Card>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 };

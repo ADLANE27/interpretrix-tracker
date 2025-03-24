@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 import { MobileNavigationBar } from "./interpreter/MobileNavigationBar";
-import { eventEmitter, EVENT_STATUS_UPDATE } from "@/lib/events";
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -49,7 +48,6 @@ export const InterpreterDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -114,63 +112,116 @@ export const InterpreterDashboard = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('interpreter_profiles')
-        .select('*')
-        .eq('id', user.id)
+        .from("interpreter_profiles")
+        .select("*")
+        .eq("id", user.id)
         .single();
 
-      if (error) {
-        console.error('[InterpreterDashboard] Profile fetch error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      if (!data) {
-        console.error('[InterpreterDashboard] No profile data found');
-        throw new Error("Profil introuvable");
-      }
-
-      if (data.status && !isValidStatus(data.status)) {
-        console.warn(`[InterpreterDashboard] Invalid status: ${data.status}, defaulting to 'available'`);
-        data.status = 'available';
-      }
-
-      if (data.address && !isValidAddress(data.address)) {
-        console.warn('[InterpreterDashboard] Invalid address format, setting to null');
-        data.address = null;
-      }
-
-      if (data.work_hours && !isValidWorkHours(data.work_hours)) {
-        console.warn('[InterpreterDashboard] Invalid work hours format, setting to null');
-        data.work_hours = null;
-      }
-
-      const formattedLanguages = (data.languages || []).map((langStr: string) => {
-        const parts = langStr.split(' → ');
-        return {
-          source: parts[0] || '',
-          target: parts[1] || ''
-        };
+      const transformedLanguages = (data.languages || []).map((lang: string) => {
+        const [source, target] = lang.split('→').map(l => l.trim());
+        return { source, target };
       });
 
-      const profileData: Profile = {
-        ...data as any,
-        languages: formattedLanguages
+      const status = isValidStatus(data.status) ? data.status : 'available';
+      const address = isValidAddress(data.address) ? data.address : null;
+      const workHours = isValidWorkHours(data.work_hours) ? data.work_hours : null;
+      const workLocation = data.work_location as WorkLocation;
+
+      const transformedProfile: Profile = {
+        ...data,
+        languages: transformedLanguages,
+        status,
+        address,
+        work_hours: workHours,
+        booth_number: data.booth_number || null,
+        private_phone: data.private_phone || null,
+        professional_phone: data.professional_phone || null,
+        landline_phone: data.landline_phone || null,
+        phone_number: data.phone_number || null,
+        birth_country: data.birth_country || null,
+        nationality: data.nationality || null,
+        siret_number: data.siret_number || null,
+        vat_number: data.vat_number || null,
+        profile_picture_url: data.profile_picture_url || null,
+        specializations: data.specializations || [],
+        work_location: workLocation
       };
 
-      setProfile(profileData);
-      
-      if (!data.password_changed) {
-        setIsPasswordDialogOpen(true);
-      }
-      
-      console.log('[InterpreterDashboard] Profile loaded:', profileData);
+      setProfile(transformedProfile);
     } catch (error) {
-      console.error('[InterpreterDashboard] Error in fetchProfile:', error);
-      
+      console.error("[InterpreterDashboard] Error loading profile:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de récupérer votre profil",
-        variant: "destructive",
+        description: "Impossible de charger votre profil",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file || !profile) return;
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${profile.id}/${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Succès",
+        description: "Photo de profil mise à jour"
+      });
+    } catch (error) {
+      console.error("[InterpreterDashboard] Error uploading profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour la photo de profil",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleProfilePictureDelete = async () => {
+    try {
+      if (!profile) return;
+
+      const { error: updateError } = await supabase
+        .from('interpreter_profiles')
+        .update({ profile_picture_url: null })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      await fetchProfile();
+      toast({
+        title: "Succès",
+        description: "Photo de profil supprimée"
+      });
+    } catch (error) {
+      console.error("[InterpreterDashboard] Error deleting profile picture:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la photo de profil",
+        variant: "destructive"
       });
     }
   };
@@ -178,113 +229,38 @@ export const InterpreterDashboard = () => {
   const fetchScheduledMissions = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      if (!user) {
+        console.log('[InterpreterDashboard] No authenticated user');
+        return;
+      }
+      console.log('[InterpreterDashboard] Fetching scheduled missions for user:', user.id);
       const { data, error } = await supabase
         .from('interpretation_missions')
         .select('*')
-        .eq('mission_type', 'scheduled')
         .eq('assigned_interpreter_id', user.id)
-        .in('status', ['accepted', 'in_progress'])
+        .eq('status', 'accepted')
+        .not('scheduled_start_time', 'is', null)
         .order('scheduled_start_time', { ascending: true });
 
       if (error) {
-        console.error('[InterpreterDashboard] Scheduled missions fetch error:', error);
+        console.error('[InterpreterDashboard] Error fetching missions:', error);
         throw error;
       }
-
+      console.log('[InterpreterDashboard] Fetched scheduled missions:', data);
       setScheduledMissions(data || []);
     } catch (error) {
-      console.error('[InterpreterDashboard] Error in fetchScheduledMissions:', error);
-      
+      console.error("[InterpreterDashboard] Error fetching scheduled missions:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de récupérer vos missions programmées",
-        variant: "destructive",
+        description: "Impossible de charger les missions programmées",
+        variant: "destructive"
       });
     }
-  };
-
-  const handleStatusChange = useCallback(async (newStatus: Profile['status']) => {
-    if (!profile || isUpdatingStatus || profile.status === newStatus) {
-      return;
-    }
-    
-    console.log('[InterpreterDashboard] Updating status:', newStatus);
-    setIsUpdatingStatus(true);
-    
-    try {
-      setProfile(prev => prev ? { ...prev, status: newStatus } : null);
-      
-      if (profile.id) {
-        eventEmitter.emit(EVENT_STATUS_UPDATE, {
-          status: newStatus,
-          userId: profile.id
-        });
-      }
-      
-      const { error } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: profile.id,
-        p_status: newStatus as string
-      });
-
-      if (error) {
-        console.error('[InterpreterDashboard] Error updating status:', error);
-        
-        setProfile(prev => prev ? { ...prev, status: profile.status } : null);
-        
-        toast({
-          title: "Erreur",
-          description: "Impossible de mettre à jour votre statut",
-          variant: "destructive",
-        });
-      } else {
-        console.log('[InterpreterDashboard] Status updated successfully');
-        
-        toast({
-          title: "Statut mis à jour",
-          description: `Votre statut est maintenant "${newStatus}"`,
-        });
-      }
-    } catch (error) {
-      console.error('[InterpreterDashboard] Error updating status:', error);
-      
-      setProfile(prev => prev ? { ...prev, status: profile.status } : null);
-      
-      toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de la mise à jour de votre statut",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  }, [profile, isUpdatingStatus, toast]);
-
-  useEffect(() => {
-    if (!profile?.id) return;
-    
-    const handleStatusUpdate = (data: { status: Profile['status'], userId: string }) => {
-      if (data.userId === profile.id && data.status !== profile.status) {
-        console.log('[InterpreterDashboard] Received status update from event system:', data.status);
-        setProfile(prev => prev ? { ...prev, status: data.status } : null);
-      }
-    };
-    
-    eventEmitter.on(EVENT_STATUS_UPDATE, handleStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_STATUS_UPDATE, handleStatusUpdate);
-    };
-  }, [profile?.id, profile?.status]);
-
-  const showHelpGuide = () => {
-    setIsGuideOpen(true);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -292,45 +268,72 @@ export const InterpreterDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center p-6 max-w-md">
-          <h2 className="text-2xl font-bold mb-4">Erreur</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">{error}</p>
-          <button
-            onClick={() => navigate("/interpreter/login")}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Retour à la connexion
-          </button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 px-4 bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
+        <p className="text-destructive text-center">{error}</p>
+        <button 
+          onClick={() => navigate("/interpreter/login")}
+          className="bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center rounded-md text-sm font-medium"
+        >
+          Retourner à la page de connexion
+        </button>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <DashboardHeader
+    <div className="flex flex-col md:flex-row h-full min-h-screen w-full bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-950 overflow-hidden touch-manipulation">
+      <div 
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity duration-200 md:hidden ${
+          isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+      
+      <div 
+        className={`fixed md:relative w-[270px] z-50 transition-transform duration-200 ease-out h-[100vh] ${
+          isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
+        } md:translate-x-0 overflow-hidden`}
+        style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+      >
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            if (isMobile) setIsSidebarOpen(false);
+          }}
+          userStatus={profile?.status || "available"}
+          profilePictureUrl={profile?.profile_picture_url}
+        />
+      </div>
+      
+      <main className="flex-1 flex flex-col h-full w-full overflow-hidden">
+        <DashboardHeader 
           profile={profile}
-          onStatusChange={handleStatusChange}
-          onMenuClick={() => setIsSidebarOpen(true)}
+          onStatusChange={async (newStatus) => {
+            if (profile) {
+              const updatedProfile = { ...profile, status: newStatus };
+              setProfile(updatedProfile);
+            }
+          }}
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           isMobile={isMobile}
         />
-        
-        <div className="flex flex-1">
-          <Sidebar
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            userStatus={profile?.status || "available"}
-            profilePictureUrl={profile?.profile_picture_url || undefined}
-          />
-          
-          <DashboardContent
+
+        <div className="flex-1 overflow-hidden relative">
+          <DashboardContent 
             activeTab={activeTab}
             profile={profile}
-            onProfileUpdate={fetchProfile}
             scheduledMissions={scheduledMissions}
-            onMissionsUpdate={fetchScheduledMissions}
+            onProfileUpdate={fetchProfile}
+            onProfilePictureUpload={handleProfilePictureUpload}
+            onProfilePictureDelete={handleProfilePictureDelete}
+            onStatusChange={async (newStatus) => {
+              if (profile) {
+                const updatedProfile = { ...profile, status: newStatus };
+                setProfile(updatedProfile);
+              }
+            }}
+            onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
           />
         </div>
         
@@ -338,21 +341,22 @@ export const InterpreterDashboard = () => {
           <MobileNavigationBar
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            onShowHelp={showHelpGuide}
+            pendingMissionsCount={scheduledMissions.length}
+            unreadMessagesCount={0}
           />
         )}
-      </div>
-      
+      </main>
+
       <PasswordChangeDialog
-        open={isPasswordDialogOpen}
+        open={!profile?.password_changed}
         onOpenChange={setIsPasswordDialogOpen}
         onPasswordChanged={fetchProfile}
       />
-      
-      <HowToUseGuide 
-        open={isGuideOpen} 
-        onOpenChange={setIsGuideOpen} 
+
+      <HowToUseGuide
+        open={isGuideOpen}
+        onOpenChange={setIsGuideOpen}
       />
-    </>
+    </div>
   );
 };

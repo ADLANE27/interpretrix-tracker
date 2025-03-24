@@ -1,59 +1,28 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+
+import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATE } from '@/lib/events';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
-  const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Function to handle visibility change events with debouncing
-  const handleVisibilityOrNetworkChange = useCallback(() => {
-    // Clear any existing timeout to prevent multiple rapid triggers
-    if (visibilityTimeoutRef.current) {
-      clearTimeout(visibilityTimeoutRef.current);
-    }
-    
-    // Only trigger update if document is visible
-    if (document.visibilityState === 'visible' || navigator.onLine) {
-      console.log('[useMissionUpdates] App became visible or network restored, triggering update');
-      
-      // Debounce the update with a short timeout
-      visibilityTimeoutRef.current = setTimeout(() => {
-        onUpdate();
-        visibilityTimeoutRef.current = null;
-      }, 500);
-    }
-  }, [onUpdate]);
-
-  // Setup visibility change and network event listeners
+  // Setup visibility change event listeners
   useEffect(() => {
-    console.log('[useMissionUpdates] Setting up visibility and network event listeners');
+    console.log('[useMissionUpdates] Setting up visibility change event listeners');
     
-    window.addEventListener("online", handleVisibilityOrNetworkChange);
-    document.addEventListener('visibilitychange', handleVisibilityOrNetworkChange);
-
-    // Listen for status update events from other components
-    const handleStatusUpdate = () => {
-      console.log('[useMissionUpdates] Received interpreter status update event');
-      onUpdate();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[useMissionUpdates] App became visible, triggering update');
+        onUpdate();
+      }
     };
-    
-    // Subscribe to the custom event for status updates
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
+
+    window.addEventListener("online", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityOrNetworkChange);
-      document.removeEventListener('visibilitychange', handleVisibilityOrNetworkChange);
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATE, handleStatusUpdate);
-      
-      if (visibilityTimeoutRef.current) {
-        clearTimeout(visibilityTimeoutRef.current);
-        visibilityTimeoutRef.current = null;
-      }
+      window.removeEventListener("online", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [onUpdate, handleVisibilityOrNetworkChange]);
+  }, [onUpdate]);
 
   // Subscribe to mission changes
   useRealtimeSubscription(
@@ -67,7 +36,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -88,7 +57,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -97,7 +66,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     }
   );
   
-  // Subscribe to interpreter profile status changes with an improved filter
+  // Use a more specific subscription for interpreter profile status changes
   useRealtimeSubscription(
     {
       event: 'UPDATE',
@@ -107,15 +76,13 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      // This is a status update, trigger the refresh
       onUpdate();
-      
-      // Emit the status update event so other components can respond
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATE);
     },
     {
-      debugMode: true,
+      debugMode: true, // Enable debug mode for troubleshooting
       maxRetries: 3,
-      retryInterval: 3000,
+      retryInterval: 3000, // Shorter retry for status updates
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }

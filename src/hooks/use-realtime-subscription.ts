@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,25 +30,6 @@ const circuitBreakerState = {
   failureThreshold: 3
 };
 
-// Cache to deduplicate events across subscriptions
-const eventCache = new Map<string, { 
-  timestamp: number, 
-  payload: RealtimePostgresChangesPayload<any>
-}>();
-
-// Cache timeout for deduplication (1 second)
-const EVENT_CACHE_TIMEOUT = 1000;
-
-// Clean the event cache periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of eventCache.entries()) {
-    if (now - entry.timestamp > EVENT_CACHE_TIMEOUT) {
-      eventCache.delete(key);
-    }
-  }
-}, 5000); // Clean every 5 seconds
-
 export function useRealtimeSubscription(
   config: SubscriptionConfig,
   callback: (payload: any) => void,
@@ -66,7 +48,8 @@ export function useRealtimeSubscription(
   const retryCountRef = useRef(0);
   const [isConnected, setIsConnected] = useState(false);
   const instanceIdRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
-  
+  const seenEvents = useRef<Set<string>>(new Set());
+
   const log = useCallback((message: string, ...args: any[]) => {
     if (debugMode) {
       console.log(`[Realtime ${instanceIdRef.current}] ${message}`, ...args);
@@ -178,25 +161,31 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
-        // Parse the filter string into the format expected by Supabase
-        const parsedFilter = config.filter ? parseFilter(config.filter) : undefined;
-        
         channel.on(
-          'postgres_changes', 
+          'postgres_changes' as any, 
           { 
             event: config.event, 
             schema: config.schema || 'public', 
             table: config.table, 
-            ...parsedFilter
-          } as any, // Use type assertion to bypass strict type checking
+            filter: config.filter 
+          }, 
           (payload: RealtimePostgresChangesPayload<any>) => {
-            // Generate a unique event ID
-            const eventId = generateEventId(payload);
+            const eventId = `${payload.eventType}-${
+              payload.eventType === 'DELETE' ? 
+              (payload.old as any)?.id : 
+              (payload.new as any)?.id
+            }-${payload.commit_timestamp}`;
             
-            // Check for duplicate events
-            if (isRecentDuplicate(eventId, payload)) {
+            if (seenEvents.current.has(eventId)) {
               log(`Skipping duplicate event: ${eventId}`);
               return;
+            }
+            
+            seenEvents.current.add(eventId);
+            
+            if (seenEvents.current.size > 100) {
+              const eventsArray = Array.from(seenEvents.current);
+              seenEvents.current = new Set(eventsArray.slice(-50));
             }
             
             log(`Received ${config.event} event for ${config.table}:`, payload);
@@ -257,69 +246,6 @@ export function useRealtimeSubscription(
     log,
     logError
   ]);
-
-  // Helper function to convert filter string into Supabase format
-  const parseFilter = (filterStr: string): Record<string, unknown> | undefined => {
-    try {
-      // Handle common filter formats
-      if (filterStr.includes('=eq.')) {
-        // Format: column=eq.value,column2=eq.value2
-        const parts = filterStr.split(',');
-        const filter: Record<string, unknown> = {};
-        
-        for (const part of parts) {
-          const [columnWithOp, value] = part.split('=eq.');
-          if (columnWithOp && value) {
-            filter[columnWithOp] = value;
-          }
-        }
-        
-        return { filter };
-      }
-      
-      // For more complex filters, just return undefined and let Supabase handle it
-      return undefined;
-    } catch (error) {
-      logError(`Error parsing filter string: ${filterStr}`, error);
-      return undefined;
-    }
-  };
-
-  // Generate a unique ID for an event to detect duplicates
-  const generateEventId = (payload: RealtimePostgresChangesPayload<any>): string => {
-    const id = payload.eventType === 'DELETE' ? 
-      (payload.old as any)?.id : 
-      (payload.new as any)?.id;
-    
-    return `${payload.schema}-${payload.table}-${payload.eventType}-${id || 'unknown'}-${payload.commit_timestamp}`;
-  };
-
-  // Check if this event was recently processed
-  const isRecentDuplicate = (eventId: string, payload: RealtimePostgresChangesPayload<any>): boolean => {
-    const now = Date.now();
-    
-    if (eventCache.has(eventId)) {
-      return true;
-    }
-    
-    // Store this event in the cache
-    eventCache.set(eventId, { timestamp: now, payload });
-    
-    // Ensure the cache doesn't grow too large
-    if (eventCache.size > 100) {
-      // Remove oldest entries
-      const sortedEntries = [...eventCache.entries()]
-        .sort((a, b) => a[1].timestamp - b[1].timestamp);
-      
-      // Keep only the 50 most recent entries
-      const toRemove = sortedEntries.slice(0, sortedEntries.length - 50);
-      for (const [key] of toRemove) {
-        eventCache.delete(key);
-      }
-    }
-    
-    return false;
-  };
 
   return { isConnected };
 }
