@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { enableRealtimeForTable } from './realtime-enabler';
 import { registerSubscription, unregisterSubscription, getSubscriptionCount } from './subscription-registry';
@@ -95,6 +95,7 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
+        // Fix: Use the correct type signature for the on method with postgres_changes
         channel.on(
           'postgres_changes', 
           { 
@@ -103,7 +104,7 @@ export function useRealtimeSubscription(
             table: config.table, 
             filter: config.filter 
           }, 
-          (payload) => {
+          (payload: RealtimePostgresChangesPayload<any>) => {
             if (!mountedRef.current) return;
             
             const eventId = `${payload.eventType}-${
