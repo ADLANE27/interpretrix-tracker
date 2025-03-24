@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -74,7 +73,6 @@ export const InterpreterStatusDropdown = ({
   const isMobile = useIsMobile();
   const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Listen for status updates from other components
   useEffect(() => {
     const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
       if (data.interpreterId === interpreterId && data.status !== localStatus) {
@@ -90,7 +88,6 @@ export const InterpreterStatusDropdown = ({
     };
   }, [interpreterId, localStatus]);
 
-  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
@@ -118,20 +115,16 @@ export const InterpreterStatusDropdown = ({
       
       const previousStatus = localStatus;
       
-      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      // Clear any existing timeout
       if (statusUpdateTimeoutRef.current) {
         clearTimeout(statusUpdateTimeoutRef.current);
       }
       
-      // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using the standardized RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -142,7 +135,6 @@ export const InterpreterStatusDropdown = ({
         throw error;
       }
 
-      // Emit the status update event
       eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
         interpreterId: interpreterId,
         status: pendingStatus,
@@ -156,7 +148,6 @@ export const InterpreterStatusDropdown = ({
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
       
-      // Revert on error with a slight delay to avoid UI flicker
       statusUpdateTimeoutRef.current = setTimeout(() => {
         setLocalStatus(currentStatus);
       }, 500);
@@ -178,7 +169,6 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
-  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;

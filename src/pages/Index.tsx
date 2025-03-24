@@ -7,13 +7,20 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { WelcomeContent } from "@/components/WelcomeContent";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button"; // Import the Button component
+import { Button } from "@/components/ui/button"; 
+import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 
 const Index = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Reset circuit breaker state when the index page loads
+  useEffect(() => {
+    resetCircuitBreaker();
+    console.log('[Index] Reset circuit breaker for realtime subscriptions');
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {

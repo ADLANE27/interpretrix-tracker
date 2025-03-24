@@ -2,8 +2,15 @@
 import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
 import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
+import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
+  // Reset the circuit breaker when the hook is mounted
+  useEffect(() => {
+    resetCircuitBreaker();
+    console.log('[useMissionUpdates] Reset circuit breaker for realtime subscriptions');
+  }, []);
+
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
