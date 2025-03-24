@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, MessageCircle, Search, User, Home } from 'lucide-react';
+import { Calendar, MessageCircle, User, Home } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { motion } from 'framer-motion';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -26,7 +26,6 @@ export const MobileNavigationBar: React.FC<MobileNavigationBarProps> = ({
   const tabs = [
     { id: "missions", label: "Missions", icon: Home, badge: pendingMissionsCount },
     { id: "messages", label: "Messages", icon: MessageCircle, badge: unreadMessagesCount },
-    { id: "terminology", label: "Recherche", icon: Search },
     { id: "profile", label: "Profil", icon: User }
   ];
 
