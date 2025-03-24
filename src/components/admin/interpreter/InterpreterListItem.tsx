@@ -46,17 +46,20 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
   const { toast } = useToast();
   const statusRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastStatusUpdateRef = useRef<number>(0);
+  const lastStatusRefreshRef = useRef<number>(0);
+  const statusCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const updateAttemptRef = useRef<boolean>(false);
 
   // Refresh interpreter status from the database when UI becomes stale
-  const refreshInterpreterStatus = async () => {
+  const refreshInterpreterStatus = async (force = false) => {
     try {
-      // Only refresh if it's been at least 5 seconds since the last update
+      // Only refresh if it's been at least 2 seconds since the last refresh (unless forced)
       const now = Date.now();
-      if (now - lastStatusUpdateRef.current < 5000) {
-        console.log(`[InterpreterListItem] Skipping refresh for ${interpreter.id} - too recent`);
+      if (!force && now - lastStatusRefreshRef.current < 2000) {
         return;
       }
       
+      lastStatusRefreshRef.current = now;
       console.log(`[InterpreterListItem] Refreshing status for ${interpreter.id} from database`);
       
       const { data, error } = await supabase
@@ -70,10 +73,11 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
         return;
       }
       
-      if (data && data.status && data.status !== interpreterStatus) {
-        console.log(`[InterpreterListItem] Status updated from database for ${interpreter.id}: ${data.status}`);
+      if (data && data.status && (data.status !== interpreterStatus || force)) {
+        console.log(`[InterpreterListItem] Status updated from database for ${interpreter.id}: ${data.status} (current: ${interpreterStatus})`);
         setInterpreterStatus(data.status as Profile['status']);
         lastStatusUpdateRef.current = now;
+        updateAttemptRef.current = false;
       }
     } catch (error) {
       console.error(`[InterpreterListItem] Exception refreshing status for ${interpreter.id}:`, error);
@@ -85,33 +89,46 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
     console.log(`[InterpreterListItem] Initial status for ${interpreter.id}:`, validStatus);
     
     // Set up a periodic refresh of the status
-    statusRefreshTimeoutRef.current = setInterval(() => {
+    if (statusCheckIntervalRef.current) {
+      clearInterval(statusCheckIntervalRef.current);
+    }
+    
+    statusCheckIntervalRef.current = setInterval(() => {
       if (document.visibilityState === 'visible') {
         refreshInterpreterStatus();
       }
-    }, 30000); // Every 30 seconds
+    }, 15000); // Every 15 seconds
     
     return () => {
       if (statusRefreshTimeoutRef.current) {
-        clearInterval(statusRefreshTimeoutRef.current);
+        clearTimeout(statusRefreshTimeoutRef.current);
+      }
+      if (statusCheckIntervalRef.current) {
+        clearInterval(statusCheckIntervalRef.current);
       }
     };
   }, [interpreter.id, validStatus]);
 
   // Update local state when props change
   useEffect(() => {
-    if (interpreter.status !== interpreterStatus && ["available", "unavailable", "pause", "busy"].includes(interpreter.status)) {
+    if (interpreter.status !== interpreterStatus && 
+        ["available", "unavailable", "pause", "busy"].includes(interpreter.status)) {
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
       lastStatusUpdateRef.current = Date.now();
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
-  // Listen for global status update events
+  // Listen for global status update events with improved handling
   useEffect(() => {
     const handleStatusUpdate = () => {
       console.log(`[InterpreterListItem] Received status update event for ${interpreter.id}`);
-      refreshInterpreterStatus();
+      
+      // Only force refresh if there was an update attempt that might not have been reflected yet
+      refreshInterpreterStatus(updateAttemptRef.current);
+      
+      // Reset the update attempt flag after processing
+      updateAttemptRef.current = false;
     };
     
     window.addEventListener('interpreter-status-update', handleStatusUpdate);
@@ -123,12 +140,26 @@ export const InterpreterListItem = ({ interpreter, onStatusChange }: Interpreter
 
   const handleStatusChange = (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
+    
+    // Mark that we've attempted an update
+    updateAttemptRef.current = true;
+    
+    // Update local state immediately for responsive UI
     setInterpreterStatus(newStatus);
     lastStatusUpdateRef.current = Date.now();
     
     if (onStatusChange) {
       onStatusChange(interpreter.id, newStatus);
     }
+    
+    // Schedule a verification check after a short delay
+    if (statusRefreshTimeoutRef.current) {
+      clearTimeout(statusRefreshTimeoutRef.current);
+    }
+    
+    statusRefreshTimeoutRef.current = setTimeout(() => {
+      refreshInterpreterStatus(true); // Force refresh to verify the status was updated correctly
+    }, 1500);
   };
 
   const parsedLanguages = interpreter.languages

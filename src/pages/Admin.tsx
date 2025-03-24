@@ -11,9 +11,10 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isPolling, setIsPolling] = useState(true);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingIntervalMs = 10000; // Polling interval reduced to 10 seconds
+  const pollingIntervalMs = 15000; // Polling interval increased to 15 seconds to reduce load
   const lastPollTimeRef = useRef<number>(0);
   const pendingPollingRef = useRef<boolean>(false);
+  const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Use this function to refresh interpreter status data
   const refreshInterpreterStatuses = useCallback(() => {
@@ -38,14 +39,18 @@ const Admin = () => {
     }, 1000);
   }, []);
 
-  // Set up polling for interpreter status updates
+  // Use the improved useMissionUpdates hook 
+  const { reconnectAllSubscriptions, hasFailedSubscriptions } = useMissionUpdates(refreshInterpreterStatuses);
+
+  // Set up polling for interpreter status updates - only as a fallback
   useEffect(() => {
     const setupPolling = () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
       
-      if (isPolling) {
+      // Only poll if real-time is failing or if polling is explicitly enabled
+      if (isPolling || hasFailedSubscriptions) {
         console.log('[Admin] Starting interpreter status polling');
         // Initial refresh immediately after page load
         refreshInterpreterStatuses();
@@ -70,34 +75,60 @@ const Admin = () => {
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [isPolling, refreshInterpreterStatuses]);
+  }, [isPolling, refreshInterpreterStatuses, hasFailedSubscriptions]);
 
-  // Use the modified useMissionUpdates hook as a supplementary method to refresh data
-  useMissionUpdates(refreshInterpreterStatuses);
-
-  // Handle visible/hidden state
+  // Handle visible/hidden state with improved reconnection
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('[Admin] Page became visible, immediately refreshing statuses');
+        console.log('[Admin] Page became visible, reconnecting subscriptions and refreshing statuses');
+        
+        // When app becomes visible, attempt to reconnect all subscriptions
+        reconnectAllSubscriptions();
+        
+        // Also immediately refresh
         refreshInterpreterStatuses();
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [refreshInterpreterStatuses]);
+  }, [refreshInterpreterStatuses, reconnectAllSubscriptions]);
 
-  // Handle online/offline state
+  // Handle online/offline state with improved resilience
   useEffect(() => {
     const handleOnline = () => {
-      console.log('[Admin] Network connection restored, immediately refreshing statuses');
-      refreshInterpreterStatuses();
+      console.log('[Admin] Network connection restored, reconnecting subscriptions');
+      
+      // Clear any existing timeout
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+      
+      // Set a short timeout before attempting reconnection to allow network to stabilize
+      connectionTimeoutRef.current = setTimeout(() => {
+        reconnectAllSubscriptions();
+        refreshInterpreterStatuses();
+      }, 1000);
+    };
+    
+    const handleOffline = () => {
+      console.log('[Admin] Network connection lost');
+      // We could notify the user here if needed
     };
     
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [refreshInterpreterStatuses]);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+    };
+  }, [refreshInterpreterStatuses, reconnectAllSubscriptions]);
 
   // Authentication check
   useEffect(() => {
