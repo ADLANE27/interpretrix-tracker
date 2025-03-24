@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
+import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -23,6 +23,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const isMobile = useIsMobile();
   const isProcessingRef = useRef(false);
   const lastStatusUpdateRef = useRef<string | null>(null);
+  const { updateInterpreterStatus } = useMissionUpdates(() => {});
 
   // Update local state when prop changes
   useEffect(() => {
@@ -85,41 +86,50 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   }, [status, userId]);
 
   // Set up realtime subscription for status updates
-  useRealtimeSubscription(
-    {
-      event: 'UPDATE',
-      table: 'interpreter_profiles',
-      filter: userId ? `id=eq.${userId}` : undefined
-    },
-    (payload) => {
-      if (!payload.new || !payload.new.status) return;
-      
-      console.log('[StatusManager] Status update received:', payload);
-      const newStatus = payload.new.status;
-      
-      if (isValidStatus(newStatus) && newStatus !== status) {
-        // Create a unique update identifier
-        const updateId = `${newStatus}-${Date.now()}`;
-        
-        // Skip if this is a duplicate of our last update
-        if (updateId === lastStatusUpdateRef.current) {
-          console.log('[StatusManager] Skipping duplicate update:', updateId);
-          return;
+  useEffect(() => {
+    if (!userId) return;
+    
+    console.log('[StatusManager] Setting up realtime subscription');
+    
+    const channel = supabase.channel('interpreter-status-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'interpreter_profiles',
+          filter: `id=eq.${userId}`
+        },
+        (payload) => {
+          if (!payload.new || !payload.new.status) return;
+          
+          console.log('[StatusManager] Status update received:', payload);
+          const newStatus = payload.new.status;
+          
+          if (isValidStatus(newStatus) && newStatus !== status) {
+            // Create a unique update identifier
+            const updateId = `${newStatus}-${Date.now()}`;
+            
+            // Skip if this is a duplicate of our last update
+            if (updateId === lastStatusUpdateRef.current) {
+              console.log('[StatusManager] Skipping duplicate update:', updateId);
+              return;
+            }
+            
+            console.log('[StatusManager] Updating status to', newStatus);
+            lastStatusUpdateRef.current = updateId;
+            setStatus(newStatus);
+          }
         }
-        
-        console.log('[StatusManager] Updating status to', newStatus);
-        lastStatusUpdateRef.current = updateId;
-        setStatus(newStatus);
-      }
-    },
-    {
-      enabled: !!userId,
-      onError: (error) => {
-        console.error('[StatusManager] Error in realtime subscription:', error);
-      },
-      debugMode: true
-    }
-  );
+      )
+      .subscribe((status) => {
+        console.log('[StatusManager] Subscription status:', status);
+      });
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, status]);
 
   const isValidStatus = (status: string): status is Status => {
     return ['available', 'unavailable', 'pause', 'busy'].includes(status);
@@ -165,27 +175,14 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       // Optimistically update local state
       setStatus(newStatus);
       
-      // First try direct database update for reliability
-      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-        p_interpreter_id: userId,
-        p_status: newStatus
-      });
-
-      if (dbError) {
-        console.error('[StatusManager] Database error:', dbError);
-        throw dbError;
-      }
-
-      console.log('[StatusManager] Status update successful');
+      // Use the direct database update function from useMissionUpdates
+      const success = await updateInterpreterStatus(userId, newStatus);
       
-      // Dispatch an event that other components can listen to
-      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
-        detail: { 
-          interpreter_id: userId,
-          status: newStatus,
-          timestamp: Date.now()
-        }
-      }));
+      if (!success) {
+        // Revert the optimistic update if direct update failed
+        setStatus(currentStatus || 'available');
+        throw new Error('Failed to update status');
+      }
 
       // Call the parent handler if provided
       if (onStatusChange) {
@@ -209,7 +206,7 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour votre statut",
+        description: "Impossible de mettre à jour votre statut. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {

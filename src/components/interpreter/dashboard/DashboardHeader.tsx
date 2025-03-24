@@ -8,6 +8,7 @@ import { StatusButtonsBar } from "../StatusButtonsBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import { useMissionUpdates } from "@/hooks/useMissionUpdates";
 
 interface DashboardHeaderProps {
   profile: Profile | null;
@@ -24,6 +25,7 @@ export const DashboardHeader = ({
 }: DashboardHeaderProps) => {
   const orientation = useOrientation();
   const [isInChatTab, setIsInChatTab] = useState(false);
+  const { updateInterpreterStatus } = useMissionUpdates(() => {});
   
   // Use an effect to update the isInChatTab state whenever data-in-chat attribute changes
   useEffect(() => {
@@ -62,6 +64,23 @@ export const DashboardHeader = ({
     if (profile.name) return profile.name;
     
     return `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || "Interprète";
+  };
+
+  // Enhanced status change handler with improved error handling
+  const handleStatusChange = async (newStatus: Profile['status']) => {
+    if (!profile?.id) return;
+    
+    try {
+      // Use our enhanced direct update method
+      const success = await updateInterpreterStatus(profile.id, newStatus);
+      
+      if (success) {
+        // Only call the parent handler if direct update succeeded
+        await onStatusChange(newStatus);
+      }
+    } catch (error) {
+      console.error('[DashboardHeader] Error updating status:', error);
+    }
   };
 
   return (
@@ -104,7 +123,7 @@ export const DashboardHeader = ({
         <div className="pb-2 md:pb-3 md:py-2 w-full overflow-visible StatusButtonsBar-in-header">
           <StatusButtonsBar 
             currentStatus={profile?.status} 
-            onStatusChange={onStatusChange}
+            onStatusChange={handleStatusChange}
             variant={isMobile ? 'compact' : 'default'} 
           />
         </div>
