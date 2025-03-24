@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import AdminDashboard from '@/components/admin/AdminDashboard';
@@ -12,17 +11,32 @@ const Admin = () => {
 
   // Add the useMissionUpdates hook with a more robust handler
   useMissionUpdates(() => {
-    console.log('[Admin] Mission or interpreter update received, dispatching event');
+    console.log('[Admin] Mission or interpreter update received, dispatching refresh events');
     
-    // Dispatch a custom event that the AdminDashboard will listen for
+    // Dispatch a custom event that components will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
     
     // As a backup, trigger a manual refresh after a delay
     setTimeout(() => {
       console.log('[Admin] Executing delayed refresh');
       window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
-    }, 3000);
+    }, 1500);
   });
+
+  // Listen for status update events from the interpreter space
+  useEffect(() => {
+    const handleInterpreterStatusUpdate = (event: CustomEvent) => {
+      console.log('[Admin] Received interpreter status update event:', event.detail);
+      // Dispatch a refresh event for all components
+      window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
+    };
+
+    window.addEventListener('interpreter-status-update', handleInterpreterStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('interpreter-status-update', handleInterpreterStatusUpdate as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {

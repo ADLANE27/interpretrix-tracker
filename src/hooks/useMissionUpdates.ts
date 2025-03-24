@@ -29,13 +29,21 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
+    // Custom event listener for interpreter status updates
+    const handleStatusUpdate = () => {
+      console.log('[useMissionUpdates] Interpreter status update event received, triggering update');
+      debouncedUpdate();
+    };
+
     window.addEventListener("online", handleConnectionChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
       window.removeEventListener("online", handleConnectionChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
     };
   }, [debouncedUpdate]);
 
@@ -91,6 +99,15 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
+      
+      // Dispatch a custom event to notify other components about the status change
+      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+        detail: { 
+          interpreterId: payload.new?.id,
+          status: payload.new?.status 
+        }
+      }));
+      
       // This is a status update, trigger the refresh
       debouncedUpdate();
     },
