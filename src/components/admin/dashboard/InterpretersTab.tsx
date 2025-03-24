@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -278,8 +279,11 @@ export const InterpretersTab: React.FC = () => {
 
       const scheduledMissions = await supabase.from("interpretation_missions").select("id").eq("mission_type", "scheduled").gte("scheduled_start_time", todayStart).lt("scheduled_start_time", tomorrowStart);
       const privateReservations = await supabase.from("private_reservations").select("id").eq("status", "scheduled").gte("start_time", todayStart).lt("start_time", tomorrowStart);
-      const scheduledCount = scheduledMissions?.length || 0;
-      const reservationsCount = privateReservations?.length || 0;
+
+      // Fix: Safely access data and length properties
+      const scheduledCount = scheduledMissions.data ? scheduledMissions.data.length : 0;
+      const reservationsCount = privateReservations.data ? privateReservations.data.length : 0;
+      
       const totalMissionsToday = scheduledCount + reservationsCount;
       console.log("[InterpretersTab] Today's missions count:", {
         scheduledMissions: scheduledCount,

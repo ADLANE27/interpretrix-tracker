@@ -9,7 +9,7 @@ interface StatusBarButtonProps {
   currentStatus: Status;
   isUpdating: boolean;
   isMobile: boolean;
-  icon: React.ComponentType;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   label: string;
   mobileLabel: string;
   color: string;
