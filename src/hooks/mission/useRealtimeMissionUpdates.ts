@@ -1,5 +1,5 @@
 
-import { useRealtimeSubscription } from '../use-realtime-subscription';
+import { useRealtimeSubscription } from '../realtime/useRealtimeSubscription';
 
 /**
  * Hook to handle realtime subscription for mission data updates
