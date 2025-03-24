@@ -26,7 +26,7 @@ const circuitBreakerState = {
   isOpen: false,
   failureCount: 0,
   lastFailureTime: 0,
-  resetTimeout: 60000, // 1 minute before trying again
+  resetTimeout: 30000, // Reduced from 60s to 30s for faster recovery
   failureThreshold: 3
 };
 
@@ -78,7 +78,7 @@ export function useRealtimeSubscription(
         circuitBreakerState.isOpen = false;
         circuitBreakerState.failureCount = 0;
       } else {
-        log(`Circuit breaker is open, skipping enablement request`);
+        log(`Circuit breaker is open, skipping enablement request. Will retry after ${Math.round((circuitBreakerState.resetTimeout - timeSinceLastFailure)/1000)}s`);
         return false;
       }
     }
@@ -161,14 +161,24 @@ export function useRealtimeSubscription(
         
         const channel = supabase.channel(channelName);
         
+        // Create subscription config without the filter if it contains 'eq.' as this format is not supported
+        const subscriptionConfig: any = { 
+          event: config.event, 
+          schema: config.schema || 'public', 
+          table: config.table
+        };
+        
+        // Only add filter if it doesn't use the 'eq.' format which is not working correctly
+        if (config.filter && !config.filter.includes('eq.')) {
+          subscriptionConfig.filter = config.filter;
+          log(`Using filter: ${config.filter}`);
+        } else if (config.filter) {
+          log(`Skipping filter "${config.filter}" as it uses eq. format which is not reliable`);
+        }
+        
         channel.on(
           'postgres_changes' as any, 
-          { 
-            event: config.event, 
-            schema: config.schema || 'public', 
-            table: config.table, 
-            filter: config.filter 
-          }, 
+          subscriptionConfig, 
           (payload: RealtimePostgresChangesPayload<any>) => {
             const eventId = `${payload.eventType}-${
               payload.eventType === 'DELETE' ? 

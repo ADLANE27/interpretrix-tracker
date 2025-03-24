@@ -1,6 +1,5 @@
 
 import { useRef, useEffect } from 'react';
-import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,10 +12,11 @@ export const useMissionSubscription = (
   currentUserId: string | null,
   onMissionUpdate: () => void
 ) => {
-  const channelRef = useRef<RealtimeChannel | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { showNotification, requestPermission } = useBrowserNotification();
+  const lastUpdateRef = useRef<number>(0);
+  const minUpdateIntervalMs = 2000; // Minimum 2 seconds between updates
   
   useEffect(() => {
     requestPermission();
@@ -47,6 +47,16 @@ export const useMissionSubscription = (
         console.log('[useMissionSubscription] Mission not available for current interpreter');
         return;
       }
+
+      // Throttle updates
+      const now = Date.now();
+      if (now - lastUpdateRef.current < minUpdateIntervalMs) {
+        console.log('[useMissionSubscription] Update throttled, skipping notification');
+        onMissionUpdate(); // Still call the update function
+        return;
+      }
+      
+      lastUpdateRef.current = now;
 
       // Play notification sound
       playNotificationSound();
@@ -91,12 +101,17 @@ export const useMissionSubscription = (
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionSubscription] Network connection restored');
+      onMissionUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       console.log('[useMissionSubscription] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onMissionUpdate]);

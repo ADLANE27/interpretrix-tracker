@@ -27,7 +27,7 @@ interface InterpreterStatusDropdownProps {
   currentStatus: Status;
   className?: string;
   displayFormat?: "badge" | "button";
-  onStatusChange?: (newStatus: Status) => void;
+  onStatusChange?: (interpreterId: string, newStatus: Status) => void;
 }
 
 const statusConfig: Record<Status, StatusConfigItem> = {
@@ -71,21 +71,85 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const lastUpdateRef = useRef<string | null>(null);
+  const transactionIdRef = useRef<string | null>(null);
+  const updateAttemptsRef = useRef(0);
+  const maxUpdateAttempts = 3;
 
   // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
-      const updateId = `${currentStatus}-${Date.now()}`;
-      
-      // Prevent duplicate updates
-      if (updateId === lastUpdateRef.current) return;
-      lastUpdateRef.current = updateId;
-      
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
   }, [currentStatus, interpreterId, localStatus]);
+
+  // Verify status update was successful
+  useEffect(() => {
+    const verifyStatusUpdate = async () => {
+      if (!transactionIdRef.current || !isUpdating || !pendingStatus) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('interpreter_profiles')
+          .select('status')
+          .eq('id', interpreterId)
+          .single();
+          
+        if (error) {
+          console.error('[InterpreterStatusDropdown] Error verifying status update:', error);
+          return;
+        }
+        
+        if (data && data.status === pendingStatus) {
+          console.log('[InterpreterStatusDropdown] Status update verified successfully:', data.status);
+          setIsUpdating(false);
+          updateAttemptsRef.current = 0;
+          transactionIdRef.current = null;
+          setPendingStatus(null);
+        } else if (updateAttemptsRef.current < maxUpdateAttempts) {
+          console.warn('[InterpreterStatusDropdown] Status verification failed, retrying. Current DB status:', data?.status, 'Expected:', pendingStatus);
+          updateAttemptsRef.current++;
+          
+          // Retry the update
+          const { error: retryError } = await supabase.rpc('update_interpreter_status', {
+            p_interpreter_id: interpreterId,
+            p_status: pendingStatus
+          });
+          
+          if (retryError) {
+            console.error('[InterpreterStatusDropdown] Retry update error:', retryError);
+          } else {
+            console.log('[InterpreterStatusDropdown] Retry attempt', updateAttemptsRef.current, 'sent');
+          }
+          
+          // Check again after a delay
+          setTimeout(verifyStatusUpdate, 1000);
+        } else {
+          console.error('[InterpreterStatusDropdown] Max retry attempts reached. Status update failed.');
+          setIsUpdating(false);
+          updateAttemptsRef.current = 0;
+          transactionIdRef.current = null;
+          setPendingStatus(null);
+          
+          // Show error toast after max retries
+          toast({
+            title: "Erreur de synchronisation",
+            description: "Impossible de mettre à jour le statut. Veuillez réessayer.",
+            variant: "destructive",
+          });
+          
+          // Revert to previous status
+          setLocalStatus(currentStatus);
+        }
+      } catch (e) {
+        console.error('[InterpreterStatusDropdown] Exception in verification:', e);
+      }
+    };
+    
+    if (isUpdating && transactionIdRef.current) {
+      setTimeout(verifyStatusUpdate, 500); // Initial delay before first check
+    }
+  }, [isUpdating, pendingStatus, interpreterId, currentStatus, toast]);
 
   const handleStatusSelect = (status: Status) => {
     if (status === localStatus) {
@@ -102,6 +166,9 @@ export const InterpreterStatusDropdown = ({
     
     try {
       setIsUpdating(true);
+      // Generate a transaction ID for this update
+      transactionIdRef.current = `admin-status-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      console.log(`[InterpreterStatusDropdown] Starting status update transaction:`, transactionIdRef.current);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
       // Optimistically update the local status
@@ -109,7 +176,7 @@ export const InterpreterStatusDropdown = ({
       
       // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
-        onStatusChange(pendingStatus);
+        onStatusChange(interpreterId, pendingStatus);
       }
       
       // Update interpreter status using RPC function
@@ -120,17 +187,23 @@ export const InterpreterStatusDropdown = ({
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
-        // Revert on error
-        setLocalStatus(currentStatus);
         throw error;
       }
 
+      // Verification will happen in the useEffect
+      console.log('[InterpreterStatusDropdown] Status update sent to database');
+      
       toast({
         title: "Statut mis à jour",
-        description: `Le statut a été changé en "${statusConfig[pendingStatus].label}"`,
+        description: `Le statut est en cours de mise à jour vers "${statusConfig[pendingStatus].label}"`,
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
+      // Revert on error
+      setLocalStatus(currentStatus);
+      setIsUpdating(false);
+      transactionIdRef.current = null;
+      
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut",
@@ -138,8 +211,6 @@ export const InterpreterStatusDropdown = ({
       });
     } finally {
       setIsConfirmDialogOpen(false);
-      setPendingStatus(null);
-      setIsUpdating(false);
     }
   };
 
@@ -155,13 +226,13 @@ export const InterpreterStatusDropdown = ({
     
     if (displayFormat === "badge") {
       return (
-        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
+        <div className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
           {displayLabel}
         </div>
       );
     } else {
       return (
-        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className}`}>
+        <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm cursor-pointer hover:opacity-90 transition-opacity ${statusConfig[localStatus].color} ${className} ${isUpdating ? 'opacity-70' : ''}`}>
           <StatusIcon className="h-4 w-4" />
           <span>{displayLabel}</span>
         </div>
@@ -172,7 +243,7 @@ export const InterpreterStatusDropdown = ({
   return (
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild disabled={isUpdating}>
           {triggerContent()}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[180px]">

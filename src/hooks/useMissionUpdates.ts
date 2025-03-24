@@ -14,12 +14,17 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnline = () => {
+      console.log('[useMissionUpdates] Network connection restored, triggering update');
+      onUpdate();
+    };
+
+    window.addEventListener("online", handleOnline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onUpdate]);
@@ -36,7 +41,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
+      debugMode: true,
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -57,7 +62,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
+      debugMode: true,
       maxRetries: 3,
       retryInterval: 5000,
       onError: (error) => {
@@ -67,22 +72,25 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   );
   
   // Use a more specific subscription for interpreter profile status changes
+  // FIX: Use the correct filter format that works with Supabase realtime
   useRealtimeSubscription(
     {
       event: 'UPDATE',
       schema: 'public',
-      table: 'interpreter_profiles',
-      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+      table: 'interpreter_profiles'
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      // This is a status update, trigger the refresh
-      onUpdate();
+      // Check if this is a status update
+      if (payload.new && payload.new.status) {
+        console.log('[useMissionUpdates] Status change detected:', payload.new.status);
+        onUpdate();
+      }
     },
     {
-      debugMode: true, // Enable debug mode for troubleshooting
+      debugMode: true,
       maxRetries: 3,
-      retryInterval: 3000, // Shorter retry for status updates
+      retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }
