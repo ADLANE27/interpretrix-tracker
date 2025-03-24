@@ -1,8 +1,15 @@
 
 import { useEffect } from 'react';
 import { useRealtimeSubscription } from './use-realtime-subscription';
+import { debounce } from '@/lib/utils';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
+  // Create a debounced version of the update callback to prevent too many updates
+  const debouncedUpdate = debounce(() => {
+    console.log('[useMissionUpdates] Executing debounced update callback');
+    onUpdate();
+  }, 1000); // Debounce updates by 1 second
+
   // Setup visibility change event listeners
   useEffect(() => {
     console.log('[useMissionUpdates] Setting up visibility change event listeners');
@@ -10,19 +17,27 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('[useMissionUpdates] App became visible, triggering update');
-        onUpdate();
+        debouncedUpdate();
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleConnectionChange = () => {
+      if (navigator.onLine) {
+        console.log('[useMissionUpdates] Connection restored, triggering update');
+        // Add a small delay to ensure connection is fully established
+        setTimeout(debouncedUpdate, 2000);
+      }
+    };
+
+    window.addEventListener("online", handleConnectionChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleConnectionChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [onUpdate]);
+  }, [debouncedUpdate]);
 
   // Subscribe to mission changes
   useRealtimeSubscription(
@@ -33,12 +48,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Mission update received:', payload);
-      onUpdate();
+      debouncedUpdate();
     },
     {
       debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      maxRetries: 5,  // Increase max retries for better reliability
+      retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -54,12 +69,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Private reservation update received:', payload);
-      onUpdate();
+      debouncedUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -77,12 +92,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       // This is a status update, trigger the refresh
-      onUpdate();
+      debouncedUpdate();
     },
     {
       debugMode: true, // Enable debug mode for troubleshooting
-      maxRetries: 3,
-      retryInterval: 3000, // Shorter retry for status updates
+      maxRetries: 5,
+      retryInterval: 2000, // Shorter retry for status updates
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }

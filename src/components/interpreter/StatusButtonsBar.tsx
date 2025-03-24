@@ -6,6 +6,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from "@/integrations/supabase/client";
+import { debounce } from '@/lib/utils';
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -26,6 +27,8 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const lastUpdateRef = useRef<string | null>(null);
   const userId = useRef<string | null>(null);
+  const transactionIdRef = useRef<string>(`txn-${Date.now()}`);
+  const processingTransactionRef = useRef<string | null>(null);
 
   // Get user ID once on component mount
   useEffect(() => {
@@ -39,9 +42,12 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     fetchUserId();
   }, []);
 
-  // Update local state when prop changes
+  // Update local state when prop changes, but only if we're not in the middle of processing our own update
   useEffect(() => {
-    if (currentStatus && currentStatus !== localStatus) {
+    if (currentStatus && 
+        currentStatus !== localStatus && 
+        processingTransactionRef.current === null) {
+      
       const updateId = `${currentStatus}-${Date.now()}`;
       
       // Prevent duplicate updates
@@ -84,31 +90,27 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
     }
   };
 
-  const handleStatusChange = async (newStatus: Status) => {
-    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
+  // Debounced handler for status changes to prevent rapid toggling
+  const debouncedStatusChange = debounce(async (newStatus: Status, transactionId: string) => {
+    if (!onStatusChange || !userId.current) return;
     
     try {
-      setIsUpdating(true);
-      console.log('[StatusButtonsBar] Changing status to:', newStatus);
+      console.log(`[StatusButtonsBar] Processing status change to ${newStatus} (Transaction: ${transactionId})`);
       
-      // Optimistically update local state
-      setLocalStatus(newStatus);
+      // Update status directly in database
+      const { error: dbError } = await supabase.rpc('update_interpreter_status', {
+        p_interpreter_id: userId.current,
+        p_status: newStatus as string,
+        p_transaction_id: transactionId
+      });
       
-      // Update status directly in database as a backup
-      if (userId.current) {
-        const { error: dbError } = await supabase.rpc('update_interpreter_status', {
-          p_interpreter_id: userId.current,
-          p_status: newStatus as string
-        });
-        
-        if (dbError) {
-          console.error('[StatusButtonsBar] Database error:', dbError);
-        }
+      if (dbError) {
+        console.error('[StatusButtonsBar] Database error:', dbError);
+        throw dbError;
       }
       
       // Call the parent handler
       await onStatusChange(newStatus);
-      console.log('[StatusButtonsBar] Status changed to:', newStatus);
       
       // Show success toast
       toast({
@@ -129,6 +131,32 @@ export const StatusButtonsBar: React.FC<StatusButtonsBarProps> = ({
       });
     } finally {
       setIsUpdating(false);
+      processingTransactionRef.current = null;
+    }
+  }, 300);
+
+  const handleStatusChange = async (newStatus: Status) => {
+    if (!onStatusChange || localStatus === newStatus || isUpdating) return;
+    
+    try {
+      setIsUpdating(true);
+      console.log('[StatusButtonsBar] Changing status to:', newStatus);
+      
+      // Generate a new transaction ID for this status change
+      const transactionId = `txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      transactionIdRef.current = transactionId;
+      processingTransactionRef.current = transactionId;
+      
+      // Optimistically update local state
+      setLocalStatus(newStatus);
+      
+      // Use debounced handler to prevent rapid toggles
+      debouncedStatusChange(newStatus, transactionId);
+      
+    } catch (error) {
+      console.error('[StatusButtonsBar] Error in handleStatusChange:', error);
+      setIsUpdating(false);
+      processingTransactionRef.current = null;
     }
   };
 

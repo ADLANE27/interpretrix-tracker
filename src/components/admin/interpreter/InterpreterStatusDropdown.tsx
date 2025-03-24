@@ -72,6 +72,7 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
+  const transactionIdRef = useRef<string>(`admin-txn-${Date.now()}`);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -104,6 +105,10 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
+      // Generate a transaction ID for this update
+      const transactionId = `admin-txn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      transactionIdRef.current = transactionId;
+      
       // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
@@ -112,10 +117,11 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using RPC function
+      // Update interpreter status using RPC function with transaction ID
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
-        p_status: pendingStatus
+        p_status: pendingStatus,
+        p_transaction_id: transactionId
       });
 
       if (error) {

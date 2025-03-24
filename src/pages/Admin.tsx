@@ -10,10 +10,18 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Add the useMissionUpdates hook to refresh data when interpreter statuses change
+  // Add the useMissionUpdates hook with a more robust handler
   useMissionUpdates(() => {
+    console.log('[Admin] Mission or interpreter update received, dispatching event');
+    
     // Dispatch a custom event that the AdminDashboard will listen for
     window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+    
+    // As a backup, trigger a manual refresh after a delay
+    setTimeout(() => {
+      console.log('[Admin] Executing delayed refresh');
+      window.dispatchEvent(new CustomEvent('force-refresh-interpreters'));
+    }, 3000);
   });
 
   useEffect(() => {
@@ -52,12 +60,35 @@ const Admin = () => {
       }
     });
 
+    // For better reliability, set up a periodic check for session validity
+    const sessionCheckInterval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('Session expired, redirecting to login');
+        navigate('/admin/login');
+      }
+    }, 300000); // Check every 5 minutes
+
     // Initial auth check
     checkAuth();
+
+    // Setup connection recovery on network/visibility changes
+    const handleConnectionRecovery = () => {
+      if (document.visibilityState === 'visible' || navigator.onLine) {
+        console.log('[Admin] Connection recovered, triggering refresh');
+        window.dispatchEvent(new CustomEvent('interpreter-status-update'));
+      }
+    };
+
+    window.addEventListener('online', handleConnectionRecovery);
+    document.addEventListener('visibilitychange', handleConnectionRecovery);
 
     // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
+      clearInterval(sessionCheckInterval);
+      window.removeEventListener('online', handleConnectionRecovery);
+      document.addEventListener('visibilitychange', handleConnectionRecovery);
     };
   }, [navigate]);
 
