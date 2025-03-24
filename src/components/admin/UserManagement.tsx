@@ -17,14 +17,11 @@ import { Search, UserCog, Users } from "lucide-react";
 import { AdminCreationForm } from "./forms/AdminCreationForm";
 import { InterpreterProfileForm } from "./forms/InterpreterProfileForm";
 import { UserTable } from "./components/UserTable";
-import { ResetPasswordDialog } from "./components/ResetPasswordDialog";
 import { useUserManagement } from "./hooks/useUserManagement";
 
 export const UserManagement = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const {
@@ -39,56 +36,6 @@ export const UserManagement = () => {
     setIsSubmitting,
     refetch
   } = useUserManagement();
-
-  const handleResetPassword = async (password: string) => {
-    if (!selectedUserId) {
-      toast({
-        title: "Erreur",
-        description: "Utilisateur non sélectionné",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      
-      const { data, error } = await supabase.functions.invoke('reset-user-password', {
-        body: { 
-          userId: selectedUserId,
-          password: password,
-        }
-      });
-
-      if (error || !data?.success) {
-        throw new Error(error?.message || data?.message || 'Password reset failed');
-      }
-
-      toast({
-        title: "Mot de passe mis à jour",
-        description: "Le mot de passe a été mis à jour avec succès",
-      });
-
-      // First invalidate the query cache
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      
-      // Reset state
-      setIsResetPasswordOpen(false);
-      setSelectedUserId(null);
-
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      toast({
-        title: "Erreur",
-        description: error.message === 'Request timeout'
-          ? "La requête a pris trop de temps. Veuillez réessayer."
-          : "Impossible de réinitialiser le mot de passe: " + (error.message || 'Une erreur est survenue'),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (error) {
     return (
@@ -208,10 +155,6 @@ export const UserManagement = () => {
           <UserTable 
             users={users.admins} 
             onDelete={handleDeleteUser}
-            onResetPassword={(id) => {
-              setSelectedUserId(id);
-              setIsResetPasswordOpen(true);
-            }}
           />
         </div>
 
@@ -223,20 +166,9 @@ export const UserManagement = () => {
           <UserTable 
             users={users.interpreters}
             onDelete={handleDeleteUser}
-            onResetPassword={(id) => {
-              setSelectedUserId(id);
-              setIsResetPasswordOpen(true);
-            }}
           />
         </div>
       </div>
-
-      <ResetPasswordDialog
-        isOpen={isResetPasswordOpen}
-        onOpenChange={setIsResetPasswordOpen}
-        onSubmit={handleResetPassword}
-        isSubmitting={isSubmitting}
-      />
     </div>
   );
 };

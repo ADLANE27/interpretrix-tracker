@@ -1,3 +1,4 @@
+
 import {
   Table,
   TableBody,
@@ -13,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Pencil, MoreHorizontal, Key, Trash, Mail } from "lucide-react";
+import { Pencil, MoreHorizontal, Mail, Trash } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
@@ -22,21 +23,17 @@ import { InterpreterProfileForm } from "@/components/admin/forms/InterpreterProf
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Profile } from "@/types/profile";
-import { useNavigate } from "react-router-dom";
-import { ResetPasswordDialog } from "./ResetPasswordDialog";
 import { convertLanguagePairsToStrings } from "@/types/languages";
 
 interface UserTableProps {
   users: UserData[];
   onDelete: (id: string) => void;
-  onResetPassword: (id: string, password: string) => void;
 }
 
-export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) => {
+export const UserTable = ({ users, onDelete }: UserTableProps) => {
   const [isEditingInterpreter, setIsEditingInterpreter] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
   const handleEditInterpreter = (user: UserData) => {
     setSelectedUser(user);
@@ -170,13 +167,6 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
                         Modifier
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => {
-                      setSelectedUser(user);
-                      setIsResetPasswordOpen(true);
-                    }}>
-                      <Key className="mr-2 h-4 w-4" />
-                      Réinitialiser le mot de passe
-                    </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleSendPasswordReset(user)}
                       disabled={isSubmitting}
@@ -222,22 +212,6 @@ export const UserTable = ({ users, onDelete, onResetPassword }: UserTableProps) 
           </ScrollArea>
         </DialogContent>
       </Dialog>
-
-      <ResetPasswordDialog
-        isOpen={isResetPasswordOpen}
-        onOpenChange={setIsResetPasswordOpen}
-        onSubmit={async (password) => {
-          await onResetPassword(selectedUser?.id || '', password);
-          setIsResetPasswordOpen(false);
-        }}
-        isSubmitting={isSubmitting}
-        userData={selectedUser ? {
-          email: selectedUser.email || '',
-          first_name: selectedUser.first_name || '',
-          role: selectedUser.role as 'admin' | 'interpreter',
-          id: selectedUser.id
-        } : undefined}
-      />
     </>
   );
 };
