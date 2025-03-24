@@ -84,12 +84,17 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
       
       // Emit the status update event
-      if (payload.new && payload.old && payload.new.status !== payload.old.status) {
-        eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-          interpreterId: payload.new.id,
-          status: payload.new.status,
-          previousStatus: payload.old.status
-        });
+      if (payload.new && payload.old) {
+        const newStatus = (payload.new as any).status;
+        const oldStatus = (payload.old as any).status;
+        
+        if (newStatus !== oldStatus) {
+          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
+            interpreterId: (payload.new as any).id,
+            status: newStatus,
+            previousStatus: oldStatus
+          });
+        }
       }
       
       // Trigger the refresh

@@ -29,16 +29,17 @@ export const enableRealtimeForTable = async (
   try {
     log(`Enabling realtime for table ${tableName}`);
     
-    const { data, error } = await supabase.channel('realtime')
+    // Create a channel and subscribe to it
+    const channel = supabase.channel('realtime')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: tableName 
       }, () => {})
       .subscribe();
-    
-    if (error) {
-      logError(`Error enabling realtime for table ${tableName}:`, error);
+      
+    if (!channel) {
+      logError(`Error enabling realtime for table ${tableName}: Channel creation failed`);
       recordFailure();
       return false;
     }
