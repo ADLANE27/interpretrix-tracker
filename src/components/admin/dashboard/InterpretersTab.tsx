@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +10,6 @@ import { StatisticsCards } from "@/components/admin/dashboard/StatisticsCards";
 import { InterpreterFilterBar } from "./InterpreterFilterBar";
 import { AdvancedFilters } from "./AdvancedFilters";
 import { InterpretersList } from "./InterpretersList";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
 
 interface WorkHours {
   start_morning?: string;
@@ -75,11 +75,6 @@ export const InterpretersTab: React.FC = () => {
         description: `Le statut de ${interpreter.first_name} ${interpreter.last_name} a été mis à jour`,
       });
     }
-    
-    eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-      interpreterId: interpreterId,
-      status: newStatus
-    });
   };
 
   useEffect(() => {
@@ -93,43 +88,11 @@ export const InterpretersTab: React.FC = () => {
       table: 'interpreter_profiles'
     }, async payload => {
       console.log(`[InterpretersTab] Interpreter profiles changed:`, payload);
-      
-      if (payload.eventType === 'UPDATE' && payload.new && payload.old) {
-        if (payload.new.status !== payload.old.status && Object.keys(payload.new).length === 3) {
-          console.log(`[InterpretersTab] Status update detected for ${payload.new.id}: ${payload.new.status}`);
-          
-          setInterpreters(current => 
-            current.map(interpreter => 
-              interpreter.id === payload.new.id 
-                ? { ...interpreter, status: payload.new.status as Profile['status'] } 
-                : interpreter
-            )
-          );
-        } else {
-          await fetchInterpreters();
-        }
-      } else {
-        await fetchInterpreters();
-      }
+      await fetchInterpreters();
     }).subscribe(status => {
       console.log(`[InterpretersTab] Interpreter profiles subscription status:`, status);
     });
     channels.push(interpreterChannel);
-
-    // Listen for status update events
-    const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
-      console.log(`[InterpretersTab] Received status update event for ${data.interpreterId}:`, data.status);
-      
-      setInterpreters(current => 
-        current.map(interpreter => 
-          interpreter.id === data.interpreterId 
-            ? { ...interpreter, status: data.status as Profile['status'] } 
-            : interpreter
-        )
-      );
-    };
-    
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
 
     // Channel for private reservations changes
     const reservationsChannel = supabase.channel('admin-private-reservations').on('postgres_changes', {
@@ -145,11 +108,11 @@ export const InterpretersTab: React.FC = () => {
     channels.push(reservationsChannel);
     
     // Listen for interpreter status update events from useMissionUpdates
-    const handleStatusUpdateDeprecated = () => {
+    const handleStatusUpdate = () => {
       console.log("[InterpretersTab] Received interpreter status update event");
       fetchInterpreters();
     };
-    window.addEventListener('interpreter-status-update', handleStatusUpdateDeprecated);
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -176,8 +139,7 @@ export const InterpretersTab: React.FC = () => {
         supabase.removeChannel(channel);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('interpreter-status-update', handleStatusUpdateDeprecated);
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
       clearInterval(connectionCheckInterval);
     };
   }, []);

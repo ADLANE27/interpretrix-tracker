@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { 
   DropdownMenu, 
@@ -11,7 +12,6 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { Profile } from "@/types/profile";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
 
 type Status = Profile['status'];
 
@@ -71,25 +71,17 @@ export const InterpreterStatusDropdown = ({
   const [localStatus, setLocalStatus] = useState<Status>(currentStatus);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
-      if (data.interpreterId === interpreterId && data.status !== localStatus) {
-        console.log(`[InterpreterStatusDropdown] Received status update event for ${interpreterId}:`, data.status);
-        setLocalStatus(data.status as Status);
-      }
-    };
-
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
-    };
-  }, [interpreterId, localStatus]);
-
+  // Update local state when prop changes
   useEffect(() => {
     if (currentStatus && currentStatus !== localStatus) {
+      const updateId = `${currentStatus}-${Date.now()}`;
+      
+      // Prevent duplicate updates
+      if (updateId === lastUpdateRef.current) return;
+      lastUpdateRef.current = updateId;
+      
       console.log(`[InterpreterStatusDropdown] Status updated from prop for ${interpreterId}:`, currentStatus);
       setLocalStatus(currentStatus);
     }
@@ -100,7 +92,6 @@ export const InterpreterStatusDropdown = ({
       setIsOpen(false);
       return;
     }
-    
     setPendingStatus(status);
     setIsConfirmDialogOpen(true);
     setIsOpen(false);
@@ -113,18 +104,15 @@ export const InterpreterStatusDropdown = ({
       setIsUpdating(true);
       console.log(`[InterpreterStatusDropdown] Updating status of ${interpreterId} to ${pendingStatus}`);
       
-      const previousStatus = localStatus;
-      
+      // Optimistically update the local status
       setLocalStatus(pendingStatus);
       
-      if (statusUpdateTimeoutRef.current) {
-        clearTimeout(statusUpdateTimeoutRef.current);
-      }
-      
+      // Notify parent component of the status change if callback is provided
       if (onStatusChange) {
         onStatusChange(pendingStatus);
       }
       
+      // Update interpreter status using RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -132,14 +120,10 @@ export const InterpreterStatusDropdown = ({
 
       if (error) {
         console.error('[InterpreterStatusDropdown] RPC error:', error);
+        // Revert on error
+        setLocalStatus(currentStatus);
         throw error;
       }
-
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-        interpreterId: interpreterId,
-        status: pendingStatus,
-        previousStatus: previousStatus
-      });
 
       toast({
         title: "Statut mis à jour",
@@ -147,11 +131,6 @@ export const InterpreterStatusDropdown = ({
       });
     } catch (error: any) {
       console.error('[InterpreterStatusDropdown] Error:', error);
-      
-      statusUpdateTimeoutRef.current = setTimeout(() => {
-        setLocalStatus(currentStatus);
-      }, 500);
-      
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut",
@@ -169,6 +148,7 @@ export const InterpreterStatusDropdown = ({
     setPendingStatus(null);
   };
 
+  // Content based on display format
   const triggerContent = () => {
     const StatusIcon = statusConfig[localStatus].icon;
     const displayLabel = isMobile ? statusConfig[localStatus].mobileLabel : statusConfig[localStatus].label;

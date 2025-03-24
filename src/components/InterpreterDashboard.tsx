@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { WorkLocation } from "@/utils/workLocationStatus";
 import { useGlobalNotification } from "@/hooks/useGlobalNotification";
 import { MobileNavigationBar } from "./interpreter/MobileNavigationBar";
-import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 
 const isValidStatus = (status: string): status is Profile['status'] => {
   return ['available', 'busy', 'pause', 'unavailable'].includes(status);
@@ -58,9 +57,6 @@ export const InterpreterDashboard = () => {
   useSupabaseConnection();
 
   useEffect(() => {
-    resetCircuitBreaker();
-    console.log('[InterpreterDashboard] Reset circuit breaker for realtime subscriptions');
-    
     const handleResize = () => {
       setIsSidebarOpen(false);
       

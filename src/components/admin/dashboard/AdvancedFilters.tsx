@@ -64,6 +64,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   };
 
   const toggleEmploymentStatusFilter = (status: EmploymentStatus) => {
+    // Fix: Create a new array instead of using a function for state update
     if (employmentStatusFilters.includes(status)) {
       setEmploymentStatusFilters(employmentStatusFilters.filter(s => s !== status));
     } else {
@@ -72,7 +73,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   };
 
   return (
-    <Card className="p-6 relative z-10">
+    <Card className="p-6">
       <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="space-y-2">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -102,18 +103,16 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               </div>
             </div>
 
-            <div className="space-y-2 relative z-50">
+            <div className="space-y-2">
               <Label htmlFor="language">Langue</Label>
-              <div className="relative">
-                <LanguageCombobox 
-                  languages={LANGUAGES}
-                  value={languageFilter}
-                  onChange={setLanguageFilter}
-                  placeholder="Rechercher une langue..."
-                  emptyMessage="Aucune langue trouvée."
-                  allLanguagesLabel="Toutes les langues"
-                />
-              </div>
+              <LanguageCombobox 
+                languages={LANGUAGES}
+                value={languageFilter}
+                onChange={setLanguageFilter}
+                placeholder="Rechercher une langue..."
+                emptyMessage="Aucune langue trouvée."
+                allLanguagesLabel="Toutes les langues"
+              />
             </div>
 
             <div className="space-y-2">
@@ -123,7 +122,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
             <CountrySelect value={birthCountryFilter} onValueChange={setBirthCountryFilter} label="Pays de naissance" placeholder="Sélectionner un pays" />
 
-            <div className="space-y-2 relative z-40">
+            <div className="space-y-2">
               <Label htmlFor="employment-status">Statut professionnel</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -132,7 +131,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0 z-[9000]" align="start">
+                <PopoverContent className="w-full p-0" align="start">
                   <div className="p-2">
                     <div className="flex items-center space-x-2 pb-2">
                       <Checkbox id="select-all-statuses" checked={employmentStatusFilters.length === Object.keys(employmentStatusLabels).length} onCheckedChange={checked => {
@@ -160,13 +159,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               </Popover>
             </div>
 
-            <div className="space-y-2 relative z-30">
+            <div className="space-y-2">
               <Label htmlFor="rate-sort">Trier par tarif</Label>
               <Select value={rateSort} onValueChange={setRateSort}>
                 <SelectTrigger id="rate-sort">
                   <SelectValue placeholder="Trier par tarif" />
                 </SelectTrigger>
-                <SelectContent className="z-[9000]">
+                <SelectContent>
                   <SelectItem value="none">Pas de tri</SelectItem>
                   <SelectItem value="rate-asc">Du moins cher au plus cher</SelectItem>
                 </SelectContent>
@@ -177,4 +176,4 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       </Collapsible>
     </Card>
   );
-}
+};

@@ -1,8 +1,10 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, X } from "lucide-react";
 
 interface LanguageComboboxProps {
   languages: string[];
@@ -20,19 +22,102 @@ export function LanguageCombobox({
   value,
   onChange,
   placeholder = "Sélectionner une langue...",
+  emptyMessage = "Aucune langue trouvée.",
   className,
   allLanguagesOption = true,
   allLanguagesLabel = "Toutes les langues",
 }: LanguageComboboxProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-language-selector]")) {
+        setIsOpen(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  // Reset search when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
+    }
+  }, [isOpen]);
 
-  // Sort languages alphabetically
-  const sortedLanguages = React.useMemo(() => {
-    return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [languages]);
+  // Normalize a string for comparison (remove accents, lowercase)
+  const normalizeString = (str: string): string => {
+    return str.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
+  // Sort and filter languages
+  const filteredLanguages = useMemo(() => {
+    try {
+      if (!searchTerm) {
+        return [...languages].sort((a, b) => a.localeCompare(b, 'fr'));
+      }
+      
+      const normalizedSearchTerm = normalizeString(searchTerm);
+      
+      return [...languages]
+        .filter(lang => {
+          const normalizedLang = normalizeString(lang);
+          return normalizedLang.includes(normalizedSearchTerm);
+        })
+        .sort((a, b) => {
+          const normalizedA = normalizeString(a);
+          const normalizedB = normalizeString(b);
+          
+          // Exact matches first
+          const aExactMatch = normalizedA === normalizedSearchTerm;
+          const bExactMatch = normalizedB === normalizedSearchTerm;
+          
+          if (aExactMatch && !bExactMatch) return -1;
+          if (!aExactMatch && bExactMatch) return 1;
+          
+          // Then sort by whether it starts with the search term
+          const aStartsWith = normalizedA.startsWith(normalizedSearchTerm);
+          const bStartsWith = normalizedB.startsWith(normalizedSearchTerm);
+          
+          if (aStartsWith && !bStartsWith) return -1;
+          if (!aStartsWith && bStartsWith) return 1;
+          
+          // Then alphabetical order
+          return a.localeCompare(b, 'fr');
+        });
+    } catch (error) {
+      console.error("Error filtering languages:", error);
+      return [];
+    }
+  }, [languages, searchTerm]);
+
+  // Get display name for selected value
+  const displayValue = useMemo(() => {
+    if (value === "all" && allLanguagesOption) {
+      return allLanguagesLabel;
+    }
+    return value || placeholder;
+  }, [value, allLanguagesOption, allLanguagesLabel, placeholder]);
+
+  // Handle clicking the main button
+  const handleButtonClick = () => {
+    setIsOpen(!isOpen);
+  };
+
+  // Handle selecting a language
+  const handleSelectLanguage = (lang: string) => {
+    onChange(lang);
+    setIsOpen(false);
+    setSearchTerm("");
+  };
 
   // Common languages to highlight at the top of the list
   const commonLanguages = [
@@ -40,211 +125,115 @@ export function LanguageCombobox({
     "Russe", "Chinois", "Allemand", "Italien", "Portugais"
   ];
   
-  // Filter common languages that exist in our language list
-  const availableCommonLanguages = commonLanguages.filter(lang => 
-    languages.includes(lang)
-  );
-
-  // Filter languages based on search query
-  const filteredLanguages = searchQuery 
-    ? sortedLanguages.filter(lang => 
-        lang.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : sortedLanguages;
-
-  // Filter common languages based on search query
-  const filteredCommonLanguages = searchQuery
-    ? availableCommonLanguages.filter(lang => 
-        lang.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : availableCommonLanguages;
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
-    inputRef.current?.focus();
-  };
-
-  const handleSelectLanguage = (language: string) => {
-    onChange(language);
-    setSearchQuery("");
-    setIsOpen(false);
-  };
-
-  // Focus the input when dropdown is opened
-  useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isOpen]);
-
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Determine if we should show the dropdown list
-  const shouldShowDropdown = isOpen && (searchQuery.length >= 2 || isOpen && value !== "all" && !searchQuery);
-
-  // Get display value for the input
-  const getDisplayValue = () => {
-    if (value === "all") {
-      return allLanguagesLabel;
-    } else if (value && languages.includes(value)) {
-      return value;
-    }
-    return "";
-  };
+  const isCommonLanguage = (lang: string) => commonLanguages.includes(lang);
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <div 
+    <div className="relative w-full" data-language-selector>
+      {/* Main selector button */}
+      <Button
+        type="button"
+        variant="outline"
+        role="combobox"
         className={cn(
-          "flex items-center w-full border rounded-md h-10 px-3 py-2 bg-background",
-          "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background",
-          "border-input hover:border-purple-400 transition-all duration-200",
-          { "ring-2 ring-ring": isOpen },
+          "w-full justify-between text-left font-normal",
+          !value && "text-muted-foreground",
           className
         )}
-        onClick={() => setIsOpen(true)}
+        onClick={handleButtonClick}
+        aria-expanded={isOpen}
       >
-        <Search className="w-4 h-4 mr-2 shrink-0 text-muted-foreground" />
-        <input
-          ref={inputRef}
-          className="w-full bg-transparent focus:outline-none placeholder:text-muted-foreground/60 text-sm"
-          placeholder={getDisplayValue() || placeholder}
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-        />
-        {(searchQuery || value !== "all") && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClearSearch();
-              if (value !== "all") onChange("all");
-            }}
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {shouldShowDropdown && (
-        <div 
-          className="absolute z-[9999] w-full mt-1 bg-popover border rounded-md shadow-lg"
-          style={{ maxHeight: "350px", overflow: "hidden" }}
-        >
-          <ScrollArea className="h-72 w-full">
+        <span className="truncate">{displayValue}</span>
+        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+      
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute top-full left-0 z-[100] w-full mt-1 rounded-md border border-input bg-white shadow-xl">
+          {/* Search input */}
+          <div className="p-2 border-b">
+            <Input
+              autoFocus
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8"
+            />
+          </div>
+          
+          {/* Language list */}
+          <ScrollArea className="max-h-[300px] overflow-auto">
             <div className="p-1">
               {allLanguagesOption && (
-                <div
-                  className={cn(
-                    "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                    { "bg-accent text-accent-foreground": value === "all" }
-                  )}
+                <Button
+                  variant={value === "all" ? "secondary" : "ghost"}
+                  className="w-full justify-start font-normal mb-1"
                   onClick={() => handleSelectLanguage("all")}
                 >
-                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                    {value === "all" && (
-                      <span className="h-4 w-4 flex items-center">✓</span>
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === "all" ? "opacity-100" : "opacity-0"
                     )}
-                  </span>
+                  />
                   {allLanguagesLabel}
-                </div>
+                </Button>
               )}
               
-              {/* Common languages section */}
-              {filteredCommonLanguages.length > 0 && !searchQuery && (
+              {/* Common languages section (if not searching) */}
+              {!searchTerm && (
                 <>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                     Langues courantes
                   </div>
-                  {filteredCommonLanguages.map((language) => (
-                    <div
-                      key={`common-${language}`}
-                      className={cn(
-                        "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                        { "bg-accent text-accent-foreground": value === language }
-                      )}
-                      onClick={() => handleSelectLanguage(language)}
-                    >
-                      <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                        {value === language && (
-                          <span className="h-4 w-4 flex items-center">✓</span>
-                        )}
-                      </span>
-                      {language}
-                    </div>
-                  ))}
-                  
+                  {commonLanguages
+                    .filter(lang => languages.includes(lang))
+                    .map((language) => (
+                      <Button
+                        key={language}
+                        variant={value === language ? "secondary" : "ghost"}
+                        className="w-full justify-start font-normal mb-1"
+                        onClick={() => handleSelectLanguage(language)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === language ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {language}
+                      </Button>
+                    ))
+                  }
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                     Toutes les langues
                   </div>
                 </>
               )}
               
-              {/* When searching, show common languages that match without headers */}
-              {filteredCommonLanguages.length > 0 && searchQuery && (
-                filteredCommonLanguages.map((language) => (
-                  <div
-                    key={`common-${language}`}
-                    className={cn(
-                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                      { "bg-accent text-accent-foreground": value === language }
-                    )}
-                    onClick={() => handleSelectLanguage(language)}
-                  >
-                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                      {value === language && (
-                        <span className="h-4 w-4 flex items-center">✓</span>
-                      )}
-                    </span>
-                    {language}
-                  </div>
-                ))
-              )}
-              
-              {/* All languages */}
-              {filteredLanguages.map((language) => (
-                // Skip languages that are already in the common languages section
-                (!availableCommonLanguages.includes(language) || searchQuery) && (
-                  <div
-                    key={language}
-                    className={cn(
-                      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                      { "bg-accent text-accent-foreground": value === language }
-                    )}
-                    onClick={() => handleSelectLanguage(language)}
-                  >
-                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                      {value === language && (
-                        <span className="h-4 w-4 flex items-center">✓</span>
-                      )}
-                    </span>
-                    {language}
-                  </div>
-                )
-              ))}
-
-              {/* Show message when no languages match the search */}
-              {filteredLanguages.length === 0 && (
-                <div className="px-2 py-4 text-sm text-center text-muted-foreground">
-                  Aucune langue trouvée
+              {filteredLanguages.length === 0 ? (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
                 </div>
+              ) : (
+                filteredLanguages.map((language) => (
+                  // Skip common languages when not searching, as they're already shown above
+                  (!isCommonLanguage(language) || searchTerm) && (
+                    <Button
+                      key={language}
+                      variant={value === language ? "secondary" : "ghost"}
+                      className="w-full justify-start font-normal mb-1"
+                      onClick={() => handleSelectLanguage(language)}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === language ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {language}
+                    </Button>
+                  )
+                ))
               )}
             </div>
           </ScrollArea>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import { Clock, Coffee, X, Phone } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRealtimeSubscription } from "@/hooks/use-realtime-subscription";
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from "@/lib/events";
 
 type Status = "available" | "unavailable" | "pause" | "busy";
 
@@ -22,23 +21,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const statusUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Listen for status updates from other components
-  useEffect(() => {
-    const handleStatusUpdate = (data: { interpreterId: string; status: string }) => {
-      if (userId && data.interpreterId === userId && data.status !== status) {
-        console.log(`[StatusManager] Received status update event for ${userId}:`, data.status);
-        setStatus(data.status as Status);
-      }
-    };
-
-    eventEmitter.on(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
-    
-    return () => {
-      eventEmitter.off(EVENT_INTERPRETER_STATUS_UPDATED, handleStatusUpdate);
-    };
-  }, [status, userId]);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -85,7 +67,8 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       enabled: !!userId,
       onError: (error) => {
         console.error('[StatusManager] Error in realtime subscription:', error);
-      }
+      },
+      debugMode: true
     }
   );
 
@@ -127,35 +110,22 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
     try {
       console.log('[StatusManager] Attempting status update for user:', userId);
       
-      // Clear any existing timeout
-      if (statusUpdateTimeoutRef.current) {
-        clearTimeout(statusUpdateTimeoutRef.current);
-      }
-      
-      const previousStatus = status;
-      
       // Optimistically update local state
       setStatus(newStatus);
       
-      // Use the standardized RPC function
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: userId,
-        p_status: newStatus
+        p_status: newStatus as string
       });
 
       if (error) {
         console.error('[StatusManager] Database error:', error);
+        // Revert on error
+        setStatus(status);
         throw error;
       }
 
       console.log('[StatusManager] Status update successful');
-
-      // Emit the status update event
-      eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-        interpreterId: userId,
-        status: newStatus,
-        previousStatus: previousStatus
-      });
 
       if (onStatusChange) {
         await onStatusChange(newStatus);
@@ -167,12 +137,6 @@ export const StatusManager = ({ currentStatus, onStatusChange }: StatusManagerPr
       });
     } catch (error: any) {
       console.error('[StatusManager] Error updating status:', error);
-      
-      // Revert to previous status on error with a slight delay to avoid UI flicker
-      statusUpdateTimeoutRef.current = setTimeout(() => {
-        setStatus(currentStatus || 'available');
-      }, 500);
-      
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour votre statut",

@@ -1,7 +1,6 @@
 
 import { useEffect } from 'react';
-import { useRealtimeSubscription } from './realtime';
-import { eventEmitter, EVENT_INTERPRETER_STATUS_UPDATED } from '@/lib/events';
+import { useRealtimeSubscription } from './use-realtime-subscription';
 
 export const useMissionUpdates = (onUpdate: () => void) => {
   // Setup visibility change event listeners
@@ -15,17 +14,12 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    const handleOnline = () => {
-      console.log('[useMissionUpdates] App is online, triggering update');
-      onUpdate();
-    };
-
-    window.addEventListener("online", handleOnline);
+    window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onUpdate]);
@@ -42,9 +36,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      maxRetries: 5,
-      retryInterval: 3000,
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
+      maxRetries: 3,
+      retryInterval: 5000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -63,9 +57,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      maxRetries: 5,
-      retryInterval: 3000,
-      debugMode: true,
+      debugMode: true, // Enable debug mode to see more logs
+      maxRetries: 3,
+      retryInterval: 5000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -82,28 +76,13 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      
-      // Emit the status update event
-      if (payload.new && payload.old) {
-        const newStatus = (payload.new as any).status;
-        const oldStatus = (payload.old as any).status;
-        
-        if (newStatus !== oldStatus) {
-          eventEmitter.emit(EVENT_INTERPRETER_STATUS_UPDATED, {
-            interpreterId: (payload.new as any).id,
-            status: newStatus,
-            previousStatus: oldStatus
-          });
-        }
-      }
-      
-      // Trigger the refresh
+      // This is a status update, trigger the refresh
       onUpdate();
     },
     {
-      maxRetries: 5,
-      retryInterval: 3000,
-      debugMode: true,
+      debugMode: true, // Enable debug mode for troubleshooting
+      maxRetries: 3,
+      retryInterval: 3000, // Shorter retry for status updates
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }

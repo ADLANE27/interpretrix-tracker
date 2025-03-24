@@ -5,17 +5,10 @@ import AdminDashboard from '@/components/admin/AdminDashboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useMissionUpdates } from '@/hooks/useMissionUpdates';
-import { resetCircuitBreaker } from '@/hooks/use-realtime-subscription';
 
 const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Reset circuit breaker state when the admin page loads
-  useEffect(() => {
-    resetCircuitBreaker();
-    console.log('[Admin] Reset circuit breaker for realtime subscriptions');
-  }, []);
 
   // Add the useMissionUpdates hook to refresh data when interpreter statuses change
   useMissionUpdates(() => {
