@@ -14,12 +14,19 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
-    window.addEventListener("online", handleVisibilityChange);
+    const handleOnlineStatus = () => {
+      if (navigator.onLine) {
+        console.log('[useMissionUpdates] App came online, triggering update');
+        onUpdate();
+      }
+    };
+
+    window.addEventListener("online", handleOnlineStatus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
-      window.removeEventListener("online", handleVisibilityChange);
+      window.removeEventListener("online", handleOnlineStatus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [onUpdate]);
@@ -36,11 +43,13 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 2000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
+        // Trigger update on error as a fallback
+        onUpdate();
       }
     }
   );
@@ -57,34 +66,38 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 2000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
+        // Trigger update on error as a fallback
+        onUpdate();
       }
     }
   );
   
-  // Use a more specific subscription for interpreter profile status changes
+  // Fix the filter syntax for interpreter profile status changes
   useRealtimeSubscription(
     {
       event: 'UPDATE',
       schema: 'public',
       table: 'interpreter_profiles',
-      filter: 'status=eq.available,status=eq.busy,status=eq.pause,status=eq.unavailable'
+      // Fixed filter - correct format is column=filter_type.value
+      filter: 'status=in.(available,busy,pause,unavailable)'
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      // This is a status update, trigger the refresh
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode for troubleshooting
-      maxRetries: 3,
-      retryInterval: 3000, // Shorter retry for status updates
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 2000,
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
+        // Trigger update on error as a fallback
+        onUpdate();
       }
     }
   );

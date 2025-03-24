@@ -37,20 +37,50 @@ const workLocationConfig = {
 export const InterpreterListItem = ({ interpreter, onStatusChange }: InterpreterListItemProps) => {
   const [interpreterStatus, setInterpreterStatus] = useState<Profile['status']>(interpreter.status);
   const { toast } = useToast();
+  const [statusUpdateAttempts, setStatusUpdateAttempts] = useState(0);
 
   // Update local state when props change
   useEffect(() => {
     if (interpreter.status !== interpreterStatus) {
       console.log(`[InterpreterListItem] Status updated from props for ${interpreter.id}:`, interpreter.status);
       setInterpreterStatus(interpreter.status);
+      // Reset status update attempts counter when status is updated from props
+      setStatusUpdateAttempts(0);
     }
   }, [interpreter.status, interpreter.id, interpreterStatus]);
 
   const handleStatusChange = (newStatus: Profile['status']) => {
     console.log(`[InterpreterListItem] Status change requested for ${interpreter.id}:`, newStatus);
+    
+    // Update local state immediately for responsive UI
     setInterpreterStatus(newStatus);
+    
     if (onStatusChange) {
-      onStatusChange(interpreter.id, newStatus);
+      // Track status update attempts
+      setStatusUpdateAttempts(prev => prev + 1);
+      
+      // If there were previous failed attempts, show recovery message
+      if (statusUpdateAttempts > 0) {
+        toast({
+          title: "Nouvelle tentative",
+          description: `Tentative de mise à jour du statut en cours...`,
+        });
+      }
+      
+      onStatusChange(interpreter.id, newStatus)
+        .catch(error => {
+          console.error(`[InterpreterListItem] Error updating status:`, error);
+          // Toast is displayed by the parent component that handles onStatusChange
+          
+          // If there have been multiple failed attempts, show guidance
+          if (statusUpdateAttempts >= 2) {
+            toast({
+              title: "Problème de connexion",
+              description: "Des problèmes de connexion persistent. Essayez de rafraîchir la page.",
+              duration: 5000,
+            });
+          }
+        });
     }
   };
 

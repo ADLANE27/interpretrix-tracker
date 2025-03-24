@@ -1343,13 +1343,22 @@ export type Database = {
         }
         Returns: string
       }
-      update_interpreter_status: {
-        Args: {
-          p_interpreter_id: string
-          p_status: string
-        }
-        Returns: undefined
-      }
+      update_interpreter_status:
+        | {
+            Args: {
+              p_interpreter_id: string
+              p_status: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_interpreter_id: string
+              p_status: string
+              p_transaction_id?: string
+            }
+            Returns: undefined
+          }
       urlencode:
         | {
             Args: {

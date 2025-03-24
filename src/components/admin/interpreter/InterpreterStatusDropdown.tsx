@@ -72,6 +72,16 @@ export const InterpreterStatusDropdown = ({
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const lastUpdateRef = useRef<string | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Update local state when prop changes
   useEffect(() => {
@@ -112,7 +122,7 @@ export const InterpreterStatusDropdown = ({
         onStatusChange(pendingStatus);
       }
       
-      // Update interpreter status using RPC function
+      // Update interpreter status using RPC function - this is the authoritative update
       const { error } = await supabase.rpc('update_interpreter_status', {
         p_interpreter_id: interpreterId,
         p_status: pendingStatus
@@ -136,6 +146,17 @@ export const InterpreterStatusDropdown = ({
         description: "Impossible de mettre à jour le statut",
         variant: "destructive",
       });
+      
+      // Retry the update after a delay
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+      
+      retryTimeoutRef.current = setTimeout(() => {
+        console.log(`[InterpreterStatusDropdown] Retrying status update for ${interpreterId} to ${pendingStatus}`);
+        retryTimeoutRef.current = null;
+        handleConfirm();
+      }, 3000);
     } finally {
       setIsConfirmDialogOpen(false);
       setPendingStatus(null);
@@ -176,12 +197,12 @@ export const InterpreterStatusDropdown = ({
           {triggerContent()}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[180px]">
-          {Object.entries(statusConfig).map(([status, config]) => {
+          {(Object.entries(statusConfig) as [Status, StatusConfigItem][]).map(([status, config]) => {
             const StatusIcon = config.icon;
             return (
               <DropdownMenuItem 
                 key={status}
-                onClick={() => handleStatusSelect(status as Status)}
+                onClick={() => handleStatusSelect(status)}
                 className={`flex items-center gap-2 ${localStatus === status ? 'bg-muted' : ''}`}
               >
                 <StatusIcon className="h-4 w-4" />
