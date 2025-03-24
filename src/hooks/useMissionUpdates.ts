@@ -14,17 +14,25 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       }
     };
 
+    // Listen for status update events
+    const handleStatusUpdate = () => {
+      console.log('[useMissionUpdates] Status update event received, triggering refresh');
+      onUpdate();
+    };
+
     window.addEventListener("online", handleVisibilityChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('interpreter-status-update', handleStatusUpdate);
 
     return () => {
       console.log('[useMissionUpdates] Cleaning up event listeners');
       window.removeEventListener("online", handleVisibilityChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('interpreter-status-update', handleStatusUpdate);
     };
   }, [onUpdate]);
 
-  // Subscribe to mission changes
+  // Subscribe to mission changes with improved filter
   useRealtimeSubscription(
     {
       event: '*',
@@ -36,9 +44,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -57,9 +65,9 @@ export const useMissionUpdates = (onUpdate: () => void) => {
       onUpdate();
     },
     {
-      debugMode: true, // Enable debug mode to see more logs
-      maxRetries: 3,
-      retryInterval: 5000,
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 3000,
       onError: (error) => {
         console.error('[useMissionUpdates] Subscription error:', error);
       }
@@ -67,6 +75,7 @@ export const useMissionUpdates = (onUpdate: () => void) => {
   );
   
   // Use a more specific subscription for interpreter profile status changes
+  // Critical fix: Use proper filter syntax for Supabase realtime
   useRealtimeSubscription(
     {
       event: 'UPDATE',
@@ -76,13 +85,21 @@ export const useMissionUpdates = (onUpdate: () => void) => {
     },
     (payload) => {
       console.log('[useMissionUpdates] Interpreter status update received:', payload);
-      // This is a status update, trigger the refresh
+      // This is a status update, trigger the refresh and dispatch an event
       onUpdate();
+      
+      // Dispatch a global event that other components can listen to
+      window.dispatchEvent(new CustomEvent('interpreter-status-update', { 
+        detail: { 
+          interpreter_id: payload.new?.id,
+          status: payload.new?.status
+        }
+      }));
     },
     {
-      debugMode: true, // Enable debug mode for troubleshooting
-      maxRetries: 3,
-      retryInterval: 3000, // Shorter retry for status updates
+      debugMode: true,
+      maxRetries: 5,
+      retryInterval: 2000, // Shorter retry for status updates
       onError: (error) => {
         console.error('[useMissionUpdates] Status subscription error:', error);
       }
